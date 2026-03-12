@@ -1,0 +1,83 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import api from "@/lib/api";
+
+export default function LoginPage() {
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const router = useRouter();
+    const { login } = useAuth();
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+
+        try {
+            const response = await api.post("/api/auth/token/", { username, password });
+            login(response.data.access, response.data.refresh);
+            router.push("/dashboard");
+        } catch (err: any) {
+            setError(err.response?.data?.detail || "Invalid credentials. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex-center" style={{ minHeight: "100vh", padding: "2rem" }}>
+            <div className="glass-panel" style={{ width: "100%", maxWidth: "420px", padding: "2.5rem" }}>
+                <h2 className="text-center" style={{ marginBottom: "0.5rem", fontSize: "1.8rem", color: "var(--accent-primary)" }}>
+                    Welcome Back
+                </h2>
+                <p className="text-center" style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
+                    Sign in to access student reports
+                </p>
+
+                {error && (
+                    <div style={{ backgroundColor: "#fef2f2", color: "var(--danger)", padding: "12px", borderRadius: "8px", marginBottom: "1.5rem", fontSize: "0.95rem", border: "1px solid #fca5a5" }}>
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleLogin}>
+                    <div className="form-group">
+                        <label className="form-label" htmlFor="username">Username</label>
+                        <input
+                            id="username"
+                            type="text"
+                            className="form-input"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="Enter your username"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: "2rem" }}>
+                        <label className="form-label" htmlFor="password">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            className="form-input"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            required
+                        />
+                    </div>
+
+                    <button type="submit" className="btn-primary" style={{ width: "100%", padding: "12px" }} disabled={loading}>
+                        {loading ? "Signing In..." : "Sign In"}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}

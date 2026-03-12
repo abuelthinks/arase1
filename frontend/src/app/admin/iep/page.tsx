@@ -1,0 +1,338 @@
+"use client";
+
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import api from "@/lib/api";
+import Cookies from "js-cookie";
+
+/* ─── Shared UI helpers ───────────────────────────────────────────────────── */
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}>
+            <div style={{ padding: "0.875rem 1.5rem", borderBottom: "1px solid #e2e8f0", background: "#f0f9ff" }}>
+                <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{title}</h2>
+            </div>
+            <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>{children}</div>
+        </div>
+    );
+}
+
+function Field({ label, value, edit, onChange }: { label: string; value: string; edit: boolean; onChange?: (v: string) => void }) {
+    return (
+        <div>
+            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "3px" }}>{label}</p>
+            {edit ? (
+                <textarea
+                    value={value}
+                    onChange={e => onChange?.(e.target.value)}
+                    rows={Math.max(2, (value || "").split("\n").length)}
+                    style={{ width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0", padding: "8px 12px", fontSize: "0.85rem", resize: "vertical", boxSizing: "border-box" }}
+                />
+            ) : (
+                <p style={{ fontSize: "0.85rem", color: "#1e293b", whiteSpace: "pre-wrap", margin: 0, lineHeight: 1.5 }}>{value || "—"}</p>
+            )}
+        </div>
+    );
+}
+
+function PillList({ items }: { items: string[] }) {
+    if (!items || items.length === 0) return <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>—</span>;
+    return (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            {items.map(i => <span key={i} style={{ padding: "3px 10px", borderRadius: "999px", background: "#e0f2fe", color: "#0369a1", fontSize: "0.78rem", fontWeight: 600 }}>{i}</span>)}
+        </div>
+    );
+}
+
+/* ─── Types ───────────────────────────────────────────────────────────────── */
+
+interface IEPData {
+    section1_student_info: Record<string, any>;
+    section2_background: Record<string, string>;
+    section3_strengths: { strengths: string[]; interests: string[] };
+    section4_plop: Record<string, Record<string, string>>;
+    section5_ltg: { id: string; domain: string; goal: string; disciplines: string }[];
+    section6_sto: { id: string; ltg_ref: string; objective: string; target_skill: string; teaching_method: string; success_criteria: string; frequency: string; responsible: string }[];
+    section7_accommodations: { classroom: string[]; learning_modifications: string[]; communication_supports: string[] };
+    section8_therapies: Record<string, Record<string, string>>;
+    section9_home_program: Record<string, string[]>;
+    section10_progress: Record<string, any>;
+    section11_review: Record<string, string>;
+    section12_signatures: Record<string, string>;
+}
+
+/* ─── Main Component ──────────────────────────────────────────────────────── */
+
+function IEPViewerContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const iepId = searchParams.get("id");
+
+    const [iep, setIep] = useState<IEPData | null>(null);
+    const [meta, setMeta] = useState<{ student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
+    const [editing, setEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState("");
+
+    useEffect(() => {
+        if (!iepId) return;
+        setLoading(true);
+        api.get(`/api/iep/${iepId}/`)
+            .then(res => {
+                setIep(res.data.iep_data);
+                setMeta({ student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
+            })
+            .catch(() => setErrorMsg("Failed to load IEP."))
+            .finally(() => setLoading(false));
+    }, [iepId]);
+
+    if (!iepId) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing IEP ID.</div>;
+    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading IEP…</div>;
+    if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
+    if (!iep || !meta) return null;
+
+    const set = (section: keyof IEPData, path: string[], value: any) => {
+        setIep(prev => {
+            if (!prev) return prev;
+            const copy = JSON.parse(JSON.stringify(prev));
+            let obj = copy[section];
+            for (let i = 0; i < path.length - 1; i++) obj = obj[path[i]];
+            obj[path[path.length - 1]] = value;
+            return copy;
+        });
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await api.patch(`/api/iep/${iepId}/`, { iep_data: iep });
+            setEditing(false);
+        } catch { setErrorMsg("Failed to save."); }
+        finally { setSaving(false); }
+    };
+
+    const handleDownload = () => {
+        const token = Cookies.get("access_token") || "";
+        window.open(`${api.defaults.baseURL || ""}/api/iep/${iepId}/download/?token=${token}`, "_blank");
+    };
+
+    const handleCopyLink = () => {
+        const url = `${window.location.origin}/admin/iep?id=${iepId}`;
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const s1 = iep.section1_student_info || {};
+    const s2 = iep.section2_background || {};
+    const s3 = iep.section3_strengths || { strengths: [], interests: [] };
+    const s4 = iep.section4_plop || {};
+    const s5 = iep.section5_ltg || [];
+    const s6 = iep.section6_sto || [];
+    const s7 = iep.section7_accommodations || { classroom: [], learning_modifications: [], communication_supports: [] };
+    const s8 = iep.section8_therapies || {};
+    const s9 = iep.section9_home_program || {};
+
+    return (
+        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1rem 4rem" }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>Comprehensive AI-Generated IEP</h1>
+                    <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
+                        {meta.student_name} · Generated {new Date(meta.created_at).toLocaleDateString()}
+                    </p>
+                </div>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <button onClick={handleCopyLink}
+                        style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: copied ? "#059669" : "#475569" }}>
+                        {copied ? "✓ Copied!" : "🔗 Share Link"}
+                    </button>
+                    <button onClick={handleDownload}
+                        style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
+                        📥 Download PDF
+                    </button>
+                    {editing ? (
+                        <>
+                            <button onClick={() => setEditing(false)} style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
+                            <button onClick={handleSave} disabled={saving}
+                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                {saving ? "Saving…" : "💾 Save"}
+                            </button>
+                        </>
+                    ) : (
+                        <button onClick={() => setEditing(true)}
+                            style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#4f46e5", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                            ✏️ Edit
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Section 1 — Student Info */}
+            <SectionCard title="Section 1 — Student Information">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                    {[["Student Name", "student_name"], ["Date of Birth", "date_of_birth"], ["Gender", "gender"], ["Grade/Level", "grade_level"], ["IEP Start", "iep_start_date"], ["IEP End", "iep_end_date"]].map(([label, key]) => (
+                        <Field key={key} label={label} value={s1[key] || ""} edit={false} />
+                    ))}
+                </div>
+                {s1.team_members?.length > 0 && (
+                    <div>
+                        <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "4px" }}>IEP Team Members</p>
+                        <PillList items={s1.team_members.map((m: any) => `${m.name} (${m.role})`)} />
+                    </div>
+                )}
+            </SectionCard>
+
+            {/* Section 2 — Background */}
+            <SectionCard title="Section 2 — Background & Developmental Summary">
+                <Field label="Developmental History" value={s2.developmental_history || ""} edit={editing}
+                    onChange={v => set("section2_background", ["developmental_history"], v)} />
+                <Field label="Classroom Functioning Overview" value={s2.classroom_functioning || ""} edit={editing}
+                    onChange={v => set("section2_background", ["classroom_functioning"], v)} />
+                <Field label="Family Input Summary" value={s2.family_input_summary || ""} edit={editing}
+                    onChange={v => set("section2_background", ["family_input_summary"], v)} />
+            </SectionCard>
+
+            {/* Section 3 — Strengths & Interests */}
+            <SectionCard title="Section 3 — Strengths & Interests">
+                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Strengths</p><PillList items={s3.strengths} /></div>
+                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Interests / Motivators</p><PillList items={s3.interests} /></div>
+            </SectionCard>
+
+            {/* Section 4 — PLOP */}
+            <SectionCard title="Section 4 — Present Levels of Performance (PLOP)">
+                {Object.entries({
+                    communication_slp: "Communication (SLP)",
+                    fine_motor_ot: "Fine Motor, Sensory & ADLs (OT)",
+                    gross_motor_pt: "Gross Motor / Physical (PT)",
+                    behavioral_psych: "Behavioral & Emotional (Psych)",
+                    academic_sped: "Academic / Learning (SPED)",
+                    adaptive_life_skills: "Adaptive & Life Skills"
+                }).map(([key, lbl]) => {
+                    const domain = s4[key] || {};
+                    return (
+                        <div key={key} style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
+                            <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0ea5e9", marginBottom: "6px" }}>{lbl}</p>
+                            {Object.entries(domain).map(([fk, fv]) => (
+                                <Field key={fk} label={fk.replace(/_/g, ' ')} value={String(fv)} edit={editing}
+                                    onChange={v => set("section4_plop", [key, fk], v)} />
+                            ))}
+                        </div>
+                    );
+                })}
+            </SectionCard>
+
+            {/* Section 5 — Long-Term Goals */}
+            <SectionCard title="Section 5 — Long-Term IEP Goals (1 Year)">
+                {s5.map((ltg, i) => (
+                    <div key={ltg.id} style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#4f46e5", margin: "0 0 4px" }}>{ltg.id} — {ltg.domain}</p>
+                        <Field label="Goal" value={ltg.goal} edit={editing}
+                            onChange={v => { const copy = [...s5]; copy[i] = { ...copy[i], goal: v }; setIep(prev => prev ? { ...prev, section5_ltg: copy } : prev); }} />
+                        <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}><em>Disciplines: {ltg.disciplines}</em></p>
+                    </div>
+                ))}
+            </SectionCard>
+
+            {/* Section 6 — Short-Term Objectives */}
+            <SectionCard title="Section 6 — Short-Term Objectives (3–4 months)">
+                {s6.map((sto, i) => (
+                    <div key={sto.id} style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#059669", margin: "0 0 4px" }}>Objective {sto.id} → {sto.ltg_ref}</p>
+                        <Field label="Objective" value={sto.objective} edit={editing}
+                            onChange={v => { const c = [...s6]; c[i] = { ...c[i], objective: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "4px" }}>
+                            <Field label="Target Skill" value={sto.target_skill} edit={editing}
+                                onChange={v => { const c = [...s6]; c[i] = { ...c[i], target_skill: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
+                            <Field label="Teaching Method" value={sto.teaching_method} edit={editing}
+                                onChange={v => { const c = [...s6]; c[i] = { ...c[i], teaching_method: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
+                            <Field label="Success Criteria" value={sto.success_criteria} edit={editing}
+                                onChange={v => { const c = [...s6]; c[i] = { ...c[i], success_criteria: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
+                            <Field label="Frequency" value={sto.frequency} edit={editing}
+                                onChange={v => { const c = [...s6]; c[i] = { ...c[i], frequency: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
+                        </div>
+                        <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>Responsible: {sto.responsible}</p>
+                    </div>
+                ))}
+            </SectionCard>
+
+            {/* Section 7 — Accommodations */}
+            <SectionCard title="Section 7 — Accommodations & Modifications">
+                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Classroom Accommodations</p><PillList items={s7.classroom} /></div>
+                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
+                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Communication Supports</p><PillList items={s7.communication_supports} /></div>
+            </SectionCard>
+
+            {/* Section 8 — Therapies */}
+            <SectionCard title="Section 8 — Therapies & Intervention Plan">
+                {Object.entries({
+                    speech_therapy: "Speech Therapy",
+                    occupational_therapy: "Occupational Therapy",
+                    physical_therapy: "Physical Therapy",
+                    psychology: "Psychology / Behavioral",
+                    sped_sessions: "SPED Sessions",
+                    shadow_teacher: "Shadow Teacher"
+                }).map(([key, lbl]) => {
+                    const t = s8[key] || {};
+                    return (
+                        <div key={key} style={{ display: "flex", gap: "12px", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f1f5f9" }}>
+                            <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#1e293b", minWidth: "160px" }}>{lbl}</span>
+                            {key === "shadow_teacher" ? (
+                                <span style={{ fontSize: "0.85rem", color: "#475569" }}>Hours: {t.hours || "N/A"}</span>
+                            ) : (
+                                <span style={{ fontSize: "0.85rem", color: "#475569" }}>{t.frequency || "N/A"} — {t.focus_areas || "N/A"}</span>
+                            )}
+                        </div>
+                    );
+                })}
+            </SectionCard>
+
+            {/* Section 9 — Home Program */}
+            <SectionCard title="Section 9 — Home Program">
+                {Object.entries({
+                    speech_tasks: "Speech Tasks",
+                    sensory_ot_tasks: "Sensory / OT Tasks",
+                    behavioral_tasks: "Behavioral Tasks",
+                    academic_tasks: "Academic Tasks"
+                }).map(([key, lbl]) => (
+                    <div key={key}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0ea5e9", marginBottom: "4px" }}>{lbl}</p>
+                        <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
+                            {(s9[key] || []).map((item: string, i: number) => <li key={i}>{item}</li>)}
+                        </ul>
+                    </div>
+                ))}
+            </SectionCard>
+
+            {/* Section 10 — Progress (placeholder) */}
+            <SectionCard title="Section 10 — Progress Monitoring & GAS Scores">
+                <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Progress data will be populated after weekly tracker submissions are received.</p>
+            </SectionCard>
+
+            {/* Section 11 — Review (placeholder) */}
+            <SectionCard title="Section 11 — IEP Review Summary">
+                <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Quarterly review summary will be generated automatically.</p>
+            </SectionCard>
+
+            {/* Section 12 — Signatures */}
+            <SectionCard title="Section 12 — Signatures">
+                <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Signatures will be collected upon IEP approval.</p>
+            </SectionCard>
+        </div>
+    );
+}
+
+export default function IEPViewerPage() {
+    return (
+        <ProtectedRoute>
+            <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading IEP…</div>}>
+                <IEPViewerContent />
+            </Suspense>
+        </ProtectedRoute>
+    );
+}

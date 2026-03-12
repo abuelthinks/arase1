@@ -1,0 +1,189 @@
+THERUNI – SPED Progress Tracking Form (Teacher Version)
+(Standalone for SPED classroom monitoring & IEP updates)
+SECTION A — GENERAL INFORMATION
+Student Name: __________________________________
+Date: __________________________________________
+SPED Teacher / Inclusion Teacher: _________________
+Shadow Teacher (if any): __________________________
+Week / Month of Tracking: _________________________
+Class/Level: _____________________________________
+SECTION B — CLASSROOM PARTICIPATION
+B1. Attendance & Participation
+⬜ Attended all sessions
+⬜ Partial attendance
+⬜ Absent
+⬜ Required shadow teacher support
+⬜ Independent participation
+B2. Engagement During Lessons
+⬜ Fully engaged
+⬜ Engaged with minimal cues
+⬜ Needed moderate prompting
+⬜ Required full support
+⬜ Distracted easily
+⬜ Refused tasks
+Notes: _________________________________________
+SECTION C — ACADEMIC PROGRESS
+C1. Literacy
+⬜ Letter recognition
+⬜ Letter sounds
+⬜ Sight words
+⬜ Blending CVC words
+⬜ Reading simple sentences
+⬜ Writing name
+⬜ Writing letters
+⬜ Difficulty retaining concepts
+⬜ Regression observed
+⬜ Improvement observed
+Teacher Notes: ___________________________________
+C2. Numeracy
+⬜ Number recognition (1–10)
+⬜ Number recognition (11–20)
+⬜ Counting
+⬜ Matching number to quantity
+⬜ Basic addition
+⬜ Basic subtraction
+⬜ Sequencing numbers
+⬜ Difficulty understanding number concepts
+⬜ Improvement observed
+Teacher Notes: ___________________________________
+C3. Pre-Academic Skills
+⬜ Coloring
+⬜ Tracing
+⬜ Matching
+⬜ Sorting
+⬜ Patterning
+⬜ Puzzle completion
+⬜ Needs support with fine motor tasks
+⬜ Notable improvement
+⬜ Regression observed
+Teacher Notes: ___________________________________
+SECTION D — LEARNING BEHAVIORS
+D1. Focus & Attention
+⬜ Attentive
+⬜ Easily distracted
+⬜ Requires constant redirection
+⬜ Leaves seat often
+⬜ Sustains attention 2–5 minutes
+⬜ Sustains attention 5–10 minutes
+⬜ Focus improved
+D2. Task Completion
+⬜ Independent
+⬜ Minimal prompts
+⬜ Moderate prompts
+⬜ Full assistance needed
+⬜ Incomplete tasks
+⬜ Refusal to work
+⬜ Significant improvement
+Teacher Notes: ___________________________________
+SECTION E — SOCIAL SKILLS & PEER INTERACTION
+E1. Peer Interaction
+⬜ Plays cooperatively
+⬜ Parallel play
+⬜ Initiates play
+⬜ Responds when approached
+⬜ Avoids peers
+⬜ Conflict with peers
+⬜ Aggressive behavior
+⬜ Improvement in social play
+E2. Functional Social Skills
+⬜ Takes turns
+⬜ Shares materials
+⬜ Engages in group activities
+⬜ Follows social rules
+⬜ Difficulty waiting
+⬜ Improved social awareness
+Teacher Notes: ___________________________________
+SECTION F — BEHAVIOR & EMOTIONAL REGULATION
+F1. Behavior Throughout the Week
+⬜ Cooperative
+⬜ Easily frustrated
+⬜ Tantrums
+⬜ Emotional outbursts
+⬜ Non-compliant
+⬜ Sensory-seeking behaviors (running, tapping, etc.)
+⬜ Sensory-avoidance behaviors (covering ears, avoiding textures)
+F2. Emotional Regulation
+⬜ Calms independently
+⬜ Needs verbal cues to calm
+⬜ Needs sensory break
+⬜ Needs physical assistance
+⬜ Quickly overstimulated
+⬜ Improved regulation
+Teacher Notes: ___________________________________
+SECTION G — INDEPENDENCE & ADAPTIVE SKILLS
+G1. Independence in School Routines
+⬜ Follows classroom schedule
+⬜ Transitions smoothly
+⬜ Needs visual schedule
+⬜ Needs First–Then board
+⬜ Needs constant prompting
+⬜ Uses coping strategies
+⬜ Improvement noted
+G2. Life Skills (School Setting)
+⬜ Toilets independently
+⬜ Needs assistance toileting
+⬜ Uses utensils during snack
+⬜ Cleans up after activities
+⬜ Manages belongings
+⬜ Improvement noted
+Teacher Notes: ___________________________________
+SECTION H — GOAL ACHIEVEMENT (for IEP & AI)
+H1. SPED Goal Progress (Teacher Rating)
+Scale:
+1 – No progress
+2 – Minimal progress
+3 – Expected progress
+4 – More than expected
+5 – Goal achieved
+Goal 1 Progress: ___
+Goal 2 Progress: ___
+Goal 3 Progress: ___
+Goal 4 Progress: ___
+Comments: _______________________________________
+SECTION I — SPED TEACHER RECOMMENDATIONS
+I1. Classroom Recommendations
+⬜ Continue same strategies
+⬜ Modify instructional materials
+⬜ Increase hands-on activities
+⬜ Provide additional visual aids
+⬜ Provide sensory supports
+⬜ Increase shadow teacher hours
+⬜ Recommend behavior plan
+⬜ Recommend literacy support
+⬜ Recommend numeracy support
+I2. Home Support Recommendations
+⬜ Reading practice
+⬜ Math drills
+⬜ Sensory activities
+⬜ Fine motor practice
+⬜ Behavior strategies
+⬜ Social play activities
+⬜ Routine training
+Teacher Notes: ___________________________________
+SECTION J — AI & SYSTEM-GENERATED OUTPUT (Auto-Generated)
+(Not filled by teacher — app generates this after submission)
+Based on SPED input + Therapists input + Parent progress:
+1. AI Merges Therapist Recommendations
+SLP suggestions
+OT sensory diet
+PT motor tasks
+Psych behavior strategies
+2. AI Pulls from Activity Bank
+Matching literacy tasks
+Matching numeracy tasks
+Matching sensory activities
+Matching behavioral strategies
+Matching social play prompts
+3. AI Generates
+Next-week home program
+Updated SPED goals
+Classroom accommodations
+IEP draft progress section
+SUMMARY:
+This SPED progress tracker is:
+✔ Teacher-friendly
+✔ Classroom-based
+✔ IEP-ready
+✔ Fully integrated with therapists
+✔ Allows AI to generate custom activities & next steps
+✔ Works for Freeware → Plus → Premium

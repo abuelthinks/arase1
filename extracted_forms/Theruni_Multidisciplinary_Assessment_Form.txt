@@ -1,0 +1,156 @@
+THERUNI – Multidisciplinary Assessment Form
+SECTION A — BACKGROUND (Parent Input + Therapist Verification)
+A1. Parent-Provided Information (Auto-filled, Read-only)
+- Child Name
+- Date of Birth
+- Gender
+- Grade/Level
+- Primary Language
+- Medical Alerts
+- Known Diagnoses
+- Parent Concerns
+- Parent Goals
+A2. Therapist Verification
+☐ Matches parent input
+☐ Corrections needed:
+Correction Notes:
+__________________________________________
+A3. Additional Clinical Notes
+☐ Medical reports reviewed
+☐ Previous therapy reports reviewed
+☐ School reports reviewed
+Notes:
+__________________________________________
+SECTION B — DEVELOPMENTAL SCREENING
+B1. Developmental Milestones
+☐ Sat independently
+☐ Crawled
+☐ Walked
+☐ First words
+☐ Combined words
+☐ Toilet trained
+☐ Feeding independently
+B2. Observed Developmental Concerns
+☐ Delayed speech
+☐ Motor concerns
+☐ Sensory issues
+☐ Emotional regulation issues
+☐ Behavioral concerns
+☐ Social challenges
+☐ Repetitive behaviors
+SECTION C — SPEECH & LANGUAGE PATHOLOGY (SLP) ASSESSMENT
+C1. Expressive Language
+☐ Babbling
+☐ Single words
+☐ Phrases
+☐ Full sentences
+☐ Limited vocabulary
+☐ Echolalia
+☐ Age-appropriate
+C2. Receptive Language
+☐ Responds to name
+☐ Follows 1-step instructions
+☐ Follows 2-step instructions
+☐ Understands WH questions
+☐ Limited comprehension
+C3. Speech Sound / Articulation
+☐ Clear
+☐ Substitutions
+☐ Omissions
+☐ Lisp
+☐ Stuttering
+C4. Pragmatics / Social Communication
+☐ Eye contact
+☐ Turn-taking
+☐ Joint attention
+SLP Notes:
+__________________________________________
+SECTION D — OCCUPATIONAL THERAPY (OT) ASSESSMENT
+D1. Fine Motor Skills
+☐ Pencil grasp
+☐ Hand dominance
+☐ Manipulates small objects
+☐ Hand strength concerns
+D2. Sensory Processing
+☐ Auditory sensitivity
+☐ Tactile sensitivity
+☐ Seeks movement
+☐ Avoids textures
+D3. Activities of Daily Living (ADLs)
+☐ Feeding independence
+☐ Dressing
+☐ Grooming
+☐ Toileting
+D4. Emotional/Self-Regulation
+☐ Identifies feelings
+☐ Uses calming strategies
+☐ Impulsive behavior
+OT Notes:
+__________________________________________
+SECTION E — PHYSICAL THERAPY (PT) ASSESSMENT
+E1. Gross Motor Skills
+☐ Sitting balance
+☐ Walking gait
+☐ Running
+☐ Jumping
+E2. Strength & Endurance
+☐ Core weakness
+☐ Tires easily
+☐ Difficulty with stairs
+E3. Posture & Alignment
+☐ Toe-walking
+☐ Flat feet
+☐ Poor posture
+E4. Motor Planning & Coordination
+☐ Difficulty imitating movements
+☐ Clumsy
+☐ Poor coordination
+PT Notes:
+__________________________________________
+SECTION F — PSYCHOLOGY / BEHAVIORAL ASSESSMENT
+F1. Behavioral Observations
+☐ Inattentive
+☐ Hyperactive
+☐ Impulsive
+☐ Withdrawn
+☐ Aggressive
+F2. Emotional Functioning
+☐ Anxiety
+☐ Mood changes
+☐ Easily overwhelmed
+F3. Cognitive/Play Skills Screening
+☐ Memory
+☐ Problem-solving
+☐ Academic readiness
+F4. Autism Characteristics Screening
+☐ Reduced eye contact
+☐ Repetitive behaviors
+☐ Restricted interests
+Psychologist Notes:
+__________________________________________
+SECTION G — MULTI-DISCIPLINARY SUMMARY & RECOMMENDATIONS
+G1. Summary (Each Discipline)
+SLP Summary: __________________________
+OT Summary: ___________________________
+PT Summary: ___________________________
+Psych Summary: ________________________
+G2. Unified Strengths
+☐ Visual learner
+☐ Good memory
+☐ Cooperative
+☐ Motivated
+G3. Unified Needs
+☐ Speech therapy
+☐ Occupational therapy
+☐ Physical therapy
+☐ Behavioral intervention
+G4. Recommended Therapy Frequency
+☐ 1× weekly
+☐ 2× weekly
+☐ 3× weekly
+☐ Intensive program
+G5. Follow-Up Plan
+☐ Start intervention
+☐ Monthly monitoring
+☐ Provide home activities
+☐ Refer to specialist

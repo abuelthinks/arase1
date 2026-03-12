@@ -1,0 +1,310 @@
+{
+    "id": "multidisciplinary_tracker",
+    "title": "THERUNI – Multidisciplinary Progress Tracking Form",
+    "type": "tracker",
+    "role": "specialist",
+    "sections": [
+        {
+            "id": "section_a",
+            "title": "SECTION A — GENERAL INFORMATION",
+            "fields": [
+                {
+                    "id": "discipline",
+                    "label": "Discipline",
+                    "type": "radio",
+                    "options": [
+                        "Speech-Language Pathology",
+                        "Occupational Therapy",
+                        "Physical Therapy",
+                        "Psychology / Behavioral",
+                        "SPED / Educational",
+                        "Shadow Teacher"
+                    ]
+                },
+                {
+                    "id": "session_type",
+                    "label": "Session Type",
+                    "type": "radio",
+                    "options": [
+                        "Online",
+                        "Onsite"
+                    ]
+                },
+                {
+                    "id": "sessions_completed",
+                    "label": "Number of sessions completed this period",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "section_b",
+            "title": "SECTION B — SESSION ATTENDANCE & PARTICIPATION",
+            "fields": [
+                {
+                    "id": "attendance",
+                    "label": "B1. Attendance",
+                    "type": "radio",
+                    "options": [
+                        "Present",
+                        "Late",
+                        "Absent",
+                        "Rescheduled"
+                    ]
+                },
+                {
+                    "id": "participation_level",
+                    "label": "B2. Participation Level",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Fully engaged",
+                        "Needed minimal cues",
+                        "Needed moderate prompts",
+                        "Needed full assistance",
+                        "Refused tasks",
+                        "Limited engagement",
+                        "Easily distracted",
+                        "Overstimulated",
+                        "Fatigued"
+                    ]
+                },
+                {
+                    "id": "participation_notes",
+                    "label": "Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_c",
+            "title": "SECTION C — GOAL-BASED PROGRESS TRACKING (Fill relevant discipline)",
+            "fields": [
+                {
+                    "id": "communication",
+                    "label": "C1. Communication (SLP)",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Increased verbal output",
+                        "Improved receptive skills",
+                        "Better articulation",
+                        "Improved social communication",
+                        "Used AAC/Picture cards",
+                        "No improvement",
+                        "Regression noted"
+                    ]
+                },
+                {
+                    "id": "slp_notes",
+                    "label": "SLP Notes",
+                    "type": "textarea"
+                },
+                {
+                    "id": "fine_motor_sensory_adls",
+                    "label": "C2. Fine Motor / Sensory / ADLs (OT)",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Improved hand strength",
+                        "Better pencil grasp",
+                        "Improved scissor skills",
+                        "Followed sensory strategies",
+                        "Reduced sensory overload",
+                        "Increased independence in ADLs",
+                        "No improvement",
+                        "Regression noted"
+                    ]
+                },
+                {
+                    "id": "ot_notes",
+                    "label": "OT Notes",
+                    "type": "textarea"
+                },
+                {
+                    "id": "gross_motor",
+                    "label": "C3. Gross Motor / Gait / Coordination (PT)",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Improved balance",
+                        "Stronger core strength",
+                        "Better coordination",
+                        "Improved gait",
+                        "Increased endurance",
+                        "No improvement",
+                        "Regression observed"
+                    ]
+                },
+                {
+                    "id": "pt_notes",
+                    "label": "PT Notes",
+                    "type": "textarea"
+                },
+                {
+                    "id": "behavior_emotional",
+                    "label": "C4. Behavior / Emotional Regulation (Psych)",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Reduced tantrums",
+                        "Improved coping strategies",
+                        "Better attention",
+                        "Less impulsivity",
+                        "Improved emotional expression",
+                        "Better transitions",
+                        "No improvement",
+                        "Regression observed"
+                    ]
+                },
+                {
+                    "id": "psych_notes",
+                    "label": "Psych Notes",
+                    "type": "textarea"
+                },
+                {
+                    "id": "academic_learning",
+                    "label": "C5. Academic / Learning Behavior (SPED)",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Improved focus",
+                        "Better task completion",
+                        "Improved literacy skills",
+                        "Improved numeracy skills",
+                        "Followed classroom routines",
+                        "Better peer interaction",
+                        "No improvement",
+                        "Regression noted"
+                    ]
+                },
+                {
+                    "id": "sped_notes",
+                    "label": "SPED Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_d",
+            "title": "SECTION D — FUNCTIONAL OBSERVATIONS",
+            "fields": [
+                {
+                    "id": "independent_skills",
+                    "label": "D1. Independent Skills",
+                    "type": "radio",
+                    "options": [
+                        "Improved",
+                        "Slight improvement",
+                        "No change",
+                        "Declined"
+                    ]
+                },
+                {
+                    "id": "behavior_interaction",
+                    "label": "D2. Behavior Interaction with Therapist",
+                    "type": "radio",
+                    "options": [
+                        "Cooperative",
+                        "Needs support",
+                        "Resistant",
+                        "Aggressive",
+                        "Withdrawn"
+                    ]
+                },
+                {
+                    "id": "sensory_motor_regulation",
+                    "label": "D3. Sensory / Motor Regulation",
+                    "type": "radio",
+                    "options": [
+                        "Calm",
+                        "Hyperactive",
+                        "Sensory seeking",
+                        "Sensory avoidant",
+                        "Easily overwhelmed"
+                    ]
+                },
+                {
+                    "id": "communication_with_adults",
+                    "label": "D4. Communication With Adults",
+                    "type": "radio",
+                    "options": [
+                        "Responds",
+                        "Initiates",
+                        "Minimal interaction",
+                        "No interaction"
+                    ]
+                },
+                {
+                    "id": "functional_notes",
+                    "label": "Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_e",
+            "title": "SECTION E — GOAL ACHIEVEMENT RATING (GAS)",
+            "fields": [
+                {
+                    "id": "gas_goal_1",
+                    "label": "Goal 1 Rating (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_goal_2",
+                    "label": "Goal 2 Rating (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_goal_3",
+                    "label": "Goal 3 Rating (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_goal_4",
+                    "label": "Goal 4 Rating (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_comments",
+                    "label": "Scale: 1-No progress, 2-Minimal, 3-Expected, 4-More than expected, 5-Goal achieved",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_f",
+            "title": "SECTION F — RECOMMENDED NEXT STEPS",
+            "fields": [
+                {
+                    "id": "therapy_recommendations",
+                    "label": "F1. Therapy Recommendations",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Continue same plan",
+                        "Increase frequency",
+                        "Reduce frequency",
+                        "Add new goals",
+                        "Parent training needed",
+                        "Referral to another discipline",
+                        "Request formal evaluation"
+                    ]
+                },
+                {
+                    "id": "home_strategies",
+                    "label": "F2. Suggested Home Strategy Types",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Speech exercises",
+                        "Sensory activities",
+                        "Fine motor tasks",
+                        "Gross motor tasks",
+                        "Behavior strategies",
+                        "Academic tasks",
+                        "Routine-building activities"
+                    ]
+                },
+                {
+                    "id": "suggested_activities",
+                    "label": "Therapist Suggested Activities",
+                    "type": "textarea"
+                }
+            ]
+        }
+    ]
+}

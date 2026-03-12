@@ -1,0 +1,340 @@
+{
+    "id": "sped_tracker",
+    "title": "THERUNI – SPED Progress Tracking Form",
+    "type": "tracker",
+    "role": "teacher",
+    "sections": [
+        {
+            "id": "section_b",
+            "title": "SECTION B — CLASSROOM PARTICIPATION",
+            "fields": [
+                {
+                    "id": "attendance_participation",
+                    "label": "B1. Attendance & Participation",
+                    "type": "radio",
+                    "options": [
+                        "Attended all sessions",
+                        "Partial attendance",
+                        "Absent",
+                        "Required shadow teacher support",
+                        "Independent participation"
+                    ]
+                },
+                {
+                    "id": "engagement_during_lessons",
+                    "label": "B2. Engagement During Lessons",
+                    "type": "radio",
+                    "options": [
+                        "Fully engaged",
+                        "Engaged with minimal cues",
+                        "Needed moderate prompting",
+                        "Required full support",
+                        "Distracted easily",
+                        "Refused tasks"
+                    ]
+                },
+                {
+                    "id": "participation_notes",
+                    "label": "Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_c",
+            "title": "SECTION C — ACADEMIC PROGRESS",
+            "fields": [
+                {
+                    "id": "literacy_progress",
+                    "label": "C1. Literacy",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Letter recognition",
+                        "Letter sounds",
+                        "Sight words",
+                        "Blending CVC words",
+                        "Reading simple sentences",
+                        "Writing name",
+                        "Writing letters",
+                        "Difficulty retaining concepts",
+                        "Regression observed",
+                        "Improvement observed"
+                    ]
+                },
+                {
+                    "id": "literacy_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                },
+                {
+                    "id": "numeracy_progress",
+                    "label": "C2. Numeracy",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Number recognition (1–10)",
+                        "Number recognition (11–20)",
+                        "Counting",
+                        "Matching number to quantity",
+                        "Basic addition",
+                        "Basic subtraction",
+                        "Sequencing numbers",
+                        "Difficulty understanding number concepts",
+                        "Improvement observed"
+                    ]
+                },
+                {
+                    "id": "numeracy_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                },
+                {
+                    "id": "pre_academic_progress",
+                    "label": "C3. Pre-Academic Skills",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Coloring",
+                        "Tracing",
+                        "Matching",
+                        "Sorting",
+                        "Patterning",
+                        "Puzzle completion",
+                        "Needs support with fine motor tasks",
+                        "Notable improvement",
+                        "Regression observed"
+                    ]
+                },
+                {
+                    "id": "pre_academic_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_d",
+            "title": "SECTION D — LEARNING BEHAVIORS",
+            "fields": [
+                {
+                    "id": "focus_attention",
+                    "label": "D1. Focus & Attention",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Attentive",
+                        "Easily distracted",
+                        "Requires constant redirection",
+                        "Leaves seat often",
+                        "Sustains attention 2–5 minutes",
+                        "Sustains attention 5–10 minutes",
+                        "Focus improved"
+                    ]
+                },
+                {
+                    "id": "task_completion",
+                    "label": "D2. Task Completion",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Independent",
+                        "Minimal prompts",
+                        "Moderate prompts",
+                        "Full assistance needed",
+                        "Incomplete tasks",
+                        "Refusal to work",
+                        "Significant improvement"
+                    ]
+                },
+                {
+                    "id": "learning_behavior_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_e",
+            "title": "SECTION E — SOCIAL SKILLS & PEER INTERACTION",
+            "fields": [
+                {
+                    "id": "peer_interaction",
+                    "label": "E1. Peer Interaction",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Plays cooperatively",
+                        "Parallel play",
+                        "Initiates play",
+                        "Responds when approached",
+                        "Avoids peers",
+                        "Conflict with peers",
+                        "Aggressive behavior",
+                        "Improvement in social play"
+                    ]
+                },
+                {
+                    "id": "functional_social_skills",
+                    "label": "E2. Functional Social Skills",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Takes turns",
+                        "Shares materials",
+                        "Engages in group activities",
+                        "Follows social rules",
+                        "Difficulty waiting",
+                        "Improved social awareness"
+                    ]
+                },
+                {
+                    "id": "social_skills_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_f",
+            "title": "SECTION F — BEHAVIOR & EMOTIONAL REGULATION",
+            "fields": [
+                {
+                    "id": "weekly_behavior",
+                    "label": "F1. Behavior Throughout the Week",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Cooperative",
+                        "Easily frustrated",
+                        "Tantrums",
+                        "Emotional outbursts",
+                        "Non-compliant",
+                        "Sensory-seeking behaviors (running, tapping, etc.)",
+                        "Sensory-avoidance behaviors (covering ears, avoiding textures)"
+                    ]
+                },
+                {
+                    "id": "emotional_regulation",
+                    "label": "F2. Emotional Regulation",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Calms independently",
+                        "Needs verbal cues to calm",
+                        "Needs sensory break",
+                        "Needs physical assistance",
+                        "Quickly overstimulated",
+                        "Improved regulation"
+                    ]
+                },
+                {
+                    "id": "behavior_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_g",
+            "title": "SECTION G — INDEPENDENCE & ADAPTIVE SKILLS",
+            "fields": [
+                {
+                    "id": "independence_routines",
+                    "label": "G1. Independence in School Routines",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Follows classroom schedule",
+                        "Transitions smoothly",
+                        "Needs visual schedule",
+                        "Needs First–Then board",
+                        "Needs constant prompting",
+                        "Uses coping strategies",
+                        "Improvement noted"
+                    ]
+                },
+                {
+                    "id": "life_skills",
+                    "label": "G2. Life Skills (School Setting)",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Toilets independently",
+                        "Needs assistance toileting",
+                        "Uses utensils during snack",
+                        "Cleans up after activities",
+                        "Manages belongings",
+                        "Improvement noted"
+                    ]
+                },
+                {
+                    "id": "adaptive_skills_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_h",
+            "title": "SECTION H — GOAL ACHIEVEMENT (for IEP & AI)",
+            "fields": [
+                {
+                    "id": "gas_goal_1",
+                    "label": "Goal 1 Progress (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_goal_2",
+                    "label": "Goal 2 Progress (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_goal_3",
+                    "label": "Goal 3 Progress (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_goal_4",
+                    "label": "Goal 4 Progress (1-5)",
+                    "type": "number"
+                },
+                {
+                    "id": "gas_comments",
+                    "label": "Scale: 1-No progress, 2-Minimal, 3-Expected, 4-More than expected, 5-Goal achieved",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_i",
+            "title": "SECTION I — SPED TEACHER RECOMMENDATIONS",
+            "fields": [
+                {
+                    "id": "classroom_recommendations",
+                    "label": "I1. Classroom Recommendations",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Continue same strategies",
+                        "Modify instructional materials",
+                        "Increase hands-on activities",
+                        "Provide additional visual aids",
+                        "Provide sensory supports",
+                        "Increase shadow teacher hours",
+                        "Recommend behavior plan",
+                        "Recommend literacy support",
+                        "Recommend numeracy support"
+                    ]
+                },
+                {
+                    "id": "home_support_recommendations",
+                    "label": "I2. Home Support Recommendations",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Reading practice",
+                        "Math drills",
+                        "Sensory activities",
+                        "Fine motor practice",
+                        "Behavior strategies",
+                        "Social play activities",
+                        "Routine training"
+                    ]
+                },
+                {
+                    "id": "teacher_recommendation_notes",
+                    "label": "Teacher Notes",
+                    "type": "textarea"
+                }
+            ]
+        }
+    ]
+}

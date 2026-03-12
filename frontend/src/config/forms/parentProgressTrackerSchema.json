@@ -1,0 +1,270 @@
+{
+    "id": "parent_tracker",
+    "title": "THERUNI – Parent Progress Tracking Form",
+    "type": "tracker",
+    "role": "parent",
+    "sections": [
+        {
+            "id": "section_b",
+            "title": "SECTION B — COMMUNICATION PROGRESS",
+            "fields": [
+                {
+                    "id": "communication_methods",
+                    "label": "B1. How did your child communicate this week?",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Sounds (e.g., “ah,” “mm”)",
+                        "Single words",
+                        "Short phrases",
+                        "Full sentences",
+                        "Gestures (pointing, pulling hand)",
+                        "Shows objects to communicate",
+                        "Uses pictures/communication cards",
+                        "Uses device/tablet to communicate",
+                        "More attempts to communicate than last week"
+                    ]
+                },
+                {
+                    "id": "communication_actions",
+                    "label": "B2. Did your child…",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Respond to their name",
+                        "Follow simple instructions (“come,” “give me”)",
+                        "Ask for help",
+                        "Say new words",
+                        "Try to copy words"
+                    ]
+                },
+                {
+                    "id": "communication_notes",
+                    "label": "Parent Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_c",
+            "title": "SECTION C — SOCIAL & BEHAVIOR",
+            "fields": [
+                {
+                    "id": "interaction_with_people",
+                    "label": "C1. Interaction With People",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Played with siblings/peers",
+                        "Shared toys",
+                        "Took turns",
+                        "Made eye contact",
+                        "Joined group activities",
+                        "Preferred playing alone",
+                        "Avoided social interaction"
+                    ]
+                },
+                {
+                    "id": "behavior_observed",
+                    "label": "C2. Behavior Observed This Week",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Calm most of the time",
+                        "Easily frustrated",
+                        "Tantrums/meltdowns",
+                        "Hyperactive",
+                        "Self-stimulatory behavior (spinning, flapping, pacing)",
+                        "Difficulty transitioning",
+                        "Improved behavior from last week"
+                    ]
+                },
+                {
+                    "id": "social_behavior_notes",
+                    "label": "Parent Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_d",
+            "title": "SECTION D — DAILY LIVING / INDEPENDENCE",
+            "fields": [
+                {
+                    "id": "feeding",
+                    "label": "D1. Feeding",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Eats independently",
+                        "Needs help",
+                        "Uses spoon/fork",
+                        "Tried new food",
+                        "Difficulty chewing/swallowing"
+                    ]
+                },
+                {
+                    "id": "dressing",
+                    "label": "D2. Dressing",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Can wear simple clothing",
+                        "Can remove clothing",
+                        "Needs full assistance",
+                        "Trying to improve"
+                    ]
+                },
+                {
+                    "id": "toileting",
+                    "label": "D3. Toileting",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Toilet trained",
+                        "Tells when they need to go",
+                        "Accidents",
+                        "Needs full assistance"
+                    ]
+                },
+                {
+                    "id": "daily_living_notes",
+                    "label": "Parent Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_e",
+            "title": "SECTION E — MOTOR & SENSORY OBSERVATIONS",
+            "fields": [
+                {
+                    "id": "motor_skills",
+                    "label": "E1. Motor Skills",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Ran, jumped, climbed",
+                        "Caught/kicked a ball",
+                        "Scribbled/drew",
+                        "Used scissors",
+                        "Improved hand strength",
+                        "Difficulty with coordination"
+                    ]
+                },
+                {
+                    "id": "sensory_behaviors",
+                    "label": "E2. Sensory Behaviors",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Sensitive to noise",
+                        "Sensitive to textures",
+                        "Seeks spinning/jumping",
+                        "Enjoys deep pressure (hugs, squishes)",
+                        "Easily overwhelmed",
+                        "Calms down with support"
+                    ]
+                },
+                {
+                    "id": "motor_sensory_notes",
+                    "label": "Parent Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_f",
+            "title": "SECTION F — EMOTIONAL REGULATION",
+            "fields": [
+                {
+                    "id": "expressed_emotions",
+                    "label": "How did your child express emotions this week?",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Happy",
+                        "Calm",
+                        "Anxious",
+                        "Irritated",
+                        "Sudden crying",
+                        "Difficulty calming down",
+                        "Improved compared to previous weeks"
+                    ]
+                },
+                {
+                    "id": "calming_help",
+                    "label": "What helped them calm down?",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Hug",
+                        "Quiet space",
+                        "Sensory toy",
+                        "Music",
+                        "Deep breathing",
+                        "Tablet/device",
+                        "Others"
+                    ]
+                },
+                {
+                    "id": "calming_help_others",
+                    "label": "Others (please specify)",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "id": "section_g",
+            "title": "SECTION G — PARENT’S OBSERVATION OF PROGRESS",
+            "fields": [
+                {
+                    "id": "progress_comparison",
+                    "label": "G1. Compared to last week, your child is…",
+                    "type": "radio",
+                    "options": [
+                        "Much improved",
+                        "Slightly improved",
+                        "Same",
+                        "More challenging",
+                        "Much more challenging"
+                    ]
+                },
+                {
+                    "id": "top_concerns",
+                    "label": "G2. Your top concerns this week",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Speech",
+                        "Behavior",
+                        "Social interaction",
+                        "Academic learning",
+                        "Sensory sensitivity",
+                        "Motor skills",
+                        "Daily living skills"
+                    ]
+                },
+                {
+                    "id": "top_concerns_description",
+                    "label": "Brief description",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_h",
+            "title": "SECTION H — PARENT GOALS FOR NEXT WEEK",
+            "fields": [
+                {
+                    "id": "parent_goals",
+                    "label": "Goals",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Improve communication",
+                        "Reduce tantrums",
+                        "Improve social play",
+                        "Develop independence (toileting, feeding, dressing)",
+                        "Strengthen motor skills",
+                        "Reduce sensitivity or meltdowns",
+                        "Improve classroom readiness",
+                        "Routine-following"
+                    ]
+                },
+                {
+                    "id": "parent_goal_statement",
+                    "label": "Parent's Goal Statement",
+                    "type": "textarea"
+                }
+            ]
+        }
+    ]
+}

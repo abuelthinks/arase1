@@ -1,0 +1,365 @@
+{
+    "id": "multidisciplinary_assessment",
+    "title": "THERUNI – Multidisciplinary Assessment Form",
+    "type": "assessment",
+    "role": "specialist",
+    "sections": [
+        {
+            "id": "section_a",
+            "title": "SECTION A — BACKGROUND (Parent Input + Therapist Verification)",
+            "fields": [
+                {
+                    "id": "therapist_verification",
+                    "label": "A2. Therapist Verification",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Matches parent input",
+                        "Corrections needed:"
+                    ]
+                },
+                {
+                    "id": "correction_notes",
+                    "label": "Correction Notes",
+                    "type": "textarea"
+                },
+                {
+                    "id": "clinical_notes",
+                    "label": "A3. Additional Clinical Notes",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Medical reports reviewed",
+                        "Previous therapy reports reviewed",
+                        "School reports reviewed"
+                    ]
+                },
+                {
+                    "id": "additional_clinical_notes",
+                    "label": "Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_b",
+            "title": "SECTION B — DEVELOPMENTAL SCREENING",
+            "fields": [
+                {
+                    "id": "developmental_milestones",
+                    "label": "B1. Developmental Milestones",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Sat independently",
+                        "Crawled",
+                        "Walked",
+                        "First words",
+                        "Combined words",
+                        "Toilet trained",
+                        "Feeding independently"
+                    ]
+                },
+                {
+                    "id": "developmental_concerns",
+                    "label": "B2. Observed Developmental Concerns",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Delayed speech",
+                        "Motor concerns",
+                        "Sensory issues",
+                        "Emotional regulation issues",
+                        "Behavioral concerns",
+                        "Social challenges",
+                        "Repetitive behaviors"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "section_c",
+            "title": "SECTION C — SPEECH & LANGUAGE PATHOLOGY (SLP) ASSESSMENT",
+            "fields": [
+                {
+                    "id": "expressive_language",
+                    "label": "C1. Expressive Language",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Babbling",
+                        "Single words",
+                        "Phrases",
+                        "Full sentences",
+                        "Limited vocabulary",
+                        "Echolalia",
+                        "Age-appropriate"
+                    ]
+                },
+                {
+                    "id": "receptive_language",
+                    "label": "C2. Receptive Language",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Responds to name",
+                        "Follows 1-step instructions",
+                        "Follows 2-step instructions",
+                        "Understands WH questions",
+                        "Limited comprehension"
+                    ]
+                },
+                {
+                    "id": "speech_sound",
+                    "label": "C3. Speech Sound / Articulation",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Clear",
+                        "Substitutions",
+                        "Omissions",
+                        "Lisp",
+                        "Stuttering"
+                    ]
+                },
+                {
+                    "id": "pragmatics",
+                    "label": "C4. Pragmatics / Social Communication",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Eye contact",
+                        "Turn-taking",
+                        "Joint attention"
+                    ]
+                },
+                {
+                    "id": "slp_notes",
+                    "label": "SLP Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_d",
+            "title": "SECTION D — OCCUPATIONAL THERAPY (OT) ASSESSMENT",
+            "fields": [
+                {
+                    "id": "fine_motor_skills",
+                    "label": "D1. Fine Motor Skills",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Pencil grasp",
+                        "Hand dominance",
+                        "Manipulates small objects",
+                        "Hand strength concerns"
+                    ]
+                },
+                {
+                    "id": "sensory_processing",
+                    "label": "D2. Sensory Processing",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Auditory sensitivity",
+                        "Tactile sensitivity",
+                        "Seeks movement",
+                        "Avoids textures"
+                    ]
+                },
+                {
+                    "id": "adls",
+                    "label": "D3. Activities of Daily Living (ADLs)",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Feeding independence",
+                        "Dressing",
+                        "Grooming",
+                        "Toileting"
+                    ]
+                },
+                {
+                    "id": "ot_emotional_regulation",
+                    "label": "D4. Emotional / Self-Regulation",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Identifies feelings",
+                        "Uses calming strategies",
+                        "Impulsive behavior"
+                    ]
+                },
+                {
+                    "id": "ot_notes",
+                    "label": "OT Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_e",
+            "title": "SECTION E — PHYSICAL THERAPY (PT) ASSESSMENT",
+            "fields": [
+                {
+                    "id": "gross_motor_skills",
+                    "label": "E1. Gross Motor Skills",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Sitting balance",
+                        "Walking gait",
+                        "Running",
+                        "Jumping"
+                    ]
+                },
+                {
+                    "id": "strength_endurance",
+                    "label": "E2. Strength & Endurance",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Core weakness",
+                        "Tires easily",
+                        "Difficulty with stairs"
+                    ]
+                },
+                {
+                    "id": "posture_alignment",
+                    "label": "E3. Posture & Alignment",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Toe-walking",
+                        "Flat feet",
+                        "Poor posture"
+                    ]
+                },
+                {
+                    "id": "motor_planning",
+                    "label": "E4. Motor Planning & Coordination",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Difficulty imitating movements",
+                        "Clumsy",
+                        "Poor coordination"
+                    ]
+                },
+                {
+                    "id": "pt_notes",
+                    "label": "PT Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_f",
+            "title": "SECTION F — PSYCHOLOGY / BEHAVIORAL ASSESSMENT",
+            "fields": [
+                {
+                    "id": "behavioral_observations",
+                    "label": "F1. Behavioral Observations",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Inattentive",
+                        "Hyperactive",
+                        "Impulsive",
+                        "Withdrawn",
+                        "Aggressive"
+                    ]
+                },
+                {
+                    "id": "psych_emotional_functioning",
+                    "label": "F2. Emotional Functioning",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Anxiety",
+                        "Mood changes",
+                        "Easily overwhelmed"
+                    ]
+                },
+                {
+                    "id": "cognitive_play_skills",
+                    "label": "F3. Cognitive/Play Skills Screening",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Memory",
+                        "Problem-solving",
+                        "Academic readiness"
+                    ]
+                },
+                {
+                    "id": "autism_characteristics",
+                    "label": "F4. Autism Characteristics Screening",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Reduced eye contact",
+                        "Repetitive behaviors",
+                        "Restricted interests"
+                    ]
+                },
+                {
+                    "id": "psych_notes",
+                    "label": "Psychologist Notes",
+                    "type": "textarea"
+                }
+            ]
+        },
+        {
+            "id": "section_g",
+            "title": "SECTION G — MULTI-DISCIPLINARY SUMMARY & RECOMMENDATIONS",
+            "fields": [
+                {
+                    "id": "slp_summary",
+                    "label": "SLP Summary",
+                    "type": "textarea"
+                },
+                {
+                    "id": "ot_summary",
+                    "label": "OT Summary",
+                    "type": "textarea"
+                },
+                {
+                    "id": "pt_summary",
+                    "label": "PT Summary",
+                    "type": "textarea"
+                },
+                {
+                    "id": "psych_summary",
+                    "label": "Psych Summary",
+                    "type": "textarea"
+                },
+                {
+                    "id": "unified_strengths",
+                    "label": "G2. Unified Strengths",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Visual learner",
+                        "Good memory",
+                        "Cooperative",
+                        "Motivated"
+                    ]
+                },
+                {
+                    "id": "unified_needs",
+                    "label": "G3. Unified Needs",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Speech therapy",
+                        "Occupational therapy",
+                        "Physical therapy",
+                        "Behavioral intervention"
+                    ]
+                },
+                {
+                    "id": "recommended_therapy_frequency",
+                    "label": "G4. Recommended Therapy Frequency",
+                    "type": "checkbox_group",
+                    "options": [
+                        "1x weekly",
+                        "2x weekly",
+                        "3x weekly",
+                        "Intensive program"
+                    ]
+                },
+                {
+                    "id": "follow_up_plan",
+                    "label": "G5. Follow-Up Plan",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Start intervention",
+                        "Monthly monitoring",
+                        "Provide home activities",
+                        "Refer to specialist"
+                    ]
+                }
+            ]
+        }
+    ]
+}

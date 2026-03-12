@@ -1,0 +1,71 @@
+LD-001
+SPECIALEDUCATIONASSESSMENTFORM
+1.GeneralInformation
+Child’sFullName:
+DateofBirth: Age: Gender:
+Parent/Guardian’sName:
+2.BackgroundInformation
+DiagnosticReportattached
+3.DevelopmentalHistory
+DevelopmentalMilestones:
+Atwhatagedidthechild:
+-Situp:
+-Crawl:
+-Walk:-Speakfirstwords:
+-Formsentences:
+4.EducationalInformation
+-PreviousSchoolattended:
+-Level:
+-SpecialEducationServicesReceived(ifany):
+-IndividualizedEducationPlan(IEP):[Yes/No]
+-OtherServices:
+5.AreasofConcern
+AcademicSkills:
+Poor Fair Good Excellent
+Reading
+Writing
+Mathematics
+OTHER:
+LD-001
+CommunicationSkills:
+Poor Fair Good Excellent
+ExpressiveLanguage
+ReceptiveLanguage
+SocialCommunication
+MotorSkills:
+Poor Fair Good Excellent
+FineMotor
+GrossMotor
+BehavioralandEmotionalSkills:
+Poor Fair Good Excellent
+Attention
+ImpulseControl
+SocialInteraction
+EmotionalRegulation
+6.StrengthsandInterests
+-AcademicStrengths:
+-SocialStrengths:
+-PersonalInterests/Hobbies:
+7.CurrentServicesandTherapies
+OccupationalTherapy:
+TherapistName: Frequency:
+Goals:
+SpeechandLanguageTherapy:
+TherapistName: Frequency:
+Goals:
+PhysicalTherapy:
+TherapistName: Frequency:
+Goals:
+LD-001
+BehavioralTherapy:
+TherapistName: Frequency:
+Goals:
+OtherServices:
+8.Parent/GuardianInput
+Whatareyourprimaryconcernsregardingyourchild'sdevelopment?
+Whatdoyouhopetoachievethroughourspecialeducationprogram?
+Arethereanyspecificstrategiesorapproachesthathavebeeneffectiveforyourchild?
+9.AdditionalInformation
+Isthereanyotherinformationyoufeelisimportantforustoknowaboutyourchild?
+Thankyouforcompletingthisassessmentform.Yourinputiscrucialinhelpingusprovidethe
+bestpossiblesupportforyourchild.

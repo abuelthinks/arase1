@@ -1,0 +1,454 @@
+{
+    "id": "parent_assessment",
+    "title": "THERUNI – Parent Assessment Checklist",
+    "type": "assessment",
+    "role": "parent",
+    "sections": [
+        {
+            "id": "section_b",
+            "title": "SECTION B. DEVELOPMENTAL HISTORY",
+            "fields": [
+                {
+                    "id": "sitting",
+                    "label": "Sitting",
+                    "type": "radio",
+                    "options": [
+                        "Early",
+                        "Typical",
+                        "Late"
+                    ]
+                },
+                {
+                    "id": "crawling",
+                    "label": "Crawling",
+                    "type": "radio",
+                    "options": [
+                        "Early",
+                        "Typical",
+                        "Late",
+                        "Did not crawl"
+                    ]
+                },
+                {
+                    "id": "walking",
+                    "label": "Walking",
+                    "type": "radio",
+                    "options": [
+                        "Early",
+                        "Typical",
+                        "Late"
+                    ]
+                },
+                {
+                    "id": "first_words",
+                    "label": "First Words",
+                    "type": "radio",
+                    "options": [
+                        "Early",
+                        "Typical",
+                        "Late"
+                    ]
+                },
+                {
+                    "id": "phrases_sentences",
+                    "label": "Phrases/Sentences",
+                    "type": "radio",
+                    "options": [
+                        "Early",
+                        "Typical",
+                        "Late"
+                    ]
+                },
+                {
+                    "id": "previous_services",
+                    "label": "Previous Services",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Schooling before",
+                        "Speech Therapy",
+                        "Occupational Therapy",
+                        "Behavioral Therapy"
+                    ]
+                },
+                {
+                    "id": "iep_before",
+                    "label": "IEP before",
+                    "type": "radio",
+                    "options": [
+                        "Yes",
+                        "No"
+                    ]
+                },
+                {
+                    "id": "developmental_concerns",
+                    "label": "Areas of Concern",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Communication",
+                        "Learning",
+                        "Motor Skills",
+                        "Social",
+                        "Behavior",
+                        "Emotions",
+                        "Sensory",
+                        "Daily Living",
+                        "Safety",
+                        "Not sure"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "section_c",
+            "title": "SECTION C. PARENT INPUT",
+            "fields": [
+                {
+                    "id": "primary_concerns",
+                    "label": "Primary Concerns",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Speech",
+                        "Behavior",
+                        "Learning",
+                        "Social",
+                        "Sensory",
+                        "Motor",
+                        "Eating/Sleeping",
+                        "Safety",
+                        "Not sure"
+                    ]
+                },
+                {
+                    "id": "goals_for_child",
+                    "label": "Goals for My Child",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Communicate better",
+                        "Improve behavior",
+                        "Learn faster",
+                        "Improve social skills",
+                        "Be independent",
+                        "School readiness",
+                        "Motor improvements"
+                    ]
+                },
+                {
+                    "id": "goals_other",
+                    "label": "Other Goals",
+                    "type": "text"
+                },
+                {
+                    "id": "strategies_at_home",
+                    "label": "Strategies at Home",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Schedules",
+                        "Routines",
+                        "Visual aids",
+                        "Rewards",
+                        "Quiet time",
+                        "Sensory tools",
+                        "Not sure"
+                    ]
+                },
+                {
+                    "id": "strategies_other",
+                    "label": "Other Strategies",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "id": "section_d",
+            "title": "SECTION D. BEHAVIOR & SOCIAL INTERACTION",
+            "fields": [
+                {
+                    "id": "behavioral_difficulties",
+                    "label": "Difficulties",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Transitions",
+                        "Waiting",
+                        "Focus",
+                        "Rules",
+                        "Playing with others",
+                        "Sharing",
+                        "Emotions",
+                        "Staying calm",
+                        "Not sure"
+                    ]
+                },
+                {
+                    "id": "behavioral_triggers",
+                    "label": "Triggers",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Loud sounds",
+                        "Lights",
+                        "Being told no",
+                        "Changes",
+                        "Crowds",
+                        "Sharing",
+                        "Not sure"
+                    ]
+                },
+                {
+                    "id": "calming_strategies",
+                    "label": "Calming Strategies",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Deep breathing",
+                        "Sensory tools",
+                        "Quiet space",
+                        "Hugs",
+                        "Distraction",
+                        "Tablet/music",
+                        "Not sure"
+                    ]
+                },
+                {
+                    "id": "communication_methods",
+                    "label": "Communication",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Words",
+                        "Short phrases",
+                        "Sentences",
+                        "Gestures",
+                        "Sounds",
+                        "Not speaking"
+                    ]
+                },
+                {
+                    "id": "social_interaction",
+                    "label": "Social Interaction",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Eye contact",
+                        "Responds to name",
+                        "Plays alone",
+                        "Plays with others",
+                        "Avoids interaction",
+                        "Prefers adults",
+                        "Overwhelmed in groups"
+                    ]
+                },
+                {
+                    "id": "comfort_setting",
+                    "label": "Comfort Setting",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Structured",
+                        "Unstructured",
+                        "One-on-one",
+                        "Small groups",
+                        "Not sure"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "section_e",
+            "title": "SECTION E. SENSORY & PHYSICAL NEEDS",
+            "fields": [
+                {
+                    "id": "sensitivities",
+                    "label": "Sensitivities",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Sounds",
+                        "Lights",
+                        "Textures",
+                        "Food textures",
+                        "Crowds",
+                        "Movement",
+                        "Water",
+                        "Touch",
+                        "Smells",
+                        "None"
+                    ]
+                },
+                {
+                    "id": "motor_needs",
+                    "label": "Motor Needs",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Fine motor difficulty",
+                        "Gross motor difficulty",
+                        "Weakness",
+                        "Easily tired",
+                        "None"
+                    ]
+                },
+                {
+                    "id": "physical_accommodations",
+                    "label": "Physical Accommodations Needed",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "id": "section_f",
+            "title": "SECTION F. GOALS & EXPECTATIONS",
+            "fields": [
+                {
+                    "id": "goals_this_year",
+                    "label": "Goals for This Year",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Academic",
+                        "Speech",
+                        "Social",
+                        "Emotional",
+                        "Behavior",
+                        "Independence",
+                        "Motor"
+                    ]
+                },
+                {
+                    "id": "goals_this_year_other",
+                    "label": "Other Goals This Year",
+                    "type": "text"
+                },
+                {
+                    "id": "goals_3_5_years",
+                    "label": "Goals for Next 3–5 Years",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Independence",
+                        "Communication",
+                        "Behavior",
+                        "School readiness",
+                        "Friendships",
+                        "Learning",
+                        "Not sure"
+                    ]
+                },
+                {
+                    "id": "goals_3_5_years_other",
+                    "label": "Other Long-term Goals",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "id": "section_g",
+            "title": "SECTION G. HOME ENVIRONMENT & SUPPORT",
+            "fields": [
+                {
+                    "id": "home_strategies_in_place",
+                    "label": "Home Strategies",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Schedules",
+                        "Rewards",
+                        "Visual supports",
+                        "Rules",
+                        "Calm corner",
+                        "Sensory play",
+                        "Outdoor time",
+                        "Not sure"
+                    ]
+                },
+                {
+                    "id": "support_needed",
+                    "label": "Support Needed",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Home activities",
+                        "Behavior guidance",
+                        "Speech guidance",
+                        "Routines help",
+                        "Social skills support",
+                        "Parent support"
+                    ]
+                },
+                {
+                    "id": "support_needed_other",
+                    "label": "Other Support Needed",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "id": "section_h",
+            "title": "SECTION H. CHILD STRENGTHS",
+            "fields": [
+                {
+                    "id": "strengths",
+                    "label": "My Child's Strengths",
+                    "type": "checkbox_group",
+                    "options": [
+                        "Friendly",
+                        "Curious",
+                        "Good memory",
+                        "Loves routines",
+                        "Creative",
+                        "Enjoys music",
+                        "Enjoys numbers",
+                        "Helpful",
+                        "Hardworking",
+                        "Fast learner"
+                    ]
+                },
+                {
+                    "id": "strengths_other",
+                    "label": "Other Strengths",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "id": "section_i",
+            "title": "SECTION I. DAILY LIVING SKILLS",
+            "fields": [
+                {
+                    "id": "eating",
+                    "label": "Eating",
+                    "type": "radio",
+                    "options": [
+                        "Eats independently",
+                        "Needs some help",
+                        "Needs full help"
+                    ]
+                },
+                {
+                    "id": "dressing",
+                    "label": "Dressing",
+                    "type": "radio",
+                    "options": [
+                        "Dresses independently",
+                        "Needs some help",
+                        "Needs full help"
+                    ]
+                },
+                {
+                    "id": "toilet_skills",
+                    "label": "Toilet Skills",
+                    "type": "radio",
+                    "options": [
+                        "Fully trained",
+                        "Needs reminders",
+                        "Needs help",
+                        "Uses diapers"
+                    ]
+                },
+                {
+                    "id": "sleep",
+                    "label": "Sleep",
+                    "type": "radio",
+                    "options": [
+                        "Sleeps well",
+                        "Difficulty falling asleep",
+                        "Wakes often"
+                    ]
+                },
+                {
+                    "id": "daily_living_notes",
+                    "label": "Other Notes",
+                    "type": "textarea"
+                }
+            ]
+        }
+    ]
+}
