@@ -8,7 +8,8 @@ from .views import (
     RequestAssessmentView, AssignSpecialistView, AssignTeacherView, AIRecommendSpecialtyView, EnrollStudentView,
     UserViewSet, CreateInvitationView, AcceptInvitationView, ManageInvitationView,
     StaffListView,
-    GenerateIEPView, IEPDetailView, IEPDownloadView
+    GenerateIEPView, IEPDetailView, IEPDownloadView,
+    GenerateWeeklyReportView, WeeklyReportDetailView, WeeklyReportDownloadView
 )
 
 router = DefaultRouter()
@@ -41,4 +42,8 @@ urlpatterns = [
     path('iep/generate/', GenerateIEPView.as_view(), name='generate-iep'),
     path('iep/<int:pk>/', IEPDetailView.as_view(), name='iep-detail'),
     path('iep/<int:pk>/download/', IEPDownloadView.as_view(), name='iep-download'),
+    # Weekly Report endpoints
+    path('weekly-report/generate/', GenerateWeeklyReportView.as_view(), name='generate-weekly-report'),
+    path('weekly-report/<int:pk>/', WeeklyReportDetailView.as_view(), name='weekly-report-detail'),
+    path('weekly-report/<int:pk>/download/', WeeklyReportDownloadView.as_view(), name='weekly-report-download'),
 ]

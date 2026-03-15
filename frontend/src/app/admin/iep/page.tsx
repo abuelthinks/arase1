@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import Cookies from "js-cookie";
+import { useAuth } from "@/context/AuthContext";
 
 /* ─── Shared UI helpers ───────────────────────────────────────────────────── */
 
@@ -69,6 +70,7 @@ function IEPViewerContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const iepId = searchParams.get("id");
+    const { user } = useAuth();
 
     const [iep, setIep] = useState<IEPData | null>(null);
     const [meta, setMeta] = useState<{ student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
@@ -139,38 +141,58 @@ function IEPViewerContent() {
 
     return (
         <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1rem 4rem" }}>
+            {/* Breadcrumb Nav */}
+            <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <button type="button" onClick={() => router.back()}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Student Profile
+                </button>
+                <span style={{ color: "#cbd5e1" }}>›</span>
+                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
+                    IEP for {meta.student_name}
+                </span>
+            </div>
+            
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>Comprehensive AI-Generated IEP</h1>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Comprehensive AI-Generated IEP</h1>
                     <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
                         {meta.student_name} · Generated {new Date(meta.created_at).toLocaleDateString()}
                     </p>
                 </div>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <button onClick={handleCopyLink}
-                        style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: copied ? "#059669" : "#475569" }}>
-                        {copied ? "✓ Copied!" : "🔗 Share Link"}
-                    </button>
-                    <button onClick={handleDownload}
-                        style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
-                        📥 Download PDF
-                    </button>
-                    {editing ? (
-                        <>
-                            <button onClick={() => setEditing(false)} style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
-                            <button onClick={handleSave} disabled={saving}
-                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                {saving ? "Saving…" : "💾 Save"}
-                            </button>
-                        </>
-                    ) : (
-                        <button onClick={() => setEditing(true)}
-                            style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#4f46e5", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                            ✏️ Edit
+                {user?.role === "ADMIN" && (
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <button onClick={handleCopyLink}
+                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: copied ? "#059669" : "#475569" }}>
+                            {copied ? "✓ Copied!" : "🔗 Share Link"}
                         </button>
-                    )}
-                </div>
+                        <button onClick={handleDownload}
+                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
+                            📥 Download PDF
+                        </button>
+                        {editing ? (
+                            <>
+                                <button onClick={() => setEditing(false)} style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
+                                <button onClick={handleSave} disabled={saving}
+                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                    {saving ? "Saving…" : "💾 Save"}
+                                </button>
+                            </>
+                        ) : (
+                            <button onClick={() => setEditing(true)}
+                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#4f46e5", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                ✏️ Edit
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Section 1 — Student Info */}

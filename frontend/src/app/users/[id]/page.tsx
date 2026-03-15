@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -46,6 +46,7 @@ const profileCache = new Map<string, UserData>();
 
 export default function UserProfile() {
     const { id } = useParams();
+    const router = useRouter();
     const { user: authUser } = useAuth();
     const cacheKey = String(id);
     const cached = id ? profileCache.get(cacheKey) ?? null : null;
@@ -95,20 +96,20 @@ export default function UserProfile() {
     return (
         <div style={{ maxWidth: "960px", margin: "0 auto" }}>
 
-            {/* Breadcrumb */}
+            {/* Breadcrumb Nav */}
             <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                <Link
-                    href={backHref}
-                    style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
-                    className="hover:text-blue-600"
+                <button type="button" onClick={() => router.back()}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
                     Back to {backLabel}
-                </Link>
+                </button>
                 <span style={{ color: "#cbd5e1" }}>›</span>
-                <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>{displayName}</span>
+                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>{displayName}</span>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "1.5rem", alignItems: "start" }}>

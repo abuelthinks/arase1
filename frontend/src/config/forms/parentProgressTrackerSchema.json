@@ -5,6 +5,27 @@
     "role": "parent",
     "sections": [
         {
+            "id": "section_a",
+            "title": "SECTION A — GENERAL INFORMATION",
+            "fields": [
+                {
+                    "id": "person_filling_form",
+                    "label": "Person filling the form",
+                    "type": "radio",
+                    "options": [
+                        "Mother",
+                        "Father",
+                        "Guardian"
+                    ]
+                },
+                {
+                    "id": "week_of_tracking",
+                    "label": "Week of Tracking",
+                    "type": "text"
+                }
+            ]
+        },
+        {
             "id": "section_b",
             "title": "SECTION B — COMMUNICATION PROGRESS",
             "fields": [

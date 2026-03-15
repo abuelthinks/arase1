@@ -51,12 +51,25 @@ function AdminReportsContent() {
         }
     };
 
-    const handleGenerateWeekly = () => {
+    const [weeklyLoading, setWeeklyLoading] = useState(false);
+
+    const handleGenerateWeekly = async () => {
         if (!studentId || !reportCycleId) {
             setErrorMsg("Student ID and Report Cycle ID are required.");
             return;
         }
-        router.push(`/admin/reports/preview?studentId=${studentId}&cycleId=${reportCycleId}&docType=WEEKLY`);
+        setWeeklyLoading(true);
+        setErrorMsg("");
+        try {
+            const res = await api.post("/api/weekly-report/generate/", {
+                student_id: parseInt(studentId),
+                report_cycle_id: parseInt(reportCycleId),
+            });
+            router.push(`/admin/weekly-report?id=${res.data.report_id}`);
+        } catch (err: any) {
+            setErrorMsg(err.response?.data?.error || "Failed to generate weekly report.");
+            setWeeklyLoading(false);
+        }
     };
 
     if (!studentId) {
@@ -67,16 +80,30 @@ function AdminReportsContent() {
         <ProtectedRoute allowedRoles={["ADMIN"]}>
             <div style={{ minHeight: "100vh", background: "#f8fafc", padding: "3rem 1rem" }}>
                 <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+                    {/* Breadcrumb Nav */}
+                    <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <button type="button" onClick={() => router.back()}
+                            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+                            onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+                            onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                        >
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Back to Student Profile
+                        </button>
+                        <span style={{ color: "#cbd5e1" }}>›</span>
+                        <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
+                            Report Generator
+                        </span>
+                    </div>
                     <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
                         {/* Header */}
                         <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div>
-                                <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>Report Generator</h1>
+                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Report Generator</h1>
                                 <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>Generate documents for <strong>{studentName || `Student #${studentId}`}</strong></p>
                             </div>
-                            <button onClick={() => router.back()} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 600, color: "#64748b", fontSize: "0.85rem" }}>
-                                ← Back
-                            </button>
                         </div>
 
                         <div style={{ padding: "1.5rem 2rem" }}>
@@ -134,16 +161,16 @@ function AdminReportsContent() {
                                     </div>
                                     <button
                                         onClick={handleGenerateWeekly}
-                                        disabled={studentStatus !== "Enrolled"}
+                                        disabled={weeklyLoading || studentStatus !== "Enrolled"}
                                         style={{
                                             padding: "10px 20px", borderRadius: "8px", border: "none",
-                                            background: studentStatus === "Enrolled" ? "#059669" : "#e2e8f0",
+                                            background: weeklyLoading ? "#6ee7b7" : studentStatus === "Enrolled" ? "#059669" : "#e2e8f0",
                                             color: studentStatus === "Enrolled" ? "white" : "#94a3b8",
-                                            fontWeight: 700, fontSize: "0.85rem", cursor: studentStatus !== "Enrolled" ? "not-allowed" : "pointer",
+                                            fontWeight: 700, fontSize: "0.85rem", cursor: weeklyLoading || studentStatus !== "Enrolled" ? "not-allowed" : "pointer",
                                             whiteSpace: "nowrap",
                                         }}
                                     >
-                                        {studentStatus === "Enrolled" ? "Generate" : "Requires Enrolled"}
+                                        {weeklyLoading ? "⏳ Generating…" : studentStatus === "Enrolled" ? "🤖 Generate" : "Requires Enrolled"}
                                     </button>
                                 </div>
                             </div>

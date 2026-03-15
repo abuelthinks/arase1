@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
@@ -100,6 +100,7 @@ const formRoutes: Record<string, string> = {
 
 export default function StudentProfilePage() {
     const { id } = useParams();
+    const router = useRouter();
     const { user } = useAuth();
     const [data, setData] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -220,23 +221,23 @@ export default function StudentProfilePage() {
     return (
         <ProtectedRoute>
             <div style={{ maxWidth: "960px", margin: "0 auto" }}>
-                {/* Breadcrumb */}
-                <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Link
-                        href="/dashboard"
-                        style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
-                        className="hover:text-blue-600"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        Back to Dashboard
-                    </Link>
-                    <span style={{ color: "#cbd5e1" }}>›</span>
-                    <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>
-                        {student.first_name} {student.last_name}
-                    </span>
-                </div>
+            {/* Breadcrumb Nav */}
+            <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <button type="button" onClick={() => router.back()}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", fontWeight: 600, fontSize: "0.9rem" }}
+                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Dashboard
+                </button>
+                <span style={{ color: "#cbd5e1" }}>›</span>
+                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
+                    {student.first_name} {student.last_name}
+                </span>
+            </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "1.5rem", alignItems: "start" }}>
 
@@ -346,9 +347,17 @@ export default function StudentProfilePage() {
                                                 ) : (
                                                     // Only show fill link if this role OWNS the form
                                                     ownedFormKeys[user?.role ?? ""]?.includes(key) && (
-                                                        <Link href={`${route}?studentId=${student.id}`} style={{ fontSize: "0.8rem", color: "#2563eb", textDecoration: "none", fontWeight: 500 }} className="hover:underline">
-                                                            + Fill form
-                                                        </Link>
+                                                        // Check if this is a progress tracker and student is not enrolled
+                                                        (key.includes("tracker") && student.status !== "Enrolled") ? (
+                                                            <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>
+                                                                <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                                Locked until Enrolled
+                                                            </div>
+                                                        ) : (
+                                                            <Link href={`${route}?studentId=${student.id}`} style={{ fontSize: "0.8rem", color: "#2563eb", textDecoration: "none", fontWeight: 500 }} className="hover:underline">
+                                                                + Fill form
+                                                            </Link>
+                                                        )
                                                     )
                                                 )}
                                             </div>
@@ -478,23 +487,35 @@ export default function StudentProfilePage() {
                                     </div>
                                 ) : (
                                     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                                        {generated_documents.map((doc) => (
+                                        {generated_documents.map((doc) => {
+                                            const isIEP = doc.type === "IEP" && doc.has_iep_data;
+                                            const isWeekly = doc.type === "WEEKLY" && doc.has_iep_data;
+                                            const badgeLabel = isIEP ? "IEP" : isWeekly ? "WK" : "PDF";
+                                            const badgeBg = isIEP ? "#dbeafe" : isWeekly ? "#dcfce7" : "#fee2e2";
+                                            const badgeColor = isIEP ? "#2563eb" : isWeekly ? "#16a34a" : "#dc2626";
+                                            const docTitle = isIEP ? "AI-Generated IEP" : isWeekly ? "Weekly Progress Report" : `${doc.type} Report`;
+                                            return (
                                             <li key={doc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--border-light)" }}>
                                                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                                    <div style={{ width: 36, height: 36, background: doc.has_iep_data ? "#dbeafe" : "#fee2e2", color: doc.has_iep_data ? "#2563eb" : "#dc2626", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 700 }}>
-                                                        {doc.has_iep_data ? "IEP" : "PDF"}
+                                                    <div style={{ width: 36, height: 36, background: badgeBg, color: badgeColor, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 700 }}>
+                                                        {badgeLabel}
                                                     </div>
                                                     <div>
-                                                        <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{doc.type === "IEP" && doc.has_iep_data ? "AI-Generated IEP" : `${doc.type} Report`}</p>
+                                                        <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{docTitle}</p>
                                                         <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
                                                             {new Date(doc.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                                                         </p>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: "flex", gap: "8px" }}>
-                                                    {doc.has_iep_data && (
+                                                    {isIEP && (
                                                         <a href={`/admin/iep?id=${doc.id}`} style={{ fontSize: "0.82rem", fontWeight: 600, color: "#4f46e5", padding: "6px 14px", borderRadius: "6px", border: "1px solid #c7d2fe", textDecoration: "none", background: "#eef2ff" }}>
                                                             View IEP
+                                                        </a>
+                                                    )}
+                                                    {isWeekly && (
+                                                        <a href={`/admin/weekly-report?id=${doc.id}`} style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a", padding: "6px 14px", borderRadius: "6px", border: "1px solid #bbf7d0", textDecoration: "none", background: "#f0fdf4" }}>
+                                                            View Report
                                                         </a>
                                                     )}
                                                     {doc.file_url && (
@@ -502,14 +523,15 @@ export default function StudentProfilePage() {
                                                             View PDF
                                                         </a>
                                                     )}
-                                                    {doc.file_url && user?.role !== "PARENT" && (
+                                                    {doc.file_url && user?.role === "ADMIN" && (
                                                         <a href={doc.file_url} download style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--text-secondary)", padding: "6px 14px", borderRadius: "6px", border: "1px solid var(--border-light)", textDecoration: "none", background: "white" }}>
                                                             Download
                                                         </a>
                                                     )}
                                                 </div>
                                             </li>
-                                        ))}
+                                        );
+                                        })}
                                     </ul>
                                 )}
                             </div>

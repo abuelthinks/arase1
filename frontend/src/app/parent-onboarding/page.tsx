@@ -219,6 +219,21 @@ function ParentFormContent() {
     return (
         <ProtectedRoute allowedRoles={isViewMode ? undefined : ["PARENT"]}>
             <div className="max-w-3xl mx-auto">
+                {/* Breadcrumb Nav */}
+                <div className="mb-6 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => router.back()}
+                        className="inline-flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-semibold text-sm transition-colors cursor-pointer"
+                    >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Back to Student Profile
+                    </button>
+                    <span className="text-slate-300">›</span>
+                    <span className="text-slate-900 font-semibold text-sm">
+                        Parent Assessment
+                    </span>
+                </div>
 
                 {/* Top bar */}
                 <div className="flex items-center justify-between mb-5">

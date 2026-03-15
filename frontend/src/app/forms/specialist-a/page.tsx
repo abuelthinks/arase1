@@ -183,9 +183,26 @@ function SpecialistAFormContent() {
 
     return (
         <div style={{ maxWidth: "860px", margin: "0 auto", paddingBottom: "3rem" }}>
+            {/* Breadcrumb Nav */}
+            <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <button type="button" onClick={() => router.back()}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Student Profile
+                </button>
+                <span style={{ color: "#cbd5e1" }}>›</span>
+                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
+                    Multidisciplinary Assessment
+                </span>
+            </div>
             {/* Header */}
             <div style={{ marginBottom: "1.5rem" }}>
-                <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>
+                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                     Multidisciplinary Assessment Form {ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
                 </h1>
                 {ro && <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>Past submission — read only.</p>}

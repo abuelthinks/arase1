@@ -3,8 +3,90 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-
 import api from "@/lib/api";
+
+/* ─── Shared UI Components ─────────────────────────────────────────────────── */
+
+function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+    return (
+        <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}>
+            <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{title}</h2>
+                {subtitle && <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "2px 0 0" }}>{subtitle}</p>}
+            </div>
+            <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <p style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#6366f1", marginBottom: "8px" }}>{label}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>{children}</div>
+        </div>
+    );
+}
+
+function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; checked: boolean; onChange: () => void; readOnly?: boolean }) {
+    return (
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", cursor: readOnly ? "default" : "pointer", color: "#0f172a", userSelect: "none" }}>
+            <input type="checkbox" checked={checked} onChange={readOnly ? undefined : onChange} readOnly={readOnly}
+                style={{ width: 16, height: 16, accentColor: "#4f46e5", cursor: readOnly ? "default" : "pointer" }} />
+            {label}
+        </label>
+    );
+}
+
+function RadioItem({ label, checked, onChange, readOnly }: { label: string; checked: boolean; onChange: () => void; readOnly?: boolean }) {
+    return (
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", cursor: readOnly ? "default" : "pointer", color: "#0f172a", userSelect: "none" }}>
+            <input type="radio" checked={checked} onChange={readOnly ? undefined : onChange} readOnly={readOnly}
+                style={{ width: 16, height: 16, accentColor: "#4f46e5", cursor: readOnly ? "default" : "pointer" }} />
+            {label}
+        </label>
+    );
+}
+
+function TextInput({ value, onChange, placeholder, readOnly, type = "text" }: { value: string; onChange?: (v: string) => void; placeholder?: string; readOnly?: boolean; type?: string }) {
+    return (
+        <input
+            type={type}
+            value={value}
+            onChange={onChange ? e => onChange(e.target.value) : undefined}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            style={{
+                width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0",
+                padding: "9px 12px", fontSize: "0.875rem",
+                color: "#0f172a", background: readOnly ? "#f8fafc" : "white",
+                boxSizing: "border-box",
+            }}
+        />
+    );
+}
+
+function TextArea({ value, onChange, placeholder, readOnly, rows = 3 }: { value: string; onChange?: (v: string) => void; placeholder?: string; readOnly?: boolean; rows?: number }) {
+    return (
+        <textarea
+            value={value}
+            onChange={onChange ? e => onChange(e.target.value) : undefined}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            rows={rows}
+            style={{
+                width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0",
+                padding: "10px 12px", fontSize: "0.875rem", resize: "vertical",
+                color: "#0f172a", background: readOnly ? "#f8fafc" : "white",
+                boxSizing: "border-box",
+            }}
+        />
+    );
+}
+
+/* ─── Main Component ───────────────────────────────────────────────────────── */
 
 function SpecialistBFormContent() {
     const searchParams = useSearchParams();
@@ -16,71 +98,51 @@ function SpecialistBFormContent() {
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
+    const [reportCycleId, setReportCycleId] = useState("1");
+    const [studentName, setStudentName] = useState("");
 
-    const [reportCycleId, setReportCycleId] = useState("1"); // Auto-detect later
-
-    // Form schema matching "Specialist Input B.txt"
     const [formData, setFormData] = useState({
-        child_information: {
-            age: "",
-            level: "",
-            date: new Date().toISOString().split('T')[0]
-        },
-        service_overview: {
-            sessions_attended: "0",
-            type_of_special_needs: "",
-            services_provided_this_week: [] as string[],
-            other_services: ""
-        },
-        weekly_goals: [
-            { id: 1, goal: "", objective: "", progress: "" },
-            { id: 2, goal: "", objective: "", progress: "" },
-            { id: 3, goal: "", objective: "", progress: "" }
-        ],
-        detailed_progress: {
-            strengths_observed: "",
-            areas_for_improvement: "",
-            therapists_comments: ""
-        }
+        section_a: { date: new Date().toISOString().split('T')[0], therapist_name: "", discipline: "", session_type: "", sessions_completed: "0" },
+        section_b: { attendance: "", participation_level: "", notes: "" },
+        section_c: { slp_goals: [] as string[], slp_notes: "", ot_goals: [] as string[], ot_notes: "", pt_goals: [] as string[], pt_notes: "", psych_goals: [] as string[], psych_notes: "", sped_goals: [] as string[], sped_notes: "" },
+        section_d: { independent_skills: "", behavior_interaction: "", sensory_motor: "", communication_adults: "", notes: "" },
+        section_e: { goal_1: "", goal_2: "", goal_3: "", goal_4: "", comments: "" },
+        section_f: { therapy_recommendations: [] as string[], home_strategies: [] as string[], therapist_suggested_activities: "" }
     });
 
-    const SERVICES = [
-        "Occupational Therapy",
-        "Speech and Language Therapy",
-        "Physical Therapy",
-        "Behavioral Therapy",
-        "Academic Support"
-    ];
-
-    const handleServiceToggle = (service: string) => {
-        setFormData(prev => {
-            const current = prev.service_overview.services_provided_this_week;
-            const updated = current.includes(service)
-                ? current.filter(s => s !== service)
-                : [...current, service];
-
-            return {
-                ...prev,
-                service_overview: { ...prev.service_overview, services_provided_this_week: updated }
-            };
-        });
+    const OPTIONS = {
+        discipline: ["Speech-Language Pathology", "Occupational Therapy", "Physical Therapy", "Psychology / Behavioral", "SPED / Educational", "Shadow Teacher"],
+        session_type: ["Online", "Onsite"],
+        attendance: ["Present", "Late", "Absent", "Rescheduled"],
+        participation: ["Fully engaged", "Needed minimal cues", "Needed moderate prompts", "Needed full assistance", "Refused tasks", "Limited engagement", "Easily distracted", "Overstimulated", "Fatigued"],
+        slp_goals: ["Increased verbal output", "Improved receptive skills", "Better articulation", "Improved social communication", "Used AAC/Picture cards", "No improvement", "Regression noted"],
+        ot_goals: ["Improved hand strength", "Better pencil grasp", "Improved scissor skills", "Followed sensory strategies", "Reduced sensory overload", "Increased independence in ADLs", "No improvement", "Regression noted"],
+        pt_goals: ["Improved balance", "Stronger core strength", "Better coordination", "Improved gait", "Increased endurance", "No improvement", "Regression observed"],
+        psych_goals: ["Reduced tantrums", "Improved coping strategies", "Better attention", "Less impulsivity", "Improved emotional expression", "Better transitions", "No improvement", "Regression observed"],
+        sped_goals: ["Improved focus", "Better task completion", "Improved literacy skills", "Improved numeracy skills", "Followed classroom routines", "Better peer interaction", "No improvement", "Regression noted"],
+        independent_skills: ["Improved", "Slight improvement", "No change", "Declined"],
+        behavior_interaction: ["Cooperative", "Needs support", "Resistant", "Aggressive", "Withdrawn"],
+        sensory_motor: ["Calm", "Hyperactive", "Sensory seeking", "Sensory avoidant", "Easily overwhelmed"],
+        communication_adults: ["Responds", "Initiates", "Minimal interaction", "No interaction"],
+        gas_scale: ["1 – No progress", "2 – Minimal progress", "3 – Expected progress", "4 – More than expected", "5 – Goal achieved"],
+        therapy_recs: ["Continue same plan", "Increase frequency", "Reduce frequency", "Add new goals", "Parent training needed", "Referral to another discipline", "Request formal evaluation"],
+        home_strategies: ["Speech exercises", "Sensory activities", "Fine motor tasks", "Gross motor tasks", "Behavior strategies", "Academic tasks", "Routine-building activities"],
     };
+
+    const ro = isViewMode;
 
     const handleNestedChange = (section: keyof typeof formData, field: string, value: string) => {
         setFormData(prev => ({
             ...prev,
-            [section]: {
-                ...prev[section as any],
-                [field]: value
-            }
+            [section]: { ...(prev[section] as any), [field]: value }
         }));
     };
 
-    const handleGoalChange = (index: number, field: string, value: string) => {
+    const handleArrayToggle = (section: keyof typeof formData, field: string, value: string) => {
         setFormData(prev => {
-            const newGoals = [...prev.weekly_goals];
-            newGoals[index] = { ...newGoals[index], [field]: value };
-            return { ...prev, weekly_goals: newGoals };
+            const currentArr = (prev[section] as any)[field] as string[];
+            const updated = currentArr.includes(value) ? currentArr.filter(item => item !== value) : [...currentArr, value];
+            return { ...prev, [section]: { ...(prev[section] as any), [field]: updated } };
         });
     };
 
@@ -106,191 +168,300 @@ function SpecialistBFormContent() {
     };
 
     useEffect(() => {
+        if (studentId) {
+            api.get(`/api/students/${studentId}/profile/`)
+                .then(res => {
+                    if (!isViewMode && res.data?.student?.status !== "Enrolled") {
+                        alert("This progress tracking form is locked until the student is formally enrolled.");
+                        router.push(`/students/${studentId}`);
+                        return;
+                    }
+
+                    if (res.data.student) setStudentName(`${res.data.student.first_name} ${res.data.student.last_name}`.trim());
+                    if (!isViewMode && res.data.active_cycle) setReportCycleId(res.data.active_cycle.id.toString());
+                })
+                .catch(err => console.error(err));
+        }
+
         if (isViewMode && submissionId) {
             api.get(`/api/inputs/specialist-b/${submissionId}/`)
                 .then(res => {
                     if (res.data.form_data) {
-                        setFormData(res.data.form_data);
+                        // Migrate old data gracefully if possible, or just overwrite 
+                        setFormData(prev => ({ ...prev, ...res.data.form_data }));
                     }
                 })
                 .catch(err => console.error("Failed to fetch submission:", err));
-        } else if (studentId) {
-            api.get(`/api/students/${studentId}/profile/`)
-                .then(res => {
-                    if (res.data.active_cycle) {
-                        setReportCycleId(res.data.active_cycle.id.toString());
-                    }
-                })
-                .catch(err => console.error(err));
         }
     }, [isViewMode, submissionId, studentId]);
 
-    if (!studentId && !isViewMode) return <div className="p-8 text-center text-slate-500">Missing student context. Return to dashboard.</div>;
+    if (!studentId && !isViewMode) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing student context. Return to dashboard.</div>;
 
     return (
-        <ProtectedRoute>
-            <div className="min-h-screen bg-slate-50 py-12 px-4">
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-white rounded-2xl shadow-sm border p-8">
-
-                        <div className="flex justify-between items-center mb-8 border-b pb-4">
-                            <div>
-                                <h1 className="text-3xl font-bold text-slate-900">
-                                    {isViewMode ? "Weekly Progress Report (Specialist B) - Read Only" : "Weekly Progress Report (Specialist B)"}
-                                </h1>
-                                <p className="text-slate-500 mt-1">
-                                    {isViewMode ? "This is a past submission and cannot be edited." : "Document weekly therapy goals, session details, and specific progress measures."}
-                                </p>
-                            </div>
-                        </div>
-
-                        {successMsg && <div className="mb-6 p-4 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-medium">✨ {successMsg}</div>}
-                        {errorMsg && <div className="mb-6 p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{errorMsg}</div>}
-
-                        <form onSubmit={handleSubmit} className="space-y-10">
-                            <fieldset disabled={isViewMode} className="space-y-10 data-[disabled=true]:opacity-90 group/fieldset">
-
-                                {/* Meta Info */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-6 rounded-xl border">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Age</label>
-                                        <input type="text" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            value={formData.child_information.age} onChange={e => handleNestedChange('child_information', 'age', e.target.value)} required />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Level</label>
-                                        <input type="text" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            value={formData.child_information.level} onChange={e => handleNestedChange('child_information', 'level', e.target.value)} required />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Date</label>
-                                        <input type="date" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            value={formData.child_information.date} onChange={e => handleNestedChange('child_information', 'date', e.target.value)} required />
-                                    </div>
-                                </div>
-
-                                {/* Service Overview */}
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span> Service Overview
-                                    </h3>
-                                    <div className="bg-white border rounded-xl p-6 space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Sessions Attended This Week</label>
-                                                <input type="number" min="0" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={formData.service_overview.sessions_attended} onChange={e => handleNestedChange('service_overview', 'sessions_attended', e.target.value)} required />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Type of Special Needs</label>
-                                                <input type="text" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={formData.service_overview.type_of_special_needs} onChange={e => handleNestedChange('service_overview', 'type_of_special_needs', e.target.value)} />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-3">Services Provided This Week</label>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {SERVICES.map(service => (
-                                                    <label key={service} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition">
-                                                        <input type="checkbox" className="w-5 h-5 text-blue-600 rounded"
-                                                            checked={formData.service_overview.services_provided_this_week.includes(service)}
-                                                            onChange={() => handleServiceToggle(service)} />
-                                                        <span className="text-slate-700 font-medium">{service}</span>
-                                                    </label>
-                                                ))}
-                                                <div className="sm:col-span-2 mt-2">
-                                                    <input type="text" placeholder="Other Services..." className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                        value={formData.service_overview.other_services} onChange={e => handleNestedChange('service_overview', 'other_services', e.target.value)} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Weekly Goals */}
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span> Weekly Goals and Objectives
-                                    </h3>
-                                    <div className="space-y-6">
-                                        {formData.weekly_goals.map((goal, index) => (
-                                            <div key={goal.id} className="bg-white border rounded-xl p-6 relative">
-                                                <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 font-bold px-4 py-1 rounded-bl-xl rounded-tr-xl text-sm border-b border-l">
-                                                    Goal {goal.id}
-                                                </div>
-                                                <div className="space-y-4 pt-4">
-                                                    <div>
-                                                        <label className="block text-sm font-bold text-slate-700 mb-2">Goal Description</label>
-                                                        <input type="text" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                            value={goal.goal} onChange={e => handleGoalChange(index, 'goal', e.target.value)} placeholder={`State goal ${goal.id}...`} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-sm font-bold text-slate-700 mb-2">Objective (Measurement)</label>
-                                                        <textarea className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                            value={goal.objective} onChange={e => handleGoalChange(index, 'objective', e.target.value)} placeholder="How will this be measured?" rows={2} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-sm font-bold text-slate-700 mb-2">Progress This Week</label>
-                                                        <textarea className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-blue-50"
-                                                            value={goal.progress} onChange={e => handleGoalChange(index, 'progress', e.target.value)} placeholder="Detail the child's progress towards this specific goal..." rows={3} />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Summary */}
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span> Detailed Progress Summary
-                                    </h3>
-                                    <div className="space-y-6 bg-white border rounded-xl p-6">
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Strengths Observed This Week</label>
-                                            <textarea className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none min-h-[100px]"
-                                                value={formData.detailed_progress.strengths_observed} onChange={e => handleNestedChange('detailed_progress', 'strengths_observed', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Areas for Improvement This Week</label>
-                                            <textarea className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none min-h-[100px]"
-                                                value={formData.detailed_progress.areas_for_improvement} onChange={e => handleNestedChange('detailed_progress', 'areas_for_improvement', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Overall Therapist's Comments</label>
-                                            <textarea className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none min-h-[120px] bg-slate-50"
-                                                value={formData.detailed_progress.therapists_comments} onChange={e => handleNestedChange('detailed_progress', 'therapists_comments', e.target.value)} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <hr className="border-slate-200" />
-                            </fieldset>
-
-                            <div className="flex justify-end gap-4">
-                                <button type="button" onClick={() => router.push(`/students/${studentId}`)} className="px-6 py-3 font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition">
-                                    {isViewMode ? "Back to Profile" : "Cancel"}
-                                </button>
-                                {!isViewMode && (
-                                    <button type="submit" disabled={loading} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition disabled:opacity-50 flex items-center gap-2">
-                                        {loading ? "Submitting..." : "Submit Weekly Progress"}
-                                    </button>
-                                )}
-                            </div>
-
-                        </form>
-                    </div>
-                </div>
+        <div style={{ maxWidth: "860px", margin: "0 auto", padding: "2rem 1rem 3rem" }}>
+            {/* Breadcrumb Nav */}
+            <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <button type="button" onClick={() => router.back()}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Student Profile
+                </button>
+                <span style={{ color: "#cbd5e1" }}>›</span>
+                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
+                    Weekly Progress Report
+                </span>
             </div>
-        </ProtectedRoute>
+            {/* Header */}
+            <div style={{ marginBottom: "1.5rem" }}>
+                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                    Weekly Progress Report {studentName && `for ${studentName}`}
+                    {ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
+                </h1>
+                <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
+                    {ro ? "Past submission — read only." : "Document weekly therapy goals, session details, and progress measures."}
+                </p>
+            </div>
+
+            {/* Alerts */}
+            {successMsg && (
+                <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#d1fae5", color: "#065f46", border: "1px solid #a7f3d0", marginBottom: "1rem", fontWeight: 600 }}>
+                    ✓ {successMsg}
+                </div>
+            )}
+            {errorMsg && (
+                <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", marginBottom: "1rem" }}>
+                    {errorMsg}
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+                {/* Section A */}
+                <SectionCard title="Section A — General Information">
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                        <div>
+                            <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Child Name</p>
+                            <TextInput value={studentName} readOnly={true} />
+                        </div>
+                        <div>
+                            <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Date</p>
+                            <TextInput type="date" value={formData.section_a.date} onChange={ro ? undefined : v => handleNestedChange('section_a', 'date', v)} readOnly={ro} />
+                        </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px", marginTop: "12px" }}>
+                        <div>
+                            <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Therapist Name</p>
+                            <TextInput value={formData.section_a.therapist_name} onChange={ro ? undefined : v => handleNestedChange('section_a', 'therapist_name', v)} readOnly={ro} />
+                        </div>
+                    </div>
+
+                    <FieldGroup label="Discipline">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                            {OPTIONS.discipline.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_a.discipline === opt} onChange={() => handleNestedChange('section_a', 'discipline', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup>
+
+                    <FieldGroup label="Session Type">
+                        <div style={{ display: "flex", gap: "16px" }}>
+                            {OPTIONS.session_type.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_a.session_type === opt} onChange={() => handleNestedChange('section_a', 'session_type', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup>
+
+                    <div>
+                        <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Number of sessions completed this period</p>
+                        <TextInput type="number" value={formData.section_a.sessions_completed} onChange={ro ? undefined : v => handleNestedChange('section_a', 'sessions_completed', v)} readOnly={ro} />
+                    </div>
+                </SectionCard>
+
+                {/* Section B */}
+                <SectionCard title="Section B — Session Attendance & Participation">
+                    <FieldGroup label="B1. Attendance">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                            {OPTIONS.attendance.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_b.attendance === opt} onChange={() => handleNestedChange('section_b', 'attendance', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup>
+                    <FieldGroup label="B2. Participation Level">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                            {OPTIONS.participation.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_b.participation_level === opt} onChange={() => handleNestedChange('section_b', 'participation_level', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup>
+                    <FieldGroup label="Notes">
+                        <TextArea value={formData.section_b.notes} onChange={ro ? undefined : v => handleNestedChange('section_b', 'notes', v)} readOnly={ro} />
+                    </FieldGroup>
+                </SectionCard>
+
+                {/* Section C */}
+                <SectionCard title="Section C — Goal-Based Progress Tracking" subtitle="(Therapist selects the goals relevant to their discipline)">
+                    {/* C1 */}
+                    <FieldGroup label="C1. Communication (SLP)">
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            {OPTIONS.slp_goals.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.slp_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'slp_goals', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                        <div style={{ marginTop: "8px" }}><TextArea placeholder="SLP Notes..." value={formData.section_c.slp_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'slp_notes', v)} readOnly={ro} /></div>
+                    </FieldGroup>
+
+                    {/* C2 */}
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C2. Fine Motor / Sensory / ADLs (OT)">
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            {OPTIONS.ot_goals.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.ot_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'ot_goals', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                        <div style={{ marginTop: "8px" }}><TextArea placeholder="OT Notes..." value={formData.section_c.ot_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'ot_notes', v)} readOnly={ro} /></div>
+                    </FieldGroup></div>
+
+                    {/* C3 */}
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C3. Gross Motor / Gait / Coordination (PT)">
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            {OPTIONS.pt_goals.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.pt_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'pt_goals', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                        <div style={{ marginTop: "8px" }}><TextArea placeholder="PT Notes..." value={formData.section_c.pt_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'pt_notes', v)} readOnly={ro} /></div>
+                    </FieldGroup></div>
+
+                    {/* C4 */}
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C4. Behavior / Emotional Regulation (Psych)">
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            {OPTIONS.psych_goals.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.psych_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'psych_goals', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                        <div style={{ marginTop: "8px" }}><TextArea placeholder="Psych Notes..." value={formData.section_c.psych_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'psych_notes', v)} readOnly={ro} /></div>
+                    </FieldGroup></div>
+
+                    {/* C5 */}
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C5. Academic / Learning Behavior (SPED)">
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            {OPTIONS.sped_goals.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.sped_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'sped_goals', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                        <div style={{ marginTop: "8px" }}><TextArea placeholder="SPED Notes..." value={formData.section_c.sped_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'sped_notes', v)} readOnly={ro} /></div>
+                    </FieldGroup></div>
+                </SectionCard>
+
+                {/* Section D */}
+                <SectionCard title="Section D — Functional Observations">
+                    <FieldGroup label="D1. Independent Skills">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                            {OPTIONS.independent_skills.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_d.independent_skills === opt} onChange={() => handleNestedChange('section_d', 'independent_skills', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup>
+
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="D2. Behavior Interaction with Therapist">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                            {OPTIONS.behavior_interaction.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_d.behavior_interaction === opt} onChange={() => handleNestedChange('section_d', 'behavior_interaction', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup></div>
+
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="D3. Sensory / Motor Regulation">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                            {OPTIONS.sensory_motor.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_d.sensory_motor === opt} onChange={() => handleNestedChange('section_d', 'sensory_motor', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup></div>
+
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="D4. Communication With Adults">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                            {OPTIONS.communication_adults.map(opt => (
+                                <RadioItem key={opt} label={opt} checked={formData.section_d.communication_adults === opt} onChange={() => handleNestedChange('section_d', 'communication_adults', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup></div>
+
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="Notes">
+                        <TextArea value={formData.section_d.notes} onChange={ro ? undefined : v => handleNestedChange('section_d', 'notes', v)} readOnly={ro} />
+                    </FieldGroup></div>
+                </SectionCard>
+
+                {/* Section E */}
+                <SectionCard title="Section E — Goal Achievement Rating (GAS)" subtitle="(Simple therapist rating for AI calibration)">
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
+                        {['goal_1', 'goal_2', 'goal_3', 'goal_4'].map((g, i) => (
+                            <div key={g} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                                <p style={{ fontSize: "0.85rem", fontWeight: 700, margin: "0 0 10px 0", color: "#1e293b" }}>Goal {i + 1}</p>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                                    {OPTIONS.gas_scale.map(opt => (
+                                        <RadioItem key={opt} label={opt} checked={(formData.section_e as any)[g] === opt} onChange={() => handleNestedChange('section_e', g, opt)} readOnly={ro} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ marginTop: "1.5rem" }}>
+                        <FieldGroup label="Comments">
+                            <TextArea value={formData.section_e.comments} onChange={ro ? undefined : v => handleNestedChange('section_e', 'comments', v)} readOnly={ro} />
+                        </FieldGroup>
+                    </div>
+                </SectionCard>
+
+                {/* Section F */}
+                <SectionCard title="Section F — Recommended Next Steps (Therapist Input)">
+                    <FieldGroup label="F1. Therapy Recommendations">
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            {OPTIONS.therapy_recs.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_f.therapy_recommendations.includes(opt)} onChange={() => handleArrayToggle('section_f', 'therapy_recommendations', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup>
+
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="F2. Home Strategies">
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            {OPTIONS.home_strategies.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_f.home_strategies.includes(opt)} onChange={() => handleArrayToggle('section_f', 'home_strategies', opt)} readOnly={ro} />
+                            ))}
+                        </div>
+                    </FieldGroup></div>
+
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="Therapist Suggested Activities">
+                        <TextArea value={formData.section_f.therapist_suggested_activities} onChange={ro ? undefined : v => handleNestedChange('section_f', 'therapist_suggested_activities', v)} readOnly={ro} />
+                    </FieldGroup></div>
+                </SectionCard>
+
+                {/* Submit */}
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                    <button type="button" onClick={() => router.push(`/students/${studentId}`)}
+                        style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" }}>
+                        {ro ? "Back to Profile" : "Cancel"}
+                    </button>
+                    {!ro && (
+                        <button type="submit" disabled={loading}
+                            style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
+                            {loading ? "Submitting…" : "Submit Weekly Progress"}
+                        </button>
+                    )}
+                </div>
+            </form>
+        </div>
     );
 }
 
 export default function SpecialistBInputPage() {
     return (
-        <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading form...</div>}>
-            <SpecialistBFormContent />
-        </Suspense>
+        <ProtectedRoute>
+            <Suspense fallback={<div style={{ padding: "2rem", textAlign: "center", color: "#94a3b8" }}>Loading form…</div>}>
+                <SpecialistBFormContent />
+            </Suspense>
+        </ProtectedRoute>
     );
 }

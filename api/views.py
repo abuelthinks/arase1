@@ -962,3 +962,236 @@ class IEPDownloadView(APIView):
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{student.last_name}_{student.first_name}_IEP.pdf"'
         return response
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Weekly Report Generation & Management
+# ──────────────────────────────────────────────────────────────────────────────
+
+class GenerateWeeklyReportView(APIView):
+    """POST: Generate a Weekly Progress Report using Gemini AI."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can generate reports."}, status=status.HTTP_403_FORBIDDEN)
+
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            student = Student.objects.get(id=student_id)
+            cycle = ReportCycle.objects.get(id=report_cycle_id)
+        except (Student.DoesNotExist, ReportCycle.DoesNotExist):
+            return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Collect progress tracker inputs
+        inputs = {
+            'parent_tracker': ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).order_by('-created_at').first(),
+            'multi_tracker': MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle).order_by('-created_at').first(),
+            'sped_tracker': SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).order_by('-created_at').first(),
+        }
+
+        try:
+            from .weekly_report_generator import generate_weekly_report
+            report_data = generate_weekly_report(student, cycle, inputs)
+
+            # Save to GeneratedDocument
+            doc = GeneratedDocument.objects.create(
+                student=student,
+                report_cycle=cycle,
+                document_type='WEEKLY',
+                iep_data=report_data,  # reusing iep_data JSONField for weekly report data
+            )
+
+            return Response({
+                "message": "Weekly report generated successfully.",
+                "report_id": doc.id,
+                "report_data": report_data,
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": f"Failed to generate weekly report: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class WeeklyReportDetailView(APIView):
+    """GET: Retrieve weekly report data."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='WEEKLY')
+        except GeneratedDocument.DoesNotExist:
+            return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            "id": doc.id,
+            "student_id": doc.student_id,
+            "student_name": f"{doc.student.first_name} {doc.student.last_name}",
+            "report_cycle": {"start": str(doc.report_cycle.start_date), "end": str(doc.report_cycle.end_date)},
+            "created_at": doc.created_at.isoformat(),
+            "report_data": doc.iep_data,
+        })
+
+
+class WeeklyReportDownloadView(APIView):
+    """GET: Render the Weekly Report JSON as a PDF for download."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, pk):
+        token = request.GET.get('token')
+        if not token:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        from rest_framework_simplejwt.authentication import JWTAuthentication
+        try:
+            auth = JWTAuthentication()
+            validated_token = auth.get_validated_token(token)
+            user = auth.get_user(validated_token)
+        except Exception:
+            return Response({"detail": "Invalid or expired token."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='WEEKLY')
+        except GeneratedDocument.DoesNotExist:
+            return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        from io import BytesIO
+        from django.http import HttpResponse
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+        buffer = BytesIO()
+        pdf = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], alignment=1, spaceAfter=20, fontSize=16)
+        h2 = ParagraphStyle('H2', parent=styles['Heading2'], textColor=colors.HexColor("#1e40af"), spaceBefore=14, spaceAfter=6)
+        h3 = ParagraphStyle('H3', parent=styles['Heading3'], spaceBefore=8, spaceAfter=4)
+        normal = styles['Normal']
+
+        elements = []
+        report = doc.iep_data
+        student = doc.student
+
+        elements.append(Paragraph("THERUNI – Weekly Progress Report", title_style))
+        elements.append(Spacer(1, 10))
+
+        # Student Info
+        si = report.get('student_info', {})
+        elements.append(Paragraph("Student Information", h2))
+        elements.append(Paragraph(f"<b>Student Name:</b> {si.get('student_name', 'N/A')}", normal))
+        elements.append(Paragraph(f"<b>Date of Birth:</b> {si.get('date_of_birth', 'N/A')}", normal))
+        elements.append(Paragraph(f"<b>Grade/Level:</b> {si.get('grade_level', 'N/A')}", normal))
+        elements.append(Paragraph(f"<b>Report Period:</b> {report.get('report_period', 'N/A')}", normal))
+        elements.append(Spacer(1, 8))
+
+        # Executive Summary
+        elements.append(Paragraph("Executive Summary", h2))
+        elements.append(Paragraph(str(report.get('executive_summary', 'N/A')), normal))
+        elements.append(Spacer(1, 8))
+
+        # Progress Sections
+        progress_sections = [
+            ("Communication Progress", "communication_progress"),
+            ("Behavioral & Social Progress", "behavioral_social_progress"),
+            ("Academic Progress", "academic_progress"),
+            ("Motor & Sensory Progress", "motor_sensory_progress"),
+            ("Daily Living & Independence", "daily_living_independence"),
+        ]
+        for section_title, section_key in progress_sections:
+            section_data = report.get(section_key, {})
+            if section_data:
+                elements.append(Paragraph(section_title, h2))
+                elements.append(Paragraph(str(section_data.get('summary', 'No data submitted this week.')), normal))
+                highlights = section_data.get('highlights', [])
+                if highlights:
+                    elements.append(Paragraph("<b>Highlights:</b>", h3))
+                    for h in highlights:
+                        elements.append(Paragraph(f"  • {h}", normal))
+                concerns = section_data.get('concerns', [])
+                if concerns:
+                    elements.append(Paragraph("<b>Concerns:</b>", h3))
+                    for c in concerns:
+                        elements.append(Paragraph(f"  • {c}", normal))
+                elements.append(Spacer(1, 6))
+
+        # Goal Achievement Scores
+        gas = report.get('goal_achievement_scores', [])
+        if gas:
+            elements.append(Paragraph("Goal Achievement Scores (GAS)", h2))
+            table_data = [["Goal", "Domain", "Score", "Notes"]]
+            for g in gas:
+                table_data.append([
+                    str(g.get('goal_id', '')),
+                    str(g.get('domain', '')),
+                    str(g.get('score', '')),
+                    str(g.get('note', '')),
+                ])
+            t = Table(table_data, colWidths=[60, 120, 50, 250])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#dbeafe")),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor("#1e40af")),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            elements.append(t)
+            elements.append(Spacer(1, 8))
+
+        # Therapy Session Summary
+        tss = report.get('therapy_session_summary', {})
+        if tss:
+            elements.append(Paragraph("Therapy Session Summary", h2))
+            elements.append(Paragraph(f"<b>Discipline:</b> {tss.get('discipline', 'N/A')}", normal))
+            elements.append(Paragraph(f"<b>Sessions Completed:</b> {tss.get('sessions_completed', 'N/A')}", normal))
+            elements.append(Paragraph(f"<b>Attendance:</b> {tss.get('attendance', 'N/A')}", normal))
+            elements.append(Paragraph(f"<b>Key Progress:</b> {tss.get('key_progress', 'N/A')}", normal))
+            elements.append(Spacer(1, 8))
+
+        # Parent Observations
+        po = report.get('parent_observations', {})
+        if po:
+            elements.append(Paragraph("Parent Observations", h2))
+            elements.append(Paragraph(f"<b>Overall Comparison:</b> {po.get('overall_comparison', 'N/A')}", normal))
+            for concern in po.get('top_concerns', []):
+                elements.append(Paragraph(f"  • Concern: {concern}", normal))
+            for goal in po.get('parent_goals', []):
+                elements.append(Paragraph(f"  • Goal: {goal}", normal))
+            elements.append(Spacer(1, 8))
+
+        # Recommendations
+        recs = report.get('recommendations', {})
+        if recs:
+            elements.append(Paragraph("Recommendations", h2))
+            for rec in recs.get('classroom', []):
+                elements.append(Paragraph(f"  • [Classroom] {rec}", normal))
+            for rec in recs.get('home_program', []):
+                elements.append(Paragraph(f"  • [Home] {rec}", normal))
+            for rec in recs.get('therapy_adjustments', []):
+                elements.append(Paragraph(f"  • [Therapy] {rec}", normal))
+            elements.append(Spacer(1, 8))
+
+        # Next Week Focus Areas
+        focus = report.get('next_week_focus_areas', [])
+        if focus:
+            elements.append(Paragraph("Next Week Focus Areas", h2))
+            for item in focus:
+                elements.append(Paragraph(f"  • {item}", normal))
+
+        pdf.build(elements)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{student.last_name}_{student.first_name}_Weekly_Report.pdf"'
+        return response

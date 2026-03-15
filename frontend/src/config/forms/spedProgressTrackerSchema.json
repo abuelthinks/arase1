@@ -5,6 +5,27 @@
     "role": "teacher",
     "sections": [
         {
+            "id": "section_a",
+            "title": "SECTION A — GENERAL INFORMATION",
+            "fields": [
+                {
+                    "id": "shadow_teacher",
+                    "label": "Shadow Teacher (if any)",
+                    "type": "text"
+                },
+                {
+                    "id": "week_month_of_tracking",
+                    "label": "Week / Month of Tracking",
+                    "type": "text"
+                },
+                {
+                    "id": "class_level",
+                    "label": "Class/Level",
+                    "type": "text"
+                }
+            ]
+        },
+        {
             "id": "section_b",
             "title": "SECTION B — CLASSROOM PARTICIPATION",
             "fields": [
