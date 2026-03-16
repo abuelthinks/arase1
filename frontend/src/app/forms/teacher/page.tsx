@@ -58,10 +58,10 @@ function TextArea({ value, onChange, placeholder, readOnly, rows = 3 }: { value:
     );
 }
 
-function TextInput({ value, onChange, placeholder, readOnly }: { value: string; onChange?: (v: string) => void; placeholder?: string; readOnly?: boolean }) {
+function TextInput({ value, onChange, placeholder, readOnly, type = "text" }: { value: string; onChange?: (v: string) => void; placeholder?: string; readOnly?: boolean; type?: string }) {
     return (
         <input
-            type="text"
+            type={type}
             value={value}
             onChange={onChange ? e => onChange(e.target.value) : undefined}
             readOnly={readOnly}
