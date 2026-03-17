@@ -20,9 +20,24 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 from api.views import CustomTokenObtainPairView
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions
+from api.models import User
+
+class HealthView(APIView):
+    permission_classes = [permissions.AllowAny]
+    def get(self, request):
+        admins = User.objects.filter(is_superuser=True).values('username', 'email', 'role')
+        return Response({
+            "status": "online",
+            "superusers": list(admins),
+            "total_users": User.objects.count()
+        })
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/health-check/', HealthView.as_view(), name='health_check'),
     path('api/', include('api.urls')),
     path('api/auth/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
