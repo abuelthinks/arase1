@@ -17,7 +17,7 @@ def _set_auth_cookies(response, access_token, refresh_token=None):
     """Helper to set HttpOnly auth cookies on a response."""
     cookie_kwargs = {
         'httponly': True,
-        'samesite': 'Lax',
+        'samesite': 'None',
         'secure': not getattr(settings, 'DEBUG', False),
         'path': '/',
     }
@@ -103,7 +103,7 @@ class CookieTokenRefreshView(APIView):
                     settings.JWT_AUTH_REFRESH_COOKIE,
                     str(new_refresh_token),
                     httponly=True,
-                    samesite='Lax',
+                    samesite='None',
                     secure=not getattr(settings, 'DEBUG', False),
                     path='/',
                     max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
