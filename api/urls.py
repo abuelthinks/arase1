@@ -5,11 +5,12 @@ from .views import (
     ParentProgressTrackerViewSet, MultidisciplinaryProgressTrackerViewSet, SpedProgressTrackerViewSet,
     AIGenerateGoalsView, GenerateReportDraftView, GenerateReportFinalView,
     ParentOnboardView, StudentProfileView,
-    RequestAssessmentView, AssignSpecialistView, AssignTeacherView, AIRecommendSpecialtyView, EnrollStudentView,
+    RequestAssessmentView, AssignSpecialistView, AssignTeacherView, AssignParentView,
+    AIRecommendSpecialtyView, EnrollStudentView,
     UserViewSet, CreateInvitationView, AcceptInvitationView, ManageInvitationView,
     StaffListView,
     GenerateIEPView, IEPDetailView, IEPDownloadView,
-    GenerateWeeklyReportView, WeeklyReportDetailView, WeeklyReportDownloadView
+    GenerateWeeklyReportView, WeeklyReportDetailView, WeeklyReportDownloadView,
 )
 
 router = DefaultRouter()
@@ -28,6 +29,7 @@ urlpatterns = [
     path('students/<int:student_id>/request-assessment/', RequestAssessmentView.as_view(), name='request-assessment'),
     path('students/<int:student_id>/assign-specialist/', AssignSpecialistView.as_view(), name='assign-specialist'),
     path('students/<int:student_id>/assign-teacher/', AssignTeacherView.as_view(), name='assign-teacher'),
+    path('students/<int:student_id>/assign-parent/', AssignParentView.as_view(), name='assign-parent'),
     path('students/<int:student_id>/recommend-specialty/', AIRecommendSpecialtyView.as_view(), name='recommend-specialty'),
     path('students/<int:student_id>/enroll/', EnrollStudentView.as_view(), name='enroll-student'),
     path('', include(router.urls)),

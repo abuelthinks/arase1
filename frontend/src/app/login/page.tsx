@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
 
 export default function LoginPage() {
     const [username, setUsername] = useState("");
@@ -20,8 +19,8 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const response = await api.post("/api/auth/token/", { username, password });
-            login(response.data.access, response.data.refresh);
+            // login() calls the API and sets HttpOnly cookies server-side
+            await login(username, password);
             router.push("/dashboard");
         } catch (err: any) {
             setError(err.response?.data?.detail || "Invalid credentials. Please try again.");
