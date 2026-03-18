@@ -15,10 +15,11 @@ from .serializers import CustomTokenObtainPairSerializer
 
 def _set_auth_cookies(response, access_token, refresh_token=None):
     """Helper to set HttpOnly auth cookies on a response."""
+    is_secure = not getattr(settings, 'DEBUG', False)
     cookie_kwargs = {
         'httponly': True,
-        'samesite': 'None',
-        'secure': not getattr(settings, 'DEBUG', False),
+        'samesite': 'None' if is_secure else 'Lax',
+        'secure': is_secure,
         'path': '/',
     }
     response.set_cookie(
@@ -99,12 +100,13 @@ class CookieTokenRefreshView(APIView):
                 new_refresh_token = RT.for_user(
                     self.get_user_from_token(token)
                 ) if hasattr(self, 'get_user_from_token') else token
+                is_secure = not getattr(settings, 'DEBUG', False)
                 response.set_cookie(
                     settings.JWT_AUTH_REFRESH_COOKIE,
                     str(new_refresh_token),
                     httponly=True,
-                    samesite='None',
-                    secure=not getattr(settings, 'DEBUG', False),
+                    samesite='None' if is_secure else 'Lax',
+                    secure=is_secure,
                     path='/',
                     max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
                 )
