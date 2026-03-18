@@ -15,13 +15,20 @@ const api = axios.create({
     withCredentials: true, // Send HttpOnly cookies with every request
 });
 
+// Public paths that should never trigger a redirect to /login
+const PUBLIC_PATHS = ['/api/auth/token/', '/api/auth/token/refresh/', '/api/auth/me/', '/api/invitations/accept/'];
+
 // Response interceptor — handle 401 by attempting a cookie-based token refresh
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Don't retry/redirect for auth endpoints themselves — avoids infinite loops
+        const requestUrl: string = originalRequest?.url || '';
+        const isPublicRequest = PUBLIC_PATHS.some(p => requestUrl.includes(p));
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isPublicRequest) {
             originalRequest._retry = true;
 
             try {
@@ -33,8 +40,8 @@ api.interceptors.response.use(
                 // Retry the original request (new access cookie is now set)
                 return api(originalRequest);
             } catch (refreshError) {
-                // Refresh failed — redirect to login
-                if (typeof window !== 'undefined') {
+                // Refresh failed — redirect to login only if not already there
+                if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
                     window.location.href = '/login';
                 }
             }

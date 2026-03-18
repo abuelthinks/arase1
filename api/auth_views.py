@@ -87,14 +87,21 @@ class CookieTokenRefreshView(APIView):
             response = Response({'message': 'Token refreshed.'}, status=status.HTTP_200_OK)
             _set_auth_cookies(response, access)
 
-            # Rotate refresh token if configured
+            # Rotate refresh token if configured: blacklist old, issue new
             if settings.SIMPLE_JWT.get('ROTATE_REFRESH_TOKENS', False):
-                token.blacklist()
-                new_refresh = RefreshToken.for_user(token.access_token.payload.get('user_id'))
-                # Actually, just use the same token object for rotation
+                if settings.SIMPLE_JWT.get('BLACKLIST_AFTER_ROTATION', False):
+                    try:
+                        token.blacklist()
+                    except Exception:
+                        pass  # blacklist app may not be installed
+                # Issue a fresh refresh token for the same user
+                from rest_framework_simplejwt.tokens import RefreshToken as RT
+                new_refresh_token = RT.for_user(
+                    self.get_user_from_token(token)
+                ) if hasattr(self, 'get_user_from_token') else token
                 response.set_cookie(
                     settings.JWT_AUTH_REFRESH_COOKIE,
-                    str(token),
+                    str(new_refresh_token),
                     httponly=True,
                     samesite='Lax',
                     secure=not getattr(settings, 'DEBUG', False),

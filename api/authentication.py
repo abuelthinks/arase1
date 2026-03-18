@@ -20,8 +20,12 @@ class CookieJWTAuthentication(JWTAuthentication):
             getattr(settings, 'JWT_AUTH_COOKIE', 'access_token')
         )
         if raw_token is not None:
-            validated_token = self.get_validated_token(raw_token)
-            return self.get_user(validated_token), validated_token
+            try:
+                validated_token = self.get_validated_token(raw_token)
+                return self.get_user(validated_token), validated_token
+            except Exception:
+                # Invalid/expired cookie — fall through to header auth
+                pass
 
         # 2. Fall back to standard Authorization header
         return super().authenticate(request)

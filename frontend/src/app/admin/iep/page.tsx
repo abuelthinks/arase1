@@ -3,8 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import api from "@/lib/api";
-import Cookies from "js-cookie";
+import api, { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 /* ─── Shared UI helpers ───────────────────────────────────────────────────── */
@@ -117,9 +116,23 @@ function IEPViewerContent() {
         finally { setSaving(false); }
     };
 
-    const handleDownload = () => {
-        const token = Cookies.get("access_token") || "";
-        window.open(`${api.defaults.baseURL || ""}/api/iep/${iepId}/download/?token=${token}`, "_blank");
+    const handleDownload = async () => {
+        try {
+            // Use fetch with credentials so HttpOnly cookies are sent automatically
+            const res = await fetch(`${API_BASE_URL}/api/iep/${iepId}/download/`, {
+                credentials: 'include',
+            });
+            if (!res.ok) throw new Error('Download failed');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `IEP_${meta?.student_name?.replace(/\s+/g, '_') || iepId}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            setErrorMsg('Failed to download PDF. Please try again.');
+        }
     };
 
     const handleCopyLink = () => {
