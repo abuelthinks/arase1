@@ -108,6 +108,11 @@ export default function StudentProfilePage() {
     const [staffList, setStaffList] = useState<StaffMember[]>([]);
     const [assigning, setAssigning] = useState<number | null>(null); // tracks which staff id is being assigned
 
+    // Delete modal state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+    const [deleteError, setDeleteError] = useState("");
+
     const fetchProfile = async () => {
         try {
             const res = await api.get(`/api/students/${id}/profile/`);
@@ -149,6 +154,22 @@ export default function StudentProfilePage() {
             fetchProfile();
         } catch (err: any) {
             alert(err.response?.data?.error || "Action failed.");
+        }
+    };
+
+    const handleDeleteStudent = async () => {
+        if (!data) return;
+        const expectedName = `${data.student.first_name} ${data.student.last_name}`;
+        if (deleteConfirmText !== expectedName) {
+            setDeleteError("Name does not match.");
+            return;
+        }
+        try {
+            setDeleteError("");
+            await api.delete(`/api/students/${id}/`);
+            router.push("/dashboard");
+        } catch (err: any) {
+            setDeleteError(err.response?.data?.error || err.response?.data?.detail || "Failed to delete student.");
         }
     };
 
@@ -219,6 +240,7 @@ export default function StudentProfilePage() {
     };
 
     return (
+        <>
         <ProtectedRoute>
             <div style={{ maxWidth: "960px", margin: "0 auto" }}>
             {/* Breadcrumb Nav */}
@@ -296,6 +318,31 @@ export default function StudentProfilePage() {
                                     Next Action
                                 </p>
                                 {renderLifecycleAction()}
+                            </div>
+                        )}
+
+                        {/* Admin: Danger Zone */}
+                        {user?.role === "ADMIN" && (
+                            <div style={{ borderRadius: "14px", padding: "1.25rem 1.75rem", border: "1px solid #fca5a5", background: "#fff5f5" }}>
+                                <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "#b91c1c", letterSpacing: "0.5px", marginBottom: "8px" }}>
+                                    Danger Zone
+                                </p>
+                                <p style={{ fontSize: "0.8rem", color: "#7f1d1d", marginBottom: "12px" }}>
+                                    Deleting this student will permanently remove all associated assessments, documents, and records.
+                                </p>
+                                <button
+                                    onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }}
+                                    style={{
+                                        width: "100%", padding: "9px", borderRadius: "8px",
+                                        background: "white", border: "1px solid #f87171",
+                                        color: "#dc2626", fontWeight: 700, fontSize: "0.85rem",
+                                        cursor: "pointer",
+                                    }}
+                                    onMouseOver={e => { e.currentTarget.style.background = "#fef2f2"; }}
+                                    onMouseOut={e => { e.currentTarget.style.background = "white"; }}
+                                >
+                                    🗑 Delete Student
+                                </button>
                             </div>
                         )}
                     </div>
@@ -541,5 +588,57 @@ export default function StudentProfilePage() {
                 </div>
             </div>
         </ProtectedRoute>
+
+        {/* Delete Student Confirmation Modal */}
+        {showDeleteModal && data && (
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
+                    <h2 style={{ marginTop: 0, color: "#d32f2f" }}>Delete Student</h2>
+                    <p style={{ color: "#4b5563", marginBottom: "1rem", fontSize: "0.95rem" }}>
+                        You are about to permanently delete <strong>{data.student.first_name} {data.student.last_name}</strong> and all associated records.
+                    </p>
+                    <p style={{ color: "#111827", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: "bold" }}>
+                        To confirm, type the student's full name:<br />
+                        <span style={{ color: "#6b7280", fontStyle: "italic", userSelect: "none" }}>
+                            {data.student.first_name} {data.student.last_name}
+                        </span>
+                    </p>
+                    {deleteError && (
+                        <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "10px", borderRadius: "6px", marginBottom: "1rem", fontSize: "0.85rem", fontWeight: "bold" }}>
+                            {deleteError}
+                        </div>
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <input
+                            type="text"
+                            placeholder="Type full name to confirm"
+                            value={deleteConfirmText}
+                            onChange={e => setDeleteConfirmText(e.target.value)}
+                            style={{ padding: "10px", borderRadius: "4px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box" }}
+                        />
+                        <div style={{ display: "flex", gap: "1rem" }}>
+                            <button
+                                onClick={handleDeleteStudent}
+                                disabled={deleteConfirmText !== `${data.student.first_name} ${data.student.last_name}`}
+                                style={{
+                                    flex: 1, padding: "10px", fontWeight: "bold", border: "none", borderRadius: "8px", color: "white",
+                                    background: deleteConfirmText === `${data.student.first_name} ${data.student.last_name}` ? "#d32f2f" : "#fca5a5",
+                                    cursor: deleteConfirmText === `${data.student.first_name} ${data.student.last_name}` ? "pointer" : "not-allowed",
+                                }}
+                            >
+                                Permanently Delete
+                            </button>
+                            <button
+                                onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); setDeleteError(""); }}
+                                style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }

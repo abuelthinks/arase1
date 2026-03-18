@@ -106,10 +106,6 @@ export default function AdminDashboard() {
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
     const [deleteError, setDeleteError] = useState("");
 
-    // Modal state for Delete Student Confirmation
-    const [studentToDelete, setStudentToDelete] = useState<StudentData | null>(null);
-    const [deleteStudentConfirmText, setDeleteStudentConfirmText] = useState("");
-    const [deleteStudentError, setDeleteStudentError] = useState("");
 
     const fetchData = async () => {
         setLoading(true);
@@ -244,25 +240,6 @@ export default function AdminDashboard() {
             fetchData();
         } catch (err: any) {
             setDeleteError(err.response?.data?.error || err.response?.data?.detail || err.message || "Failed to delete user.");
-        }
-    };
-
-    const handleConfirmDeleteStudent = async () => {
-        if (!studentToDelete) return;
-        const expectedText = `${studentToDelete.first_name} ${studentToDelete.last_name}`;
-        if (deleteStudentConfirmText !== expectedText) {
-            setDeleteStudentError("Name does not match.");
-            return;
-        }
-
-        try {
-            setDeleteStudentError("");
-            await api.delete(`/api/students/${studentToDelete.id}/`);
-            setStudentToDelete(null);
-            setDeleteStudentConfirmText("");
-            fetchData();
-        } catch (err: any) {
-            setDeleteStudentError(err.response?.data?.error || err.response?.data?.detail || err.message || "Failed to delete student.");
         }
     };
 
@@ -405,26 +382,12 @@ export default function AdminDashboard() {
                                                             }}>{s.status}</span>
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
-                                                            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                                                                <Link href={`/students/${s.id}`} style={{ fontSize: "0.85rem", color: "var(--accent-primary)", textDecoration: "none", fontWeight: 600 }}
-                                                                    onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
-                                                                    onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
-                                                                >
-                                                                    Manage
-                                                                </Link>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setStudentToDelete(s);
-                                                                        setDeleteStudentConfirmText("");
-                                                                        setDeleteStudentError("");
-                                                                    }}
-                                                                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.85rem", color: "#d32f2f", padding: 0, fontWeight: 600 }}
-                                                                    onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
-                                                                    onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            </div>
+                                                            <Link href={`/students/${s.id}`} style={{ fontSize: "0.85rem", color: "var(--accent-primary)", textDecoration: "none", fontWeight: 600 }}
+                                                                onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
+                                                                onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
+                                                            >
+                                                                Manage
+                                                            </Link>
                                                         </td>
                                                     </tr>
                                                 );
@@ -695,57 +658,6 @@ export default function AdminDashboard() {
                                     Permanently Delete
                                 </button>
                                 <button type="button" onClick={() => { setUserToDelete(null); setDeleteConfirmText(""); setDeleteError(""); }} style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Delete Student Confirmation Modal ──────────────────────── */}
-            {studentToDelete && (
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                    <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
-                        <h2 style={{ marginTop: 0, color: "#d32f2f" }}>Delete Student</h2>
-                        <p style={{ color: "var(--text-secondary)", marginBottom: "1rem", fontSize: "0.95rem" }}>
-                            You are about to permanently delete <strong>{studentToDelete.first_name} {studentToDelete.last_name}</strong> and all associated records (assessments, documents, etc.).
-                        </p>
-                        <p style={{ color: "var(--text-primary)", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: "bold" }}>
-                            To confirm, type the student's full name:<br/>
-                            <span style={{ color: "var(--text-muted)", fontStyle: "italic", userSelect: "none" }}>{studentToDelete.first_name} {studentToDelete.last_name}</span>
-                        </p>
-
-                        {deleteStudentError && (
-                            <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "10px", borderRadius: "6px", marginBottom: "1rem", fontSize: "0.85rem", fontWeight: "bold" }}>
-                                {deleteStudentError}
-                            </div>
-                        )}
-
-                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            <input
-                                required
-                                type="text"
-                                placeholder="Type full name to confirm"
-                                value={deleteStudentConfirmText}
-                                onChange={e => setDeleteStudentConfirmText(e.target.value)}
-                                className="form-input"
-                                style={{ padding: "10px", borderRadius: "4px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box" }}
-                            />
-
-                            <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}>
-                                <button
-                                    onClick={handleConfirmDeleteStudent}
-                                    disabled={deleteStudentConfirmText !== `${studentToDelete.first_name} ${studentToDelete.last_name}`}
-                                    style={{
-                                        flex: 1, padding: "10px",
-                                        background: deleteStudentConfirmText === `${studentToDelete.first_name} ${studentToDelete.last_name}` ? "#d32f2f" : "#fca5a5",
-                                        color: "white", border: "none", borderRadius: "8px",
-                                        cursor: deleteStudentConfirmText === `${studentToDelete.first_name} ${studentToDelete.last_name}` ? "pointer" : "not-allowed",
-                                        fontWeight: "bold"
-                                    }}
-                                >
-                                    Permanently Delete
-                                </button>
-                                <button type="button" onClick={() => { setStudentToDelete(null); setDeleteStudentConfirmText(""); setDeleteStudentError(""); }} style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
                             </div>
                         </div>
                     </div>
