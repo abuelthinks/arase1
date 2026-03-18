@@ -14,8 +14,8 @@ def create_invited_user(invitation, password, first_name, last_name):
         username=invitation.email,
         email=invitation.email,
         password=password,
-        first_name=first_name,
-        last_name=last_name,
+        first_name=first_name.strip().title(),
+        last_name=last_name.strip().title(),
         role=invitation.role,
     )
 

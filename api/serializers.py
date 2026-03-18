@@ -43,6 +43,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        # Title-case names
+        if 'first_name' in validated_data:
+            validated_data['first_name'] = validated_data['first_name'].strip().title()
+        if 'last_name' in validated_data:
+            validated_data['last_name'] = validated_data['last_name'].strip().title()
         user = super().create(validated_data)
         if password:
             user.set_password(password)

@@ -48,6 +48,12 @@ class StudentViewSet(viewsets.ModelViewSet):
         from .services.student_service import create_student_with_invitation
 
         student_data = {k: v for k, v in request.data.items() if k != 'parent_email'}
+        # Title-case names
+        if 'first_name' in student_data:
+            student_data['first_name'] = student_data['first_name'].strip().title()
+        if 'last_name' in student_data:
+            student_data['last_name'] = student_data['last_name'].strip().title()
+
         serializer = self.get_serializer(data=student_data)
         serializer.is_valid(raise_exception=True)
 
@@ -60,6 +66,13 @@ class StudentViewSet(viewsets.ModelViewSet):
         response_data['invitation_token'] = str(invitation.token)
         headers = self.get_success_headers(response_data)
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can delete students."}, status=status.HTTP_403_FORBIDDEN)
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ─── Users ───────────────────────────────────────────────────────────────────
 

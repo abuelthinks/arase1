@@ -42,10 +42,10 @@ def onboard_parent_student(user, student_data, form_data, student_id=None):
 
     Returns: (student, is_new)
     """
-    first_name = student_data.get('first_name')
-    last_name = student_data.get('last_name')
+    first_name = student_data.get('first_name', '').strip().title()
+    last_name = student_data.get('last_name', '').strip().title()
     dob = student_data.get('date_of_birth')
-    grade = student_data.get('grade')
+    grade = student_data.get('grade', '')
 
     if student_id:
         # Update existing student
