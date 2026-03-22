@@ -526,8 +526,8 @@ class GenerateIEPView(APIView):
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
             import traceback
-            traceback.print_exc()
-            return Response({"error": f"Failed to generate IEP: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            tb = traceback.format_exc()
+            return Response({"error": f"Failed to generate IEP: {str(e)}", "debug_traceback": tb}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class IEPDetailView(APIView):
