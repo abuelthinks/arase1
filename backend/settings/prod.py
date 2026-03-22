@@ -24,10 +24,21 @@ DATABASES = {
 }
 
 # ─── CORS — strict production origins ───────────────────────────────────────
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+_raw_cors = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _raw_cors.split(',') if o.strip()]
+
+# Allow all origins if explicitly set (useful while Vercel URL is unknown)
+if os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True':
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOW_CREDENTIALS = True
 
 # ─── CSRF trusted origins ───────────────────────────────────────────────────
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+_raw_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
+
 
 # ─── Security hardening ─────────────────────────────────────────────────────
 SECURE_BROWSER_XSS_FILTER = True
