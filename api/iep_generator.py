@@ -28,17 +28,37 @@ def _list_join(lst):
         return ", ".join(str(x) for x in lst if x)
     return str(lst) if lst else ""
 
+def _flatten_form_data(fd):
+    """
+    Flatten section-keyed form data into a single dict.
+    Handles three formats:
+      1. { 'v2': { section_a: {...}, section_b: {...} } }  ← old v2 wrapper
+      2. { section_a: {...}, section_b: {...} }             ← current frontend format
+      3. { field_name: value, ... }                         ← legacy flat format
+    """
+    if not fd or not isinstance(fd, dict):
+        return {}
+    if 'v2' in fd and isinstance(fd['v2'], dict):
+        fd = fd['v2']
+    if any(k.startswith('section_') for k in fd.keys()):
+        flat = {}
+        for sec_val in fd.values():
+            if isinstance(sec_val, dict):
+                flat.update(sec_val)
+        return flat
+    return fd
+
 
 def _collect_form_data(inputs):
-    """Pull v2 form data from each input submission."""
+    """Pull and flatten form data from each input submission."""
     result = {}
     for key, obj in inputs.items():
         if obj and hasattr(obj, 'form_data') and obj.form_data:
-            fd = obj.form_data
-            result[key] = fd.get('v2', fd)
+            result[key] = _flatten_form_data(obj.form_data)
         else:
             result[key] = {}
     return result
+
 
 
 # ---------------------------------------------------------------------------

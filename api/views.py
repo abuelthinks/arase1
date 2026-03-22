@@ -151,6 +151,18 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
     queryset = MultidisciplinaryProgressTracker.objects.all()
     serializer_class = MultidisciplinaryProgressTrackerSerializer
 
+    def create(self, request, *args, **kwargs):
+        # Double check student status for progress tracking
+        student_id = request.data.get('student')
+        try:
+            student = Student.objects.get(id=student_id)
+            if student.status != 'ENROLLED' and request.user.role != 'ADMIN':
+                 return Response({"error": "Progress tracking is only available for enrolled students."}, status=status.HTTP_400_BAD_REQUEST)
+        except Student.DoesNotExist:
+            pass
+        return super().create(request, *args, **kwargs)
+
+
 
 class SpedProgressTrackerViewSet(BaseInputViewSet):
     queryset = SpedProgressTracker.objects.all()
@@ -857,19 +869,42 @@ class WeeklyReportDownloadView(APIView):
         gas = report.get('goal_achievement_scores', [])
         if gas:
             elements.append(Paragraph("Goal Achievement Scores (GAS)", h2))
-            table_data = [["Goal", "Domain", "Score", "Notes"]]
-            for g in gas:
-                table_data.append([str(g.get('goal_id', '')), str(g.get('domain', '')), str(g.get('score', '')), str(g.get('note', ''))])
-            t = Table(table_data, colWidths=[60, 120, 50, 250])
+            table_data = [["Goal", "Domain", "Score (1–5)", "Notes"]]
+            score_row_styles = []
+            for row_idx, g in enumerate(gas, start=1):
+                score = g.get('score', 0)
+                try:
+                    score_int = int(score)
+                except (ValueError, TypeError):
+                    score_int = 0
+                score_label = {
+                    5: "5 — Achieved", 4: "4 — Exceeds",
+                    3: "3 — Expected", 2: "2 — Minimal", 1: "1 — No progress"
+                }.get(score_int, str(score))
+                table_data.append([
+                    str(g.get('goal_id', '')),
+                    str(g.get('domain', '')),
+                    score_label,
+                    str(g.get('note', '')),
+                ])
+                bg = (colors.HexColor("#dcfce7") if score_int >= 4
+                      else colors.HexColor("#dbeafe") if score_int == 3
+                      else colors.HexColor("#fef3c7") if score_int == 2
+                      else colors.HexColor("#fee2e2") if score_int == 1
+                      else colors.white)
+                score_row_styles.append(('BACKGROUND', (2, row_idx), (2, row_idx), bg))
+
+            t = Table(table_data, colWidths=[52, 130, 90, 208])
             t.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#dbeafe")),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor("#1e40af")),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1e40af")),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                *score_row_styles,
             ]))
             elements.append(t)
             elements.append(Spacer(1, 8))
@@ -880,7 +915,8 @@ class WeeklyReportDownloadView(APIView):
             elements.append(Paragraph(f"<b>Discipline:</b> {tss.get('discipline', 'N/A')}", normal))
             elements.append(Paragraph(f"<b>Sessions Completed:</b> {tss.get('sessions_completed', 'N/A')}", normal))
             elements.append(Paragraph(f"<b>Attendance:</b> {tss.get('attendance', 'N/A')}", normal))
-            elements.append(Paragraph(f"<b>Key Progress:</b> {tss.get('key_progress', 'N/A')}", normal))
+            if tss.get('key_progress'):
+                elements.append(Paragraph(f"<b>Key Progress:</b> {tss.get('key_progress')}", normal))
             elements.append(Spacer(1, 8))
 
         po = report.get('parent_observations', {})

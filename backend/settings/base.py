@@ -8,10 +8,12 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Load environment variables from project root and backend folder
+load_dotenv(os.path.join(BASE_DIR, '.env'), override=True)
+load_dotenv(os.path.join(BASE_DIR, 'backend', '.env'), override=True)
 
 # ─── API Keys ────────────────────────────────────────────────────────────────
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')

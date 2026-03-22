@@ -9,6 +9,16 @@
             "title": "SECTION A — GENERAL INFORMATION",
             "fields": [
                 {
+                    "id": "child_name",
+                    "label": "Child Name",
+                    "type": "text"
+                },
+                {
+                    "id": "date",
+                    "label": "Date",
+                    "type": "text"
+                },
+                {
                     "id": "person_filling_form",
                     "label": "Person filling the form",
                     "type": "radio",

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 /* ─── Shared UI Components ─────────────────────────────────────────────────── */
 
@@ -101,6 +102,7 @@ function SpecialistBFormContent() {
     const [reportCycleId, setReportCycleId] = useState("1");
     const [studentName, setStudentName] = useState("");
 
+    const { user } = useAuth();
     const [formData, setFormData] = useState({
         section_a: { date: new Date().toISOString().split('T')[0], therapist_name: "", discipline: "", session_type: "", sessions_completed: "0" },
         section_b: { attendance: "", participation_level: "", notes: "" },
@@ -109,6 +111,30 @@ function SpecialistBFormContent() {
         section_e: { goal_1: "", goal_2: "", goal_3: "", goal_4: "", comments: "" },
         section_f: { therapy_recommendations: [] as string[], home_strategies: [] as string[], therapist_suggested_activities: "" }
     });
+
+    const getDraftKey = () => `draft_specialist-b_${studentId}`;
+
+    // Load Draft from LocalStorage
+    useEffect(() => {
+        if (!isViewMode && studentId) {
+            try {
+                const saved = localStorage.getItem(getDraftKey());
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    setFormData(prev => ({
+                         section_a: { ...prev.section_a, ...(parsed.section_a || {}) },
+                         section_b: { ...prev.section_b, ...(parsed.section_b || {}) },
+                         section_c: { ...prev.section_c, ...(parsed.section_c || {}) },
+                         section_d: { ...prev.section_d, ...(parsed.section_d || {}) },
+                         section_e: { ...prev.section_e, ...(parsed.section_e || {}) },
+                         section_f: { ...prev.section_f, ...(parsed.section_f || {}) }
+                    }));
+                }
+            } catch (err) {
+                console.error("Failed to load draft:", err);
+            }
+        }
+    }, [isViewMode, studentId]);
 
     const OPTIONS = {
         discipline: ["Speech-Language Pathology", "Occupational Therapy", "Physical Therapy", "Psychology / Behavioral", "SPED / Educational", "Shadow Teacher"],
@@ -146,6 +172,20 @@ function SpecialistBFormContent() {
         });
     };
 
+    // Auto-save effect
+    useEffect(() => {
+        if (isViewMode || !studentId) return;
+        
+        const timeoutId = setTimeout(() => {
+            try {
+                localStorage.setItem(getDraftKey(), JSON.stringify(formData));
+            } catch (err) {
+                console.error("Failed to save draft:", err);
+            }
+        }, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [formData, studentId, isViewMode]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -153,11 +193,15 @@ function SpecialistBFormContent() {
         setErrorMsg("");
 
         try {
-            await api.post("/api/inputs/specialist-b/", {
+            await api.post("/api/inputs/multidisciplinary-tracker/", {
                 student: parseInt(studentId || "0"),
                 report_cycle: parseInt(reportCycleId),
                 form_data: formData
             });
+            
+            // Clear draft upon successful submission
+            try { localStorage.removeItem(getDraftKey()); } catch(e) {}
+
             setSuccessMsg("Weekly Progress Report submitted successfully!");
             setTimeout(() => router.push(`/students/${studentId}`), 1500);
         } catch (err: any) {
@@ -179,15 +223,20 @@ function SpecialistBFormContent() {
 
                     if (res.data.student) setStudentName(`${res.data.student.first_name} ${res.data.student.last_name}`.trim());
                     if (!isViewMode && res.data.active_cycle) setReportCycleId(res.data.active_cycle.id.toString());
+                    
+                    // Auto-fill therapist name from logged in user
+                    if (!isViewMode && user && !formData.section_a.therapist_name) {
+                        const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
+                        handleNestedChange('section_a', 'therapist_name', name || user.username || "");
+                    }
                 })
                 .catch(err => console.error(err));
         }
 
         if (isViewMode && submissionId) {
-            api.get(`/api/inputs/specialist-b/${submissionId}/`)
+            api.get(`/api/inputs/multidisciplinary-tracker/${submissionId}/`)
                 .then(res => {
                     if (res.data.form_data) {
-                        // Migrate old data gracefully if possible, or just overwrite 
                         setFormData(prev => ({ ...prev, ...res.data.form_data }));
                     }
                 })

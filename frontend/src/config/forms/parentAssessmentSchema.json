@@ -71,13 +71,18 @@
                     ]
                 },
                 {
-                    "id": "iep_before",
-                    "label": "IEP before",
+                    "id": "had_iep_before",
+                    "label": "Has your child had an Individualized Education Program (IEP) before?",
                     "type": "radio",
                     "options": [
                         "Yes",
                         "No"
                     ]
+                },
+                {
+                    "id": "iep_details",
+                    "label": "IEP Details (if yes)",
+                    "type": "text"
                 },
                 {
                     "id": "developmental_concerns",

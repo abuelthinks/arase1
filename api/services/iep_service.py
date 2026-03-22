@@ -1,11 +1,14 @@
 """
 IEP generation business logic extracted from views.py.
 """
+import logging
 
 from api.models import (
     Student, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def collect_iep_inputs(student, cycle):
@@ -45,9 +48,58 @@ def run_iep_generation(student_id, cycle_id):
     return doc, iep_data
 
 
+def _extract_regression_flags(report_data):
+    """Pull regression/alert language from concerns across all domains."""
+    flags = []
+    domains = [
+        'communication_progress', 'behavioral_social_progress',
+        'academic_progress', 'motor_sensory_progress', 'daily_living_independence',
+    ]
+    for domain in domains:
+        concerns = report_data.get(domain, {}).get('concerns', [])
+        for concern in concerns:
+            if any(word in concern.lower() for word in ['regress', 'decline', 'worse', 'alert', 'self-harm', 'aggress']):
+                flags.append(f"[{domain.replace('_', ' ').title()}] {concern}")
+    return "; ".join(flags) if flags else "No regression indicators reported."
+
+
+def _extract_attendance(report_data):
+    """Pull attendance info from therapy session summary."""
+    tss = report_data.get('therapy_session_summary', {})
+    sessions = tss.get('sessions_completed', 'N/A')
+    attendance = tss.get('attendance', 'N/A')
+    discipline = tss.get('discipline', '')
+    return f"{discipline}: {sessions} session(s) — {attendance}".strip(': ')
+
+
+def _update_iep_section10(student, cycle, report_data):
+    """Find the student's latest IEP and update Section 10 with progress data."""
+    latest_iep = GeneratedDocument.objects.filter(
+        student=student, document_type='IEP'
+    ).order_by('-created_at').first()
+
+    if not latest_iep or not latest_iep.iep_data:
+        logger.info("No IEP found for student=%s — skipping Section 10 update.", student.id)
+        return
+
+    iep_data = latest_iep.iep_data
+    iep_data['section10_progress'] = {
+        'gas_scores': report_data.get('goal_achievement_scores', []),
+        'narrative_summary': report_data.get('executive_summary', ''),
+        'regression_indicators': _extract_regression_flags(report_data),
+        'attendance_summary': _extract_attendance(report_data),
+        'last_updated': str(cycle.end_date),
+        'report_period': report_data.get('report_period', ''),
+    }
+    latest_iep.iep_data = iep_data
+    latest_iep.save()
+    logger.info("IEP Section 10 updated for student=%s (iep_id=%s)", student.id, latest_iep.id)
+
+
 def run_weekly_report_generation(student_id, cycle_id):
     """
     Runs the full weekly report generation and persists the result.
+    Also auto-updates IEP Section 10 (Progress Monitoring) with fresh GAS data.
     Can be called synchronously or from a Celery task.
 
     Returns: (doc, report_data)
@@ -72,5 +124,11 @@ def run_weekly_report_generation(student_id, cycle_id):
         document_type='WEEKLY',
         iep_data=report_data,  # reusing iep_data JSONField
     )
+
+    # Auto-update IEP Section 10 with the fresh progress data
+    try:
+        _update_iep_section10(student, cycle, report_data)
+    except Exception as e:
+        logger.warning("Could not update IEP Section 10: %s", e)
 
     return doc, report_data

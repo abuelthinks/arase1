@@ -5,6 +5,42 @@
     "role": "teacher",
     "sections": [
         {
+            "id": "section_a",
+            "title": "SECTION A — STUDENT INFORMATION",
+            "fields": [
+                {
+                    "id": "student_name",
+                    "label": "Student Name",
+                    "type": "text"
+                },
+                {
+                    "id": "date_of_birth",
+                    "label": "Date of Birth",
+                    "type": "text"
+                },
+                {
+                    "id": "grade_level",
+                    "label": "Grade/Level",
+                    "type": "text"
+                },
+                {
+                    "id": "sped_teacher",
+                    "label": "Teacher / SPED Teacher",
+                    "type": "text"
+                },
+                {
+                    "id": "date_of_assessment",
+                    "label": "Date of Assessment",
+                    "type": "text"
+                },
+                {
+                    "id": "primary_language",
+                    "label": "Primary Language",
+                    "type": "text"
+                }
+            ]
+        },
+        {
             "id": "section_b",
             "title": "SECTION B — CLASSROOM OBSERVATION SUMMARY",
             "fields": [

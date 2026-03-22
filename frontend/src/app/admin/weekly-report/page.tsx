@@ -93,23 +93,9 @@ function WeeklyReportContent() {
     if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
     if (!report || !meta) return null;
 
-    const handleDownload = async () => {
-        try {
-            // Use fetch with credentials so HttpOnly cookies are sent automatically
-            const res = await fetch(`${API_BASE_URL}/api/weekly-report/${reportId}/download/`, {
-                credentials: 'include',
-            });
-            if (!res.ok) throw new Error('Download failed');
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Weekly_Report_${meta?.student_name?.replace(/\s+/g, '_') || reportId}.pdf`;
-            a.click();
-            URL.revokeObjectURL(url);
-        } catch {
-            setErrorMsg('Failed to download PDF. Please try again.');
-        }
+    const handleDownload = () => {
+        // Redirect to download endpoint
+        window.location.href = `${API_BASE_URL}/api/weekly-report/${reportId}/download/`;
     };
 
     const handleCopyLink = () => {

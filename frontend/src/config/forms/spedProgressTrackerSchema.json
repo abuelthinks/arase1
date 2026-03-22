@@ -9,6 +9,21 @@
             "title": "SECTION A — GENERAL INFORMATION",
             "fields": [
                 {
+                    "id": "student_name",
+                    "label": "Student Name",
+                    "type": "text"
+                },
+                {
+                    "id": "date",
+                    "label": "Date",
+                    "type": "text"
+                },
+                {
+                    "id": "sped_teacher",
+                    "label": "SPED Teacher / Inclusion Teacher",
+                    "type": "text"
+                },
+                {
                     "id": "shadow_teacher",
                     "label": "Shadow Teacher (if any)",
                     "type": "text"
@@ -30,20 +45,27 @@
             "title": "SECTION B — CLASSROOM PARTICIPATION",
             "fields": [
                 {
-                    "id": "attendance_participation",
-                    "label": "B1. Attendance & Participation",
+                    "id": "attendance",
+                    "label": "B1. Attendance",
                     "type": "radio",
                     "options": [
                         "Attended all sessions",
                         "Partial attendance",
-                        "Absent",
+                        "Absent"
+                    ]
+                },
+                {
+                    "id": "participation",
+                    "label": "B2. Participation",
+                    "type": "radio",
+                    "options": [
                         "Required shadow teacher support",
                         "Independent participation"
                     ]
                 },
                 {
                     "id": "engagement_during_lessons",
-                    "label": "B2. Engagement During Lessons",
+                    "label": "B3. Engagement During Lessons",
                     "type": "radio",
                     "options": [
                         "Fully engaged",

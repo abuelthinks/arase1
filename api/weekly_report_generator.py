@@ -28,15 +28,68 @@ def _list_join(lst):
     return str(lst) if lst else ""
 
 
+def _extract_gas_scores(fd):
+    """
+    Collect all GAS scores from a flattened form dict.
+    Handles both:
+      - dynamic_goal_N  (IEP-linked, set by frontend)
+      - gas_goal_N      (legacy static keys)
+    Returns a list of "Goal N: <score>" strings.
+    """
+    scores = []
+    i = 1
+    while True:
+        val = fd.get(f'dynamic_goal_{i}') or fd.get(f'gas_goal_{i}')
+        if val:
+            scores.append(f"Goal {i}: {val}")
+            i += 1
+        else:
+            break
+    # Also pick up goal_comments / gas_comments
+    comments = fd.get('gas_comments') or fd.get('goal_comments', '')
+    if comments:
+        scores.append(f"Comments: {comments}")
+    return scores
+
+
+def _flatten_form_data(fd):
+    """
+    Flatten section-keyed form data into a single dict.
+    Handles three formats:
+      1. { 'v2': { section_a: {...}, section_b: {...} } }  ← old v2 wrapper
+      2. { section_a: {...}, section_b: {...} }             ← current frontend format
+      3. { communication_notes: ..., ... }                  ← legacy flat format
+    """
+    if not fd or not isinstance(fd, dict):
+        return {}
+
+    # Unwrap v2 wrapper if present
+    if 'v2' in fd and isinstance(fd['v2'], dict):
+        fd = fd['v2']
+
+    # Check if this is section-keyed (keys like 'section_a', 'section_b', ...)
+    is_section_keyed = any(k.startswith('section_') for k in fd.keys())
+
+    if is_section_keyed:
+        flat = {}
+        for sec_key, sec_val in fd.items():
+            if isinstance(sec_val, dict):
+                flat.update(sec_val)
+        return flat
+
+    # Already flat
+    return fd
+
+
 def _collect_form_data(inputs):
     result = {}
     for key, obj in inputs.items():
         if obj and hasattr(obj, 'form_data') and obj.form_data:
-            fd = obj.form_data
-            result[key] = fd.get('v2', fd)
+            result[key] = _flatten_form_data(obj.form_data)
         else:
             result[key] = {}
     return result
+
 
 
 # ---------------------------------------------------------------------------
@@ -117,11 +170,11 @@ def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
         lines.append(f"Sensory/Motor Regulation: {_safe(mt, 'sensory_motor_regulation')}")
         lines.append(f"Communication With Adults: {_safe(mt, 'communication_with_adults')}")
         lines.append(f"Functional Notes: {_safe(mt, 'functional_notes')}")
-        lines.append(f"GAS Goal 1: {_safe(mt, 'gas_goal_1')}")
-        lines.append(f"GAS Goal 2: {_safe(mt, 'gas_goal_2')}")
-        lines.append(f"GAS Goal 3: {_safe(mt, 'gas_goal_3')}")
-        lines.append(f"GAS Goal 4: {_safe(mt, 'gas_goal_4')}")
-        lines.append(f"GAS Comments: {_safe(mt, 'gas_comments')}")
+        lines.append(f"GAS Goal 1: {_safe(mt, 'gas_goal_1') or _safe(mt, 'dynamic_goal_1')}")
+        lines.append(f"GAS Goal 2: {_safe(mt, 'gas_goal_2') or _safe(mt, 'dynamic_goal_2')}")
+        lines.append(f"GAS Goal 3: {_safe(mt, 'gas_goal_3') or _safe(mt, 'dynamic_goal_3')}")
+        lines.append(f"GAS Goal 4: {_safe(mt, 'gas_goal_4') or _safe(mt, 'dynamic_goal_4')}")
+        lines.append(f"GAS Comments: {_safe(mt, 'gas_comments') or _safe(mt, 'goal_comments')}")
         lines.append(f"Therapy Recommendations: {_list_join(_safe(mt, 'therapy_recommendations', default=[]))}")
         lines.append(f"Home Strategies: {_list_join(_safe(mt, 'home_strategies', default=[]))}")
         lines.append(f"Suggested Activities: {_safe(mt, 'suggested_activities')}")
@@ -154,11 +207,11 @@ def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
         lines.append(f"Independence Routines: {_list_join(_safe(st, 'independence_routines', default=[]))}")
         lines.append(f"Life Skills: {_list_join(_safe(st, 'life_skills', default=[]))}")
         lines.append(f"Adaptive Skills Notes: {_safe(st, 'adaptive_skills_notes')}")
-        lines.append(f"GAS Goal 1: {_safe(st, 'gas_goal_1')}")
-        lines.append(f"GAS Goal 2: {_safe(st, 'gas_goal_2')}")
-        lines.append(f"GAS Goal 3: {_safe(st, 'gas_goal_3')}")
-        lines.append(f"GAS Goal 4: {_safe(st, 'gas_goal_4')}")
-        lines.append(f"GAS Comments: {_safe(st, 'gas_comments')}")
+        lines.append(f"GAS Goal 1: {_safe(st, 'gas_goal_1') or _safe(st, 'dynamic_goal_1')}")
+        lines.append(f"GAS Goal 2: {_safe(st, 'gas_goal_2') or _safe(st, 'dynamic_goal_2')}")
+        lines.append(f"GAS Goal 3: {_safe(st, 'gas_goal_3') or _safe(st, 'dynamic_goal_3')}")
+        lines.append(f"GAS Goal 4: {_safe(st, 'gas_goal_4') or _safe(st, 'dynamic_goal_4')}")
+        lines.append(f"GAS Comments: {_safe(st, 'gas_comments') or _safe(st, 'goal_comments')}")
         lines.append(f"Classroom Recommendations: {_list_join(_safe(st, 'classroom_recommendations', default=[]))}")
         lines.append(f"Home Support Recommendations: {_list_join(_safe(st, 'home_support_recommendations', default=[]))}")
         lines.append(f"Teacher Recommendation Notes: {_safe(st, 'teacher_recommendation_notes')}")

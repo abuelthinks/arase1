@@ -65,6 +65,7 @@ const initState = () => ({
     milestone_sitting: "", milestone_crawling: "", milestone_walking: "",
     milestone_first_words: "", milestone_phrases: "",
     previous_services: [] as string[],
+    had_iep_before: "", iep_details: "",
     areas_of_concern: [] as string[], areas_of_concern_other: "",
 
     // Section C – parent input
@@ -179,6 +180,17 @@ function ParentFormContent() {
                 .catch(() => {});
         }
     }, [isViewMode, submissionId]);
+
+    // Auto-save form data periodically
+    useEffect(() => {
+        if (isViewMode || !draftKey) return;
+        
+        const timeoutId = setTimeout(() => {
+            localStorage.setItem(draftKey, JSON.stringify(form));
+        }, 1000);
+        
+        return () => clearTimeout(timeoutId);
+    }, [form, isViewMode, draftKey]);
 
     const saveDraft = () => {
         if (draftKey) localStorage.setItem(draftKey, JSON.stringify(form));
@@ -371,8 +383,17 @@ function ParentFormContent() {
                                 {["Schooling before", "Speech Therapy", "Occupational Therapy", "Behavioral Therapy"].map(s => (
                                     <Cb key={s} label={s} checked={checked("previous_services", s)} onChange={() => setArr("previous_services")(s)} disabled={dis} />
                                 ))}
-                                <Cb label="IEP before" checked={checked("previous_services", "IEP before")} onChange={() => setArr("previous_services")("IEP before")} disabled={dis} />
                             </div>
+                        </Field>
+
+                        <Field label="Has your child had an Individualized Education Program (IEP) before?">
+                            <div className="flex gap-4 pt-1 mb-2">
+                                <Cb label="No" checked={form.had_iep_before === "No"} onChange={() => set("had_iep_before")(form.had_iep_before === "No" ? "" : "No")} disabled={dis} />
+                                <Cb label="Yes" checked={form.had_iep_before === "Yes"} onChange={() => set("had_iep_before")(form.had_iep_before === "Yes" ? "" : "Yes")} disabled={dis} />
+                            </div>
+                            {form.had_iep_before === "Yes" && (
+                                <input className={inputCls} placeholder="Please briefly provide details (e.g., date or school)..." value={form.iep_details} onChange={e => set("iep_details")(e.target.value)} disabled={dis} />
+                            )}
                         </Field>
 
                         <Field label="Areas of Concern">

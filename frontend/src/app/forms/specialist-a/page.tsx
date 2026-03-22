@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -62,6 +63,8 @@ function TextArea({ value, onChange, placeholder, readOnly }: { value: string; o
 function defaultForm() {
     return {
         // Section A
+        therapist_name: "",
+        date: new Date().toISOString().split('T')[0],
         a2_verification: "" as "matches" | "corrections" | "",
         a2_correction_notes: "",
         a3_reports_reviewed: [] as string[],
@@ -119,6 +122,7 @@ function SpecialistAFormContent() {
     const studentId = searchParams.get("studentId");
     const isViewMode = searchParams.get("mode") === "view";
     const submissionId = searchParams.get("submissionId");
+    const { user } = useAuth();
 
     const [form, setForm] = useState<FormState>(defaultForm());
     const [parentInfo, setParentInfo] = useState<Record<string, any>>({});
@@ -126,6 +130,24 @@ function SpecialistAFormContent() {
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const [reportCycleId, setReportCycleId] = useState("1");
+
+    const getDraftKey = () => `draft_specialist-a_${studentId}`;
+
+    // Load Draft from LocalStorage 
+    useEffect(() => {
+        if (!isViewMode && studentId) {
+            try {
+                const saved = localStorage.getItem(getDraftKey());
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    // Merge with default to ensure new fields are present
+                    setForm(prev => ({ ...prev, ...parsed }));
+                }
+            } catch (err) {
+                console.error("Failed to load draft:", err);
+            }
+        }
+    }, [isViewMode, studentId]);
 
     // Load existing submission in view mode
     useEffect(() => {
@@ -153,6 +175,12 @@ function SpecialistAFormContent() {
                             setParentInfo(pfd?.v2 ?? pfd ?? {});
                         });
                     }
+
+                    // Auto-fill therapist name
+                    if (!isViewMode && user && !form.therapist_name) {
+                        const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
+                        set("therapist_name", name || user.username || "");
+                    }
                 })
                 .catch(console.error);
         }
@@ -160,6 +188,20 @@ function SpecialistAFormContent() {
 
     const set = (key: keyof FormState, val: any) => setForm(prev => ({ ...prev, [key]: val }));
     const tog = (key: keyof FormState, val: string) => setForm(prev => ({ ...prev, [key]: toggle(prev[key] as string[], val) }));
+
+    // Auto-save effect
+    useEffect(() => {
+        if (isViewMode || !studentId) return;
+        
+        const timeoutId = setTimeout(() => {
+            try {
+                localStorage.setItem(getDraftKey(), JSON.stringify(form));
+            } catch (err) {
+                console.error("Failed to save draft:", err);
+            }
+        }, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [form, studentId, isViewMode]);
 
     const handleSubmit = async () => {
         if (!studentId) { setErrorMsg("No student selected."); return; }
@@ -170,6 +212,10 @@ function SpecialistAFormContent() {
                 report_cycle: reportCycleId,
                 form_data: { v2: form }
             });
+
+            // Clear draft upon successful submission
+            try { localStorage.removeItem(getDraftKey()); } catch(e) {}
+
             setSuccessMsg("Assessment submitted successfully!");
             setTimeout(() => router.back(), 1500);
         } catch (err: any) {
@@ -241,6 +287,29 @@ function SpecialistAFormContent() {
                         </div>
                     )}
                 </FieldGroup>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "15px" }}>
+                    <div>
+                        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Therapist Name</p>
+                        <input
+                            type="text"
+                            value={form.therapist_name}
+                            onChange={ro ? undefined : e => set("therapist_name", e.target.value)}
+                            readOnly={ro}
+                            style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", background: ro ? "#f8fafc" : "white" }}
+                        />
+                    </div>
+                    <div>
+                        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Date</p>
+                        <input
+                            type="date"
+                            value={form.date}
+                            onChange={ro ? undefined : e => set("date", e.target.value)}
+                            readOnly={ro}
+                            style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", background: ro ? "#f8fafc" : "white" }}
+                        />
+                    </div>
+                </div>
 
                 <FieldGroup label="A2. Therapist Verification">
                     {[["matches", "Matches parent input"], ["corrections", "Corrections needed"]].map(([val, label]) => (

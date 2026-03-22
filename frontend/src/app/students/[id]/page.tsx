@@ -92,10 +92,10 @@ const formLabels: Record<string, string> = {
 const formRoutes: Record<string, string> = {
     parent_assessment: "/parent-onboarding",
     parent_tracker:    "/forms/parent-tracker",
-    sped_assessment:   "/forms/teacher",
-    sped_tracker:      "/forms/teacher",
-    multi_assessment:  "/forms/specialist-a",
-    multi_tracker:     "/forms/specialist-b",
+    sped_assessment:   "/forms/sped-assessment",
+    sped_tracker:      "/forms/sped-tracker",
+    multi_assessment:  "/forms/multidisciplinary-assessment",
+    multi_tracker:     "/forms/multidisciplinary-tracker",
 };
 
 export default function StudentProfilePage() {

@@ -9,6 +9,16 @@
             "title": "SECTION A — GENERAL INFORMATION",
             "fields": [
                 {
+                    "id": "therapist_name",
+                    "label": "Therapist Name",
+                    "type": "text"
+                },
+                {
+                    "id": "date",
+                    "label": "Date",
+                    "type": "text"
+                },
+                {
                     "id": "discipline",
                     "label": "Discipline",
                     "type": "radio",

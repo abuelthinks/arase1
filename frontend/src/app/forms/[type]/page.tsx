@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 
 // Import all JSON schemas
@@ -39,19 +40,21 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 function FieldLabel({ label }: { label: string }) {
     return (
-        <p style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#6366f1", marginBottom: "8px" }}>
+        <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
             {label}
         </p>
     );
 }
 
-function TextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function TextInput({ value, onChange, placeholder, type = "text", min, max }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string; min?: number; max?: number }) {
     return (
         <input
-            type="text"
+            type={type}
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
+            min={min}
+            max={max}
             style={{
                 width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0",
                 padding: "9px 12px", fontSize: "0.875rem",
@@ -109,6 +112,7 @@ function FormEntryContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { user } = useAuth();
 
     const formType = (params?.type as string) || "unknown";
     const studentId = searchParams.get("studentId");
@@ -119,13 +123,120 @@ function FormEntryContent() {
     const [reportCycleId, setReportCycleId] = useState("1");
     const [schema, setSchema] = useState<any>(null);
     const [formData, setFormData] = useState<any>({});
+    const [showDescriptions, setShowDescriptions] = useState<Record<string, boolean>>({});
+
+    const toggleDescription = (fieldId: string) => {
+        setShowDescriptions(prev => ({ ...prev, [fieldId]: !prev[fieldId] }));
+    };
+
+    const isViewMode = searchParams.get("mode") === "view";
+    const formIdStr = searchParams.get("submissionId") || searchParams.get("formId");
+
+    const getDraftKey = () => `draft_${formType}_${studentId}`;
 
     useEffect(() => {
-        const loadedSchema = schemaMap[formType];
-        if (loadedSchema) {
-            setSchema(loadedSchema);
+        let isMounted = true;
+        const loadForm = async () => {
+            const loadedSchema = schemaMap[formType];
+            if (!loadedSchema) return;
+
+            let finalSchema = JSON.parse(JSON.stringify(loadedSchema));
+            let activeIepData: any = null;
+            let profileData: any = null;
+
+            if (studentId) {
+                try {
+                    const res = await api.get(`/api/students/${studentId}/profile/`);
+                    profileData = res.data;
+                    
+                    if (isMounted) {
+                        if (profileData.active_cycle?.id) {
+                            setReportCycleId(String(profileData.active_cycle.id));
+                        }
+                        
+                        // Check for latest IEP
+                        const iepDoc = profileData.generated_documents?.find((d: any) => d.type === 'IEP' && d.has_iep_data);
+                        if (iepDoc) {
+                            const iepRes = await api.get(`/api/iep/${iepDoc.id}/`);
+                            activeIepData = iepRes.data?.iep_data;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to load profile/IEP data:", e);
+                }
+            }
+
+            // Inject dynamic IEP goals if available
+            if (activeIepData && activeIepData.section5_ltg && activeIepData.section5_ltg.length > 0) {
+                finalSchema.sections.forEach((sec: any) => {
+                    // Identify sections related to goals strictly per form to avoid overwriting wrong sections (like Section E in SPED tracker)
+                    const isMultiGoal = formType === 'multidisciplinary-tracker' && sec.id === 'section_e';
+                    const isSpedGoal = formType === 'sped-tracker' && sec.id === 'section_h';
+                    const isParentGoal = formType === 'parent-tracker' && sec.id === 'section_h';
+                    const isTitleMatch = sec.title?.toLowerCase().includes('goal achievement') || sec.title?.toLowerCase().includes('parent goals for next week');
+                    
+                    const isGoalSection = isMultiGoal || isSpedGoal || isParentGoal || isTitleMatch;
+                    
+                    if (isGoalSection) {
+                        const dynamicFields: any[] = [];
+                        activeIepData.section5_ltg.forEach((goal: any, idx: number) => {
+                            // Strip boilerplate "By the end of the IEP period, [Name] will " text to make it concise
+                            let shortGoal = goal.goal || "";
+                            shortGoal = shortGoal.replace(/^By the end of (the )?(IEP |reporting )?period, .*? will /gi, '');
+                            // Capitalize first letter
+                            if (shortGoal) {
+                                shortGoal = shortGoal.charAt(0).toUpperCase() + shortGoal.slice(1);
+                            }
+                            
+                            const domainLabel = goal.domain ? ` (${goal.domain})` : "";
+                            const goalIdLabel = goal.id || `Goal ${idx + 1}`;
+
+                            dynamicFields.push({
+                                id: `dynamic_goal_${idx + 1}`,
+                                label: `${goalIdLabel}${domainLabel}`,
+                                description: shortGoal,  // Put long text in normal description instead of bold uppercase label
+                                type: "radio",
+                                options: [
+                                    "1 - None",
+                                    "2 - Minimal",
+                                    "3 - Expected",
+                                    "4 - More",
+                                    "5 - Achieved"
+                                ]
+                            });
+                        });
+                        
+                        // Preserve the comments/statement fields at the end if they exist
+                        const commentsField = sec.fields?.find((f: any) => f.id === 'gas_comments' || f.id === 'parent_goal_statement');
+                        // Always provide a comments generic field if none exists, else preserve the schema's with a simplified label
+                        if (commentsField) {
+                            dynamicFields.push({
+                                ...commentsField,
+                                label: "Comments"
+                            });
+                        } else {
+                            dynamicFields.push({
+                                id: 'goal_comments',
+                                label: 'Comments',
+                                type: 'textarea'
+                            });
+                        }
+                        
+                        // Modify section title to indicate these are IEP goals, preserving "SECTION X"
+                        const prefixMatch = sec.title?.match(/^(SECTION [A-Z])\s*—/i);
+                        const prefix = prefixMatch ? `${prefixMatch[1]} — ` : "";
+                        sec.title = `${prefix}GOAL ACHIEVEMENT (from IEP)`;
+                        sec.fields = dynamicFields;
+                    }
+                });
+            }
+
+            if (!isMounted) return;
+            setSchema(finalSchema);
+
+            // Initialize form data based on the potentially modified schema
             const initialData: any = {};
-            loadedSchema.sections?.forEach((sec: any) => {
+            finalSchema.sections?.forEach((sec: any) => {
                 initialData[sec.id] = {};
                 sec.fields?.forEach((f: any) => {
                     if (f.type === "checkbox_group") {
@@ -137,19 +248,144 @@ function FormEntryContent() {
                     }
                 });
             });
-            setFormData(initialData);
-        }
-        // Auto-detect report cycle
-        if (studentId) {
-            api.get(`/api/students/${studentId}/profile/`)
-                .then(res => {
-                    if (res.data.active_cycle?.id) {
-                        setReportCycleId(String(res.data.active_cycle.id));
+
+            let mergedData = { ...initialData };
+
+            if (isViewMode && formIdStr) {
+                // If viewing a previous submission
+                try {
+                    const res = await api.get(`/api/inputs/${formType}/${formIdStr}/`);
+                    const savedData = res.data.form_data?.v2 || res.data.form_data || {};
+                    
+                    // Detect if savedData is from older flat structure
+                    const isFlat = !Object.keys(savedData).some(k => k.startsWith("section_"));
+                    if (isFlat) {
+                        finalSchema.sections?.forEach((sec: any) => {
+                            sec.fields?.forEach((f: any) => {
+                                if (savedData[f.id] !== undefined) {
+                                    mergedData[sec.id][f.id] = savedData[f.id];
+                                }
+                            });
+                        });
+                    } else {
+                        Object.keys(savedData).forEach(secKey => {
+                            if (mergedData[secKey]) {
+                                mergedData[secKey] = { ...mergedData[secKey], ...savedData[secKey] };
+                            }
+                        });
                     }
-                })
-                .catch(console.error);
-        }
-    }, [formType, studentId]);
+                } catch (err) {
+                    console.error("Failed to load submission:", err);
+                    setErrorMsg("Failed to load the form submission.");
+                }
+            } else {
+                // Try to load auto-saved draft
+                try {
+                    const draftKey = `draft_${formType}_${studentId}`;
+                    const saved = localStorage.getItem(draftKey);
+                    if (saved) {
+                        const parsedData = JSON.parse(saved);
+                        Object.keys(parsedData).forEach(secKey => {
+                            if (mergedData[secKey]) {
+                                mergedData[secKey] = { ...mergedData[secKey], ...parsedData[secKey] };
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.error("Failed to load draft:", err);
+                }
+            }
+
+            // Auto-detect report cycle and fill section_a fields if NOT viewing a historical submission
+            if (!isViewMode && profileData && mergedData.section_a) {
+                const newSectionA = { ...mergedData.section_a };
+                const sName = `${profileData.student.first_name} ${profileData.student.last_name}`;
+                if ('student_name' in newSectionA) newSectionA.student_name = sName;
+                if ('child_name' in newSectionA) newSectionA.child_name = sName;
+                if ('date_of_birth' in newSectionA && profileData.student.date_of_birth) {
+                    newSectionA.date_of_birth = profileData.student.date_of_birth;
+                }
+                if ('grade_level' in newSectionA && profileData.student.grade) {
+                    newSectionA.grade_level = profileData.student.grade;
+                }
+                if ('class_level' in newSectionA && profileData.student.grade) {
+                    newSectionA.class_level = profileData.student.grade;
+                }
+                if ('sped_teacher' in newSectionA && user) {
+                    const teacherName = [user.first_name, user.last_name].filter(Boolean).join(" ");
+                    newSectionA.sped_teacher = teacherName || user.username || "";
+                }
+                if ('therapist_name' in newSectionA && user) {
+                    const therapistName = [user.first_name, user.last_name].filter(Boolean).join(" ");
+                    newSectionA.therapist_name = therapistName || user.username || "";
+                }
+                if ('date_of_assessment' in newSectionA) {
+                    newSectionA.date_of_assessment = new Date().toISOString().split('T')[0];
+                }
+                if ('date' in newSectionA) {
+                    newSectionA.date = new Date().toISOString().split('T')[0];
+                }
+                mergedData.section_a = newSectionA;
+            }
+
+            // Cross-Form Data Merger (Auto-fill from Parent Assessment)
+            if (!isViewMode) {
+                try {
+                    const parentRes = await api.get('/api/inputs/parent-assessment/');
+                    // Find latest submission for this student
+                    const pForm = parentRes.data.find((f: any) => parseInt(f.student) === parseInt(studentId || "0"));
+                    if (pForm) {
+                        const pData = pForm.form_data?.v2 || pForm.form_data;
+                        if (pData) {
+                            const hasPrimaryLanguage = finalSchema.sections.some((s: any) => s.fields?.some((f: any) => f.id === 'primary_language'));
+                            if (hasPrimaryLanguage) {
+                                const langSec = finalSchema.sections.find((s: any) => s.fields?.some((f: any) => f.id === 'primary_language'));
+                                if (langSec && (!mergedData[langSec.id] || !mergedData[langSec.id]['primary_language'])) {
+                                    const langs = Array.isArray(pData.primary_language) 
+                                        ? pData.primary_language 
+                                        : (pData.primary_language ? [pData.primary_language] : []);
+                                    const otherLang = pData.primary_language_other;
+                                    const langStr = [...langs, otherLang].filter(Boolean).join(", ");
+                                    if (langStr) {
+                                        if (!mergedData[langSec.id]) mergedData[langSec.id] = {};
+                                        mergedData[langSec.id]['primary_language'] = langStr;
+                                    }
+                                }
+                            }
+                            
+                            // Map additional fields here in the future if overlapping schemas are added
+                        }
+                    }
+                } catch (err) {
+                    console.log("Could not auto-fill cross-form data from parent assessment", err);
+                }
+            }
+
+            setFormData(mergedData);
+        };
+
+        loadForm();
+        
+        return () => { isMounted = false; };
+    }, [formType, studentId, user, isViewMode, formIdStr]);
+
+    // Auto-save effect
+    useEffect(() => {
+        if (isViewMode) return; // Do not auto-save if merely viewing an old submission
+        if (!formData || Object.keys(formData).length === 0 || !studentId || !formType) return;
+        
+        // Use a timeout to debounce the saving slightly
+        const timeoutId = setTimeout(() => {
+            try {
+                const draftKey = getDraftKey();
+                localStorage.setItem(draftKey, JSON.stringify(formData));
+            } catch (err) {
+                console.error("Failed to auto-save draft:", err);
+            }
+        }, 1000); // 1s debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [formData, studentId, formType]);
 
     const handleChange = (sectionId: string, fieldId: string, value: any, isCheckboxArray = false) => {
         setFormData((prev: any) => {
@@ -197,6 +433,14 @@ function FormEntryContent() {
                 report_cycle: parseInt(reportCycleId),
                 form_data: formData
             });
+            
+            // Clear draft upon successful submission
+            try {
+                localStorage.removeItem(getDraftKey());
+            } catch (e) {
+                console.error("Failed to clear draft:", e);
+            }
+
             setSuccessMsg("Form successfully submitted!");
             setTimeout(() => router.push("/dashboard"), 2000);
         } catch (err: any) {
@@ -250,87 +494,113 @@ function FormEntryContent() {
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    {/* Dynamic sections from schema */}
-                    {schema.sections?.map((section: any) => (
-                        <SectionCard key={section.id} title={section.title}>
-                            {section.fields?.map((field: any) => {
-                                const currentValue = formData[section.id]?.[field.id];
+                    <fieldset disabled={isViewMode} style={{ border: "none", padding: 0, margin: 0 }}>
+                        {/* Dynamic sections from schema */}
+                        {schema.sections?.map((section: any) => (
+                            <SectionCard key={section.id} title={section.title}>
+                                {section.fields?.map((field: any) => {
+                                    const currentValue = formData[section.id]?.[field.id];
 
-                                return (
-                                    <div key={field.id}>
-                                        <FieldLabel label={field.label} />
-
-                                        {field.type === "text" && (
-                                            <TextInput value={currentValue || ""} onChange={v => handleChange(section.id, field.id, v)} />
-                                        )}
-
-                                        {field.type === "textarea" && (
-                                            <TextAreaInput value={currentValue || ""} onChange={v => handleChange(section.id, field.id, v)} />
-                                        )}
-
-                                        {field.type === "radio" && (
-                                            <RadioGroup options={field.options || []} value={currentValue || ""} onChange={v => handleChange(section.id, field.id, v)} />
-                                        )}
-
-                                        {field.type === "checkbox_group" && (
-                                            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                                {field.options?.map((opt: string) => (
-                                                    <CheckboxItem key={opt} label={opt}
-                                                        checked={(currentValue || []).includes(opt)}
-                                                        onChange={() => handleChange(section.id, field.id, opt, true)} />
-                                                ))}
+                                    return (
+                                        <div key={field.id}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+                                                <FieldLabel label={field.label} />
+                                                {field.description && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleDescription(field.id)}
+                                                        style={{
+                                                            background: "none", border: "none", padding: "2px 6px",
+                                                            fontSize: "0.75rem", color: "#6366f1", fontWeight: 600,
+                                                            cursor: "pointer", borderRadius: "4px",
+                                                            textDecoration: "underline"
+                                                        }}
+                                                    >
+                                                        {showDescriptions[field.id] ? "Hide details" : "Show details"}
+                                                    </button>
+                                                )}
                                             </div>
-                                        )}
 
-                                        {field.type === "grid" && (
-                                            <div style={{ overflowX: "auto" }}>
-                                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={{ padding: "10px 12px", textAlign: "left", borderBottom: "2px solid #e2e8f0", background: "#f8fafc", fontWeight: 700, color: "#475569" }}>Skill / Item</th>
-                                                            {field.columns?.map((col: string) => (
-                                                                <th key={col} style={{ padding: "10px 12px", textAlign: "center", borderBottom: "2px solid #e2e8f0", background: "#f8fafc", fontWeight: 700, color: "#475569" }}>{col}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {field.rows?.map((row: string) => (
-                                                            <tr key={row} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                                                                <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 500 }}>{row}</td>
+                                            {field.description && showDescriptions[field.id] && (
+                                                <p style={{ fontSize: "0.875rem", color: "#475569", marginBottom: "12px", marginTop: "0", lineHeight: "1.4" }}>
+                                                    {field.description}
+                                                </p>
+                                            )}
+
+                                            {(field.type === "text" || field.type === "number" || field.type === "date") && (
+                                                <TextInput type={field.type} value={currentValue || ""} min={field.min} max={field.max} onChange={v => handleChange(section.id, field.id, v)} />
+                                            )}
+
+                                            {field.type === "textarea" && (
+                                                <TextAreaInput value={currentValue || ""} onChange={v => handleChange(section.id, field.id, v)} />
+                                            )}
+
+                                            {field.type === "radio" && (
+                                                <RadioGroup options={field.options || []} value={currentValue || ""} onChange={v => handleChange(section.id, field.id, v)} />
+                                            )}
+
+                                            {field.type === "checkbox_group" && (
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                                    {field.options?.map((opt: string) => (
+                                                        <CheckboxItem key={opt} label={opt}
+                                                            checked={(currentValue || []).includes(opt)}
+                                                            onChange={() => handleChange(section.id, field.id, opt, true)} />
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {field.type === "grid" && (
+                                                <div style={{ overflowX: "auto" }}>
+                                                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={{ padding: "10px 12px", textAlign: "left", borderBottom: "2px solid #e2e8f0", background: "#f8fafc", fontWeight: 700, color: "#475569" }}>Skill / Item</th>
                                                                 {field.columns?.map((col: string) => (
-                                                                    <td key={col} style={{ padding: "10px 12px", textAlign: "center" }}>
-                                                                        <input
-                                                                            type="radio"
-                                                                            name={`${field.id}_${row}`}
-                                                                            checked={(currentValue && currentValue[row]) === col}
-                                                                            onChange={() => handleGridChange(section.id, field.id, row, col)}
-                                                                            style={{ width: 16, height: 16, accentColor: "#4f46e5" }}
-                                                                        />
-                                                                    </td>
+                                                                    <th key={col} style={{ padding: "10px 12px", textAlign: "center", borderBottom: "2px solid #e2e8f0", background: "#f8fafc", fontWeight: 700, color: "#475569" }}>{col}</th>
                                                                 ))}
                                                             </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </SectionCard>
-                    ))}
+                                                        </thead>
+                                                        <tbody>
+                                                            {field.rows?.map((row: string) => (
+                                                                <tr key={row} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                                                    <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 500 }}>{row}</td>
+                                                                    {field.columns?.map((col: string) => (
+                                                                        <td key={col} style={{ padding: "10px 12px", textAlign: "center" }}>
+                                                                            <input
+                                                                                type="radio"
+                                                                                name={`${field.id}_${row}`}
+                                                                                checked={(currentValue && currentValue[row]) === col}
+                                                                                onChange={() => handleGridChange(section.id, field.id, row, col)}
+                                                                                style={{ width: 16, height: 16, accentColor: "#4f46e5" }}
+                                                                            />
+                                                                        </td>
+                                                                    ))}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </SectionCard>
+                        ))}
+                    </fieldset>
 
                     {/* Submit */}
-                    <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "0.5rem" }}>
-                        <button type="button" onClick={() => router.push("/dashboard")}
-                            style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" }}>
-                            Cancel
-                        </button>
-                        <button type="submit" disabled={loading}
-                            style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
-                            {loading ? "Submitting…" : "Submit Form"}
-                        </button>
-                    </div>
+                    {!isViewMode && (
+                        <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+                            <button type="button" onClick={() => router.push("/dashboard")}
+                                style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" }}>
+                                Cancel
+                            </button>
+                            <button type="submit" disabled={loading}
+                                style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
+                                {loading ? "Submitting…" : "Submit Form"}
+                            </button>
+                        </div>
+                    )}
                 </form>
             </div>
         </ProtectedRoute>

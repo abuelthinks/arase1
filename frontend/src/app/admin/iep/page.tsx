@@ -116,23 +116,10 @@ function IEPViewerContent() {
         finally { setSaving(false); }
     };
 
-    const handleDownload = async () => {
-        try {
-            // Use fetch with credentials so HttpOnly cookies are sent automatically
-            const res = await fetch(`${API_BASE_URL}/api/iep/${iepId}/download/`, {
-                credentials: 'include',
-            });
-            if (!res.ok) throw new Error('Download failed');
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `IEP_${meta?.student_name?.replace(/\s+/g, '_') || iepId}.pdf`;
-            a.click();
-            URL.revokeObjectURL(url);
-        } catch {
-            setErrorMsg('Failed to download PDF. Please try again.');
-        }
+    const handleDownload = () => {
+        // Redirect to the download endpoint. 
+        // Since it's a file download response, the browser will handle it without leaving the page.
+        window.location.href = `${API_BASE_URL}/api/iep/${iepId}/download/`;
     };
 
     const handleCopyLink = () => {
@@ -344,9 +331,66 @@ function IEPViewerContent() {
                 ))}
             </SectionCard>
 
-            {/* Section 10 — Progress (placeholder) */}
+            {/* Section 10 — Progress Monitoring */}
             <SectionCard title="Section 10 — Progress Monitoring & GAS Scores">
-                <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Progress data will be populated after weekly tracker submissions are received.</p>
+                {iep.section10_progress && iep.section10_progress.gas_scores?.length > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                        {/* Last updated badge */}
+                        {iep.section10_progress.last_updated && (
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span style={{ fontSize: "0.72rem", fontWeight: 700, background: "#dcfce7", color: "#166534", padding: "3px 10px", borderRadius: "999px" }}>
+                                    📅 Last updated: Week of {iep.section10_progress.last_updated}
+                                </span>
+                                {iep.section10_progress.report_period && (
+                                    <span style={{ fontSize: "0.72rem", color: "#64748b" }}>({iep.section10_progress.report_period})</span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* GAS Score Table */}
+                        <div>
+                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "8px" }}>Goal Achievement Scores</p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                {iep.section10_progress.gas_scores.map((g: any, i: number) => {
+                                    const sc = g.score >= 5 ? { bg: "#dcfce7", color: "#166534" }
+                                        : g.score >= 4 ? { bg: "#d1fae5", color: "#065f46" }
+                                        : g.score >= 3 ? { bg: "#dbeafe", color: "#1e40af" }
+                                        : g.score >= 2 ? { bg: "#fef3c7", color: "#92400e" }
+                                        : { bg: "#fee2e2", color: "#991b1b" };
+                                    return (
+                                        <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                                            <div style={{ width: 34, height: 34, borderRadius: "8px", background: sc.bg, color: sc.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", fontWeight: 800, flexShrink: 0 }}>
+                                                {g.score}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{g.goal_id} — {g.domain}</p>
+                                                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>{g.note}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Narrative Summary */}
+                        {iep.section10_progress.narrative_summary && (
+                            <Field label="Narrative Summary" value={iep.section10_progress.narrative_summary} edit={false} />
+                        )}
+                        {/* Regression Indicators */}
+                        {iep.section10_progress.regression_indicators && iep.section10_progress.regression_indicators !== "No regression indicators reported." && (
+                            <div style={{ padding: "10px 14px", borderRadius: "10px", background: "#fff1f2", border: "1px solid #fecdd3" }}>
+                                <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#be123c", marginBottom: "4px", textTransform: "uppercase" }}>⚠ Regression Indicators</p>
+                                <p style={{ fontSize: "0.82rem", color: "#9f1239", margin: 0 }}>{iep.section10_progress.regression_indicators}</p>
+                            </div>
+                        )}
+                        {/* Attendance */}
+                        {iep.section10_progress.attendance_summary && (
+                            <Field label="Attendance Summary" value={iep.section10_progress.attendance_summary} edit={false} />
+                        )}
+                    </div>
+                ) : (
+                    <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Progress data will be populated automatically after the first weekly report is generated.</p>
+                )}
             </SectionCard>
 
             {/* Section 11 — Review (placeholder) */}
