@@ -248,7 +248,7 @@ def _call_gemini(prompt):
     
     # Using the most stable model naming convention
     model = genai.GenerativeModel(
-        model_name='gemini-2.5-flash',
+        model_name='gemini-2.5-flash-lite',
         generation_config={
             "temperature": 0.7,
             "response_mime_type": "application/json",
