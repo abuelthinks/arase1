@@ -172,10 +172,9 @@ function FormEntryContent() {
                     // Identify sections related to goals strictly per form to avoid overwriting wrong sections (like Section E in SPED tracker)
                     const isMultiGoal = formType === 'multidisciplinary-tracker' && sec.id === 'section_e';
                     const isSpedGoal = formType === 'sped-tracker' && sec.id === 'section_h';
-                    const isParentGoal = formType === 'parent-tracker' && sec.id === 'section_h';
-                    const isTitleMatch = sec.title?.toLowerCase().includes('goal achievement') || sec.title?.toLowerCase().includes('parent goals for next week');
+                    const isTitleMatch = sec.title?.toLowerCase().includes('goal achievement');
                     
-                    const isGoalSection = isMultiGoal || isSpedGoal || isParentGoal || isTitleMatch;
+                    const isGoalSection = isMultiGoal || isSpedGoal || isTitleMatch;
                     
                     if (isGoalSection) {
                         const dynamicFields: any[] = [];
