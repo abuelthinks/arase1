@@ -514,28 +514,20 @@ class GenerateIEPView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Always run synchronously — Celery workers are not guaranteed on deployment.
+        # Sync generation returns the doc.id immediately so the frontend can navigate.
         try:
-            # Try async via Celery
-            from .tasks import generate_iep_task
-            task = generate_iep_task.delay(student_id, report_cycle_id)
+            from .services.iep_service import run_iep_generation
+            doc, iep_data = run_iep_generation(student_id, report_cycle_id)
             return Response({
-                "message": "IEP generation started.",
-                "task_id": task.id,
-            }, status=status.HTTP_202_ACCEPTED)
-        except Exception:
-            # Fallback to sync if Celery is unavailable
-            try:
-                from .services.iep_service import run_iep_generation
-                doc, iep_data = run_iep_generation(student_id, report_cycle_id)
-                return Response({
-                    "message": "IEP generated successfully.",
-                    "iep_id": doc.id,
-                    "iep_data": iep_data,
-                }, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                return Response({"error": f"Failed to generate IEP: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                "message": "IEP generated successfully.",
+                "iep_id": doc.id,
+                "iep_data": iep_data,
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": f"Failed to generate IEP: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class IEPDetailView(APIView):
@@ -740,28 +732,19 @@ class GenerateWeeklyReportView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Always run synchronously — Celery workers are not guaranteed on deployment.
         try:
-            # Try async via Celery
-            from .tasks import generate_weekly_report_task
-            task = generate_weekly_report_task.delay(student_id, report_cycle_id)
+            from .services.iep_service import run_weekly_report_generation
+            doc, report_data = run_weekly_report_generation(student_id, report_cycle_id)
             return Response({
-                "message": "Weekly report generation started.",
-                "task_id": task.id,
-            }, status=status.HTTP_202_ACCEPTED)
-        except Exception:
-            # Fallback to sync
-            try:
-                from .services.iep_service import run_weekly_report_generation
-                doc, report_data = run_weekly_report_generation(student_id, report_cycle_id)
-                return Response({
-                    "message": "Weekly report generated successfully.",
-                    "report_id": doc.id,
-                    "report_data": report_data,
-                }, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                return Response({"error": f"Failed to generate weekly report: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                "message": "Weekly report generated successfully.",
+                "report_id": doc.id,
+                "report_data": report_data,
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": f"Failed to generate weekly report: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class WeeklyReportDetailView(APIView):
