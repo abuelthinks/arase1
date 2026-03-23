@@ -72,6 +72,7 @@ function IEPViewerContent() {
     const { user } = useAuth();
 
     const [iep, setIep] = useState<IEPData | null>(null);
+    const [iepStatus, setIepStatus] = useState<string>("DRAFT");
     const [meta, setMeta] = useState<{ student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -86,6 +87,10 @@ function IEPViewerContent() {
             .then(res => {
                 setIep(res.data.iep_data);
                 setMeta({ student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
+                setIepStatus(res.data.status);
+                if (res.data.status === "DRAFT") {
+                    setEditing(true);
+                }
             })
             .catch(() => setErrorMsg("Failed to load IEP."))
             .finally(() => setLoading(false));
@@ -107,11 +112,15 @@ function IEPViewerContent() {
         });
     };
 
-    const handleSave = async () => {
+    const handleSave = async (newStatus?: string) => {
         setSaving(true);
+        const payloadStatus = newStatus || iepStatus;
         try {
-            await api.patch(`/api/iep/${iepId}/`, { iep_data: iep });
-            setEditing(false);
+            const res = await api.patch(`/api/iep/${iepId}/`, { iep_data: iep, status: payloadStatus });
+            setIepStatus(res.data.status);
+            if (newStatus === "FINAL") {
+                setEditing(false);
+            }
         } catch { setErrorMsg("Failed to save."); }
         finally { setSaving(false); }
     };
@@ -162,7 +171,12 @@ function IEPViewerContent() {
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Comprehensive AI-Generated IEP</h1>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+                        Comprehensive AI-Generated IEP
+                        <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: iepStatus === "FINAL" ? "#dcfce7" : "#fef3c7", color: iepStatus === "FINAL" ? "#166534" : "#92400e", border: `1px solid ${iepStatus === "FINAL" ? "#bbf7d0" : "#fde68a"}` }}>
+                            {iepStatus === "FINAL" ? "FINAL" : "DRAFT"}
+                        </span>
+                    </h1>
                     <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
                         {meta.student_name} · Generated {new Date(meta.created_at).toLocaleDateString()}
                     </p>
@@ -178,13 +192,17 @@ function IEPViewerContent() {
                             📥 Download PDF
                         </button>
                         {editing ? (
-                            <>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                                 <button onClick={() => setEditing(false)} style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
-                                <button onClick={handleSave} disabled={saving}
-                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                    {saving ? "Saving…" : "💾 Save"}
+                                <button onClick={() => handleSave("DRAFT")} disabled={saving}
+                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#334155", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                    {saving ? "Saving…" : "💾 Save Draft"}
                                 </button>
-                            </>
+                                <button onClick={() => handleSave("FINAL")} disabled={saving}
+                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                    {saving ? "Saving…" : "✅ Finalize"}
+                                </button>
+                            </div>
                         ) : (
                             <button onClick={() => setEditing(true)}
                                 style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#4f46e5", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>

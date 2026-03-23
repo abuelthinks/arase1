@@ -102,7 +102,7 @@ def onboard_parent_student(user, student_data, form_data, student_id=None):
         return student, True
 
 
-def get_student_profile_data(student):
+def get_student_profile_data(student, user=None):
     """
     Aggregates all profile data for a student — cycle, form statuses,
     documents, parent info, and assigned staff.
@@ -142,21 +142,26 @@ def get_student_profile_data(student):
             "sped_tracker": SpedProgressTracker,
         }
         for key, model in form_map.items():
+            if user and user.role == 'PARENT' and key != 'parent_assessment':
+                form_statuses[key] = {"submitted": False, "id": None}
+                continue
             obj = model.objects.filter(student=student, report_cycle=cycle).first()
             form_statuses[key] = {"submitted": bool(obj), "id": obj.id if obj else None}
 
     # Generated documents
     docs = GeneratedDocument.objects.filter(student=student).order_by('-created_at')
-    docs_data = [
-        {
+    docs_data = []
+    for d in docs:
+        if user and user.role == 'PARENT' and d.status != 'FINAL':
+            continue
+        docs_data.append({
             "id": d.id,
             "type": d.document_type,
             "file_url": d.file.url if d.file else "",
             "created_at": d.created_at,
+            "status": d.status,
             "has_iep_data": bool(d.iep_data),
-        }
-        for d in docs
-    ]
+        })
 
     # Parent info (supports v2 format and legacy)
     parent_input = ParentAssessment.objects.filter(student=student).order_by('-created_at').first()
@@ -184,7 +189,9 @@ def get_student_profile_data(student):
         .exclude(user__role='PARENT')
         .exclude(user__role='ADMIN')
     )
-    assigned_staff = [{"id": sa.user.id, "role": sa.user.role} for sa in assigned_users]
+    assigned_staff = []
+    if not (user and user.role == 'PARENT'):
+        assigned_staff = [{"id": sa.user.id, "role": sa.user.role} for sa in assigned_users]
 
     return {
         "student": {

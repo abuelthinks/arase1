@@ -50,11 +50,11 @@ interface StudentData {
 
 const getRoleStyle = (role: string) => {
     switch (role?.toUpperCase()) {
-        case 'ADMIN': return { bg: '#8b5cf6', color: 'white' };
-        case 'TEACHER': return { bg: '#3b82f6', color: 'white' };
-        case 'SPECIALIST': return { bg: '#10b981', color: 'white' };
-        case 'PARENT': return { bg: '#f59e0b', color: 'white' };
-        default: return { bg: '#64748b', color: 'white' };
+        case 'ADMIN': return { bg: '#ede9fe', color: '#5b21b6' };
+        case 'TEACHER': return { bg: '#dbeafe', color: '#1e40af' };
+        case 'SPECIALIST': return { bg: '#dcfce7', color: '#166534' };
+        case 'PARENT': return { bg: '#fef3c7', color: '#92400e' };
+        default: return { bg: '#f1f5f9', color: '#475569' };
     }
 };
 
@@ -83,7 +83,36 @@ export default function AdminDashboard() {
 
     // Student search & filter
     const [studentSearch, setStudentSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("ALL");
+    const [statusFilters, setStatusFilters] = useState<string[]>([]);
+    
+    // Student Sorting
+    const [studentSortConfig, setStudentSortConfig] = useState<{ key: 'id' | 'name' | 'grade' | 'status' | null, direction: 'asc' | 'desc' | null }>({ key: null, direction: null });
+
+    // Student Pagination
+    const [studentPage, setStudentPage] = useState(1);
+    const [studentItemsPerPage, setStudentItemsPerPage] = useState(10);
+
+    // User search & filter
+    const [userSearch, setUserSearch] = useState("");
+    const [userRoleFilters, setUserRoleFilters] = useState<string[]>([]);
+    
+    // User Sorting
+    const [userSortConfig, setUserSortConfig] = useState<{ key: 'name' | 'role' | 'kids' | null, direction: 'asc' | 'desc' | null }>({ key: null, direction: null });
+
+    // User Pagination
+    const [userPage, setUserPage] = useState(1);
+    const [userItemsPerPage, setUserItemsPerPage] = useState(10);
+
+    // Invitation search & filter
+    const [invitationSearch, setInvitationSearch] = useState("");
+    const [invitationRoleFilters, setInvitationRoleFilters] = useState<string[]>([]);
+    
+    // Invitation Sorting
+    const [invitationSortConfig, setInvitationSortConfig] = useState<{ key: 'email' | 'role' | 'date' | null, direction: 'asc' | 'desc' | null }>({ key: null, direction: null });
+
+    // Invitation Pagination
+    const [invitationPage, setInvitationPage] = useState(1);
+    const [invitationItemsPerPage, setInvitationItemsPerPage] = useState(10);
 
     // Modal state for User
     const [showUserModal, setShowUserModal] = useState(false);
@@ -136,20 +165,188 @@ export default function AdminDashboard() {
         }
     }, [searchParams]);
 
-    /* ─── Filtered Students ──────────────────────────────────────────────── */
+    /* ─── Filtered, Sorted, and Paginated Students ───────────────────────── */
 
-    const filteredStudents = students.filter(s => {
-        const matchesSearch = studentSearch === "" ||
-            `${s.first_name} ${s.last_name}`.toLowerCase().includes(studentSearch.toLowerCase()) ||
-            s.id.toString().includes(studentSearch);
-        const matchesStatus = statusFilter === "ALL" || s.status === statusFilter;
+    const uniqueStatuses = Array.from(new Set(students.map(s => s.status)));
+
+    let processedStudents = students.filter(s => {
+        const searchTerms = studentSearch.toLowerCase().trim().split(/\s+/);
+        const searchableString = `${s.first_name} ${s.last_name} ${s.id}`.toLowerCase();
+        const matchesSearch = searchTerms.every(term => searchableString.includes(term));
+        const matchesStatus = statusFilters.length === 0 || statusFilters.includes(s.status);
         return matchesSearch && matchesStatus;
     });
 
-    // Get unique statuses for filter dropdown
-    const uniqueStatuses = Array.from(new Set(students.map(s => s.status)));
+    if (studentSortConfig.key && studentSortConfig.direction) {
+        processedStudents.sort((a, b) => {
+            let aVal: any = '';
+            let bVal: any = '';
+            if (studentSortConfig.key === 'id') {
+                aVal = a.id;
+                bVal = b.id;
+            } else if (studentSortConfig.key === 'name') {
+                aVal = `${a.first_name} ${a.last_name}`.trim();
+                bVal = `${b.first_name} ${b.last_name}`.trim();
+            } else if (studentSortConfig.key === 'grade') {
+                aVal = a.grade;
+                bVal = b.grade;
+            } else if (studentSortConfig.key === 'status') {
+                aVal = a.status;
+                bVal = b.status;
+            }
+            if (aVal < bVal) return studentSortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return studentSortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    const totalStudentPages = Math.ceil(processedStudents.length / studentItemsPerPage) || 1;
+    const safeStudentPage = Math.min(Math.max(1, studentPage), totalStudentPages);
+    const paginatedStudents = processedStudents.slice((safeStudentPage - 1) * studentItemsPerPage, safeStudentPage * studentItemsPerPage);
+
+    /* ─── Filtered, Sorted, and Paginated Users ──────────────────────────── */
+
+    const uniqueUserRoles = Array.from(new Set(users.map(u => u.role)));
+
+    let processedUsers = users.filter(u => {
+        // Fuzzy search logic (matches all words)
+        const searchTerms = userSearch.toLowerCase().trim().split(/\s+/);
+        const searchableString = `${u.first_name} ${u.last_name} ${u.email} ${u.username}`.toLowerCase();
+        const matchesSearch = searchTerms.every(term => searchableString.includes(term));
+        
+        // Multi-select role filter
+        const matchesRole = userRoleFilters.length === 0 || userRoleFilters.includes(u.role);
+        
+        return matchesSearch && matchesRole;
+    });
+
+    // Sorting Logic
+    if (userSortConfig.key && userSortConfig.direction) {
+        processedUsers.sort((a, b) => {
+            let aVal: any = '';
+            let bVal: any = '';
+            
+            if (userSortConfig.key === 'name') {
+                aVal = `${a.first_name} ${a.last_name}`.trim() || a.username;
+                bVal = `${b.first_name} ${b.last_name}`.trim() || b.username;
+            } else if (userSortConfig.key === 'role') {
+                aVal = a.role;
+                bVal = b.role;
+            } else if (userSortConfig.key === 'kids') {
+                aVal = a.assigned_students_count || 0;
+                bVal = b.assigned_students_count || 0;
+            }
+            
+            if (aVal < bVal) return userSortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return userSortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    // Pagination Logic
+    const totalUserPages = Math.ceil(processedUsers.length / userItemsPerPage) || 1;
+    // ensure current page is within bounds
+    const safeUserPage = Math.min(Math.max(1, userPage), totalUserPages);
+    const paginatedUsers = processedUsers.slice((safeUserPage - 1) * userItemsPerPage, safeUserPage * userItemsPerPage);
+
+    /* ─── Filtered, Sorted, and Paginated Invitations ────────────────────── */
+
+    const uniqueInvitationRoles = Array.from(new Set(invitations.map(i => i.role)));
+
+    let processedInvitations = invitations.filter(i => {
+        if (i.is_used) return false;
+        const searchTerms = invitationSearch.toLowerCase().trim().split(/\s+/);
+        const searchableString = `${i.email}`.toLowerCase();
+        const matchesSearch = searchTerms.every(term => searchableString.includes(term));
+        const matchesRole = invitationRoleFilters.length === 0 || invitationRoleFilters.includes(i.role);
+        return matchesSearch && matchesRole;
+    });
+
+    if (invitationSortConfig.key && invitationSortConfig.direction) {
+        processedInvitations.sort((a, b) => {
+            let aVal: any = '';
+            let bVal: any = '';
+            if (invitationSortConfig.key === 'email') {
+                aVal = a.email;
+                bVal = b.email;
+            } else if (invitationSortConfig.key === 'role') {
+                aVal = a.role;
+                bVal = b.role;
+            } else if (invitationSortConfig.key === 'date') {
+                aVal = new Date(a.created_at).getTime();
+                bVal = new Date(b.created_at).getTime();
+            }
+            if (aVal < bVal) return invitationSortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return invitationSortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    const totalInvitationPages = Math.ceil(processedInvitations.length / invitationItemsPerPage) || 1;
+    const safeInvitationPage = Math.min(Math.max(1, invitationPage), totalInvitationPages);
+    const paginatedInvitations = processedInvitations.slice((safeInvitationPage - 1) * invitationItemsPerPage, safeInvitationPage * invitationItemsPerPage);
 
     /* ─── Handlers ───────────────────────────────────────────────────────── */
+
+    const handleStudentSort = (key: 'id' | 'name' | 'grade' | 'status') => {
+        setStudentSortConfig(current => {
+            if (current.key !== key) return { key, direction: 'asc' };
+            if (current.direction === 'asc') return { key, direction: 'desc' };
+            if (current.direction === 'desc') return { key: null, direction: null };
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const toggleStudentStatusFilter = (status: string) => {
+        setStatusFilters(prev => 
+            prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+        );
+        setStudentPage(1);
+    };
+
+    const handleInvitationSort = (key: 'email' | 'role' | 'date') => {
+        setInvitationSortConfig(current => {
+            if (current.key !== key) return { key, direction: 'asc' };
+            if (current.direction === 'asc') return { key, direction: 'desc' };
+            if (current.direction === 'desc') return { key: null, direction: null };
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const toggleInvitationRoleFilter = (role: string) => {
+        setInvitationRoleFilters(prev => 
+            prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+        );
+        setInvitationPage(1);
+    };
+
+    const handleUserSort = (key: 'name' | 'role' | 'kids') => {
+        setUserSortConfig(current => {
+            if (current.key !== key) return { key, direction: 'asc' };
+            if (current.direction === 'asc') return { key, direction: 'desc' };
+            if (current.direction === 'desc') return { key: null, direction: null };
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const toggleUserRoleFilter = (role: string) => {
+        setUserRoleFilters(prev => 
+            prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+        );
+        setUserPage(1); // Reset pagination on re-filter
+    };
+    
+    useEffect(() => {
+        setUserPage(1);
+    }, [userSearch, userItemsPerPage]);
+    
+    useEffect(() => {
+        setStudentPage(1);
+    }, [studentSearch, studentItemsPerPage]);
+    
+    useEffect(() => {
+        setInvitationPage(1);
+    }, [invitationSearch, invitationItemsPerPage]);
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -259,10 +456,10 @@ export default function AdminDashboard() {
         <>
             <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)" }}>
-                            {activeTab === "students" && "Student Roster"}
-                            {activeTab === "users" && "System Users"}
-                            {activeTab === "invitations" && "Pending Invitations"}
+                        <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
+                            {activeTab === "students" && <>Student Roster <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedStudents.length})</span></>}
+                            {activeTab === "users" && <>System Users <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedUsers.length})</span></>}
+                            {activeTab === "invitations" && <>Pending Invitations <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedInvitations.length})</span></>}
                         </h2>
                         <p style={{ margin: "5px 0 0 0", color: "var(--text-secondary)" }}>
                             {activeTab === "students" && "Manage all registered students in the system."}
@@ -277,98 +474,144 @@ export default function AdminDashboard() {
                         <p>Loading database...</p>
                     ) : activeTab === "students" ? (
                         <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "12px" }}>
-                                <h3 style={{ margin: 0 }}>Registered Students</h3>
-                                <button onClick={() => setShowStudentModal(true)} className="btn-primary" style={{ padding: "8px 16px" }}>
-                                    + Register New Student
-                                </button>
-                            </div>
-
-                            {/* Search & Filter Bar */}
-                            <div style={{ display: "flex", gap: "12px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
-                                <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
-                                    <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
-                                    <input
-                                        type="text"
-                                        placeholder="Search by name or ID..."
-                                        value={studentSearch}
-                                        onChange={e => setStudentSearch(e.target.value)}
-                                        style={{
-                                            width: "100%",
-                                            padding: "9px 12px 9px 36px",
-                                            borderRadius: "8px",
-                                            border: "1px solid #e2e8f0",
-                                            fontSize: "0.9rem",
-                                            outline: "none",
-                                            boxSizing: "border-box",
-                                            background: "#f8fafc",
-                                        }}
-                                    />
+                            {/* Action Bar (Search, Filters, Button) */}
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
+                                    <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
+                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                                        <input
+                                            type="text"
+                                            placeholder="Search by name or ID..."
+                                            value={studentSearch}
+                                            onChange={e => setStudentSearch(e.target.value)}
+                                            style={{
+                                                width: "100%",
+                                                padding: "8px 12px 8px 36px",
+                                                borderRadius: "6px",
+                                                border: "1px solid #e2e8f0",
+                                                fontSize: "0.9rem",
+                                                height: "38px",
+                                                outline: "none",
+                                                boxSizing: "border-box",
+                                                background: "#f8fafc",
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                        {uniqueStatuses.map(s => {
+                                            const isActive = statusFilters.includes(s);
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => toggleStudentStatusFilter(s)}
+                                                    style={{
+                                                        padding: "6px 14px",
+                                                        borderRadius: "20px",
+                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                        fontSize: "0.8rem",
+                                                        fontWeight: isActive ? 600 : 400,
+                                                        background: isActive ? '#eff6ff' : '#f8fafc',
+                                                        color: isActive ? 'var(--accent-primary)' : '#475569',
+                                                        cursor: "pointer",
+                                                        transition: "all 0.2s"
+                                                    }}
+                                                >
+                                                    {s}
+                                                </button>
+                                            );
+                                        })}
+                                        {(studentSearch || statusFilters.length > 0) && (
+                                            <button 
+                                                onClick={() => { setStudentSearch(''); setStatusFilters([]); }}
+                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                            >
+                                                Clear Filters
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <select
-                                    value={statusFilter}
-                                    onChange={e => setStatusFilter(e.target.value)}
-                                    style={{
-                                        padding: "9px 14px",
-                                        borderRadius: "8px",
-                                        border: "1px solid #e2e8f0",
-                                        fontSize: "0.85rem",
-                                        background: "#f8fafc",
-                                        cursor: "pointer",
-                                        minWidth: "160px",
-                                    }}
-                                >
-                                    <option value="ALL">All Statuses</option>
-                                    {uniqueStatuses.map(s => (
-                                        <option key={s} value={s}>{s}</option>
-                                    ))}
-                                </select>
-                                {(studentSearch || statusFilter !== "ALL") && (
-                                    <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                                        {filteredStudents.length} of {students.length} students
-                                    </span>
-                                )}
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                    <button onClick={() => setShowStudentModal(true)} className="btn-primary" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
+                                        + Register New Student
+                                    </button>
+                                </div>
                             </div>
+                            
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                                <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} students</span>
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                        <span>Show:</span>
+                                        <select 
+                                            value={studentItemsPerPage} 
+                                            onChange={(e) => setStudentItemsPerPage(Number(e.target.value))}
+                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={25}>25</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                            {filteredStudents.length === 0 ? (
-                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "2rem 0" }}>
-                                    {students.length === 0 ? "No students in system." : "No students match your search."}
+                            {processedStudents.length === 0 ? (
+                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+                                    {students.length === 0 
+                                        ? "No students successfully found in the system." 
+                                        : `No students found matching '${studentSearch}'. Try a different search term or relaxing your filters?`}
                                 </p>
                             ) : (
-                                <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 310px)", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
                                     <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse", textAlign: "left" }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>ID</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Name</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Grade</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Status</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>Actions</th>
+                                                <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        ID
+                                                        <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
+                                                            {studentSortConfig.key === 'id' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        NAME
+                                                        <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
+                                                            {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        GRADE
+                                                        <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
+                                                            {studentSortConfig.key === 'grade' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th onClick={() => handleStudentSort('status')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        STATUS
+                                                        <span style={{ opacity: studentSortConfig.key === 'status' ? 1 : 0.3 }}>
+                                                            {studentSortConfig.key === 'status' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredStudents.map(s => {
+                                            {paginatedStudents.map(s => {
                                                 const ss = getStatusStyle(s.status);
                                                 return (
-                                                    <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)" }} className="hover:bg-slate-50">
+                                                    <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
                                                         <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
-                                                        <td style={{ padding: "12px", fontWeight: "bold" }}>
-                                                            <Link
-                                                                href={`/students/${s.id}`}
-                                                                style={{
-                                                                    color: "var(--text-primary)",
-                                                                    textDecoration: "none",
-                                                                    borderBottom: "1px dashed #cbd5e1",
-                                                                    paddingBottom: "1px",
-                                                                    transition: "color 0.2s, border-color 0.2s",
-                                                                }}
-                                                                onMouseOver={e => { e.currentTarget.style.color = "#2563eb"; e.currentTarget.style.borderColor = "#2563eb"; }}
-                                                                onMouseOut={e => { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.borderColor = "#cbd5e1"; }}
-                                                            >
+                                                        <td style={{ padding: "12px" }}>
+                                                            <Link href={`/students/${s.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                         </td>
-                                                        <td style={{ padding: "12px" }}>{s.grade}</td>
+                                                        <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{s.grade}</td>
                                                         <td style={{ padding: "12px" }}>
                                                             <span style={{
                                                                 fontSize: "0.72rem",
@@ -382,12 +625,11 @@ export default function AdminDashboard() {
                                                             }}>{s.status}</span>
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
-                                                            <Link href={`/students/${s.id}`} style={{ fontSize: "0.85rem", color: "var(--accent-primary)", textDecoration: "none", fontWeight: 600 }}
-                                                                onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
-                                                                onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
-                                                            >
-                                                                Manage
-                                                            </Link>
+                                                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
+                                                                <Link href={`/students/${s.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="Manage Student">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                                                </Link>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
@@ -396,124 +638,364 @@ export default function AdminDashboard() {
                                     </table>
                                 </div>
                             )}
+                            
+                            {/* Pagination Controls */}
+                            {processedStudents.length > 0 && totalStudentPages > 1 && (
+                                <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "1rem" }}>
+                                    <button 
+                                        onClick={() => setStudentPage(p => Math.max(1, p - 1))} 
+                                        disabled={safeStudentPage === 1}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeStudentPage === 1 ? "#f8fafc" : "white", color: safeStudentPage === 1 ? "#cbd5e1" : "inherit", cursor: safeStudentPage === 1 ? "not-allowed" : "pointer" }}
+                                    >Previous</button>
+                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "#64748b" }}>
+                                        Page {safeStudentPage} of {totalStudentPages}
+                                    </span>
+                                    <button 
+                                        onClick={() => setStudentPage(p => Math.min(totalStudentPages, p + 1))} 
+                                        disabled={safeStudentPage === totalStudentPages}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeStudentPage === totalStudentPages ? "#f8fafc" : "white", color: safeStudentPage === totalStudentPages ? "#cbd5e1" : "inherit", cursor: safeStudentPage === totalStudentPages ? "not-allowed" : "pointer" }}
+                                    >Next</button>
+                                </div>
+                            )}
                         </div>
                     ) : activeTab === "users" ? (
                         <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                                <h3>Active Users</h3>
-                                <button onClick={() => setShowUserModal(true)} className="btn-primary" style={{ padding: "8px 16px" }}>
-                                    + Create New User
-                                </button>
+                            {/* Action Bar (Search, Filters, Button) */}
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
+                                    <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
+                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                                        <input
+                                            type="text"
+                                            placeholder="Search by name, email, or username..."
+                                            value={userSearch}
+                                            onChange={e => setUserSearch(e.target.value)}
+                                            style={{
+                                                width: "100%",
+                                                padding: "8px 12px 8px 36px",
+                                                borderRadius: "6px",
+                                                border: "1px solid #e2e8f0",
+                                                fontSize: "0.9rem",
+                                                height: "38px",
+                                                outline: "none",
+                                                boxSizing: "border-box",
+                                                background: "#f8fafc",
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                        {uniqueUserRoles.map(r => {
+                                            const isActive = userRoleFilters.includes(r);
+                                            return (
+                                                <button
+                                                    key={r}
+                                                    onClick={() => toggleUserRoleFilter(r)}
+                                                    style={{
+                                                        padding: "6px 14px",
+                                                        borderRadius: "20px",
+                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                        fontSize: "0.8rem",
+                                                        fontWeight: isActive ? 600 : 400,
+                                                        background: isActive ? '#eff6ff' : '#f8fafc',
+                                                        color: isActive ? 'var(--accent-primary)' : '#475569',
+                                                        cursor: "pointer",
+                                                        transition: "all 0.2s"
+                                                    }}
+                                                >
+                                                    {r}
+                                                </button>
+                                            );
+                                        })}
+                                        {(userSearch || userRoleFilters.length > 0) && (
+                                            <button 
+                                                onClick={() => { setUserSearch(''); setUserRoleFilters([]); }}
+                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                            >
+                                                Clear Filters
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                    <button onClick={() => setShowUserModal(true)} className="btn-primary" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
+                                        + Create New User
+                                    </button>
+                                </div>
                             </div>
+                            
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                                <span>Showing {Math.min(processedUsers.length, paginatedUsers.length)} of {processedUsers.length} users</span>
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                        <span>Show:</span>
+                                        <select 
+                                            value={userItemsPerPage} 
+                                            onChange={(e) => setUserItemsPerPage(Number(e.target.value))}
+                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={25}>25</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                            {users.length === 0 ? (
-                                <p style={{ color: "var(--text-muted)" }}>No users found.</p>
+                            {processedUsers.length === 0 ? (
+                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+                                    {users.length === 0 
+                                        ? "No users successfully found in the system." 
+                                        : `No users found matching '${userSearch}'. Try a different search term or relaxing your filters?`}
+                                </p>
                             ) : (
-                                <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 250px)", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
                                     <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse", textAlign: "left" }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Name</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Email</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Username</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Role</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Assigned Kids</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
+                                                <th onClick={() => handleUserSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        NAME
+                                                        <span style={{ opacity: userSortConfig.key === 'name' ? 1 : 0.3 }}>
+                                                            {userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th onClick={() => handleUserSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        ROLE
+                                                        <span style={{ opacity: userSortConfig.key === 'role' ? 1 : 0.3 }}>
+                                                            {userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th onClick={() => handleUserSort('kids')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        ASSIGNED KIDS
+                                                        <span style={{ opacity: userSortConfig.key === 'kids' ? 1 : 0.3 }}>
+                                                            {userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {users.map(u => (
-                                                <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "top" }} className="hover:bg-slate-50">
-                                                    <td style={{ padding: "12px", fontWeight: "bold" }}>
-                                                        <Link href={`/users/${u.id}`} className="hover:text-blue-400 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none" }}>
-                                                            {u.first_name} {u.last_name}
-                                                        </Link>
-                                                    </td>
-                                                    <td style={{ padding: "12px", color: "var(--text-primary)" }}>
-                                                        {u.email}
-                                                    </td>
-                                                    <td style={{ padding: "12px", color: "var(--text-muted)" }}>
-                                                        @{u.username}
-                                                    </td>
-                                                    <td style={{ padding: "12px" }}>
-                                                        <span style={{ fontSize: "0.75rem", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, padding: "4px 8px", borderRadius: "12px", fontWeight: "bold" }}>
-                                                            {u.role}
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                                                        {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
-                                                            <div style={{ fontWeight: "bold", color: "var(--text-primary)" }}>
-                                                                Count: {u.assigned_students_count}
+                                            {paginatedUsers.map(u => {
+                                                const hasName = u.first_name || u.last_name;
+                                                const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@${u.username}` : u.email);
+                                                return (
+                                                    <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                        <td style={{ padding: "12px" }}>
+                                                            <div style={{ display: "flex", flexDirection: "column" }}>
+                                                                <Link href={`/users/${u.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                    {displayName}
+                                                                </Link>
+                                                                <span style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>{u.email}</span>
                                                             </div>
-                                                        ) : (
-                                                            <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>N/A</span>
-                                                        )}
-                                                    </td>
-                                                    <td style={{ padding: "12px", textAlign: "right", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-                                                        <Link href={`/users/${u.id}`} className="hover:text-blue-400 hover:underline transition-colors duration-200" style={{ fontSize: "0.9rem", color: "var(--accent-primary)", textDecoration: "none" }}>
-                                                            View Profile
-                                                        </Link>
-                                                        <button onClick={() => {
-                                                            setUserToDelete(u);
-                                                            setDeleteConfirmText("");
-                                                            setDeleteError("");
-                                                        }} className="hover:text-red-400 hover:underline transition-colors duration-200" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem", color: "#d32f2f" }} title="Delete User">
-                                                            Delete
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                                        </td>
+                                                        <td style={{ padding: "12px" }}>
+                                                            <span style={{ fontSize: "0.75rem", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "600", letterSpacing: "0.3px" }}>
+                                                                {u.role}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                                                            {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
+                                                                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "#f1f5f9", color: "#475569", fontWeight: "bold", fontSize: "0.8rem", padding: "0 6px" }}>
+                                                                    {u.assigned_students_count}
+                                                                </div>
+                                                            ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
+                                                                <div style={{ color: "var(--text-primary)", fontSize: "0.85rem", maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={u.assigned_student_names.join(', ')}>
+                                                                    {u.assigned_student_names.join(', ')}
+                                                                </div>
+                                                            ) : (
+                                                                <span style={{ color: "#cbd5e1" }}>-</span>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: "12px", textAlign: "right" }}>
+                                                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
+                                                                <Link href={`/users/${u.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                                                </Link>
+                                                                <button onClick={() => {
+                                                                    setUserToDelete(u);
+                                                                    setDeleteConfirmText("");
+                                                                    setDeleteError("");
+                                                                }} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
+                                </div>
+                            )}
+                            
+                            {/* Pagination Controls */}
+                            {processedUsers.length > 0 && totalUserPages > 1 && (
+                                <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "1rem" }}>
+                                    <button 
+                                        onClick={() => setUserPage(p => Math.max(1, p - 1))} 
+                                        disabled={safeUserPage === 1}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeUserPage === 1 ? "#f8fafc" : "white", color: safeUserPage === 1 ? "#cbd5e1" : "inherit", cursor: safeUserPage === 1 ? "not-allowed" : "pointer" }}
+                                    >Previous</button>
+                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "#64748b" }}>
+                                        Page {safeUserPage} of {totalUserPages}
+                                    </span>
+                                    <button 
+                                        onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))} 
+                                        disabled={safeUserPage === totalUserPages}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeUserPage === totalUserPages ? "#f8fafc" : "white", color: safeUserPage === totalUserPages ? "#cbd5e1" : "inherit", cursor: safeUserPage === totalUserPages ? "not-allowed" : "pointer" }}
+                                    >Next</button>
                                 </div>
                             )}
                         </div>
                     ) : activeTab === "invitations" ? (
                         <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                                <h3>Pending Invitations</h3>
-                                <button onClick={() => setShowInviteModal(true)} className="btn-secondary" style={{ padding: "8px 16px", background: "#f8fafc", color: "var(--accent-primary)", border: "1px solid var(--accent-primary)", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
-                                    ✉️ Invite New User
-                                </button>
+                            {/* Action Bar (Search, Filters, Button) */}
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
+                                    <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
+                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                                        <input
+                                            type="text"
+                                            placeholder="Search by email..."
+                                            value={invitationSearch}
+                                            onChange={e => setInvitationSearch(e.target.value)}
+                                            style={{
+                                                width: "100%",
+                                                padding: "8px 12px 8px 36px",
+                                                borderRadius: "6px",
+                                                border: "1px solid #e2e8f0",
+                                                fontSize: "0.9rem",
+                                                height: "38px",
+                                                outline: "none",
+                                                boxSizing: "border-box",
+                                                background: "#f8fafc",
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                        {uniqueInvitationRoles.map(r => {
+                                            const isActive = invitationRoleFilters.includes(r);
+                                            return (
+                                                <button
+                                                    key={r}
+                                                    onClick={() => toggleInvitationRoleFilter(r)}
+                                                    style={{
+                                                        padding: "6px 14px",
+                                                        borderRadius: "20px",
+                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                        fontSize: "0.8rem",
+                                                        fontWeight: isActive ? 600 : 400,
+                                                        background: isActive ? '#eff6ff' : '#f8fafc',
+                                                        color: isActive ? 'var(--accent-primary)' : '#475569',
+                                                        cursor: "pointer",
+                                                        transition: "all 0.2s"
+                                                    }}
+                                                >
+                                                    {r}
+                                                </button>
+                                            );
+                                        })}
+                                        {(invitationSearch || invitationRoleFilters.length > 0) && (
+                                            <button 
+                                                onClick={() => { setInvitationSearch(''); setInvitationRoleFilters([]); }}
+                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                            >
+                                                Clear Filters
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                    <button onClick={() => setShowInviteModal(true)} className="btn-secondary" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap", background: "#f8fafc", color: "var(--accent-primary)", border: "1px solid var(--accent-primary)", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
+                                        ✉️ Invite New User
+                                    </button>
+                                </div>
                             </div>
+                            
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                                <span>Showing {Math.min(processedInvitations.length, paginatedInvitations.length)} of {processedInvitations.length} invitations</span>
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                        <span>Show:</span>
+                                        <select 
+                                            value={invitationItemsPerPage} 
+                                            onChange={(e) => setInvitationItemsPerPage(Number(e.target.value))}
+                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={25}>25</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                            {invitations.filter(i => !i.is_used).length === 0 ? (
-                                <p style={{ color: "var(--text-muted)" }}>No pending invitations.</p>
+                            {processedInvitations.length === 0 ? (
+                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+                                    {invitations.filter(i => !i.is_used).length === 0 
+                                        ? "No pending invitations in system." 
+                                        : `No invitations found matching '${invitationSearch}'.`}
+                                </p>
                             ) : (
-                                <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 250px)", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
                                     <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", textAlign: "left" }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Email</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Role</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Sent Date</th>
-                                                <th style={{ padding: "12px", color: "var(--text-secondary)", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Actions</th>
+                                                <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        EMAIL
+                                                        <span style={{ opacity: invitationSortConfig.key === 'email' ? 1 : 0.3 }}>
+                                                            {invitationSortConfig.key === 'email' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th onClick={() => handleInvitationSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        ROLE
+                                                        <span style={{ opacity: invitationSortConfig.key === 'role' ? 1 : 0.3 }}>
+                                                            {invitationSortConfig.key === 'role' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th onClick={() => handleInvitationSort('date')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        SENT DATE
+                                                        <span style={{ opacity: invitationSortConfig.key === 'date' ? 1 : 0.3 }}>
+                                                            {invitationSortConfig.key === 'date' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {invitations.filter(i => !i.is_used).map(inv => (
-                                                <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)" }} className="hover:bg-slate-50">
-                                                    <td style={{ padding: "12px", fontWeight: "bold" }}>{inv.email}</td>
+                                            {paginatedInvitations.map(inv => (
+                                                <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                    <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)" }}>{inv.email}</td>
                                                     <td style={{ padding: "12px" }}>
-                                                        <span style={{ fontSize: "0.75rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 8px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase" }}>
+                                                        <span style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
                                                             {inv.role}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: "12px", color: "var(--text-secondary)" }}>{new Date(inv.created_at).toLocaleDateString()}</td>
+                                                    <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                                                     <td style={{ padding: "12px", textAlign: "right" }}>
-                                                        <div style={{ display: "flex", gap: "15px", alignItems: "center", justifyContent: "flex-end" }}>
+                                                        <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
                                                             <button
                                                                 onClick={() => {
                                                                     navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
                                                                     alert('Invite link copied to clipboard!');
                                                                 }}
-                                                                className="hover:text-blue-400 hover:underline transition-color duration-200"
-                                                                style={{ background: "none", border: "none", color: "var(--accent-primary)", cursor: "pointer", fontSize: "0.85rem", padding: 0 }}
+                                                                className="hover:bg-blue-50 transition-colors duration-200"
+                                                                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}
+                                                                title="Copy Invite Link"
                                                             >
-                                                                Copy Link
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                                                             </button>
-                                                            <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="hover:text-red-400 hover:underline transition-colors duration-200" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem", color: "#d32f2f", padding: 0 }} title="Revoke Invite">
-                                                                Delete
+                                                            <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                             </button>
                                                         </div>
                                                     </td>
@@ -521,6 +1003,25 @@ export default function AdminDashboard() {
                                             ))}
                                         </tbody>
                                     </table>
+                                </div>
+                            )}
+
+                            {/* Pagination Controls */}
+                            {processedInvitations.length > 0 && totalInvitationPages > 1 && (
+                                <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "1rem" }}>
+                                    <button 
+                                        onClick={() => setInvitationPage(p => Math.max(1, p - 1))} 
+                                        disabled={safeInvitationPage === 1}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeInvitationPage === 1 ? "#f8fafc" : "white", color: safeInvitationPage === 1 ? "#cbd5e1" : "inherit", cursor: safeInvitationPage === 1 ? "not-allowed" : "pointer" }}
+                                    >Previous</button>
+                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "#64748b" }}>
+                                        Page {safeInvitationPage} of {totalInvitationPages}
+                                    </span>
+                                    <button 
+                                        onClick={() => setInvitationPage(p => Math.min(totalInvitationPages, p + 1))} 
+                                        disabled={safeInvitationPage === totalInvitationPages}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeInvitationPage === totalInvitationPages ? "#f8fafc" : "white", color: safeInvitationPage === totalInvitationPages ? "#cbd5e1" : "inherit", cursor: safeInvitationPage === totalInvitationPages ? "not-allowed" : "pointer" }}
+                                    >Next</button>
                                 </div>
                             )}
                         </div>

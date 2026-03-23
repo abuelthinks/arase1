@@ -107,22 +107,16 @@ class BaseInputViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'ADMIN':
             return self.queryset
-        return self.queryset.filter(submitted_by=user)
-
-
-class ParentAssessmentViewSet(BaseInputViewSet):
-    queryset = ParentAssessment.objects.all()
-    serializer_class = ParentAssessmentSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role == 'ADMIN':
-            return self.queryset
         if user.role == 'PARENT':
             return self.queryset.filter(submitted_by=user)
         from .models import StudentAccess
         assigned_student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
         return self.queryset.filter(student_id__in=assigned_student_ids)
+
+
+class ParentAssessmentViewSet(BaseInputViewSet):
+    queryset = ParentAssessment.objects.all()
+    serializer_class = ParentAssessmentSerializer
 
 
 class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
@@ -218,7 +212,7 @@ class StudentProfileView(APIView):
             return Response({"error": "Student not found or access denied."}, status=status.HTTP_404_NOT_FOUND)
 
         from .services.student_service import get_student_profile_data
-        return Response(get_student_profile_data(student))
+        return Response(get_student_profile_data(student, request.user))
 
 # ─── Student Actions ─────────────────────────────────────────────────────────
 
@@ -540,12 +534,20 @@ class IEPDetailView(APIView):
         except GeneratedDocument.DoesNotExist:
             return Response({"error": "IEP not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        if request.user.role != 'ADMIN':
+            from .models import StudentAccess
+            if not StudentAccess.objects.filter(user=request.user, student=doc.student).exists():
+                return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
+            if request.user.role == 'PARENT' and doc.status != 'FINAL':
+                return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
+
         return Response({
             "id": doc.id,
             "student_id": doc.student_id,
             "student_name": f"{doc.student.first_name} {doc.student.last_name}",
             "report_cycle": {"start": str(doc.report_cycle.start_date), "end": str(doc.report_cycle.end_date)},
             "created_at": doc.created_at.isoformat(),
+            "status": doc.status,
             "iep_data": doc.iep_data,
         })
 
@@ -559,12 +561,17 @@ class IEPDetailView(APIView):
             return Response({"error": "IEP not found."}, status=status.HTTP_404_NOT_FOUND)
 
         new_data = request.data.get('iep_data')
-        if not new_data:
-            return Response({"error": "iep_data is required."}, status=status.HTTP_400_BAD_REQUEST)
+        new_status = request.data.get('status')
+        if not new_data and not new_status:
+            return Response({"error": "iep_data or status is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        doc.iep_data = new_data
+        if new_data:
+            doc.iep_data = new_data
+        if new_status in [choice[0] for choice in GeneratedDocument.STATUS_CHOICES]:
+            doc.status = new_status
+
         doc.save()
-        return Response({"message": "IEP updated.", "iep_data": doc.iep_data})
+        return Response({"message": "IEP updated.", "iep_data": doc.iep_data, "status": doc.status})
 
 
 class IEPDownloadView(APIView):
@@ -591,6 +598,13 @@ class IEPDownloadView(APIView):
             doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='IEP')
         except GeneratedDocument.DoesNotExist:
             return Response({"error": "IEP not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.role != 'ADMIN':
+            from .models import StudentAccess
+            if not StudentAccess.objects.filter(user=user, student=doc.student).exists():
+                return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
+            if user.role == 'PARENT' and doc.status != 'FINAL':
+                return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
 
         from io import BytesIO
         from django.http import HttpResponse
@@ -757,14 +771,44 @@ class WeeklyReportDetailView(APIView):
         except GeneratedDocument.DoesNotExist:
             return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        if request.user.role != 'ADMIN':
+            from .models import StudentAccess
+            if not StudentAccess.objects.filter(user=request.user, student=doc.student).exists():
+                return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
+            if request.user.role == 'PARENT' and doc.status != 'FINAL':
+                return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
+
         return Response({
             "id": doc.id,
             "student_id": doc.student_id,
             "student_name": f"{doc.student.first_name} {doc.student.last_name}",
             "report_cycle": {"start": str(doc.report_cycle.start_date), "end": str(doc.report_cycle.end_date)},
             "created_at": doc.created_at.isoformat(),
+            "status": doc.status,
             "report_data": doc.iep_data,
         })
+
+    def patch(self, request, pk):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can edit reports."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            doc = GeneratedDocument.objects.get(id=pk, document_type='WEEKLY')
+        except GeneratedDocument.DoesNotExist:
+            return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        new_data = request.data.get('report_data')
+        new_status = request.data.get('status')
+        if not new_data and not new_status:
+            return Response({"error": "report_data or status is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_data:
+            doc.iep_data = new_data
+        if new_status in [choice[0] for choice in GeneratedDocument.STATUS_CHOICES]:
+            doc.status = new_status
+
+        doc.save()
+        return Response({"message": "Weekly Report updated.", "report_data": doc.iep_data, "status": doc.status})
 
 
 class WeeklyReportDownloadView(APIView):
@@ -790,6 +834,13 @@ class WeeklyReportDownloadView(APIView):
             doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='WEEKLY')
         except GeneratedDocument.DoesNotExist:
             return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.role != 'ADMIN':
+            from .models import StudentAccess
+            if not StudentAccess.objects.filter(user=user, student=doc.student).exists():
+                return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
+            if user.role == 'PARENT' and doc.status != 'FINAL':
+                return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
 
         from io import BytesIO
         from django.http import HttpResponse

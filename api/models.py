@@ -111,9 +111,14 @@ class GeneratedDocument(models.Model):
         ('ASSESSMENT', 'Assessment'),
         ('WEEKLY', 'Weekly Progress Report'),
     )
+    STATUS_CHOICES = (
+        ('DRAFT', 'Draft'),
+        ('FINAL', 'Final'),
+    )
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
     document_type = models.CharField(max_length=20, choices=DOC_TYPES)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='DRAFT')
     file = models.FileField(upload_to='generated_reports/', blank=True, null=True)
     iep_data = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

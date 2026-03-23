@@ -72,7 +72,9 @@ function WeeklyReportContent() {
 
     const [report, setReport] = useState<WeeklyReportData | null>(null);
     const [meta, setMeta] = useState<{ student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
+    const [reportStatus, setReportStatus] = useState<string>("DRAFT");
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
     const [copied, setCopied] = useState(false);
 
@@ -83,6 +85,7 @@ function WeeklyReportContent() {
             .then(res => {
                 setReport(res.data.report_data);
                 setMeta({ student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
+                setReportStatus(res.data.status);
             })
             .catch(() => setErrorMsg("Failed to load weekly report."))
             .finally(() => setLoading(false));
@@ -96,6 +99,15 @@ function WeeklyReportContent() {
     const handleDownload = () => {
         // Redirect to download endpoint
         window.location.href = `${API_BASE_URL}/api/weekly-report/${reportId}/download/`;
+    };
+
+    const handleSaveStatus = async (newStatus: string) => {
+        setSaving(true);
+        try {
+            const res = await api.patch(`/api/weekly-report/${reportId}/`, { status: newStatus });
+            setReportStatus(res.data.status);
+        } catch { setErrorMsg("Failed to save status."); }
+        finally { setSaving(false); }
     };
 
     const handleCopyLink = () => {
@@ -143,13 +155,18 @@ function WeeklyReportContent() {
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>📊 Weekly Progress Report</h1>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+                        📊 Weekly Progress Report
+                        <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatus === "FINAL" ? "#dcfce7" : "#fef3c7", color: reportStatus === "FINAL" ? "#166534" : "#92400e", border: `1px solid ${reportStatus === "FINAL" ? "#bbf7d0" : "#fde68a"}` }}>
+                            {reportStatus === "FINAL" ? "FINAL" : "DRAFT"}
+                        </span>
+                    </h1>
                     <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
                         {meta.student_name} · {report.report_period || `Generated ${new Date(meta.created_at).toLocaleDateString()}`}
                     </p>
                 </div>
                 {user?.role === "ADMIN" && (
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                         <button onClick={handleCopyLink}
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: copied ? "#059669" : "#475569" }}>
                             {copied ? "✓ Copied!" : "🔗 Share Link"}
@@ -158,6 +175,18 @@ function WeeklyReportContent() {
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
                             📥 Download PDF
                         </button>
+                        <span style={{ width: "1px", height: "24px", background: "#cbd5e1", margin: "0 4px" }}></span>
+                        {reportStatus !== "FINAL" ? (
+                            <button onClick={() => handleSaveStatus("FINAL")} disabled={saving}
+                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                {saving ? "Saving…" : "✅ Finalize"}
+                            </button>
+                        ) : (
+                            <button onClick={() => handleSaveStatus("DRAFT")} disabled={saving}
+                                style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#64748b", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                {saving ? "Saving…" : "Revert to Draft"}
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
