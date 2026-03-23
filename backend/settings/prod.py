@@ -48,5 +48,6 @@ SECURE_HSTS_PRELOAD = True
 
 # --- Secure Proxy ---
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = True
+# CSRF and Allowed Hosts are handled via Render Environment Variables
+
 
