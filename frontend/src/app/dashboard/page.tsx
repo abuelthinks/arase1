@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
 import AdminDashboard from "./AdminDashboard";
+import WelcomeBanner from "@/components/WelcomeBanner";
 
 interface Student {
     id: number;
@@ -138,6 +139,8 @@ export default function DashboardPage() {
                     <p style={{ color: "var(--text-secondary)", marginTop: "5px" }}>{getSubtitle()}</p>
                 </div>
 
+                <WelcomeBanner students={students} />
+
                 {/* Content panel */}
                 <div className="glass-panel" style={{ padding: "2rem", background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
                     {loading ? (
@@ -151,84 +154,179 @@ export default function DashboardPage() {
                     ) : (
                         <div>
                             {/* Action Bar (Search, Filters) */}
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
-                                    <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
-                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
-                                        <input
-                                            type="text"
-                                            placeholder="Search by name or ID..."
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            style={{
-                                                width: "100%",
-                                                padding: "8px 12px 8px 36px",
-                                                borderRadius: "6px",
-                                                border: "1px solid #e2e8f0",
-                                                fontSize: "0.9rem",
-                                                height: "38px",
-                                                outline: "none",
-                                                boxSizing: "border-box",
-                                                background: "#f8fafc",
-                                            }}
-                                        />
-                                    </div>
-                                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                                        {uniqueStatuses.map(s => {
-                                            const isActive = statusFilters.includes(s);
-                                            return (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => toggleStatusFilter(s)}
+                            {!(user?.role === "PARENT" && students.length < 3) && (
+                                <>
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+                                        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
+                                            <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
+                                                <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search by name or ID..."
+                                                    value={searchQuery}
+                                                    onChange={e => setSearchQuery(e.target.value)}
                                                     style={{
-                                                        padding: "6px 14px",
-                                                        borderRadius: "20px",
-                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
-                                                        fontSize: "0.8rem",
-                                                        fontWeight: isActive ? 600 : 400,
-                                                        background: isActive ? '#eff6ff' : '#f8fafc',
-                                                        color: isActive ? 'var(--accent-primary)' : '#475569',
-                                                        cursor: "pointer",
-                                                        transition: "all 0.2s"
+                                                        width: "100%",
+                                                        padding: "8px 12px 8px 36px",
+                                                        borderRadius: "6px",
+                                                        border: "1px solid #e2e8f0",
+                                                        fontSize: "0.9rem",
+                                                        height: "38px",
+                                                        outline: "none",
+                                                        boxSizing: "border-box",
+                                                        background: "#f8fafc",
                                                     }}
-                                                >
-                                                    {s.replace(/_/g, " ")}
-                                                </button>
-                                            );
-                                        })}
-                                        {(searchQuery || statusFilters.length > 0) && (
-                                            <button 
-                                                onClick={() => { setSearchQuery(''); setStatusFilters([]); }}
-                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
-                                            >
-                                                Clear Filters
-                                            </button>
-                                        )}
+                                                />
+                                            </div>
+                                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                                {uniqueStatuses.map(s => {
+                                                    const isActive = statusFilters.includes(s);
+                                                    return (
+                                                        <button
+                                                            key={s}
+                                                            onClick={() => toggleStatusFilter(s)}
+                                                            style={{
+                                                                padding: "6px 14px",
+                                                                borderRadius: "20px",
+                                                                border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                                fontSize: "0.8rem",
+                                                                fontWeight: isActive ? 600 : 400,
+                                                                background: isActive ? '#eff6ff' : '#f8fafc',
+                                                                color: isActive ? 'var(--accent-primary)' : '#475569',
+                                                                cursor: "pointer",
+                                                                transition: "all 0.2s"
+                                                            }}
+                                                        >
+                                                            {s.replace(/_/g, " ")}
+                                                        </button>
+                                                    );
+                                                })}
+                                                {(searchQuery || statusFilters.length > 0) && (
+                                                    <button 
+                                                        onClick={() => { setSearchQuery(''); setStatusFilters([]); }}
+                                                        style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                                    >
+                                                        Clear Filters
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
-                                <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} entries</span>
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                        <span>Show:</span>
-                                        <select 
-                                            value={itemsPerPage} 
-                                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
-                                        >
-                                            <option value={10}>10</option>
-                                            <option value={25}>25</option>
-                                            <option value={50}>50</option>
-                                            <option value={100}>100</option>
-                                        </select>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                                        <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} entries</span>
+                                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                            <span>Show:</span>
+                                            <select 
+                                                value={itemsPerPage} 
+                                                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                                                style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                            >
+                                                <option value={10}>10</option>
+                                                <option value={25}>25</option>
+                                                <option value={50}>50</option>
+                                                <option value={100}>100</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                </div>
+                                </>
+                            )}
 
                             {processedStudents.length === 0 ? (
                                 <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
                                     No records found matching your filters.
                                 </p>
+                            ) : user?.role === "PARENT" ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+                                    {paginatedStudents.map(s => {
+                                        const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
+                                        const badge = statusColors[statusKey] ?? { bg: "#f1f5f9", color: "#475569" };
+                                        return (
+                                            <div key={s.id} className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group hover:border-blue-200">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-3xl font-black border-4 border-white shadow-sm transition-transform group-hover:scale-105">
+                                                            {s.first_name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-extrabold text-2xl text-slate-900 leading-tight">{s.first_name}</h3>
+                                                            <p className="text-slate-500 font-medium">{s.last_name}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="-mx-6 px-6 py-3 bg-slate-50 border-y border-slate-100 flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</span>
+                                                    <span style={{
+                                                        fontSize: "0.75rem",
+                                                        fontWeight: "bold",
+                                                        padding: "4px 10px",
+                                                        borderRadius: "20px",
+                                                        textTransform: "uppercase",
+                                                        letterSpacing: "0.5px",
+                                                        background: badge.bg,
+                                                        color: badge.color,
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: "6px",
+                                                        border: `1px solid ${badge.color}20`
+                                                    }}>
+                                                        {s.status === "PENDING_ASSESSMENT" && (
+                                                            <span className="flex h-2 w-2 rounded-full relative">
+                                                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                                              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                                                            </span>
+                                                        )}
+                                                        {s.status?.replace(/_/g, " ")}
+                                                    </span>
+                                                </div>
+
+                                                <div className="mt-auto flex flex-col gap-2 pt-2">
+                                                    {s.status === "PENDING_ASSESSMENT" ? (
+                                                        <Link 
+                                                            href={`/parent-onboarding?studentId=${s.id}`}
+                                                            className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-lg text-center hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5 focus:ring-4 focus:ring-blue-100 flex items-center justify-center gap-2"
+                                                        >
+                                                            Start Assessment
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                                        </Link>
+                                                    ) : (
+                                                        <Link 
+                                                            href={`/students/${s.id}`}
+                                                            className="w-full py-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 font-bold text-center hover:bg-blue-100 transition-colors focus:ring-4 focus:ring-blue-100 flex items-center justify-center gap-2"
+                                                        >
+                                                            View Submitted Form
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Supportive Side/Resources Card */}
+                                    <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-2xl border border-slate-200 p-6 flex flex-col gap-4 shadow-sm">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center drop-shadow-sm">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </div>
+                                            <h3 className="font-bold text-lg text-slate-800">What's Next?</h3>
+                                        </div>
+                                        <p className="text-sm text-slate-600 leading-relaxed flex-grow">
+                                            After you submit the parent assessment, our specialist team will review your insights alongside school reports to develop a personalized milestone plan. You'll be notified when it's ready!
+                                        </p>
+                                        <div className="space-y-3 pt-4 border-t border-slate-200 text-sm">
+                                            <a href="#" className="flex items-center justify-between text-blue-600 hover:text-blue-700 font-medium group transition-colors">
+                                                How we use this data
+                                                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                            </a>
+                                            <a href="#" className="flex items-center justify-between text-blue-600 hover:text-blue-700 font-medium group transition-colors">
+                                                Contact Support
+                                                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             ) : (
                                 <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
                                     <table style={{ width: "100%", minWidth: "500px", borderCollapse: "collapse", textAlign: "left" }}>
@@ -268,7 +366,9 @@ export default function DashboardPage() {
                                                 return (
                                                     <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
                                                         <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)" }}>{s.first_name} {s.last_name}</td>
-                                                        <td style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>{s.grade || "TBD"}</td>
+                                                        <td style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                                                            {s.grade && s.grade !== "TBD" ? s.grade : <span className="text-slate-400 italic">Not yet assigned</span>}
+                                                        </td>
                                                         <td style={{ padding: "12px" }}>
                                                             <span style={{
                                                                 fontSize: "0.72rem",
@@ -285,6 +385,14 @@ export default function DashboardPage() {
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
                                                             <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
+                                                                {s.status === "PENDING_ASSESSMENT" && (
+                                                                    <Link 
+                                                                        href={`/students/${s.id}`}
+                                                                        className="text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                                                                    >
+                                                                        Start Assessment
+                                                                    </Link>
+                                                                )}
                                                                 <Link 
                                                                     href={`/students/${s.id}`} 
                                                                     className="hover:bg-blue-50 transition-colors duration-200"

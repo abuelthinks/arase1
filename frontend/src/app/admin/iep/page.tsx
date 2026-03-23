@@ -79,6 +79,8 @@ function IEPViewerContent() {
     const [copied, setCopied] = useState(false);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState("");
+    const [showAuditModal, setShowAuditModal] = useState(false);
+    const [auditHistory, setAuditHistory] = useState<any[]>([]);
 
     useEffect(() => {
         if (!iepId) return;
@@ -138,6 +140,16 @@ function IEPViewerContent() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const fetchAuditHistory = async () => {
+        try {
+            const res = await api.get(`/api/documents/${iepId}/history/`);
+            setAuditHistory(res.data.history);
+            setShowAuditModal(true);
+        } catch (e) {
+            console.error("Failed to fetch audit history", e);
+        }
+    };
+
     const s1 = iep.section1_student_info || {};
     const s2 = iep.section2_background || {};
     const s3 = iep.section3_strengths || { strengths: [], interests: [] };
@@ -183,6 +195,10 @@ function IEPViewerContent() {
                 </div>
                 {user?.role === "ADMIN" && (
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <button onClick={fetchAuditHistory}
+                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
+                            ⏱️ Audit History
+                        </button>
                         <button onClick={handleCopyLink}
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: copied ? "#059669" : "#475569" }}>
                             {copied ? "✓ Copied!" : "🔗 Share Link"}
@@ -420,6 +436,37 @@ function IEPViewerContent() {
             <SectionCard title="Section 12 — Signatures">
                 <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Signatures will be collected upon IEP approval.</p>
             </SectionCard>
+
+            {/* Audit History Modal */}
+            {showAuditModal && (
+                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => setShowAuditModal(false)}>
+                    <div style={{ background: "white", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "500px", position: "relative", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowAuditModal(false)} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#64748b" }}>×</button>
+                        <h2 style={{ margin: "0 0 1.5rem 0", fontSize: "1.25rem", color: "#0f172a", fontWeight: 800 }}>Document Audit History</h2>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxHeight: "60vh", overflowY: "auto", paddingRight: "0.5rem" }}>
+                            {auditHistory.length === 0 ? (
+                                <p style={{ color: "#64748b", margin: 0, fontSize: "0.9rem" }}>No history found.</p>
+                            ) : (
+                                auditHistory.map((item, idx) => (
+                                    <div key={item.id} style={{ display: "flex", gap: "1rem", position: "relative" }}>
+                                        {idx !== auditHistory.length - 1 && <div style={{ position: "absolute", width: "2px", background: "#e2e8f0", top: "24px", bottom: "-16px", left: "11px" }} />}
+                                        <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#e0e7ff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
+                                            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4f46e5" }} />
+                                        </div>
+                                        <div>
+                                            <p style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "#0f172a", fontWeight: 700 }}>
+                                                {item.action === "GENERATED" ? "AI Generated Draft" : item.action === "EDITED_DRAFT" ? "Draft Saved" : "Document Finalized"}
+                                            </p>
+                                            <p style={{ margin: "0 0 2px 0", fontSize: "0.8rem", color: "#475569" }}>By {item.edited_by}</p>
+                                            <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>{new Date(item.created_at).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -95,6 +95,10 @@ export default function AdminSidebar() {
 
             {/* Nav */}
             <nav style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <Link href="/dashboard?tab=analytics" style={navLinkStyle(activeTab === "analytics")}>
+                    <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>📊</span>
+                    <span style={labelStyle}>Analytics</span>
+                </Link>
                 <Link href="/dashboard?tab=students" style={navLinkStyle(activeTab === "students")}>
                     <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>📚</span>
                     <span style={labelStyle}>Student Roster</span>

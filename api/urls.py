@@ -11,6 +11,8 @@ from .views import (
     StaffListView,
     GenerateIEPView, IEPDetailView, IEPDownloadView,
     GenerateWeeklyReportView, WeeklyReportDetailView, WeeklyReportDownloadView,
+    AdminDashboardActionsView,
+    DocumentHistoryView,
 )
 
 router = DefaultRouter()
@@ -40,6 +42,9 @@ urlpatterns = [
     path('invitations/', CreateInvitationView.as_view(), name='create-invitation'),
     path('invitations/<int:pk>/', ManageInvitationView.as_view(), name='manage-invitation'),
     path('invitations/accept/', AcceptInvitationView.as_view(), name='accept-invitation'),
+    
+    path('dashboard/actions/', AdminDashboardActionsView.as_view(), name='dashboard-actions'),
+    
     # IEP endpoints
     path('iep/generate/', GenerateIEPView.as_view(), name='generate-iep'),
     path('iep/<int:pk>/', IEPDetailView.as_view(), name='iep-detail'),
@@ -48,4 +53,7 @@ urlpatterns = [
     path('weekly-report/generate/', GenerateWeeklyReportView.as_view(), name='generate-weekly-report'),
     path('weekly-report/<int:pk>/', WeeklyReportDetailView.as_view(), name='weekly-report-detail'),
     path('weekly-report/<int:pk>/download/', WeeklyReportDownloadView.as_view(), name='weekly-report-download'),
+    
+    # Audit Logs
+    path('documents/<int:pk>/history/', DocumentHistoryView.as_view(), name='document-history'),
 ]

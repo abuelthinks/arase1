@@ -125,3 +125,14 @@ class GeneratedDocument(models.Model):
 
     def __str__(self):
         return f"{self.get_document_type_display()} for {self.student} ({self.created_at.date()})"
+
+class DocumentVersion(models.Model):
+    document = models.ForeignKey(GeneratedDocument, on_delete=models.CASCADE, related_name='versions')
+    action = models.CharField(max_length=50, help_text="e.g. GENERATED, EDITED_DRAFT, FINALIZED")
+    edited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    iep_data = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=GeneratedDocument.STATUS_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.document.get_document_type_display()} v{self.id} ({self.action})"

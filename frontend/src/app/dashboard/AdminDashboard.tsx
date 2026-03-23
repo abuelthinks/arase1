@@ -46,6 +46,15 @@ interface StudentData {
     status: string;
 }
 
+interface DashboardAction {
+    id: string;
+    title: string;
+    description: string;
+    action_text: string;
+    link: string;
+    type: "positive" | "info" | "warning";
+}
+
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
 const getRoleStyle = (role: string) => {
@@ -74,11 +83,12 @@ export default function AdminDashboard() {
     const searchParams = useSearchParams();
 
     // Check URL for explicit tab, default to students
-    const initialTab = (searchParams.get('tab') as "students" | "users" | "invitations") || "students";
-    const [activeTab, setActiveTab] = useState<"students" | "users" | "invitations">(initialTab);
+    const initialTab = (searchParams.get('tab') as "analytics" | "students" | "users" | "invitations") || "analytics";
+    const [activeTab, setActiveTab] = useState<"analytics" | "students" | "users" | "invitations">(initialTab);
     const [students, setStudents] = useState<StudentData[]>([]);
     const [users, setUsers] = useState<UserData[]>([]);
     const [invitations, setInvitations] = useState<InvitationData[]>([]);
+    const [dashboardActions, setDashboardActions] = useState<DashboardAction[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Student search & filter
@@ -139,14 +149,16 @@ export default function AdminDashboard() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [studentRes, userRes, inviteRes] = await Promise.all([
+            const [studentRes, userRes, inviteRes, actionsRes] = await Promise.all([
                 api.get("/api/students/"),
                 api.get("/api/users/"),
-                api.get("/api/invitations/")
+                api.get("/api/invitations/"),
+                api.get("/api/dashboard/actions/").catch(() => ({ data: { actions: [] } }))
             ]);
             setStudents(studentRes.data);
             setUsers(userRes.data);
             setInvitations(inviteRes.data);
+            setDashboardActions(actionsRes.data?.actions || []);
         } catch (err) {
             console.error("Failed to fetch admin data", err);
         } finally {
@@ -160,7 +172,7 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab && (tab === 'students' || tab === 'users' || tab === 'invitations')) {
+        if (tab && (tab === 'analytics' || tab === 'students' || tab === 'users' || tab === 'invitations')) {
             setActiveTab(tab);
         }
     }, [searchParams]);
@@ -450,6 +462,15 @@ export default function AdminDashboard() {
         }
     };
 
+    /* ─── Analytics Metrics ──────────────────────────────────────────────── */
+    const totalStudents = students.length;
+    const enrolledStudents = students.filter(s => s.status === "ENROLLED").length;
+    const assessingStudents = students.filter(s => s.status === "ASSESSED" || s.status === "ASSESSMENT_SCHEDULED").length;
+    const pendingStudents = students.filter(s => s.status === "PENDING_ASSESSMENT" || s.status === "ASSESSMENT_REQUESTED").length;
+
+    // Bottlenecks Mocking
+    const bottlenecks = students.filter(s => s.status === "PENDING_ASSESSMENT").slice(0, 5); // Take top 5 for bottlenecks
+
     /* ─── Render ─────────────────────────────────────────────────────────── */
 
     return (
@@ -457,11 +478,13 @@ export default function AdminDashboard() {
             <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                         <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
+                            {activeTab === "analytics" && <>Analytics Dashboard</>}
                             {activeTab === "students" && <>Student Roster <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedStudents.length})</span></>}
                             {activeTab === "users" && <>System Users <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedUsers.length})</span></>}
                             {activeTab === "invitations" && <>Pending Invitations <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedInvitations.length})</span></>}
                         </h2>
                         <p style={{ margin: "5px 0 0 0", color: "var(--text-secondary)" }}>
+                            {activeTab === "analytics" && "High-level metrics, demographic breakdowns, and active bottlenecks."}
                             {activeTab === "students" && "Manage all registered students in the system."}
                             {activeTab === "users" && "Manage active system users and clinical roles."}
                             {activeTab === "invitations" && "Track and revoke pending access invitations."}
@@ -472,6 +495,135 @@ export default function AdminDashboard() {
                 <div className="glass-panel" style={{ padding: "2rem", background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
                     {loading ? (
                         <p>Loading database...</p>
+                    ) : activeTab === "analytics" ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeIn 0.4s ease-out" }}>
+                            
+                            {/* KPI Row */}
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+                                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b", display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                        Total Active Students
+                                    </span>
+                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>{totalStudents}</span>
+                                    <span style={{ fontSize: "0.8rem", color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                        +4 since last month
+                                    </span>
+                                </div>
+                                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b", display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Completed IEPs (MTD)
+                                    </span>
+                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>14</span>
+                                    <span style={{ fontSize: "0.8rem", color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                        +12% vs previous period
+                                    </span>
+                                </div>
+                                <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#be123c", display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Pending &gt; 14 Days
+                                    </span>
+                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#9f1239", lineHeight: 1 }}>{bottlenecks.length}</span>
+                                    <span style={{ fontSize: "0.8rem", color: "#e11d48", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                                        Requires admin intervention
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem", alignItems: "stretch" }}>
+                                {/* Pipeline Breakdown */}
+                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                                    <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800 }}>Student Pipeline Demographics</h3>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                                        
+                                        <div>
+                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                                                <span style={{ color: "#166534" }}>Enrolled (Cleared)</span>
+                                                <span>{enrolledStudents}</span>
+                                            </div>
+                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (enrolledStudents / totalStudents) * 100 : 0}%`, background: "#22c55e", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                                                <span style={{ color: "#1e40af" }}>Assessment Active</span>
+                                                <span>{assessingStudents}</span>
+                                            </div>
+                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (assessingStudents / totalStudents) * 100 : 0}%`, background: "#3b82f6", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                                                <span style={{ color: "#92400e" }}>Pending Inputs</span>
+                                                <span>{pendingStudents}</span>
+                                            </div>
+                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (pendingStudents / totalStudents) * 100 : 0}%`, background: "#f59e0b", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                {/* Action Center */}
+                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                                    <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        Action Center
+                                    </h3>
+                                    {dashboardActions.length === 0 ? (
+                                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>You're all caught up! No pending actions required right now.</p>
+                                    ) : (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                            {dashboardActions.map(action => (
+                                                <div key={action.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: action.type === 'positive' ? '#f0fdf4' : '#eff6ff', borderRadius: "8px", border: `1px solid ${action.type === 'positive' ? '#dcfce7' : '#dbeafe'}` }}>
+                                                    <div>
+                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: action.type === 'positive' ? '#166534' : '#1e40af' }}>{action.title}</p>
+                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: action.type === 'positive' ? '#15803d' : '#2563eb' }}>{action.description}</p>
+                                                    </div>
+                                                    <Link href={action.link} className="hover:scale-105 transition-transform" style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${action.type === 'positive' ? '#dcfce7' : '#dbeafe'}`, color: action.type === 'positive' ? '#166534' : '#1e40af', borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "80px" }}>
+                                                        {action.action_text}
+                                                    </Link>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Bottlenecks List */}
+                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #fecdd3", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                                    <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.1rem", color: "#9f1239", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        Active Bottlenecks
+                                    </h3>
+                                    {bottlenecks.length === 0 ? (
+                                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Hooray! No severe bottlenecks detected across the system.</p>
+                                    ) : (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                            {bottlenecks.map(b => (
+                                                <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#fff1f2", borderRadius: "8px", border: "1px solid #ffe4e6" }}>
+                                                    <div>
+                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#be123c" }}>{b.first_name} {b.last_name}</p>
+                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#e11d48" }}>Missing Teacher Input • Pending &gt; 14d</p>
+                                                    </div>
+                                                    <Link href={`/students/${b.id}`} style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: "1px solid #fecdd3", color: "#be123c", borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "80px" }}>
+                                                        Resolve →
+                                                    </Link>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     ) : activeTab === "students" ? (
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}

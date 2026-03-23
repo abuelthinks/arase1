@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import (
-    Student, ReportCycle, GeneratedDocument,
+    Student, ReportCycle, GeneratedDocument, DocumentVersion,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     User, Invitation
@@ -213,6 +213,51 @@ class StudentProfileView(APIView):
 
         from .services.student_service import get_student_profile_data
         return Response(get_student_profile_data(student, request.user))
+
+# ─── Dashboard Actions ───────────────────────────────────────────────────────
+
+class AdminDashboardActionsView(APIView):
+    """GET: Return actionable items for the Admin Action Center."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Admin only"}, status=status.HTTP_403_FORBIDDEN)
+        
+        actions = []
+        
+        # 1. Ready for Weekly Report
+        active_cycle = ReportCycle.objects.filter(is_active=True).first()
+        if active_cycle:
+            enrolled = Student.objects.filter(status='ENROLLED')
+            for s in enrolled:
+                p_done = ParentProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
+                m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
+                sp_done = SpedProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
+                if p_done and m_done and sp_done:
+                    actions.append({
+                        "id": f"weekly_{s.id}",
+                        "title": f"Ready for Weekly Report: {s.first_name} {s.last_name}",
+                        "description": "All 3 weekly trackers have been submitted.",
+                        "action_text": "Generate \u2192",
+                        "link": f"/admin/reports?studentId={s.id}",
+                        "type": "positive"
+                    })
+
+        # 2. Review Parent Onboarding
+        pending = Student.objects.filter(status='PENDING_ASSESSMENT')
+        for s in pending:
+            if ParentAssessment.objects.filter(student=s).exists():
+                actions.append({
+                    "id": f"enroll_{s.id}",
+                    "title": f"Review Parent Onboarding: {s.first_name} {s.last_name}",
+                    "description": "Parent has submitted initial assessment. Ready for enrollment review.",
+                    "action_text": "Review \u2192",
+                    "link": f"/students/{s.id}",
+                    "type": "info"
+                })
+
+        return Response({"actions": actions})
 
 # ─── Student Actions ─────────────────────────────────────────────────────────
 
@@ -512,7 +557,9 @@ class GenerateIEPView(APIView):
         # Sync generation returns the doc.id immediately so the frontend can navigate.
         try:
             from .services.iep_service import run_iep_generation
+            from .services.document_service import record_document_version
             doc, iep_data = run_iep_generation(student_id, report_cycle_id)
+            record_document_version(doc, request.user, 'GENERATED')
             return Response({
                 "message": "IEP generated successfully.",
                 "iep_id": doc.id,
@@ -571,6 +618,12 @@ class IEPDetailView(APIView):
             doc.status = new_status
 
         doc.save()
+        
+        # Record the version snapshot
+        from .services.document_service import record_document_version
+        action_label = 'FINALIZED' if new_status == 'FINAL' else 'EDITED_DRAFT'
+        record_document_version(doc, request.user, action_label)
+
         return Response({"message": "IEP updated.", "iep_data": doc.iep_data, "status": doc.status})
 
 
@@ -749,7 +802,9 @@ class GenerateWeeklyReportView(APIView):
         # Always run synchronously — Celery workers are not guaranteed on deployment.
         try:
             from .services.iep_service import run_weekly_report_generation
+            from .services.document_service import record_document_version
             doc, report_data = run_weekly_report_generation(student_id, report_cycle_id)
+            record_document_version(doc, request.user, 'GENERATED')
             return Response({
                 "message": "Weekly report generated successfully.",
                 "report_id": doc.id,
@@ -808,6 +863,12 @@ class WeeklyReportDetailView(APIView):
             doc.status = new_status
 
         doc.save()
+
+        # Record the version snapshot
+        from .services.document_service import record_document_version
+        action_label = 'FINALIZED' if new_status == 'FINAL' else 'EDITED_DRAFT'
+        record_document_version(doc, request.user, action_label)
+
         return Response({"message": "Weekly Report updated.", "report_data": doc.iep_data, "status": doc.status})
 
 
@@ -987,3 +1048,35 @@ class WeeklyReportDownloadView(APIView):
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{student.last_name}_{student.first_name}_Weekly_Report.pdf"'
         return response
+
+# ─── Audit Logs ─────────────────────────────────────────────────────────────
+
+class DocumentHistoryView(APIView):
+    """GET: Retrieve version history for a given document."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            doc = GeneratedDocument.objects.get(id=pk)
+        except GeneratedDocument.DoesNotExist:
+            return Response({"error": "Document not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user.role != 'ADMIN':
+            from .models import StudentAccess
+            if not StudentAccess.objects.filter(user=request.user, student=doc.student).exists():
+                return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
+            if request.user.role == 'PARENT':
+                return Response({"error": "Parents cannot view document audit history."}, status=status.HTTP_403_FORBIDDEN)
+
+        versions = doc.versions.all().order_by('-created_at')
+        history = []
+        for v in versions:
+            history.append({
+                "id": v.id,
+                "action": v.action,
+                "edited_by": f"{v.edited_by.first_name} {v.edited_by.last_name}" if v.edited_by else "System",
+                "status": v.status,
+                "created_at": v.created_at.isoformat(),
+            })
+            
+        return Response({"history": history})
