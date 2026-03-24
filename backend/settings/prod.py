@@ -10,7 +10,7 @@ DEBUG = False
 # SECRET_KEY MUST be set via environment variable in production
 SECRET_KEY = os.environ['SECRET_KEY']
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
 
 # ─── Database — PostgreSQL required in production ────────────────────────────
 import dj_database_url
