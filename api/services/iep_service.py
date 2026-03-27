@@ -26,8 +26,6 @@ def collect_iep_inputs(student, cycle):
 def run_iep_generation(student_id, cycle_id):
     """
     Runs the full IEP generation and persists the result.
-    Can be called synchronously or from a Celery task.
-
     Returns: (doc, iep_data)
     """
     from api.iep_generator import generate_iep
@@ -44,6 +42,16 @@ def run_iep_generation(student_id, cycle_id):
         document_type='IEP',
         iep_data=iep_data,
     )
+
+    # Generate PDF and save to storage (S3 in production, local in dev)
+    try:
+        from api.document_generator import _generate_iep_pdf
+        filename = f"{student.last_name}_{student.first_name}_IEP_{cycle.start_date}.pdf"
+        file_content = _generate_iep_pdf(student, iep_data)
+        doc.file.save(filename, file_content, save=True)
+        logger.info("IEP PDF saved to storage for student=%s (doc_id=%s)", student.id, doc.id)
+    except Exception as e:
+        logger.warning("Could not save IEP PDF to storage: %s", e)
 
     return doc, iep_data
 
@@ -100,8 +108,6 @@ def run_weekly_report_generation(student_id, cycle_id):
     """
     Runs the full weekly report generation and persists the result.
     Also auto-updates IEP Section 10 (Progress Monitoring) with fresh GAS data.
-    Can be called synchronously or from a Celery task.
-
     Returns: (doc, report_data)
     """
     from api.weekly_report_generator import generate_weekly_report
@@ -124,6 +130,16 @@ def run_weekly_report_generation(student_id, cycle_id):
         document_type='WEEKLY',
         iep_data=report_data,  # reusing iep_data JSONField
     )
+
+    # Generate PDF and save to storage (S3 in production, local in dev)
+    try:
+        from api.document_generator import _generate_weekly_pdf
+        filename = f"{student.last_name}_{student.first_name}_WeeklyReport_{cycle.start_date}.pdf"
+        file_content = _generate_weekly_pdf(student, report_data)
+        doc.file.save(filename, file_content, save=True)
+        logger.info("Weekly report PDF saved to storage for student=%s (doc_id=%s)", student.id, doc.id)
+    except Exception as e:
+        logger.warning("Could not save weekly report PDF to storage: %s", e)
 
     # Auto-update IEP Section 10 with the fresh progress data
     try:

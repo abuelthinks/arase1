@@ -638,6 +638,7 @@ class IEPDownloadView(APIView):
             # Try cookie auth
             if not request.user or not request.user.is_authenticated:
                 return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+            user = request.user
         else:
             from rest_framework_simplejwt.authentication import JWTAuthentication
             try:
@@ -882,6 +883,7 @@ class WeeklyReportDownloadView(APIView):
         if not token:
             if not request.user or not request.user.is_authenticated:
                 return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+            user = request.user
         else:
             from rest_framework_simplejwt.authentication import JWTAuthentication
             try:
