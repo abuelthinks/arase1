@@ -96,7 +96,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ─── Storage Configuration ──────────────────────────────────────────────────
-USE_S3 = os.environ.get('USE_S3', 'False') == 'True'
+USE_S3 = os.environ.get('USE_S3', 'False').strip().lower() == 'true'
 
 if USE_S3:
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
