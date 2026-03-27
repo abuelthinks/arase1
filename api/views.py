@@ -126,8 +126,9 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         student = instance.student
-        if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
-            student.status = 'ASSESSED'
+        # Auto-advance to REVIEW when a specialist submits an assessment
+        if student.status in ['INQUIRY', 'EVALUATION']:
+            student.status = 'REVIEW'
             student.save()
 
 
@@ -150,8 +151,8 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
         student_id = request.data.get('student')
         try:
             student = Student.objects.get(id=student_id)
-            if student.status != 'ENROLLED' and request.user.role != 'ADMIN':
-                 return Response({"error": "Progress tracking is only available for enrolled students."}, status=status.HTTP_400_BAD_REQUEST)
+            if student.status != 'ACTIVE' and request.user.role != 'ADMIN':
+                return Response({"error": "Progress tracking is only available for active (enrolled) students."}, status=status.HTTP_400_BAD_REQUEST)
         except Student.DoesNotExist:
             pass
         return super().create(request, *args, **kwargs)
@@ -226,11 +227,11 @@ class AdminDashboardActionsView(APIView):
         
         actions = []
         
-        # 1. Ready for Weekly Report
+        # 1. Ready for Weekly Report (all trackers submitted for an ACTIVE student)
         active_cycle = ReportCycle.objects.filter(is_active=True).first()
         if active_cycle:
-            enrolled = Student.objects.filter(status='ENROLLED')
-            for s in enrolled:
+            active_students = Student.objects.filter(status='ACTIVE')
+            for s in active_students:
                 p_done = ParentProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
                 m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
                 sp_done = SpedProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
@@ -244,15 +245,27 @@ class AdminDashboardActionsView(APIView):
                         "type": "positive"
                     })
 
-        # 2. Review Parent Onboarding
-        pending = Student.objects.filter(status='PENDING_ASSESSMENT')
-        for s in pending:
+        # 2. Ready for Enrollment Review (all assessments done, waiting for admin decision)
+        in_review = Student.objects.filter(status='REVIEW')
+        for s in in_review:
+            actions.append({
+                "id": f"review_{s.id}",
+                "title": f"Ready for Enrollment Review: {s.first_name} {s.last_name}",
+                "description": "Specialist assessment complete. Awaiting admin enrollment decision.",
+                "action_text": "Review \u2192",
+                "link": f"/students/{s.id}",
+                "type": "info"
+            })
+
+        # 3. Parent Onboarding Submitted (in INQUIRY, parent input received)
+        inquiry = Student.objects.filter(status='INQUIRY')
+        for s in inquiry:
             if ParentAssessment.objects.filter(student=s).exists():
                 actions.append({
-                    "id": f"enroll_{s.id}",
-                    "title": f"Review Parent Onboarding: {s.first_name} {s.last_name}",
-                    "description": "Parent has submitted initial assessment. Ready for enrollment review.",
-                    "action_text": "Review \u2192",
+                    "id": f"inquiry_{s.id}",
+                    "title": f"Parent Onboarding Complete: {s.first_name} {s.last_name}",
+                    "description": "Parent has submitted initial assessment. Assign a specialist to begin evaluation.",
+                    "action_text": "Assign \u2192",
                     "link": f"/students/{s.id}",
                     "type": "info"
                 })
@@ -267,9 +280,9 @@ class RequestAssessmentView(APIView):
     def post(self, request, student_id):
         try:
             student = Student.objects.get(id=student_id, assigned_users__user=request.user)
-            student.status = 'ASSESSMENT_REQUESTED'
+            student.status = 'EVALUATION'
             student.save()
-            return Response({"message": "Assessment requested successfully."})
+            return Response({"message": "Evaluation requested successfully."})
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -364,11 +377,28 @@ class EnrollStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
-            student.status = 'ENROLLED'
+            student.status = 'ACTIVE'
             student.save()
-            return Response({"message": "Student successfully enrolled."})
+            return Response({"message": "Student successfully enrolled and set to Active."})
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ArchiveStudentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only Admins can archive students."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            student = Student.objects.get(id=student_id)
+            student.status = 'ARCHIVED'
+            student.save()
+            return Response({"message": "Student archived successfully."})
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
 
 # ─── AI Goals ────────────────────────────────────────────────────────────────
 
@@ -410,16 +440,15 @@ class GenerateReportDraftView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if doc_type == 'ASSESSMENT' and student.status not in ['ASSESSED', 'ENROLLED']:
+        if doc_type == 'ASSESSMENT' and student.status not in ['REVIEW', 'ACTIVE']:
             return Response({"error": "Cannot generate Assessment report. Student has not been fully assessed yet."}, status=status.HTTP_400_BAD_REQUEST)
-        if doc_type in ['IEP', 'WEEKLY'] and student.status != 'ENROLLED':
-            return Response({"error": f"Cannot generate {doc_type} report. Student is not enrolled."}, status=status.HTTP_400_BAD_REQUEST)
+        if doc_type in ['IEP', 'WEEKLY'] and student.status != 'ACTIVE':
+            return Response({"error": f"Cannot generate {doc_type} report. Student is not active (enrolled)."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             from .services.report_service import build_report_inputs, generate_draft_data
             inputs = build_report_inputs(student, cycle)
             draft_data = generate_draft_data(student, cycle, inputs, doc_type)
-
             return Response({"message": "Draft generated successfully.", "draft_data": draft_data}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Failed to generate draft: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

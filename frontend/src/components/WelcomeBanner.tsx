@@ -24,11 +24,11 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
     if (!students || students.length === 0) return null;
 
     // Prioritize student that needs action
-    const pendingStudent = students.find(s => s.status === "PENDING_ASSESSMENT");
-    const analyzingStudent = students.find(s => ["ASSESSMENT_REQUESTED", "ASSESSMENT_SCHEDULED", "ASSESSED"].includes(s.status));
-    const enrolledStudent = students.find(s => s.status === "ENROLLED");
+    const pendingStudent = students.find(s => s.status === "INQUIRY");
+    const analyzingStudent = students.find(s => ["EVALUATION", "REVIEW"].includes(s.status));
+    const activeStudent = students.find(s => s.status === "ACTIVE");
     
-    const targetStudent = pendingStudent || analyzingStudent || enrolledStudent;
+    const targetStudent = pendingStudent || analyzingStudent || activeStudent;
     if (!targetStudent) return null;
 
     if (dismissed) {
@@ -71,11 +71,11 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
                 </p>
             </>
         );
-    } else if (enrolledStudent) {
+    } else if (activeStudent) {
         Content = (
              <>
                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3 text-slate-800">
-                    Great news! <span className="text-blue-600">{targetStudent.first_name}</span> is fully enrolled.
+                    Great news! <span className="text-blue-600">{targetStudent.first_name}</span> is now Active and enrolled.
                 </h1>
                 <p className="text-lg text-slate-600 leading-relaxed font-medium">
                     You can view progress reports, goals, and update home context anytime from the profile page.

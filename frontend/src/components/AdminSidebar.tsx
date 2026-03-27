@@ -25,7 +25,7 @@ export default function AdminSidebar() {
     };
 
     // Determine active tab dynamically
-    let activeTab = "students";
+    let activeTab = "analytics";
     if (pathname.includes("/users")) {
         activeTab = "users";
     } else if (pathname.includes("/students")) {

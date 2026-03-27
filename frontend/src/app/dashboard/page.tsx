@@ -17,11 +17,11 @@ interface Student {
 }
 
 const statusColors: Record<string, { bg: string; color: string }> = {
-    PENDING_ASSESSMENT: { bg: "#fef3c7", color: "#92400e" },
-    ASSESSMENT_REQUESTED: { bg: "#dbeafe", color: "#1e40af" },
-    ASSESSMENT_SCHEDULED: { bg: "#ede9fe", color: "#5b21b6" },
-    ASSESSED: { bg: "#d1fae5", color: "#065f46" },
-    ENROLLED: { bg: "#dcfce7", color: "#14532d" },
+    INQUIRY:    { bg: "#fce7f3", color: "#9d174d" },
+    EVALUATION: { bg: "#fef3c7", color: "#92400e" },
+    REVIEW:     { bg: "#dbeafe", color: "#1e40af" },
+    ACTIVE:     { bg: "#dcfce7", color: "#14532d" },
+    ARCHIVED:   { bg: "#f1f5f9", color: "#64748b" },
 };
 
 export default function DashboardPage() {
@@ -282,7 +282,7 @@ export default function DashboardPage() {
                                                 </div>
 
                                                 <div className="mt-auto flex flex-col gap-2 pt-2">
-                                                    {s.status === "PENDING_ASSESSMENT" ? (
+                                                    {s.status === "INQUIRY" ? (
                                                         <Link 
                                                             href={`/parent-onboarding?studentId=${s.id}`}
                                                             className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-lg text-center hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5 focus:ring-4 focus:ring-blue-100 flex items-center justify-center gap-2"
@@ -361,11 +361,14 @@ export default function DashboardPage() {
                                         </thead>
                                         <tbody>
                                             {paginatedStudents.map(s => {
-                                                const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
-                                                const badge = statusColors[statusKey] ?? { bg: "#f1f5f9", color: "#475569" };
+                                                const badge = statusColors[s.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
                                                 return (
                                                     <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
-                                                        <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)" }}>{s.first_name} {s.last_name}</td>
+                                                        <td style={{ padding: "12px" }}>
+                                                            <Link href={`/students/${s.id}`} style={{ fontWeight: "bold", color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-blue-600 transition-colors">
+                                                                {s.first_name} {s.last_name}
+                                                            </Link>
+                                                        </td>
                                                         <td style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
                                                             {s.grade && s.grade !== "TBD" ? s.grade : <span className="text-slate-400 italic">Not yet assigned</span>}
                                                         </td>
@@ -385,7 +388,7 @@ export default function DashboardPage() {
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
                                                             <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                                                                {s.status === "PENDING_ASSESSMENT" && (
+                                                                {s.status === "INQUIRY" && (
                                                                     <Link 
                                                                         href={`/students/${s.id}`}
                                                                         className="text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"

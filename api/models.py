@@ -25,17 +25,17 @@ class Invitation(models.Model):
 
 class Student(models.Model):
     STATUS_CHOICES = (
-        ('PENDING_ASSESSMENT', 'Pending Assessment'),
-        ('ASSESSMENT_REQUESTED', 'Assessment Requested'),
-        ('ASSESSMENT_SCHEDULED', 'Assessment Scheduled'),
-        ('ASSESSED', 'Assessed'),
-        ('ENROLLED', 'Enrolled'),
+        ('INQUIRY',    'Inquiry'),        # New referral; waiting for parent onboarding form
+        ('EVALUATION', 'Evaluation'),     # Specialist assessment underway
+        ('REVIEW',     'Review'),         # All assessments done; Admin reviews for enrollment
+        ('ACTIVE',     'Active'),         # Enrolled and actively receiving services
+        ('ARCHIVED',   'Archived'),       # Discharged, graduated, or withdrawn
     )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     grade = models.CharField(max_length=50)
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='PENDING_ASSESSMENT')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='INQUIRY')
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

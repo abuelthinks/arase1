@@ -35,11 +35,11 @@ const roleConfig: Record<string, { bg: string; color: string }> = {
 };
 
 const statusColors: Record<string, { bg: string; color: string }> = {
-    "PENDING_ASSESSMENT":   { bg: "#fef3c7", color: "#92400e" },
-    "ASSESSMENT_REQUESTED": { bg: "#dbeafe", color: "#1e40af" },
-    "ASSESSMENT_SCHEDULED": { bg: "#ede9fe", color: "#5b21b6" },
-    "ASSESSED":             { bg: "#d1fae5", color: "#065f46" },
-    "ENROLLED":             { bg: "#dcfce7", color: "#14532d" },
+    "INQUIRY":    { bg: "#fce7f3", color: "#9d174d" },
+    "EVALUATION": { bg: "#fef3c7", color: "#92400e" },
+    "REVIEW":     { bg: "#dbeafe", color: "#1e40af" },
+    "ACTIVE":     { bg: "#dcfce7", color: "#14532d" },
+    "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b" },
 };
 
 // Module-level cache: persists across navigations within the same browser session
@@ -97,8 +97,8 @@ export default function UserProfile() {
     const role = user.role?.toUpperCase() || "UNKNOWN";
     const roleBadge = roleConfig[role] ?? { bg: "#f1f5f9", color: "#475569" };
 
-    const enrolledCount = user.assigned_students?.filter(s => s.status === "ENROLLED").length || 0;
-    const pendingCount = user.assigned_students?.filter(s => s.status === "PENDING_ASSESSMENT" || s.status === "ASSESSMENT_REQUESTED").length || 0;
+    const activeCount = user.assigned_students?.filter(s => s.status === "ACTIVE").length || 0;
+    const pendingCount = user.assigned_students?.filter(s => s.status === "INQUIRY" || s.status === "EVALUATION").length || 0;
 
     // Static mock data for Clinical UI
     const mockCredentials = role === "SPECIALIST" ? ["SLP-CCC License #102938", "State Board Certified"] : (role === "TEACHER" ? ["M.Ed Special Education", "State Credential #9821"] : []);
@@ -303,7 +303,7 @@ export default function UserProfile() {
                                     Assigned Students
                                 </h2>
                                 <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                                    {enrolledCount} Enrolled, {pendingCount} Pending Assessment
+                                    {activeCount} Active, {pendingCount} Pending
                                 </p>
                             </div>
                             
@@ -339,8 +339,7 @@ export default function UserProfile() {
                                         </thead>
                                         <tbody>
                                             {user.assigned_students.map(student => {
-                                                const statusKey = student.status?.toUpperCase().replace(/ /g, "_");
-                                                const badge = statusColors[statusKey] ?? { bg: "#f1f5f9", color: "#475569" };
+                                                const badge = statusColors[student.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
                                                 return (
                                                     <tr key={student.id} style={{ borderBottom: "1px solid var(--border-light)" }} className="hover:bg-slate-50 transition-colors">
                                                         <td style={{ padding: "14px 16px", fontWeight: 600 }}>
@@ -358,7 +357,7 @@ export default function UserProfile() {
                                                                 padding: "4px 10px", borderRadius: "999px",
                                                                 background: badge.bg, color: badge.color,
                                                             }}>
-                                                                {student.status?.replace(/_/g, " ")}
+                                                                {student.status}
                                                             </span>
                                                         </td>
                                                     </tr>

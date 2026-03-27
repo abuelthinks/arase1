@@ -68,11 +68,12 @@ const getRoleStyle = (role: string) => {
 };
 
 const getStatusStyle = (status: string) => {
-    const s = status?.toLowerCase() || '';
-    if (s.includes('enrolled')) return { bg: '#dcfce7', color: '#166534' };
-    if (s.includes('assessed')) return { bg: '#dbeafe', color: '#1e40af' };
-    if (s.includes('scheduled')) return { bg: '#fef3c7', color: '#92400e' };
-    if (s.includes('requested')) return { bg: '#fce7f3', color: '#9d174d' };
+    const s = status?.toUpperCase() || '';
+    if (s === 'ACTIVE')     return { bg: '#dcfce7', color: '#166534' };   // Green
+    if (s === 'REVIEW')     return { bg: '#dbeafe', color: '#1e40af' };   // Blue
+    if (s === 'EVALUATION') return { bg: '#fef3c7', color: '#92400e' };   // Amber
+    if (s === 'INQUIRY')    return { bg: '#fce7f3', color: '#9d174d' };   // Pink
+    if (s === 'ARCHIVED')   return { bg: '#f1f5f9', color: '#64748b' };   // Grey
     return { bg: '#f1f5f9', color: '#475569' };
 };
 
@@ -419,7 +420,7 @@ export default function AdminDashboard() {
                 last_name: toTitleCase(newStudent.last_name),
                 date_of_birth: newStudent.date_of_birth,
                 parent_email: newStudent.parent_email,
-                status: 'PENDING_ASSESSMENT',
+                status: 'INQUIRY',
                 grade: 'TBD',
             };
             await api.post("/api/students/", payload);
@@ -463,13 +464,13 @@ export default function AdminDashboard() {
     };
 
     /* ─── Analytics Metrics ──────────────────────────────────────────────── */
-    const totalStudents = students.length;
-    const enrolledStudents = students.filter(s => s.status === "ENROLLED").length;
-    const assessingStudents = students.filter(s => s.status === "ASSESSED" || s.status === "ASSESSMENT_SCHEDULED").length;
-    const pendingStudents = students.filter(s => s.status === "PENDING_ASSESSMENT" || s.status === "ASSESSMENT_REQUESTED").length;
+    const totalStudents = students.filter(s => s.status !== 'ARCHIVED').length;
+    const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
+    const inProgressStudents = students.filter(s => s.status === 'EVALUATION' || s.status === 'REVIEW').length;
+    const pendingStudents = students.filter(s => s.status === 'INQUIRY').length;
 
-    // Bottlenecks Mocking
-    const bottlenecks = students.filter(s => s.status === "PENDING_ASSESSMENT").slice(0, 5); // Take top 5 for bottlenecks
+    // Bottlenecks: students stuck in INQUIRY or EVALUATION (no parent input yet)
+    const bottlenecks = students.filter(s => s.status === 'INQUIRY').slice(0, 5);
 
     /* ─── Render ─────────────────────────────────────────────────────────── */
 
@@ -542,27 +543,27 @@ export default function AdminDashboard() {
                                         
                                         <div>
                                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#166534" }}>Enrolled (Cleared)</span>
-                                                <span>{enrolledStudents}</span>
+                                                <span style={{ color: "#166534" }}>Active (Enrolled)</span>
+                                                <span>{activeStudents}</span>
                                             </div>
                                             <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (enrolledStudents / totalStudents) * 100 : 0}%`, background: "#22c55e", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (activeStudents / totalStudents) * 100 : 0}%`, background: "#22c55e", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
                                             </div>
                                         </div>
 
                                         <div>
                                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#1e40af" }}>Assessment Active</span>
-                                                <span>{assessingStudents}</span>
+                                                <span style={{ color: "#1e40af" }}>Evaluation / Review</span>
+                                                <span>{inProgressStudents}</span>
                                             </div>
                                             <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (assessingStudents / totalStudents) * 100 : 0}%`, background: "#3b82f6", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (inProgressStudents / totalStudents) * 100 : 0}%`, background: "#3b82f6", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
                                             </div>
                                         </div>
 
                                         <div>
                                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#92400e" }}>Pending Inputs</span>
+                                                <span style={{ color: "#92400e" }}>Pending Inquiry</span>
                                                 <span>{pendingStudents}</span>
                                             </div>
                                             <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>

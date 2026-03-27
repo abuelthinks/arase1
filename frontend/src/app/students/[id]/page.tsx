@@ -58,11 +58,11 @@ interface ProfileData {
 }
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
-    "Pending Assessment":    { label: "Pending Assessment",    bg: "#fef3c7", color: "#92400e" },
-    "Assessment Requested":  { label: "Assessment Requested",  bg: "#dbeafe", color: "#1e40af" },
-    "Assessment Scheduled":  { label: "Assessment Scheduled",  bg: "#ede9fe", color: "#5b21b6" },
-    "Assessed":              { label: "Assessed",              bg: "#d1fae5", color: "#065f46" },
-    "Enrolled":              { label: "Enrolled",              bg: "#dcfce7", color: "#14532d" },
+    "Inquiry":    { label: "Inquiry",    bg: "#fce7f3", color: "#9d174d" },
+    "Evaluation": { label: "Evaluation", bg: "#fef3c7", color: "#92400e" },
+    "Review":     { label: "Review",     bg: "#dbeafe", color: "#1e40af" },
+    "Active":     { label: "Active",     bg: "#dcfce7", color: "#14532d" },
+    "Archived":   { label: "Archived",   bg: "#f1f5f9", color: "#64748b" },
 };
 
 // Which form keys each role CAN FILL (owns)
@@ -187,16 +187,15 @@ export default function StudentProfilePage() {
             ? (Object.keys(form_statuses) as (keyof typeof form_statuses)[])
             : (roleFormKeys[user?.role ?? ""] ?? []) as (keyof typeof form_statuses)[];
 
-    // Lifecycle action button (role-aware)
     const renderLifecycleAction = () => {
         if (user?.role === "PARENT") {
-            if (student.status === "Pending Assessment") {
+            if (student.status === "Inquiry") {
                 // Must submit parent assessment form before requesting
                 if (!form_statuses.parent_assessment?.submitted) {
                     return (
                         <div>
                             <p style={{ fontSize: "0.85rem", color: "#92400e", marginBottom: "8px" }}>
-                                Please fill in the <strong>Parent Assessment</strong> form before requesting an assessment.
+                                Please fill in the <strong>Parent Assessment</strong> form before requesting an evaluation.
                             </p>
                             <Link
                                 href={`/parent-onboarding?studentId=${student.id}`}
@@ -213,24 +212,34 @@ export default function StudentProfilePage() {
                         onClick={() => handleAction("request-assessment")}
                         className="btn-primary px-5 py-2 text-sm"
                     >
-                        Request Assessment
+                        Request Evaluation
                     </button>
                 );
             }
-            if (student.status === "Assessment Requested") {
+            if (student.status === "Evaluation") {
                 return (
-                    <span className="text-sm text-slate-500 italic">Assessment request pending review…</span>
+                    <span className="text-sm text-slate-500 italic">Evaluation in progress — our team will be in touch…</span>
                 );
             }
         }
         if (user?.role === "ADMIN") {
-            if (student.status === "Assessed") {
+            if (student.status === "Review") {
                 return (
                     <button
                         onClick={() => handleAction("enroll")}
                         className="btn-primary px-5 py-2 text-sm"
                     >
-                        Formally Enroll Student
+                        Enroll Student → Set Active
+                    </button>
+                );
+            }
+            if (student.status === "Active") {
+                return (
+                    <button
+                        onClick={() => handleAction("archive")}
+                        style={{ padding: "8px 20px", borderRadius: "6px", border: "1px solid #94a3b8", background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer" }}
+                    >
+                        Archive Student
                     </button>
                 );
             }
@@ -439,7 +448,7 @@ export default function StudentProfilePage() {
                                                         </Link>
                                                     ) : (
                                                         ownedFormKeys[user?.role ?? ""]?.includes(key) ? (
-                                                            (key.includes("tracker") && student.status !== "Enrolled") ? (
+                                                            (key.includes("tracker") && student.status !== "Active") ? (
                                                                 <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
                                                                     <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                                                     Locked
@@ -564,7 +573,7 @@ export default function StudentProfilePage() {
                                 </h2>
                                 <p style={{ fontSize: "0.85rem", color: "#0ea5e9", margin: "4px 0 0" }}>Finalized clinical AI outputs approved for this student.</p>
                             </div>
-                            {user?.role === "ADMIN" && (student.status === "Assessed" || student.status === "Enrolled") && (
+                            {user?.role === "ADMIN" && (student.status === "Review" || student.status === "Active") && (
                                 <Link
                                     href={`/admin/reports?studentId=${student.id}`}
                                     style={{

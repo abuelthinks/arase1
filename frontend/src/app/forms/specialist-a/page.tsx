@@ -126,6 +126,7 @@ function SpecialistAFormContent() {
 
     const [form, setForm] = useState<FormState>(defaultForm());
     const [parentInfo, setParentInfo] = useState<Record<string, any>>({});
+    const [studentProfile, setStudentProfile] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
@@ -164,6 +165,7 @@ function SpecialistAFormContent() {
         if (studentId) {
             api.get(`/api/students/${studentId}/profile/`)
                 .then(res => {
+                    setStudentProfile(res.data);
                     if (!isViewMode && res.data.active_cycle?.id) {
                         setReportCycleId(String(res.data.active_cycle.id));
                     }
@@ -230,22 +232,62 @@ function SpecialistAFormContent() {
     return (
         <div style={{ maxWidth: "860px", margin: "0 auto", paddingBottom: "3rem" }}>
             {/* Breadcrumb Nav */}
-            <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                <button type="button" onClick={() => router.back()}
-                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
-                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
-                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
-                >
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to Student Profile
-                </button>
-                <span style={{ color: "#cbd5e1" }}>›</span>
-                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
-                    Multidisciplinary Assessment
-                </span>
-            </div>
+            {studentProfile && (
+                <div style={{ 
+                    marginBottom: "2rem", 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center", 
+                    background: "white", 
+                    padding: "12px 20px", 
+                    borderRadius: "12px", 
+                    border: "1px solid var(--border-light)", 
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.02)" 
+                }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <button type="button" onClick={() => router.back()}
+                            style={{ 
+                                background: "#f8fafc", 
+                                border: "1px solid #e2e8f0", 
+                                padding: "6px 12px", 
+                                borderRadius: "6px", 
+                                cursor: "pointer", 
+                                display: "inline-flex", 
+                                alignItems: "center", 
+                                gap: "6px", 
+                                color: "#475569", 
+                                fontWeight: 600, 
+                                fontSize: "0.85rem", 
+                                transition: "all 0.2s" 
+                            }}
+                            className="hover:bg-slate-200"
+                        >
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Back
+                        </button>
+                        <span style={{ color: "#cbd5e1" }}>/</span>
+                        <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Students</span>
+                        <span style={{ color: "#cbd5e1" }}>/</span>
+                        <span style={{ color: "var(--text-primary)", fontWeight: 700, fontSize: "0.95rem" }}>
+                            {studentProfile.student.first_name} {studentProfile.student.last_name}
+                        </span>
+                    </div>
+                    
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ 
+                            display: "inline-block", 
+                            width: "8px", 
+                            height: "8px", 
+                            borderRadius: "50%", 
+                            background: studentProfile.student.status === "Enrolled" ? "#22c55e" : "#f59e0b",
+                            boxShadow: `0 0 0 2px ${studentProfile.student.status === "Enrolled" ? "#dcfce7" : "#fef3c7"}`
+                        }}></span>
+                        Status: {studentProfile.student.status}
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div style={{ marginBottom: "1.5rem" }}>
                 <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
