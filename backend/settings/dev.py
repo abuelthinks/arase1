@@ -31,6 +31,15 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
 ]
 
+# ─── Email — routed to Mailpit for local testing ─────────────────────────────
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'localhost'
+EMAIL_PORT = 1025
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False
+DEFAULT_FROM_EMAIL = 'ARASE <noreply@arase.local>'
+FRONTEND_URL = 'http://localhost:3000'
+
 # ─── Disable throttling in dev for easier testing ────────────────────────────
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,  # noqa: F405

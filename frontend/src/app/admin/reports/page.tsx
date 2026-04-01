@@ -111,9 +111,8 @@ function AdminReportsContent() {
                     {/* Breadcrumb Nav */}
                     <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
                         <button type="button" onClick={() => router.back()}
-                            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
-                            onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
-                            onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                            className="btn-slate"
+                            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
                         >
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -165,17 +164,17 @@ function AdminReportsContent() {
                                     </div>
                                     <button
                                         onClick={handleGenerateIEP}
-                                        disabled={loading || !["Assessed", "Enrolled"].includes(studentStatus)}
+                                        disabled={loading || !["assessed", "enrolled"].includes(studentStatus.toLowerCase())}
                                         style={{
                                             padding: "10px 20px", borderRadius: "8px", border: "none",
-                                            background: loading ? "#a5b4fc" : ["Assessed", "Enrolled"].includes(studentStatus) ? "#4f46e5" : "#e2e8f0",
-                                            color: ["Assessed", "Enrolled"].includes(studentStatus) ? "white" : "#94a3b8",
+                                            background: loading ? "#a5b4fc" : ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "#4f46e5" : "#e2e8f0",
+                                            color: ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "white" : "#94a3b8",
                                             fontWeight: 700, fontSize: "0.85rem",
-                                            cursor: loading || !["Assessed", "Enrolled"].includes(studentStatus) ? "not-allowed" : "pointer",
+                                            cursor: loading || !["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
                                             whiteSpace: "nowrap",
                                         }}
                                     >
-                                        {loading ? "⏳ Generating…" : ["Assessed", "Enrolled"].includes(studentStatus) ? "🤖 Generate" : "Requires Assessed"}
+                                        {loading ? "⏳ Generating…" : ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "🤖 Generate" : "Requires Review"}
                                     </button>
                                 </div>
                             </div>
@@ -219,7 +218,7 @@ function AdminReportsContent() {
                                                     </span>
                                                 );
                                             })}
-                                            {studentStatus === "Enrolled" && !allTrackersSubmitted && (
+                                            {studentStatus.toLowerCase() === "enrolled" && !allTrackersSubmitted && (
                                                 <span style={{ fontSize: "0.75rem", color: "#92400e", fontStyle: "italic", alignSelf: "center" }}>
                                                     All 3 trackers must be submitted first
                                                 </span>
@@ -231,8 +230,8 @@ function AdminReportsContent() {
                                         onClick={handleGenerateWeekly}
                                         disabled={!weeklyEnabled}
                                         title={
-                                            studentStatus !== "Enrolled"
-                                                ? "Requires Enrolled status"
+                                            studentStatus.toLowerCase() !== "enrolled"
+                                                ? "Requires Active status"
                                                 : !allTrackersSubmitted
                                                 ? "All 3 progress tracker forms must be submitted first"
                                                 : "Generate weekly progress report"
@@ -248,7 +247,7 @@ function AdminReportsContent() {
                                         }}
                                     >
                                         {weeklyLoading ? "⏳ Generating…"
-                                            : studentStatus !== "Enrolled" ? "Requires Enrolled"
+                                            : studentStatus.toLowerCase() !== "active" ? "Requires Active"
                                             : !allTrackersSubmitted ? "Forms Pending"
                                             : "🤖 Generate"}
                                     </button>

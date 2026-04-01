@@ -126,15 +126,23 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         student = instance.student
-        # Auto-advance to REVIEW when a specialist submits an assessment
-        if student.status in ['INQUIRY', 'EVALUATION']:
-            student.status = 'REVIEW'
+        # Auto-advance to OBSERVATION_PENDING when a specialist submits an assessment
+        if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
+            student.status = 'OBSERVATION_PENDING'
             student.save()
 
 
 class SpedAssessmentViewSet(BaseInputViewSet):
     queryset = SpedAssessment.objects.all()
     serializer_class = SpedAssessmentSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(submitted_by=self.request.user)
+        student = instance.student
+        # Auto-advance to ASSESSED when a teacher submits an assessment
+        if student.status in ['OBSERVATION_PENDING', 'OBSERVATION_SCHEDULED']:
+            student.status = 'ASSESSED'
+            student.save()
 
 
 class ParentProgressTrackerViewSet(BaseInputViewSet):
@@ -151,7 +159,7 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
         student_id = request.data.get('student')
         try:
             student = Student.objects.get(id=student_id)
-            if student.status != 'ACTIVE' and request.user.role != 'ADMIN':
+            if student.status != 'ENROLLED' and request.user.role != 'ADMIN':
                 return Response({"error": "Progress tracking is only available for active (enrolled) students."}, status=status.HTTP_400_BAD_REQUEST)
         except Student.DoesNotExist:
             pass
@@ -230,7 +238,7 @@ class AdminDashboardActionsView(APIView):
         # 1. Ready for Weekly Report (all trackers submitted for an ACTIVE student)
         active_cycle = ReportCycle.objects.filter(is_active=True).first()
         if active_cycle:
-            active_students = Student.objects.filter(status='ACTIVE')
+            active_students = Student.objects.filter(status='ENROLLED')
             for s in active_students:
                 p_done = ParentProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
                 m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
@@ -246,19 +254,31 @@ class AdminDashboardActionsView(APIView):
                     })
 
         # 2. Ready for Enrollment Review (all assessments done, waiting for admin decision)
-        in_review = Student.objects.filter(status='REVIEW')
+        in_review = Student.objects.filter(status='ASSESSED')
         for s in in_review:
             actions.append({
                 "id": f"review_{s.id}",
                 "title": f"Ready for Enrollment Review: {s.first_name} {s.last_name}",
-                "description": "Specialist assessment complete. Awaiting admin enrollment decision.",
+                "description": "Both Specialist and Teacher assessments complete. Awaiting admin enrollment decision.",
                 "action_text": "Review \u2192",
                 "link": f"/students/{s.id}",
                 "type": "info"
             })
 
+        # 2.5 Ready for Teacher Trial Assignment
+        obs_pending = Student.objects.filter(status='OBSERVATION_PENDING')
+        for s in obs_pending:
+            actions.append({
+                "id": f"obs_{s.id}",
+                "title": f"Assign Teacher Observation: {s.first_name} {s.last_name}",
+                "description": "Specialist assessment complete. Review clinical notes and assign a Teacher for trial observation.",
+                "action_text": "Assign \u2192",
+                "link": f"/students/{s.id}",
+                "type": "info"
+            })
+
         # 3. Parent Onboarding Submitted (in INQUIRY, parent input received)
-        inquiry = Student.objects.filter(status='INQUIRY')
+        inquiry = Student.objects.filter(status='PENDING_ASSESSMENT')
         for s in inquiry:
             if ParentAssessment.objects.filter(student=s).exists():
                 actions.append({
@@ -280,7 +300,7 @@ class RequestAssessmentView(APIView):
     def post(self, request, student_id):
         try:
             student = Student.objects.get(id=student_id, assigned_users__user=request.user)
-            student.status = 'EVALUATION'
+            student.status = 'ASSESSMENT_SCHEDULED'
             student.save()
             return Response({"message": "Evaluation requested successfully."})
         except Student.DoesNotExist:
@@ -377,7 +397,7 @@ class EnrollStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
-            student.status = 'ACTIVE'
+            student.status = 'ENROLLED'
             student.save()
             return Response({"message": "Student successfully enrolled and set to Active."})
         except Student.DoesNotExist:
@@ -440,9 +460,9 @@ class GenerateReportDraftView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if doc_type == 'ASSESSMENT' and student.status not in ['REVIEW', 'ACTIVE']:
+        if doc_type == 'ASSESSMENT' and student.status not in ['ASSESSED', 'ENROLLED']:
             return Response({"error": "Cannot generate Assessment report. Student has not been fully assessed yet."}, status=status.HTTP_400_BAD_REQUEST)
-        if doc_type in ['IEP', 'WEEKLY'] and student.status != 'ACTIVE':
+        if doc_type in ['IEP', 'WEEKLY'] and student.status != 'ENROLLED':
             return Response({"error": f"Cannot generate {doc_type} report. Student is not active (enrolled)."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -509,6 +529,12 @@ class CreateInvitationView(APIView):
         serializer = InvitationSerializer(data=request.data)
         if serializer.is_valid():
             invitation = serializer.save()
+            try:
+                from .services.user_service import send_invitation_email
+                send_invitation_email(invitation)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Invitation created but email failed: {e}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -533,8 +559,46 @@ class ManageInvitationView(APIView):
         return Response({"message": "Invitation deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
+class ResendInvitationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can resend invitations."}, status=status.HTTP_403_FORBIDDEN)
+
+        from django.shortcuts import get_object_or_404
+        invitation = get_object_or_404(Invitation, pk=pk)
+
+        if invitation.is_used:
+            return Response({"error": "This invitation has already been accepted."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from .services.user_service import resend_invitation
+            new_invite = resend_invitation(invitation)
+            from .serializers import InvitationSerializer
+            return Response({
+                "message": f"Invitation resent to {new_invite.email}.",
+                "invitation": InvitationSerializer(new_invite).data,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Failed to resend invitation: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class AcceptInvitationView(APIView):
     permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get('token')
+        if not token:
+            return Response({"error": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            invitation = Invitation.objects.get(token=token, is_used=False)
+            from django.utils import timezone
+            if invitation.expires_at < timezone.now():
+                return Response({"error": "This invitation link has expired. Please contact your admin for a new one."}, status=status.HTTP_410_GONE)
+            return Response({"email": invitation.email, "role": invitation.role, "expires_at": invitation.expires_at})
+        except Invitation.DoesNotExist:
+            return Response({"error": "Invalid or expired invitation token."}, status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request):
         serializer = AcceptInvitationSerializer(data=request.data)
@@ -545,6 +609,10 @@ class AcceptInvitationView(APIView):
             except Invitation.DoesNotExist:
                 return Response({"error": "Invalid or expired invitation token."}, status=status.HTTP_400_BAD_REQUEST)
 
+            from django.utils import timezone
+            if invitation.expires_at < timezone.now():
+                return Response({"error": "This invitation link has expired. Please contact your admin for a new one."}, status=status.HTTP_410_GONE)
+
             if User.objects.filter(email=invitation.email).exists():
                 return Response({"error": "User with this email already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -552,8 +620,8 @@ class AcceptInvitationView(APIView):
             user = create_invited_user(
                 invitation,
                 serializer.validated_data['password'],
-                serializer.validated_data['first_name'],
-                serializer.validated_data['last_name'],
+                serializer.validated_data.get('first_name', ''),
+                serializer.validated_data.get('last_name', ''),
             )
 
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)

@@ -25,6 +25,15 @@ def create_student_with_invitation(student_data, parent_email):
         student=student,
     )
 
+    # Send the invitation email via Django's email system (routed to Mailpit in dev)
+    try:
+        from api.services.user_service import send_invitation_email
+        send_invitation_email(invitation)
+    except Exception as e:
+        # Don't block student creation if email fails — log it instead
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to send invitation email to {parent_email}: {e}")
+
     # If this parent already has an account, grant access now
     try:
         existing_parent = User.objects.get(email=parent_email, role='PARENT')
@@ -220,9 +229,12 @@ def assign_staff_to_student(student_id, staff_id, expected_role):
     student = Student.objects.get(id=student_id)
     StudentAccess.objects.get_or_create(user=staff, student=student)
 
-    # If assigning a specialist, update student status
-    if expected_role == 'SPECIALIST':
+    # Update student status based on assignment
+    if expected_role == 'SPECIALIST' and student.status == 'PENDING_ASSESSMENT':
         student.status = 'ASSESSMENT_SCHEDULED'
+        student.save()
+    elif expected_role == 'TEACHER' and student.status == 'OBSERVATION_PENDING':
+        student.status = 'OBSERVATION_SCHEDULED'
         student.save()
 
     return staff, student

@@ -36,6 +36,19 @@ interface InvitationData {
     token: string;
     is_used: boolean;
     created_at: string;
+    expires_at: string;
+}
+
+function getExpiryDisplay(expiresAt: string): { label: string; color: string; bg: string; isExpired: boolean } {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    const diffMs = expiry.getTime() - now.getTime();
+    if (diffMs <= 0) return { label: 'Expired', color: '#be123c', bg: '#fff1f2', isExpired: true };
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (diffHrs < 6) return { label: `${diffHrs}h ${diffMins}m left`, color: '#b45309', bg: '#fef3c7', isExpired: false };
+    if (diffHrs < 24) return { label: `${diffHrs}h left`, color: '#b45309', bg: '#fef3c7', isExpired: false };
+    return { label: `${diffHrs}h left`, color: '#166534', bg: '#dcfce7', isExpired: false };
 }
 
 interface StudentData {
@@ -69,10 +82,12 @@ const getRoleStyle = (role: string) => {
 
 const getStatusStyle = (status: string) => {
     const s = status?.toUpperCase() || '';
-    if (s === 'ACTIVE')     return { bg: '#dcfce7', color: '#166534' };   // Green
-    if (s === 'REVIEW')     return { bg: '#dbeafe', color: '#1e40af' };   // Blue
-    if (s === 'EVALUATION') return { bg: '#fef3c7', color: '#92400e' };   // Amber
-    if (s === 'INQUIRY')    return { bg: '#fce7f3', color: '#9d174d' };   // Pink
+    if (s === 'ENROLLED')     return { bg: '#dcfce7', color: '#166534' };   // Green
+    if (s === 'ASSESSED')     return { bg: '#dbeafe', color: '#1e40af' };   // Blue
+    if (s === 'OBSERVATION_SCHEDULED') return { bg: '#e0e7ff', color: '#3730a3' }; // Indigo
+    if (s === 'OBSERVATION_PENDING')   return { bg: '#f3e8ff', color: '#6b21a8' }; // Purple
+    if (s === 'ASSESSMENT_SCHEDULED') return { bg: '#fef3c7', color: '#92400e' };   // Amber
+    if (s === 'PENDING_ASSESSMENT')    return { bg: '#fce7f3', color: '#9d174d' };   // Pink
     if (s === 'ARCHIVED')   return { bg: '#f1f5f9', color: '#64748b' };   // Grey
     return { bg: '#f1f5f9', color: '#475569' };
 };
@@ -156,9 +171,9 @@ export default function AdminDashboard() {
                 api.get("/api/invitations/"),
                 api.get("/api/dashboard/actions/").catch(() => ({ data: { actions: [] } }))
             ]);
-            setStudents(studentRes.data);
-            setUsers(userRes.data);
-            setInvitations(inviteRes.data);
+            setStudents(studentRes.data.sort((a: any, b: any) => b.id - a.id));
+            setUsers(userRes.data.sort((a: any, b: any) => b.id - a.id));
+            setInvitations(inviteRes.data.sort((a: any, b: any) => b.id - a.id));
             setDashboardActions(actionsRes.data?.actions || []);
         } catch (err) {
             console.error("Failed to fetch admin data", err);
@@ -420,7 +435,7 @@ export default function AdminDashboard() {
                 last_name: toTitleCase(newStudent.last_name),
                 date_of_birth: newStudent.date_of_birth,
                 parent_email: newStudent.parent_email,
-                status: 'INQUIRY',
+                status: 'PENDING_ASSESSMENT',
                 grade: 'TBD',
             };
             await api.post("/api/students/", payload);
@@ -463,10 +478,21 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleResendInvite = async (inviteId: number, email: string) => {
+        if (!confirm(`Resend invitation to ${email}? This will revoke the old link and send a fresh 72-hour one.`)) return;
+        try {
+            await api.post(`/api/invitations/${inviteId}/resend/`);
+            alert(`✅ Invitation resent to ${email}. Check Mailpit for the email.`);
+            fetchData();
+        } catch (err: any) {
+            alert(err.response?.data?.error || "Failed to resend invitation.");
+        }
+    };
+
     /* ─── Analytics Metrics ──────────────────────────────────────────────── */
     const totalStudents = students.filter(s => s.status !== 'ARCHIVED').length;
-    const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
-    const inProgressStudents = students.filter(s => s.status === 'EVALUATION' || s.status === 'REVIEW').length;
+    const activeStudents = students.filter(s => s.status === 'ENROLLED').length;
+    const inProgressStudents = students.filter(s => s.status === 'ASSESSMENT_SCHEDULED' || s.status === 'ASSESSED' || s.status.includes('OBSERVATION')).length;
     const pendingStudents = students.filter(s => s.status === 'INQUIRY').length;
 
     // Bottlenecks: students stuck in INQUIRY or EVALUATION (no parent input yet)
@@ -1121,39 +1147,61 @@ export default function AdminDashboard() {
                                                         </span>
                                                     </div>
                                                 </th>
+                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>EXPIRES</th>
                                                 <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {paginatedInvitations.map(inv => (
-                                                <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
-                                                    <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)" }}>{inv.email}</td>
+                                            {paginatedInvitations.map(inv => {
+                                                const expiry = inv.expires_at ? getExpiryDisplay(inv.expires_at) : null;
+                                                return (
+                                                <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                    <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)", textDecoration: expiry?.isExpired ? 'line-through' : 'none' }}>{inv.email}</td>
                                                     <td style={{ padding: "12px" }}>
                                                         <span style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
                                                             {inv.role}
                                                         </span>
                                                     </td>
                                                     <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{new Date(inv.created_at).toLocaleDateString()}</td>
+                                                    <td style={{ padding: "12px" }}>
+                                                        {expiry ? (
+                                                            <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+                                                                {expiry.label}
+                                                            </span>
+                                                        ) : <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>}
+                                                    </td>
                                                     <td style={{ padding: "12px", textAlign: "right" }}>
                                                         <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                                                            <button
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
-                                                                    alert('Invite link copied to clipboard!');
-                                                                }}
-                                                                className="hover:bg-blue-50 transition-colors duration-200"
-                                                                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}
-                                                                title="Copy Invite Link"
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                                                            </button>
+                                                            {expiry?.isExpired ? (
+                                                                <button
+                                                                    onClick={() => handleResendInvite(inv.id, inv.email)}
+                                                                    className="hover:bg-green-50 transition-colors duration-200"
+                                                                    style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", height: "32px", borderRadius: "6px", background: "none", border: "1px solid #16a34a", color: "#16a34a", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                                                    title="Resend Invitation"
+                                                                >
+                                                                    🔄 Resend
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
+                                                                        alert('Invite link copied to clipboard!');
+                                                                    }}
+                                                                    className="hover:bg-blue-50 transition-colors duration-200"
+                                                                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}
+                                                                    title="Copy Invite Link"
+                                                                >
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                                                </button>
+                                                            )}
                                                             <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                             </button>
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1233,12 +1281,17 @@ export default function AdminDashboard() {
             {showStudentModal && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
                     <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
-                        <h2 style={{ marginTop: 0 }}>Register Student</h2>
+                        <h2 style={{ marginTop: 0, fontWeight: 500, color: "#334155" }}>Register Student</h2>
                         <form onSubmit={handleCreateStudent} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            <input required placeholder="First Name" value={newStudent.first_name} onChange={e => setNewStudent({ ...newStudent, first_name: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <input required placeholder="Last Name" value={newStudent.last_name} onChange={e => setNewStudent({ ...newStudent, last_name: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <input required type="date" placeholder="Date of Birth" value={newStudent.date_of_birth} onChange={e => setNewStudent({ ...newStudent, date_of_birth: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <input required placeholder="Parent Email" type="email" value={newStudent.parent_email} onChange={e => setNewStudent({ ...newStudent, parent_email: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
+                            <input required placeholder="First Name *" value={newStudent.first_name} onChange={e => setNewStudent({ ...newStudent, first_name: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
+                            <input required placeholder="Last Name *" value={newStudent.last_name} onChange={e => setNewStudent({ ...newStudent, last_name: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                <label style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: 400 }}>
+                                    Child's Date of Birth <span style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input required type="date" value={newStudent.date_of_birth} onChange={e => setNewStudent({ ...newStudent, date_of_birth: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
+                            </div>
+                            <input required placeholder="Parent Email *" type="email" value={newStudent.parent_email} onChange={e => setNewStudent({ ...newStudent, parent_email: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
 
                             <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
                                 <button type="submit" className="btn-primary" style={{ flex: 1, padding: "10px", opacity: creatingStudent ? 0.6 : 1 }} disabled={creatingStudent}>

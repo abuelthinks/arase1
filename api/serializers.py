@@ -114,11 +114,11 @@ class GeneratedDocumentSerializer(serializers.ModelSerializer):
 class InvitationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invitation
-        fields = ['id', 'email', 'token', 'role', 'is_used', 'created_at']
-        read_only_fields = ['id', 'token', 'is_used', 'created_at']
+        fields = ['id', 'email', 'token', 'role', 'is_used', 'created_at', 'expires_at']
+        read_only_fields = ['id', 'token', 'is_used', 'created_at', 'expires_at']
 
 class AcceptInvitationSerializer(serializers.Serializer):
     token = serializers.UUIDField()
     password = serializers.CharField(write_only=True)
-    first_name = serializers.CharField(required=True)
-    last_name = serializers.CharField(required=True)
+    first_name = serializers.CharField(required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(required=False, allow_blank=True, default="")

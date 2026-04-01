@@ -23,10 +23,9 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
     if (user?.role !== "PARENT") return null;
     if (!students || students.length === 0) return null;
 
-    // Prioritize student that needs action
-    const pendingStudent = students.find(s => s.status === "INQUIRY");
-    const analyzingStudent = students.find(s => ["EVALUATION", "REVIEW"].includes(s.status));
-    const activeStudent = students.find(s => s.status === "ACTIVE");
+    const pendingStudent = students.find(s => s.status === "PENDING_ASSESSMENT");
+    const analyzingStudent = students.find(s => ["ASSESSMENT_SCHEDULED", "OBSERVATION_PENDING", "OBSERVATION_SCHEDULED", "ASSESSED"].includes(s.status));
+    const activeStudent = students.find(s => s.status === "ENROLLED");
     
     const targetStudent = pendingStudent || analyzingStudent || activeStudent;
     if (!targetStudent) return null;
@@ -75,7 +74,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
         Content = (
              <>
                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3 text-slate-800">
-                    Great news! <span className="text-blue-600">{targetStudent.first_name}</span> is now Active and enrolled.
+                    Great news! <span className="text-blue-600">{targetStudent.first_name}</span> is now Enrolled and active.
                 </h1>
                 <p className="text-lg text-slate-600 leading-relaxed font-medium">
                     You can view progress reports, goals, and update home context anytime from the profile page.
@@ -111,7 +110,8 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
                     <div className="shrink-0 flex flex-col items-center gap-3 mt-4 md:mt-0">
                         <Link 
                             href={`/parent-onboarding?studentId=${targetStudent.id}`}
-                            className="inline-flex items-center justify-center rounded-xl border-2 border-blue-600 bg-transparent px-8 py-3.5 text-lg font-bold text-blue-700 shadow-sm transition-all hover:bg-blue-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 focus:ring-4 focus:ring-blue-100"
+                            className="btn-primary inline-flex items-center justify-center gap-2"
+                            style={{ textDecoration: "none", fontSize: "1rem", padding: "12px 28px" }}
                         >
                             Start Assessment
                             <svg className="ml-2 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

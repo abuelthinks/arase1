@@ -32,10 +32,12 @@ export interface UserProfile {
 // ─── Student ────────────────────────────────────────────────────────────────
 
 export type StudentStatus =
-    | "INQUIRY"
-    | "EVALUATION"
-    | "REVIEW"
-    | "ACTIVE"
+    | "PENDING_ASSESSMENT"
+    | "ASSESSMENT_SCHEDULED"
+    | "OBSERVATION_PENDING"
+    | "OBSERVATION_SCHEDULED"
+    | "ASSESSED"
+    | "ENROLLED"
     | "ARCHIVED";
 
 

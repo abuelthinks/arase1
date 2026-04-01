@@ -29,7 +29,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
     return (
         <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}>
             <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{title}</h2>
+                <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{title}</h2>
             </div>
             <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {children}
@@ -40,7 +40,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 function FieldLabel({ label }: { label: string }) {
     return (
-        <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
+        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
             {label}
         </p>
     );
@@ -57,7 +57,7 @@ function TextInput({ value, onChange, placeholder, type = "text", min, max }: { 
             max={max}
             style={{
                 width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0",
-                padding: "9px 12px", fontSize: "0.875rem",
+                padding: "11px 14px", fontSize: "1rem",
                 color: "#0f172a", background: "white",
                 boxSizing: "border-box",
             }}
@@ -74,7 +74,7 @@ function TextAreaInput({ value, onChange, placeholder, rows = 3 }: { value: stri
             rows={rows}
             style={{
                 width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0",
-                padding: "10px 12px", fontSize: "0.875rem", resize: "vertical",
+                padding: "12px 14px", fontSize: "1rem", resize: "vertical",
                 color: "#0f172a", background: "white",
                 boxSizing: "border-box",
             }}
@@ -84,9 +84,9 @@ function TextAreaInput({ value, onChange, placeholder, rows = 3 }: { value: stri
 
 function CheckboxItem({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
     return (
-        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", cursor: "pointer", color: "#0f172a", userSelect: "none" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "1rem", cursor: "pointer", color: "#0f172a", userSelect: "none" }}>
             <input type="checkbox" checked={checked} onChange={onChange}
-                style={{ width: 16, height: 16, accentColor: "#4f46e5", cursor: "pointer" }} />
+                style={{ width: 18, height: 18, accentColor: "#4f46e5", cursor: "pointer" }} />
             {label}
         </label>
     );
@@ -96,9 +96,9 @@ function RadioGroup({ options, value, onChange }: { options: string[]; value: st
     return (
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
             {options.map(opt => (
-                <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "0.9rem", color: "#0f172a" }}>
+                <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "1rem", color: "#0f172a" }}>
                     <input type="radio" checked={value === opt} onChange={() => onChange(opt)}
-                        style={{ width: 16, height: 16, accentColor: "#4f46e5" }} />
+                        style={{ width: 18, height: 18, accentColor: "#4f46e5", cursor: "pointer" }} />
                     {opt}
                 </label>
             ))}
@@ -456,7 +456,7 @@ function FormEntryContent() {
 
     return (
         <ProtectedRoute>
-            <div style={{ maxWidth: "860px", margin: "0 auto", padding: "2rem 1rem 3rem" }}>
+            <div style={{ maxWidth: "1024px", margin: "0 auto", padding: "2rem 1rem 3rem" }}>
                 {/* Breadcrumb Nav */}
                 {studentProfile && (
                     <div style={{ 

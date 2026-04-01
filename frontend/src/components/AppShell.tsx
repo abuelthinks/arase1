@@ -13,7 +13,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const pathname = usePathname();
 
-    const hideSidebar = !user || NO_SIDEBAR_PATHS.some(p => pathname.startsWith(p));
+    const hideSidebar = !user || pathname === "/" || NO_SIDEBAR_PATHS.some(p => pathname.startsWith(p));
 
     if (hideSidebar) {
         return <>{children}</>;

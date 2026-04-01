@@ -78,7 +78,8 @@ function PreviewReportContent() {
                         <button
                             onClick={handleGenerateFinal}
                             disabled={generating || loading || !draftData}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition disabled:opacity-50"
+                            className="btn-primary"
+                            style={{ padding: "12px 24px", fontSize: "0.95rem" }}
                         >
                             {generating ? "Generating..." : "Confirm & Download PDF"}
                         </button>

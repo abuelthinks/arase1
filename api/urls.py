@@ -7,7 +7,7 @@ from .views import (
     ParentOnboardView, StudentProfileView,
     RequestAssessmentView, AssignSpecialistView, AssignTeacherView, AssignParentView,
     AIRecommendSpecialtyView, EnrollStudentView, ArchiveStudentView,
-    UserViewSet, CreateInvitationView, AcceptInvitationView, ManageInvitationView,
+    UserViewSet, CreateInvitationView, AcceptInvitationView, ManageInvitationView, ResendInvitationView,
     StaffListView,
     GenerateIEPView, IEPDetailView, IEPDownloadView,
     GenerateWeeklyReportView, WeeklyReportDetailView, WeeklyReportDownloadView,
@@ -42,6 +42,7 @@ urlpatterns = [
     path('generate-report-final/', GenerateReportFinalView.as_view(), name='generate-report-final'),
     path('invitations/', CreateInvitationView.as_view(), name='create-invitation'),
     path('invitations/<int:pk>/', ManageInvitationView.as_view(), name='manage-invitation'),
+    path('invitations/<int:pk>/resend/', ResendInvitationView.as_view(), name='resend-invitation'),
     path('invitations/accept/', AcceptInvitationView.as_view(), name='accept-invitation'),
     
     path('dashboard/actions/', AdminDashboardActionsView.as_view(), name='dashboard-actions'),

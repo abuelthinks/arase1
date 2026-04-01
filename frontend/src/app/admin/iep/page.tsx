@@ -165,9 +165,8 @@ function IEPViewerContent() {
             {/* Breadcrumb Nav */}
             <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
                 <button type="button" onClick={() => router.back()}
-                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
-                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
-                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                    className="btn-slate"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
                 >
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -195,35 +194,23 @@ function IEPViewerContent() {
                 </div>
                 {user?.role === "ADMIN" && (
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <button onClick={fetchAuditHistory}
-                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
-                            ⏱️ Audit History
-                        </button>
-                        <button onClick={handleCopyLink}
-                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: copied ? "#059669" : "#475569" }}>
+                        <button onClick={fetchAuditHistory} className="btn-slate" style={{ fontSize: "0.82rem" }}>⏱️ Audit History</button>
+                        <button onClick={handleCopyLink} className="btn-slate" style={{ fontSize: "0.82rem", color: copied ? "#059669" : undefined }}>
                             {copied ? "✓ Copied!" : "🔗 Share Link"}
                         </button>
-                        <button onClick={handleDownload}
-                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
-                            📥 Download PDF
-                        </button>
+                        <button onClick={handleDownload} className="btn-slate" style={{ fontSize: "0.82rem" }}>📥 Download PDF</button>
                         {editing ? (
                             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                <button onClick={() => setEditing(false)} style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
-                                <button onClick={() => handleSave("DRAFT")} disabled={saving}
-                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#334155", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                <button onClick={() => setEditing(false)} className="btn-slate" style={{ fontSize: "0.82rem" }}>Cancel</button>
+                                <button onClick={() => handleSave("DRAFT")} disabled={saving} className="btn-slate" style={{ fontSize: "0.82rem", fontWeight: 700 }}>
                                     {saving ? "Saving…" : "💾 Save Draft"}
                                 </button>
-                                <button onClick={() => handleSave("FINAL")} disabled={saving}
-                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                <button onClick={() => handleSave("FINAL")} disabled={saving} className="btn-green" style={{ fontSize: "0.82rem" }}>
                                     {saving ? "Saving…" : "✅ Finalize"}
                                 </button>
                             </div>
                         ) : (
-                            <button onClick={() => setEditing(true)}
-                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#4f46e5", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                ✏️ Edit
-                            </button>
+                            <button onClick={() => setEditing(true)} className="btn-indigo" style={{ fontSize: "0.82rem" }}>✏️ Edit</button>
                         )}
                     </div>
                 )}

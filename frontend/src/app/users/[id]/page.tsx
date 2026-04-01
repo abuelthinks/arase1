@@ -35,10 +35,12 @@ const roleConfig: Record<string, { bg: string; color: string }> = {
 };
 
 const statusColors: Record<string, { bg: string; color: string }> = {
-    "INQUIRY":    { bg: "#fce7f3", color: "#9d174d" },
-    "EVALUATION": { bg: "#fef3c7", color: "#92400e" },
-    "REVIEW":     { bg: "#dbeafe", color: "#1e40af" },
-    "ACTIVE":     { bg: "#dcfce7", color: "#14532d" },
+    "PENDING_ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d" },
+    "ASSESSMENT_SCHEDULED": { bg: "#fef3c7", color: "#92400e" },
+    "OBSERVATION_PENDING":  { bg: "#f3e8ff", color: "#6b21a8" },
+    "OBSERVATION_SCHEDULED":{ bg: "#e0e7ff", color: "#3730a3" },
+    "ASSESSED":     { bg: "#dbeafe", color: "#1e40af" },
+    "ENROLLED":     { bg: "#dcfce7", color: "#14532d" },
     "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b" },
 };
 
@@ -97,8 +99,8 @@ export default function UserProfile() {
     const role = user.role?.toUpperCase() || "UNKNOWN";
     const roleBadge = roleConfig[role] ?? { bg: "#f1f5f9", color: "#475569" };
 
-    const activeCount = user.assigned_students?.filter(s => s.status === "ACTIVE").length || 0;
-    const pendingCount = user.assigned_students?.filter(s => s.status === "INQUIRY" || s.status === "EVALUATION").length || 0;
+    const activeCount = user.assigned_students?.filter(s => s.status === "ENROLLED").length || 0;
+    const pendingCount = user.assigned_students?.filter(s => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED", "OBSERVATION_PENDING", "OBSERVATION_SCHEDULED"].includes(s.status)).length || 0;
 
     // Static mock data for Clinical UI
     const mockCredentials = role === "SPECIALIST" ? ["SLP-CCC License #102938", "State Board Certified"] : (role === "TEACHER" ? ["M.Ed Special Education", "State Credential #9821"] : []);
@@ -116,8 +118,8 @@ export default function UserProfile() {
             <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <button type="button" onClick={() => router.back()}
-                        style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#475569", fontWeight: 600, fontSize: "0.85rem", transition: "all 0.2s" }}
-                        className="hover:bg-slate-200"
+                        className="btn-slate"
+                        style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
                     >
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -225,15 +227,8 @@ export default function UserProfile() {
                                                     } catch { /* ignore */ }
                                                     setSavingSpecialty(false);
                                                 }}
-                                                style={{
-                                                    width: "100%", fontSize: "0.8rem", fontWeight: 600, padding: "8px 12px",
-                                                    borderRadius: "6px", border: "none",
-                                                    background: "var(--accent-primary)", color: "white",
-                                                    cursor: savingSpecialty ? "not-allowed" : "pointer",
-                                                    boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)",
-                                                    transition: "background 0.2s"
-                                                }}
-                                                className="hover:bg-blue-700"
+                                                className="btn-primary"
+                                                style={{ width: "100%" }}
                                             >
                                                 {savingSpecialty ? "Saving..." : "Save Specialty"}
                                             </button>
@@ -280,10 +275,10 @@ export default function UserProfile() {
                                 Account Actions
                             </h3>
                             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                <button style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#334155", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.2s" }} className="hover:bg-slate-200">
+                                <button className="btn-slate" style={{ width: "100%" }}>
                                     Reset Password
                                 </button>
-                                <button style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #fca5a5", background: "#fff1f2", color: "#e11d48", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.2s" }} className="hover:bg-red-50 hover:border-red-400">
+                                <button className="btn-red" style={{ width: "100%" }}>
                                     Deactivate Account
                                 </button>
                             </div>
@@ -338,7 +333,7 @@ export default function UserProfile() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {user.assigned_students.map(student => {
+                                            {[...user.assigned_students].sort((a, b) => b.id - a.id).map(student => {
                                                 const badge = statusColors[student.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
                                                 return (
                                                     <tr key={student.id} style={{ borderBottom: "1px solid var(--border-light)" }} className="hover:bg-slate-50 transition-colors">

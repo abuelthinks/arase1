@@ -17,10 +17,12 @@ interface Student {
 }
 
 const statusColors: Record<string, { bg: string; color: string }> = {
-    INQUIRY:    { bg: "#fce7f3", color: "#9d174d" },
-    EVALUATION: { bg: "#fef3c7", color: "#92400e" },
-    REVIEW:     { bg: "#dbeafe", color: "#1e40af" },
-    ACTIVE:     { bg: "#dcfce7", color: "#14532d" },
+    PENDING_ASSESSMENT:    { bg: "#fce7f3", color: "#9d174d" },
+    ASSESSMENT_SCHEDULED: { bg: "#fef3c7", color: "#92400e" },
+    OBSERVATION_PENDING:  { bg: "#f3e8ff", color: "#6b21a8" },
+    OBSERVATION_SCHEDULED:{ bg: "#e0e7ff", color: "#3730a3" },
+    ASSESSED:     { bg: "#dbeafe", color: "#1e40af" },
+    ENROLLED:     { bg: "#dcfce7", color: "#14532d" },
     ARCHIVED:   { bg: "#f1f5f9", color: "#64748b" },
 };
 
@@ -40,7 +42,7 @@ export default function DashboardPage() {
         const fetchStudents = async () => {
             try {
                 const res = await api.get("/api/students/");
-                setStudents(res.data);
+                setStudents(res.data.sort((a: Student, b: Student) => b.id - a.id));
             } catch (err) {
                 console.error("Failed to fetch students");
             } finally {
@@ -255,24 +257,26 @@ export default function DashboardPage() {
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="-mx-6 px-6 py-3 bg-slate-50 border-y border-slate-100 flex items-center justify-between">
+                                                <div className="-mx-6 px-6 py-3 bg-slate-50 border-y border-slate-100 flex flex-wrap items-center justify-between gap-y-2">
                                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</span>
                                                     <span style={{
-                                                        fontSize: "0.75rem",
-                                                        fontWeight: "bold",
-                                                        padding: "4px 10px",
-                                                        borderRadius: "20px",
+                                                        fontSize: "0.72rem",
+                                                        fontWeight: 800,
+                                                        padding: "4px 12px",
+                                                        borderRadius: "999px",
                                                         textTransform: "uppercase",
                                                         letterSpacing: "0.5px",
                                                         background: badge.bg,
                                                         color: badge.color,
                                                         display: "inline-flex",
                                                         alignItems: "center",
-                                                        gap: "6px",
-                                                        border: `1px solid ${badge.color}20`
+                                                        gap: "8px",
+                                                        border: `1px solid ${badge.color}25`,
+                                                        whiteSpace: "nowrap",
+                                                        flexShrink: 0
                                                     }}>
                                                         {s.status === "PENDING_ASSESSMENT" && (
-                                                            <span className="flex h-2 w-2 rounded-full relative">
+                                                            <span className="flex h-2 w-2 rounded-full relative shrink-0">
                                                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                                                               <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
                                                             </span>
@@ -282,10 +286,11 @@ export default function DashboardPage() {
                                                 </div>
 
                                                 <div className="mt-auto flex flex-col gap-2 pt-2">
-                                                    {s.status === "INQUIRY" ? (
+                                                    {s.status === "PENDING_ASSESSMENT" ? (
                                                         <Link 
                                                             href={`/parent-onboarding?studentId=${s.id}`}
-                                                            className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-lg text-center hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5 focus:ring-4 focus:ring-blue-100 flex items-center justify-center gap-2"
+                                                            className="btn-primary w-full flex items-center justify-center gap-2"
+                                                            style={{ textDecoration: "none", padding: "12px" }}
                                                         >
                                                             Start Assessment
                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
@@ -293,7 +298,8 @@ export default function DashboardPage() {
                                                     ) : (
                                                         <Link 
                                                             href={`/students/${s.id}`}
-                                                            className="w-full py-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 font-bold text-center hover:bg-blue-100 transition-colors focus:ring-4 focus:ring-blue-100 flex items-center justify-center gap-2"
+                                                            className="btn-indigo w-full flex items-center justify-center gap-2"
+                                                            style={{ textDecoration: "none", padding: "12px" }}
                                                         >
                                                             View Submitted Form
                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
@@ -388,10 +394,11 @@ export default function DashboardPage() {
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
                                                             <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                                                                {s.status === "INQUIRY" && (
+                                                                {s.status === "PENDING_ASSESSMENT" && (
                                                                     <Link 
                                                                         href={`/students/${s.id}`}
-                                                                        className="text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                                                                        className="btn-indigo"
+                                                                        style={{ textDecoration: "none" }}
                                                                     >
                                                                         Start Assessment
                                                                     </Link>

@@ -1,5 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
+
+def default_expiration():
+    return timezone.now() + timezone.timedelta(hours=72)
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -19,23 +23,26 @@ class Invitation(models.Model):
     student = models.ForeignKey('Student', on_delete=models.SET_NULL, null=True, blank=True, related_name='invitations')
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=default_expiration)
 
     def __str__(self):
         return f"Invite for {self.email} ({self.role}) - Used: {self.is_used}"
 
 class Student(models.Model):
     STATUS_CHOICES = (
-        ('INQUIRY',    'Inquiry'),        # New referral; waiting for parent onboarding form
-        ('EVALUATION', 'Evaluation'),     # Specialist assessment underway
-        ('REVIEW',     'Review'),         # All assessments done; Admin reviews for enrollment
-        ('ACTIVE',     'Active'),         # Enrolled and actively receiving services
-        ('ARCHIVED',   'Archived'),       # Discharged, graduated, or withdrawn
+        ('PENDING_ASSESSMENT', 'Pending Assessment'),
+        ('ASSESSMENT_SCHEDULED', 'Assessment Scheduled'),
+        ('OBSERVATION_PENDING', 'Observation Pending'),
+        ('OBSERVATION_SCHEDULED', 'Observation Scheduled'),
+        ('ASSESSED', 'Assessed'),
+        ('ENROLLED', 'Enrolled'),
+        ('ARCHIVED', 'Archived'),
     )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     grade = models.CharField(max_length=50)
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='INQUIRY')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='PENDING_ASSESSMENT')
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

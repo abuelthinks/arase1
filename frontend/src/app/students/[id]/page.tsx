@@ -58,11 +58,11 @@ interface ProfileData {
 }
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
-    "Inquiry":    { label: "Inquiry",    bg: "#fce7f3", color: "#9d174d" },
-    "Evaluation": { label: "Evaluation", bg: "#fef3c7", color: "#92400e" },
-    "Review":     { label: "Review",     bg: "#dbeafe", color: "#1e40af" },
-    "Active":     { label: "Active",     bg: "#dcfce7", color: "#14532d" },
-    "Archived":   { label: "Archived",   bg: "#f1f5f9", color: "#64748b" },
+    "Pending Assessment":   { label: "Pending Assessment",   bg: "#fce7f3", color: "#9d174d" },
+    "Assessment Scheduled": { label: "Assessment Scheduled", bg: "#fef3c7", color: "#92400e" },
+    "Assessed":             { label: "Assessed",             bg: "#dbeafe", color: "#1e40af" },
+    "Enrolled":             { label: "Enrolled",             bg: "#dcfce7", color: "#14532d" },
+    "Archived":             { label: "Archived",             bg: "#f1f5f9", color: "#64748b" },
 };
 
 // Which form keys each role CAN FILL (owns)
@@ -189,7 +189,7 @@ export default function StudentProfilePage() {
 
     const renderLifecycleAction = () => {
         if (user?.role === "PARENT") {
-            if (student.status === "Inquiry") {
+            if (student.status === "Pending Assessment") {
                 // Must submit parent assessment form before requesting
                 if (!form_statuses.parent_assessment?.submitted) {
                     return (
@@ -216,14 +216,14 @@ export default function StudentProfilePage() {
                     </button>
                 );
             }
-            if (student.status === "Evaluation") {
+            if (student.status === "Assessment Scheduled") {
                 return (
                     <span className="text-sm text-slate-500 italic">Evaluation in progress — our team will be in touch…</span>
                 );
             }
         }
         if (user?.role === "ADMIN") {
-            if (student.status === "Review") {
+            if (student.status === "Assessed") {
                 return (
                     <button
                         onClick={() => handleAction("enroll")}
@@ -233,11 +233,11 @@ export default function StudentProfilePage() {
                     </button>
                 );
             }
-            if (student.status === "Active") {
+            if (student.status === "Enrolled") {
                 return (
                     <button
                         onClick={() => handleAction("archive")}
-                        style={{ padding: "8px 20px", borderRadius: "6px", border: "1px solid #94a3b8", background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer" }}
+                        className="btn-slate"
                     >
                         Archive Student
                     </button>
@@ -258,8 +258,8 @@ export default function StudentProfilePage() {
             <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <button type="button" onClick={() => router.back()}
-                        style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#475569", fontWeight: 600, fontSize: "0.85rem", transition: "all 0.2s" }}
-                        className="hover:bg-slate-200"
+                        className="btn-slate"
+                        style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
                     >
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -374,13 +374,8 @@ export default function StudentProfilePage() {
                             </p>
                             <button
                                 onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }}
-                                style={{
-                                    width: "100%", padding: "10px", borderRadius: "8px",
-                                    background: "white", border: "1px solid #f87171",
-                                    color: "#dc2626", fontWeight: 700, fontSize: "0.85rem",
-                                    cursor: "pointer", transition: "all 0.2s"
-                                }}
-                                className="hover:bg-red-50 hover:border-red-500"
+                                className="btn-red"
+                                style={{ width: "100%" }}
                             >
                                 Delete Student
                             </button>
@@ -448,13 +443,18 @@ export default function StudentProfilePage() {
                                                         </Link>
                                                     ) : (
                                                         ownedFormKeys[user?.role ?? ""]?.includes(key) ? (
-                                                            (key.includes("tracker") && student.status !== "Active") ? (
+                                                            (key.includes("tracker") && student.status !== "Enrolled") ? (
                                                                 <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
                                                                     <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                                                     Locked
                                                                 </div>
+                                                            ) : (key === "sped_assessment" && !["Observation Scheduled", "Assessed", "Enrolled"].includes(student.status)) ? (
+                                                                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
+                                                                    <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                                    Waiting for Admin
+                                                                </div>
                                                             ) : (
-                                                                <Link href={`${route}?studentId=${student.id}`} style={{ fontSize: "0.85rem", color: "#2563eb", textDecoration: "none", fontWeight: 600, display: "inline-block", background: "#eff6ff", padding: "6px 12px", borderRadius: "6px" }} className="hover:bg-blue-100 transition-colors">
+                                                                <Link href={`${route}?studentId=${student.id}`} className="btn-indigo" style={{ textDecoration: "none" }}>
                                                                     + Complete Form
                                                                 </Link>
                                                             )
@@ -537,16 +537,8 @@ export default function StudentProfilePage() {
                                                                             e.stopPropagation();
                                                                             handleAssign(role === "SPECIALIST" ? "specialist" : "teacher", s.id);
                                                                         }}
-                                                                        style={{
-                                                                            fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap",
-                                                                            padding: "6px 14px", borderRadius: "6px",
-                                                                            border: "1px solid #bfdbfe",
-                                                                            background: "#eff6ff", color: "#1d4ed8",
-                                                                            cursor: isLoading ? "not-allowed" : "pointer",
-                                                                            opacity: isLoading ? 0.6 : 1,
-                                                                            transition: "all 0.2s"
-                                                                        }}
-                                                                        className="hover:bg-blue-100"
+                                                                        className="btn-indigo"
+                                                                        style={{ opacity: isLoading ? 0.6 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}
                                                                     >
                                                                         {isLoading ? "…" : "Assign"}
                                                                     </button>
@@ -573,19 +565,11 @@ export default function StudentProfilePage() {
                                 </h2>
                                 <p style={{ fontSize: "0.85rem", color: "#0ea5e9", margin: "4px 0 0" }}>Finalized clinical AI outputs approved for this student.</p>
                             </div>
-                            {user?.role === "ADMIN" && (student.status === "Review" || student.status === "Active") && (
-                                <Link
+                            {user?.role === "ADMIN" && (student.status === "Assessed" || student.status === "Enrolled") && (
+                        <Link
                                     href={`/admin/reports?studentId=${student.id}`}
-                                    style={{
-                                        display: "inline-flex", alignItems: "center", gap: "6px",
-                                        padding: "10px 18px", borderRadius: "8px",
-                                        background: "#0284c7", color: "white",
-                                        fontSize: "0.85rem", fontWeight: 700,
-                                        textDecoration: "none", whiteSpace: "nowrap",
-                                        boxShadow: "0 4px 6px rgba(2, 132, 199, 0.2)",
-                                        transition: "all 0.2s"
-                                    }}
-                                    className="hover:bg-sky-700 hover:shadow-lg"
+                                    className="btn-primary"
+                                    style={{ display: "inline-flex", alignItems: "center", gap: "6px", textDecoration: "none", whiteSpace: "nowrap" }}
                                 >
                                     <svg style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -619,12 +603,23 @@ export default function StudentProfilePage() {
                                                     {badgeLabel}
                                                 </div>
                                                 <div>
-                                                    <p style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                                                        {docTitle}
+                                                    <p style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                                                        {isIEP ? (
+                                                            <a href={`/admin/iep?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-indigo-600 transition-colors">
+                                                                {docTitle}
+                                                            </a>
+                                                        ) : isWeekly ? (
+                                                            <a href={`/admin/weekly-report?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-green-600 transition-colors">
+                                                                {docTitle}
+                                                            </a>
+                                                        ) : (
+                                                            <span style={{ color: "var(--text-primary)" }}>{docTitle}</span>
+                                                        )}
                                                         {doc.status === "DRAFT" && (
                                                             <span style={{ fontSize: "0.65rem", fontWeight: 800, padding: "2px 6px", borderRadius: "4px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>DRAFT</span>
                                                         )}
                                                     </p>
+
                                                     <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "2px 0 0", display: "flex", alignItems: "center", gap: "4px" }}>
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                                         {new Date(doc.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
@@ -633,18 +628,13 @@ export default function StudentProfilePage() {
                                             </div>
                                             <div style={{ display: "flex", gap: "8px" }}>
                                                 {isIEP && (
-                                                    <a href={`/admin/iep?id=${doc.id}`} style={{ fontSize: "0.82rem", fontWeight: 700, color: "#4f46e5", padding: "8px 16px", borderRadius: "8px", border: "1px solid #c7d2fe", textDecoration: "none", background: "#eef2ff", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                    <a href={`/admin/iep?id=${doc.id}`} className="btn-indigo" style={{ textDecoration: "none" }}>
                                                         View IEP
                                                     </a>
                                                 )}
                                                 {isWeekly && (
-                                                    <a href={`/admin/weekly-report?id=${doc.id}`} style={{ fontSize: "0.82rem", fontWeight: 700, color: "#16a34a", padding: "8px 16px", borderRadius: "8px", border: "1px solid #bbf7d0", textDecoration: "none", background: "#f0fdf4", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                    <a href={`/admin/weekly-report?id=${doc.id}`} className="btn-green" style={{ textDecoration: "none" }}>
                                                         View Report
-                                                    </a>
-                                                )}
-                                                {doc.file_url && (
-                                                    <a href={doc.file_url} target="_blank" rel="noreferrer" style={{ fontSize: "0.82rem", fontWeight: 600, color: "#0284c7", padding: "8px 16px", borderRadius: "8px", border: "1px solid #bae6fd", textDecoration: "none", background: "#f0f9ff" }}>
-                                                        Open PDF
                                                     </a>
                                                 )}
                                             </div>

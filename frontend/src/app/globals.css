@@ -55,25 +55,30 @@ body {
   box-shadow: var(--shadow-glass);
 }
 
-/* Buttons */
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+/* Primary: blue fill → medium blue on hover */
 .btn-primary {
   background-color: var(--accent-primary);
   color: white;
-  border: none;
+  border: 1px solid var(--accent-primary);
   padding: 10px 20px;
   border-radius: 8px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  box-shadow: var(--shadow-sm);
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+  color: white;
+}
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.btn-primary:hover {
-  background-color: var(--accent-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
+/* Secondary: ghost → medium slate on hover */
 .btn-secondary {
   background-color: transparent;
   color: var(--text-secondary);
@@ -82,13 +87,123 @@ body {
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: #1e293b;
+  border-color: #1e293b;
+  color: white;
 }
 
-.btn-secondary:hover {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+/* Indigo: IEP / navigation links */
+.btn-indigo {
+  background-color: #eef2ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
+.btn-indigo:hover {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+  color: white;
+}
+
+/* Green: positive / report / enroll actions */
+.btn-green {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-green:hover {
+  background-color: #16a34a;
+  border-color: #16a34a;
+  color: white;
+}
+
+/* Red: danger / delete / destructive actions */
+.btn-red {
+  background-color: white;
+  color: #dc2626;
+  border: 1px solid #f87171;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-red:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+/* Slate: neutral / archive / back actions */
+.btn-slate {
+  background-color: #ffffff;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-slate svg {
+  transition: transform 0.2s ease;
+}
+
+.btn-slate:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.btn-slate:hover svg {
+  transform: translateX(-3px);
+}
+
+/* Amber: warning / review-needed actions */
+.btn-amber {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-amber:hover {
+  background-color: #b45309;
+  border-color: #b45309;
+  color: white;
+}
+
+
 
 /* Forms */
 .form-group {

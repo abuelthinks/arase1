@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ const Cb = ({
     onChange: (v: boolean) => void;
     disabled?: boolean;
 }) => (
-    <label className={`flex items-center gap-2 text-sm cursor-pointer select-none ${disabled ? "text-slate-400" : "text-slate-700"}`}>
+    <label className={`flex items-center gap-2 text-base cursor-pointer select-none ${disabled ? "text-slate-400" : "text-slate-700"}`}>
         <input
             type="checkbox"
             checked={checked}
@@ -35,19 +36,19 @@ const toggle = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
 
 const SectionHeader = ({ title }: { title: string }) => (
-    <h2 className="text-lg font-bold text-slate-800 border-b-2 border-blue-100 pb-2 mb-5">{title}</h2>
+    <h2 className="text-xl font-bold text-slate-800 border-b-2 border-blue-100 pb-2 mb-5">{title}</h2>
 );
 
 const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
     <div className="space-y-1.5">
-        <label className="block text-sm font-semibold text-slate-700">
+        <label className="block text-base font-semibold text-slate-700">
             {label}{required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
         {children}
     </div>
 );
 
-const inputCls = "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white disabled:bg-slate-50 disabled:text-slate-500";
+const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-400 outline-none bg-white disabled:bg-slate-50 disabled:text-slate-500";
 const milestoneCls = "flex flex-wrap gap-3";
 
 // ── initial state factory ─────────────────────────────────────────────────────
@@ -113,6 +114,8 @@ function ParentFormContent() {
     const submissionId = searchParams.get("submissionId");
     const studentIdParam = searchParams.get("studentId");
     const draftKey = studentIdParam ? `parent_form_draft_v2_${studentIdParam}` : null;
+    const { user } = useAuth();
+    const canViewPII = !isViewMode || user?.role === "ADMIN";
 
     const [form, setForm] = useState<FormState>(initState());
     const [loading, setLoading] = useState(false);
@@ -230,22 +233,68 @@ function ParentFormContent() {
 
     return (
         <ProtectedRoute allowedRoles={isViewMode ? undefined : ["PARENT"]}>
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-5xl mx-auto">
                 {/* Breadcrumb Nav */}
-                <div className="mb-6 flex flex-wrap items-center gap-2">
-                    <button type="button" onClick={() => router.back()}
-                        className="inline-flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-semibold text-sm transition-colors cursor-pointer"
-                    >
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        Back to Student Profile
-                    </button>
-                    <span className="text-slate-300">›</span>
-                    <span className="text-slate-900 font-semibold text-sm">
-                        Parent Assessment
-                    </span>
-                </div>
+                {isViewMode && (
+                    <div style={{ 
+                        marginBottom: "2rem", 
+                        display: "flex", 
+                        justifyContent: "space-between", 
+                        alignItems: "center", 
+                        background: "white", 
+                        padding: "12px 20px", 
+                        borderRadius: "12px", 
+                        border: "1px solid var(--border-light)", 
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.02)" 
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <button type="button" onClick={() => router.back()}
+                                style={{ 
+                                    background: "#f8fafc", 
+                                    border: "1px solid #e2e8f0", 
+                                    padding: "6px 12px", 
+                                    borderRadius: "6px", 
+                                    cursor: "pointer", 
+                                    display: "inline-flex", 
+                                    alignItems: "center", 
+                                    gap: "6px", 
+                                    color: "#475569", 
+                                    fontWeight: 600, 
+                                    fontSize: "0.85rem", 
+                                    transition: "all 0.2s" 
+                                }}
+                                className="hover:bg-slate-200"
+                            >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back
+                            </button>
+                            <span style={{ color: "#cbd5e1" }}>/</span>
+                            <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Student Profile</span>
+                            <span style={{ color: "#cbd5e1" }}>/</span>
+                            <span style={{ color: "var(--text-primary)", fontWeight: 700, fontSize: "0.95rem" }}>
+                                Parent Assessment
+                            </span>
+                        </div>
+                    </div>
+                )}
+                {!isViewMode && (
+                    <div className="mb-6 flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => router.back()}
+                            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-semibold text-sm transition-colors cursor-pointer"
+                        >
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Back to Student Profile
+                        </button>
+                        <span className="text-slate-300">›</span>
+                        <span className="text-slate-900 font-semibold text-sm">
+                            Parent Assessment
+                        </span>
+                    </div>
+                )}
 
                 {/* Top bar */}
                 <div className="flex items-center justify-between mb-5">
@@ -307,17 +356,19 @@ function ParentFormContent() {
                             </div>
                         </Field>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <Field label="Parent/Guardian Name">
-                                <input type="text" className={inputCls} value={form.parent_name} onChange={e => set("parent_name")(e.target.value)} />
-                            </Field>
-                            <Field label="Phone">
-                                <input type="text" className={inputCls} value={form.phone} onChange={e => set("phone")(e.target.value)} />
-                            </Field>
-                            <Field label="Email">
-                                <input type="email" className={inputCls} value={form.email} onChange={e => set("email")(e.target.value)} />
-                            </Field>
-                        </div>
+                        {canViewPII && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <Field label="Parent/Guardian Name">
+                                    <input type="text" className={inputCls} value={form.parent_name} onChange={e => set("parent_name")(e.target.value)} />
+                                </Field>
+                                <Field label="Phone">
+                                    <input type="text" className={inputCls} value={form.phone} onChange={e => set("phone")(e.target.value)} />
+                                </Field>
+                                <Field label="Email">
+                                    <input type="email" className={inputCls} value={form.email} onChange={e => set("email")(e.target.value)} />
+                                </Field>
+                            </div>
+                        )}
 
                         <Field label="Primary Language(s)">
                             <div className="flex flex-wrap gap-3">
@@ -645,7 +696,8 @@ function ParentFormContent() {
                         <button
                             onClick={handleSubmit}
                             disabled={loading}
-                            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition disabled:opacity-60"
+                            className="btn-primary"
+                            style={{ padding: "12px 32px", fontSize: "0.95rem" }}
                         >
                             {loading ? "Submitting…" : "Submit Assessment Form"}
                         </button>
