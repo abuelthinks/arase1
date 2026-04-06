@@ -186,12 +186,18 @@ from django.db.models.signals import post_save
 
 def trigger_translation_task(sender, instance, created, **kwargs):
     update_fields = kwargs.get('update_fields')
+    # Avoid recursive loops when the task itself updates the translated_data
     if update_fields and 'translated_data' in update_fields:
         return
     
     if instance.form_data:
-        from api.tasks import translate_form_data_task
-        translate_form_data_task.delay(instance._meta.model_name, instance.id)
+        try:
+            from api.tasks import translate_form_data_task
+            translate_form_data_task.delay(instance._meta.model_name, instance.id)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue translation task for {instance._meta.model_name} {instance.id}: {e}")
 
 for model in [
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
