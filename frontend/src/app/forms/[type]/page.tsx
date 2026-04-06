@@ -133,6 +133,11 @@ function FormEntryContent() {
     const isViewMode = searchParams.get("mode") === "view";
     const formIdStr = searchParams.get("submissionId") || searchParams.get("formId");
 
+    // For Translation Toggle
+    const [fullSubmission, setFullSubmission] = useState<any>(null);
+    const [isTranslated, setIsTranslated] = useState(false);
+    const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
+
     const getDraftKey = () => `draft_${formType}_${studentId}`;
 
     useEffect(() => {
@@ -256,6 +261,7 @@ function FormEntryContent() {
                 // If viewing a previous submission
                 try {
                     const res = await api.get(`/api/inputs/${formType}/${formIdStr}/`);
+                    setFullSubmission(res.data);
                     const savedData = res.data.form_data?.v2 || res.data.form_data || {};
                     
                     // Detect if savedData is from older flat structure
@@ -369,6 +375,47 @@ function FormEntryContent() {
         
         return () => { isMounted = false; };
     }, [formType, studentId, user, isViewMode, formIdStr]);
+
+    useEffect(() => {
+        if (isViewMode && fullSubmission && schema) {
+            const sourceData = (isTranslated && fullSubmission.translated_data) ? fullSubmission.translated_data : fullSubmission.form_data;
+            const savedData = sourceData?.v2 || sourceData || {};
+            
+            // Re-run the merge logic for view mode
+            const initialData: any = {};
+            schema.sections?.forEach((sec: any) => {
+                initialData[sec.id] = {};
+                sec.fields?.forEach((f: any) => {
+                    if (f.type === "checkbox_group") {
+                        initialData[sec.id][f.id] = [];
+                    } else if (f.type === "grid") {
+                        initialData[sec.id][f.id] = {};
+                    } else {
+                        initialData[sec.id][f.id] = "";
+                    }
+                });
+            });
+
+            let mergedData = { ...initialData };
+            const isFlat = !Object.keys(savedData).some(k => k.startsWith("section_"));
+            if (isFlat) {
+                schema.sections?.forEach((sec: any) => {
+                    sec.fields?.forEach((f: any) => {
+                        if (savedData[f.id] !== undefined) {
+                            mergedData[sec.id][f.id] = savedData[f.id];
+                        }
+                    });
+                });
+            } else {
+                Object.keys(savedData).forEach(secKey => {
+                    if (mergedData[secKey]) {
+                        mergedData[secKey] = { ...mergedData[secKey], ...savedData[secKey] };
+                    }
+                });
+            }
+            setFormData(mergedData);
+        }
+    }, [isTranslated, fullSubmission, schema, isViewMode]);
 
     // Auto-save effect
     useEffect(() => {
@@ -520,6 +567,32 @@ function FormEntryContent() {
                         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{schema.title}</h1>
                         <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>Fill out each section below.</p>
                     </div>
+                    {isViewMode && hasTranslation && (
+                        <div style={{ display: "flex", gap: "4px", background: "#f8fafc", padding: "4px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                            <button
+                                type="button"
+                                onClick={() => setIsTranslated(false)}
+                                style={{
+                                    padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: !isTranslated ? 700 : 500,
+                                    color: !isTranslated ? "#0f172a" : "#64748b", background: !isTranslated ? "white" : "transparent",
+                                    boxShadow: !isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
+                                }}
+                            >
+                                Original
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsTranslated(true)}
+                                style={{
+                                    padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: isTranslated ? 700 : 500,
+                                    color: isTranslated ? "#4f46e5" : "#64748b", background: isTranslated ? "white" : "transparent",
+                                    boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
+                                }}
+                            >
+                                English (AI) ✨
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Alerts */}

@@ -103,6 +103,27 @@ class BaseInputViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(submitted_by=self.request.user)
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # On-demand translation fallback for missing background tasks
+        if request.user.role in ['ADMIN', 'SPECIALIST', 'TEACHER'] and \
+           not instance.translated_data and instance.form_data:
+            try:
+                from .services.translation_service import translate_form_data
+                translated_data, detected_lang = translate_form_data(instance.form_data)
+                # If a translation was actually found (not just English)
+                if detected_lang not in ['en', 'english']:
+                    instance.translated_data = translated_data
+                    instance.original_language = detected_lang
+                    # Use update_fields to avoid triggering signals that might expect full saves
+                    instance.save(update_fields=['translated_data', 'original_language'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"On-demand translation failed for {instance._meta.model_name} {instance.id}: {e}")
+        
+        return super().retrieve(request, *args, **kwargs)
+
     def get_queryset(self):
         user = self.request.user
         if user.role == 'ADMIN':

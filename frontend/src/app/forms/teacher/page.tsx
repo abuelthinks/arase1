@@ -157,11 +157,17 @@ function TeacherFormContent() {
     const [reportCycleId, setReportCycleId] = useState("1");
     const [studentProfile, setStudentProfile] = useState<any>(null);
 
+    // For Translation Toggle
+    const [fullSubmission, setFullSubmission] = useState<any>(null);
+    const [isTranslated, setIsTranslated] = useState(false);
+    const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
+
     // Load existing submission (view mode) or auto-fill student info (fill mode)
     useEffect(() => {
         if (isViewMode && submissionId) {
             api.get(`/api/inputs/sped-assessment/${submissionId}/`)
                 .then(res => {
+                    setFullSubmission(res.data);
                     const fd = res.data.form_data;
                     if (fd?.v2) setForm(fd.v2);
                 })
@@ -189,6 +195,13 @@ function TeacherFormContent() {
                 .catch(console.error);
         }
     }, [studentId, isViewMode, submissionId]);
+
+    useEffect(() => {
+        if (isViewMode && fullSubmission) {
+            const fd = (isTranslated && fullSubmission.translated_data) ? fullSubmission.translated_data : fullSubmission.form_data;
+            if (fd?.v2) setForm(fd.v2);
+        }
+    }, [isTranslated, fullSubmission, isViewMode]);
 
     const set = (key: keyof FormState, val: string) => setForm(prev => ({ ...prev, [key]: val }));
     const tog = (key: keyof FormState, val: string) => setForm(prev => ({ ...prev, [key]: toggle(prev[key] as string[], val) }));
@@ -292,13 +305,39 @@ function TeacherFormContent() {
                 </div>
             )}
             {/* Header */}
-            <div style={{ marginBottom: "1.5rem" }}>
-                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-                    SPED Progress Tracking Form (Teacher Version){ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
-                </h1>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
-                    {ro ? "Past submission — read only." : "Standalone for SPED classroom monitoring & IEP updates."}
-                </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <div>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                        SPED Progress Tracking Form (Teacher Version){ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
+                    </h1>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
+                        {ro ? "Past submission — read only." : "Standalone for SPED classroom monitoring & IEP updates."}
+                    </p>
+                </div>
+                {ro && hasTranslation && (
+                    <div style={{ display: "flex", gap: "4px", background: "#f8fafc", padding: "4px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                        <button
+                            onClick={() => setIsTranslated(false)}
+                            style={{
+                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: !isTranslated ? 700 : 500,
+                                color: !isTranslated ? "#0f172a" : "#64748b", background: !isTranslated ? "white" : "transparent",
+                                boxShadow: !isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
+                            }}
+                        >
+                            Original
+                        </button>
+                        <button
+                            onClick={() => setIsTranslated(true)}
+                            style={{
+                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: isTranslated ? 700 : 500,
+                                color: isTranslated ? "#4f46e5" : "#64748b", background: isTranslated ? "white" : "transparent",
+                                boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
+                            }}
+                        >
+                            English (AI) ✨
+                        </button>
+                    </div>
+                )}
             </div>
 
             {successMsg && (

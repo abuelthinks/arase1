@@ -102,6 +102,11 @@ function SpecialistBFormContent() {
     const [studentProfile, setStudentProfile] = useState<any>(null);
     const [studentName, setStudentName] = useState("");
 
+    // For Translation Toggle
+    const [fullSubmission, setFullSubmission] = useState<any>(null);
+    const [isTranslated, setIsTranslated] = useState(false);
+    const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
+
     const { user } = useAuth();
     const [formData, setFormData] = useState({
         section_a: { date: new Date().toISOString().split('T')[0], therapist_name: "", discipline: "", session_type: "", sessions_completed: "0" },
@@ -236,6 +241,7 @@ function SpecialistBFormContent() {
         if (isViewMode && submissionId) {
             api.get(`/api/inputs/multidisciplinary-tracker/${submissionId}/`)
                 .then(res => {
+                    setFullSubmission(res.data);
                     if (res.data.form_data) {
                         setFormData(prev => ({ ...prev, ...res.data.form_data }));
                     }
@@ -243,6 +249,15 @@ function SpecialistBFormContent() {
                 .catch(err => console.error("Failed to fetch submission:", err));
         }
     }, [isViewMode, submissionId, studentId]);
+
+    useEffect(() => {
+        if (isViewMode && fullSubmission) {
+            const sourceData = (isTranslated && fullSubmission.translated_data) ? fullSubmission.translated_data : fullSubmission.form_data;
+            if (sourceData) {
+                setFormData(prev => ({ ...prev, ...sourceData }));
+            }
+        }
+    }, [isTranslated, fullSubmission, isViewMode]);
 
     if (!studentId && !isViewMode) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing student context. Return to dashboard.</div>;
 
@@ -306,14 +321,40 @@ function SpecialistBFormContent() {
                 </div>
             )}
             {/* Header */}
-            <div style={{ marginBottom: "1.5rem" }}>
-                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-                    Monthly Progress Report {studentName && `for ${studentName}`}
-                    {ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
-                </h1>
-                <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
-                    {ro ? "Past submission — read only." : "Document monthly therapy goals, session details, and progress measures."}
-                </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <div>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                        Monthly Progress Report {studentName && `for ${studentName}`}
+                        {ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
+                    </h1>
+                    <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
+                        {ro ? "Past submission — read only." : "Document monthly therapy goals, session details, and progress measures."}
+                    </p>
+                </div>
+                {ro && hasTranslation && (
+                    <div style={{ display: "flex", gap: "4px", background: "#f8fafc", padding: "4px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                        <button
+                            onClick={() => setIsTranslated(false)}
+                            style={{
+                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: !isTranslated ? 700 : 500,
+                                color: !isTranslated ? "#0f172a" : "#64748b", background: !isTranslated ? "white" : "transparent",
+                                boxShadow: !isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
+                            }}
+                        >
+                            Original
+                        </button>
+                        <button
+                            onClick={() => setIsTranslated(true)}
+                            style={{
+                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: isTranslated ? 700 : 500,
+                                color: isTranslated ? "#4f46e5" : "#64748b", background: isTranslated ? "white" : "transparent",
+                                boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
+                            }}
+                        >
+                            English (AI) ✨
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Alerts */}

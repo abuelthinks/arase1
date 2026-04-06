@@ -121,6 +121,11 @@ function ParentFormContent() {
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
 
+    // For Translation Toggle
+    const [fullSubmission, setFullSubmission] = useState<any>(null);
+    const [isTranslated, setIsTranslated] = useState(false);
+    const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
+
     // ── setters ──────────────────────────────────────────────────────────────
 
     const set = (key: keyof FormState) => (val: any) =>
@@ -138,6 +143,7 @@ function ParentFormContent() {
         if (submissionId) {
             api.get(`/api/inputs/parent-assessment/${submissionId}/`)
                 .then(res => {
+                    setFullSubmission(res.data);
                     const fd = res.data.form_data;
                     if (!fd) return;
                     // New v2 format
@@ -195,6 +201,27 @@ function ParentFormContent() {
             }));
         }
     }, [isViewMode, submissionId, studentIdParam, user]);
+
+    useEffect(() => {
+        if (isViewMode && fullSubmission) {
+            const fd = (isTranslated && fullSubmission.translated_data) ? fullSubmission.translated_data : fullSubmission.form_data;
+            if (!fd) return;
+            if (fd.v2) {
+                setForm(fd.v2);
+            } else {
+                setForm(prev => ({
+                    ...prev,
+                    first_name: fd.background?.first_name || "",
+                    last_name: fd.background?.last_name || "",
+                    date_of_birth: fd.background?.date_of_birth || "",
+                    grade: fd.background?.grade || "",
+                    parent_name: fd.background?.parent_guardian_name || "",
+                    primary_language: fd.background?.primary_language ? [fd.background.primary_language] : [],
+                    medical_alerts: fd.background?.medical_alerts || "",
+                }));
+            }
+        }
+    }, [isTranslated, fullSubmission, isViewMode]);
 
     // Auto-save form data periodically
     useEffect(() => {
@@ -318,6 +345,44 @@ function ParentFormContent() {
                             {isViewMode ? "Past submission — read only." : "THERUNI Unified Parent Assessment Checklist"}
                         </p>
                     </div>
+                    {isViewMode && hasTranslation && (
+                        <div style={{ display: "flex", gap: "4px", background: "#f8fafc", padding: "4px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                            <button
+                                onClick={() => setIsTranslated(false)}
+                                style={{
+                                    padding: "6px 12px",
+                                    borderRadius: "6px",
+                                    fontSize: "0.85rem",
+                                    fontWeight: !isTranslated ? 700 : 500,
+                                    color: !isTranslated ? "#0f172a" : "#64748b",
+                                    background: !isTranslated ? "white" : "transparent",
+                                    boxShadow: !isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s"
+                                }}
+                            >
+                                Original
+                            </button>
+                            <button
+                                onClick={() => setIsTranslated(true)}
+                                style={{
+                                    padding: "6px 12px",
+                                    borderRadius: "6px",
+                                    fontSize: "0.85rem",
+                                    fontWeight: isTranslated ? 700 : 500,
+                                    color: isTranslated ? "#4f46e5" : "#64748b",
+                                    background: isTranslated ? "white" : "transparent",
+                                    boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s"
+                                }}
+                            >
+                                English (AI) ✨
+                            </button>
+                        </div>
+                    )}
                     {!isViewMode && (
                         <button
                             onClick={handleSaveAndBack}
