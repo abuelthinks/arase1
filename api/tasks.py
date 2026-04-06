@@ -21,14 +21,14 @@ def generate_iep_task(self, student_id, cycle_id):
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
-def generate_weekly_report_task(self, student_id, cycle_id):
+def generate_monthly_report_task(self, student_id, cycle_id):
     """
-    Generate a Weekly Report asynchronously using Gemini AI.
+    Generate a Monthly Report asynchronously using Gemini AI.
     Returns the generated document ID.
     """
     try:
-        from api.services.iep_service import run_weekly_report_generation
-        doc, report_data = run_weekly_report_generation(student_id, cycle_id)
+        from api.services.iep_service import run_monthly_report_generation
+        doc, report_data = run_monthly_report_generation(student_id, cycle_id)
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
         raise self.retry(exc=exc)
@@ -48,5 +48,27 @@ def generate_report_final_task(self, student_id, cycle_id, doc_type, draft_data)
         cycle = ReportCycle.objects.get(id=cycle_id)
         doc = generate_final_pdf(student, cycle, doc_type, draft_data)
         return {'doc_id': doc.id, 'file_url': doc.file.url if doc.file else '', 'status': 'completed'}
+    except Exception as exc:
+        raise self.retry(exc=exc)
+@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+def translate_form_data_task(self, model_name, instance_id):
+    """
+    Translate form data for a given model instance asynchronously.
+    """
+    try:
+        from django.apps import apps
+        from api.services.translation_service import translate_form_data
+        
+        ModelClass = apps.get_model('api', model_name)
+        instance = ModelClass.objects.get(id=instance_id)
+        
+        if instance.form_data:
+            translated_data, detected_lang = translate_form_data(instance.form_data)
+            instance.translated_data = translated_data
+            instance.original_language = detected_lang
+            instance.save(update_fields=['translated_data', 'original_language'])
+            
+            return {'instance_id': instance.id, 'language': detected_lang, 'status': 'completed'}
+        return {'instance_id': instance.id, 'status': 'skipped', 'reason': 'no form_data'}
     except Exception as exc:
         raise self.retry(exc=exc)

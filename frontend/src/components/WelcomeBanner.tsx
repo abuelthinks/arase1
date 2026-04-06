@@ -9,6 +9,7 @@ interface Student {
     first_name: string;
     last_name: string;
     status: string;
+    has_parent_assessment?: boolean;
 }
 
 interface WelcomeBannerProps {
@@ -23,8 +24,11 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
     if (user?.role !== "PARENT") return null;
     if (!students || students.length === 0) return null;
 
-    const pendingStudent = students.find(s => s.status === "PENDING_ASSESSMENT");
-    const analyzingStudent = students.find(s => ["ASSESSMENT_SCHEDULED", "OBSERVATION_PENDING", "OBSERVATION_SCHEDULED", "ASSESSED"].includes(s.status));
+    const pendingStudent = students.find(s => s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment);
+    const analyzingStudent = students.find(s => 
+        ["ASSESSMENT_SCHEDULED", "OBSERVATION_PENDING", "OBSERVATION_SCHEDULED", "ASSESSED"].includes(s.status) || 
+        (s.status === "PENDING_ASSESSMENT" && s.has_parent_assessment)
+    );
     const activeStudent = students.find(s => s.status === "ENROLLED");
     
     const targetStudent = pendingStudent || analyzingStudent || activeStudent;

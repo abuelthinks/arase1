@@ -6,8 +6,9 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from api.models import (
     Student, StudentAccess, ReportCycle,
-    ParentAssessment, User, Invitation,
+    ParentAssessment, MultidisciplinaryAssessment, User, Invitation,
 )
+from rest_framework.exceptions import ValidationError
 
 
 def create_student_with_invitation(student_data, parent_email):
@@ -123,8 +124,15 @@ def get_student_profile_data(student, user=None):
         ParentProgressTracker, MultidisciplinaryProgressTracker,
         SpedProgressTracker, GeneratedDocument,
     )
+    from api.services.cycle_service import (
+        ensure_current_cycle, get_cycle_status_summary, get_previous_recommendations,
+    )
 
-    cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
+    # Lazy-create monthly cycle for enrolled students
+    if student.status == 'ENROLLED':
+        cycle = ensure_current_cycle(student)
+    else:
+        cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
 
     form_statuses = {
         "parent_assessment": {"submitted": False, "id": None},
@@ -141,6 +149,8 @@ def get_student_profile_data(student, user=None):
             "id": cycle.id,
             "start_date": cycle.start_date,
             "end_date": cycle.end_date,
+            "label": cycle.label or cycle.start_date.strftime("%B %Y"),
+            "status": cycle.status,
         }
         form_map = {
             "parent_assessment": ParentAssessment,
@@ -202,6 +212,10 @@ def get_student_profile_data(student, user=None):
     if not (user and user.role == 'PARENT'):
         assigned_staff = [{"id": sa.user.id, "role": sa.user.role} for sa in assigned_users]
 
+    # Cycle status summary and carry-forward recommendations
+    cycle_status = get_cycle_status_summary(student, cycle) if cycle and student.status == 'ENROLLED' else None
+    prev_recs = get_previous_recommendations(student) if student.status == 'ENROLLED' else None
+
     return {
         "student": {
             "id": student.id,
@@ -213,6 +227,8 @@ def get_student_profile_data(student, user=None):
             **parent_info,
         },
         "active_cycle": cycle_data,
+        "cycle_status": cycle_status,
+        "previous_recommendations": prev_recs,
         "form_statuses": form_statuses,
         "generated_documents": docs_data,
         "assigned_staff": assigned_staff,
@@ -227,6 +243,22 @@ def assign_staff_to_student(student_id, staff_id, expected_role):
     """
     staff = User.objects.get(id=staff_id, role=expected_role)
     student = Student.objects.get(id=student_id)
+    
+    # ---------------------------------------------------------
+    # WORKFLOW VALIDATION: Enforce sequential input progression
+    # ---------------------------------------------------------
+    if expected_role == 'SPECIALIST':
+        # Must have Parent Assessment input before assigning Specialist
+        has_parent_input = ParentAssessment.objects.filter(student=student).exists()
+        if not has_parent_input:
+            raise ValidationError("Cannot assign a Specialist until the Parent Assessment is submitted.")
+            
+    elif expected_role == 'TEACHER':
+        # Must have Specialist Assessment input before assigning Teacher
+        has_specialist_input = MultidisciplinaryAssessment.objects.filter(student=student).exists()
+        if not has_specialist_input and student.status not in ['OBSERVATION_PENDING', 'OBSERVATION_SCHEDULED', 'ASSESSED', 'ENROLLED']:
+            raise ValidationError("Cannot assign a Teacher until the Specialist Assessment is submitted.")
+            
     StudentAccess.objects.get_or_create(user=staff, student=student)
 
     # Update student status based on assignment

@@ -86,7 +86,7 @@ def resend_invitation(old_invitation):
     return new_invite
 
 
-def create_invited_user(invitation, password, first_name="", last_name=""):
+def create_invited_user(invitation, password, first_name="", last_name="", phone_number=""):
     """
     Creates a user from an invitation and links them to assigned students.
     Returns: User instance
@@ -98,6 +98,7 @@ def create_invited_user(invitation, password, first_name="", last_name=""):
         first_name=(first_name or "").strip().title(),
         last_name=(last_name or "").strip().title(),
         role=invitation.role,
+        phone_number=(phone_number or "").strip()
     )
 
     invitation.is_used = True

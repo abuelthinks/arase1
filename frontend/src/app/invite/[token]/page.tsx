@@ -10,6 +10,9 @@ export default function AcceptInvitePage() {
     const token = params.token as string;
 
     const [formData, setFormData] = useState({
+        firstName: "",
+        lastName: "",
+        phoneNumber: "",
         password: "",
         confirmPassword: ""
     });
@@ -47,6 +50,9 @@ export default function AcceptInvitePage() {
         try {
             await api.post("/api/invitations/accept/", {
                 token: token,
+                first_name: formData.firstName,
+                last_name: formData.lastName,
+                phone_number: formData.phoneNumber,
                 password: formData.password
             });
             setSuccess(true);
@@ -128,6 +134,42 @@ export default function AcceptInvitePage() {
                         <span style={{ fontSize: "0.8rem", color: "#94a3b8", display: "block", marginTop: "6px" }}>
                             If you need to use a different email, please contact your administrator for a new invitation.
                         </span>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "1rem" }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: "block", marginBottom: "5px", fontSize: "0.9rem", fontWeight: "bold" }}>First Name</label>
+                            <input
+                                required
+                                type="text"
+                                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                                value={formData.firstName}
+                                onChange={e => setFormData({ ...formData, firstName: e.target.value })}
+                            />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: "block", marginBottom: "5px", fontSize: "0.9rem", fontWeight: "bold" }}>Last Name</label>
+                            <input
+                                required
+                                type="text"
+                                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                                value={formData.lastName}
+                                onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style={{ display: "block", marginBottom: "5px", fontSize: "0.9rem", fontWeight: "bold" }}>Phone Number</label>
+                        <input
+                            required
+                            type="tel"
+                            pattern="^\+?[0-9\s\-\(\)]{7,15}$"
+                            title="Please enter a valid phone number (7-15 digits, plus, hyphens, or spaces)."
+                            style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                            value={formData.phoneNumber}
+                            onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })}
+                        />
                     </div>
 
 

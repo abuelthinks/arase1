@@ -180,8 +180,8 @@ def _generate_iep_pdf(student, iep_data):
     return ContentFile(pdf_bytes)
 
 
-def _generate_weekly_pdf(student, report_data):
-    """Build a Weekly Progress Report PDF in memory and return a ContentFile for storage."""
+def _generate_monthly_pdf(student, report_data):
+    """Build a Monthly Progress Report PDF in memory and return a ContentFile for storage."""
     buffer = BytesIO()
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], alignment=1, spaceAfter=20, fontSize=16)
@@ -193,7 +193,7 @@ def _generate_weekly_pdf(student, report_data):
     elements = []
     report = report_data
 
-    elements.append(Paragraph("THERUNI - Weekly Progress Report", title_style))
+    elements.append(Paragraph("THERUNI - Monthly Progress Report", title_style))
     elements.append(Spacer(1, 10))
 
     si = report.get('student_info', {})
@@ -218,7 +218,7 @@ def _generate_weekly_pdf(student, report_data):
         section_data = report.get(section_key, {})
         if section_data:
             elements.append(Paragraph(section_title, h2))
-            elements.append(Paragraph(str(section_data.get('summary', 'No data submitted this week.')), normal))
+            elements.append(Paragraph(str(section_data.get('summary', 'No data submitted this month.')), normal))
             if section_data.get('highlights'):
                 elements.append(Paragraph("<b>Highlights:</b>", h3))
                 for h_item in section_data['highlights']:
@@ -274,9 +274,9 @@ def _generate_weekly_pdf(student, report_data):
             elements.append(Paragraph(f"  - [Therapy] {rec}", normal))
         elements.append(Spacer(1, 8))
 
-    focus = report.get('next_week_focus_areas', [])
+    focus = report.get('next_month_focus_areas', [])
     if focus:
-        elements.append(Paragraph("Next Week Focus Areas", h2))
+        elements.append(Paragraph("Next Month Focus Areas", h2))
         for item in focus:
             elements.append(Paragraph(f"  - {item}", normal))
 

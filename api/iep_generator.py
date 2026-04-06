@@ -54,7 +54,9 @@ def _collect_form_data(inputs):
     result = {}
     for key, obj in inputs.items():
         if obj and hasattr(obj, 'form_data') and obj.form_data:
-            result[key] = _flatten_form_data(obj.form_data)
+            # Prefer translated data if available, otherwise fallback to original form_data
+            data = getattr(obj, 'translated_data', None) or obj.form_data
+            result[key] = _flatten_form_data(data)
         else:
             result[key] = {}
     return result

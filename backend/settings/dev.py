@@ -46,3 +46,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': [],
     'DEFAULT_THROTTLE_RATES': {},
 }
+
+# ─── SMS — routed to sms-trap on port 1290 for local testing ──────────────────
+# In production, change SMS_BACKEND to 'twilio' and set TWILIO_* env vars.
+SMS_BACKEND = 'smstrap'
+SMS_TRAP_URL = 'http://localhost:1290'

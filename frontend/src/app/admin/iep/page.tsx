@@ -410,7 +410,7 @@ function IEPViewerContent() {
                         )}
                     </div>
                 ) : (
-                    <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Progress data will be populated automatically after the first weekly report is generated.</p>
+                    <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Progress data will be populated automatically after the first monthly report is generated.</p>
                 )}
             </SectionCard>
 

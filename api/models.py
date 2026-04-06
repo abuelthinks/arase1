@@ -14,7 +14,22 @@ class User(AbstractUser):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     specialty = models.CharField(max_length=100, blank=True, default='', help_text="e.g. Speech Therapy, Occupational Therapy, Behavioral Therapy")
+    phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Contact number for the user")
+    is_phone_verified = models.BooleanField(default=False)
 
+class PhoneVerification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phone_verifications')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    def is_valid(self):
+        from django.utils import timezone
+        return not self.is_used and timezone.now() <= self.expires_at
+
+    def __str__(self):
+        return f"Code for {self.user.email} (Used: {self.is_used})"
 class Invitation(models.Model):
     import uuid
     email = models.EmailField()
@@ -58,13 +73,24 @@ class StudentAccess(models.Model):
         return f"{self.user.username} -> {self.student.first_name}"
 
 class ReportCycle(models.Model):
+    GRACE_PERIOD_DAYS = 3
+
+    STATUS_CHOICES = (
+        ('OPEN', 'Open'),
+        ('GRACE', 'Grace Period'),
+        ('GENERATING', 'Generating'),
+        ('COMPLETED', 'Completed'),
+    )
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='report_cycles')
+    label = models.CharField(max_length=50, blank=True, default='')
     start_date = models.DateField()
     end_date = models.DateField()
     is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Cycle for {self.student} ({self.start_date} to {self.end_date})"
+        return f"Cycle {self.label or ''} for {self.student} ({self.start_date} to {self.end_date})"
 
 # --- BASELINE ASSESSMENTS ---
 
@@ -73,6 +99,8 @@ class ParentAssessment(models.Model):
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
     submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     form_data = models.JSONField(default=dict, blank=True)
+    translated_data = models.JSONField(default=dict, blank=True)
+    original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class MultidisciplinaryAssessment(models.Model):
@@ -80,6 +108,8 @@ class MultidisciplinaryAssessment(models.Model):
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
     submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     form_data = models.JSONField(default=dict, blank=True)
+    translated_data = models.JSONField(default=dict, blank=True)
+    original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class SpedAssessment(models.Model):
@@ -87,6 +117,8 @@ class SpedAssessment(models.Model):
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
     submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     form_data = models.JSONField(default=dict, blank=True)
+    translated_data = models.JSONField(default=dict, blank=True)
+    original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 # --- PROGRESS TRACKERS ---
@@ -96,6 +128,8 @@ class ParentProgressTracker(models.Model):
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
     submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     form_data = models.JSONField(default=dict, blank=True)
+    translated_data = models.JSONField(default=dict, blank=True)
+    original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class MultidisciplinaryProgressTracker(models.Model):
@@ -103,6 +137,8 @@ class MultidisciplinaryProgressTracker(models.Model):
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
     submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     form_data = models.JSONField(default=dict, blank=True)
+    translated_data = models.JSONField(default=dict, blank=True)
+    original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class SpedProgressTracker(models.Model):
@@ -110,13 +146,15 @@ class SpedProgressTracker(models.Model):
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
     submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     form_data = models.JSONField(default=dict, blank=True)
+    translated_data = models.JSONField(default=dict, blank=True)
+    original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class GeneratedDocument(models.Model):
     DOC_TYPES = (
         ('IEP', 'IEP'),
         ('ASSESSMENT', 'Assessment'),
-        ('WEEKLY', 'Weekly Progress Report'),
+        ('MONTHLY', 'Monthly Progress Report'),
     )
     STATUS_CHOICES = (
         ('DRAFT', 'Draft'),
@@ -143,3 +181,21 @@ class DocumentVersion(models.Model):
 
     def __str__(self):
         return f"{self.document.get_document_type_display()} v{self.id} ({self.action})"
+
+from django.db.models.signals import post_save
+
+def trigger_translation_task(sender, instance, created, **kwargs):
+    update_fields = kwargs.get('update_fields')
+    if update_fields and 'translated_data' in update_fields:
+        return
+    
+    if instance.form_data:
+        from api.tasks import translate_form_data_task
+        translate_form_data_task.delay(instance._meta.model_name, instance.id)
+
+for model in [
+    ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
+    ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker
+]:
+    post_save.connect(trigger_translation_task, sender=model)
+

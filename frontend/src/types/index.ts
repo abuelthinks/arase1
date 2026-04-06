@@ -87,7 +87,7 @@ export interface FormStatuses {
 
 // ─── Generated Documents ────────────────────────────────────────────────────
 
-export type DocumentType = "IEP" | "ASSESSMENT" | "WEEKLY";
+export type DocumentType = "IEP" | "ASSESSMENT" | "MONTHLY";
 
 export interface GeneratedDocument {
     id: number;

@@ -51,5 +51,31 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_REDIRECT_EXEMPT = [r'^api/']
 # CSRF and Allowed Hosts are handled via Render Environment Variables
 
-
-
+# ─── SMS — Production Configuration ──────────────────────────────────────────
+#
+# To enable real SMS in production:
+#
+#   STEP 1 — Choose your provider and set SMS_BACKEND in your env:
+#     SMS_BACKEND = 'twilio'    # Most popular, great global coverage
+#     SMS_BACKEND = 'vonage'    # Good alternative, competitive pricing in SE Asia
+#
+#   STEP 2 — Add credentials to your Render / Railway environment variables:
+#     For Twilio:
+#       TWILIO_ACCOUNT_SID  = ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#       TWILIO_AUTH_TOKEN   = your_auth_token
+#       TWILIO_FROM_PHONE   = +1xxxxxxxxxx
+#     For Vonage:
+#       VONAGE_API_KEY      = xxxxxxxx
+#       VONAGE_API_SECRET   = xxxxxxxxxxxxxxxx
+#       VONAGE_FROM_NAME    = ARASE
+#
+#   STEP 3 — Add the SDK to requirements.txt:
+#     twilio   (for Twilio)
+#     vonage   (for Vonage)
+#
+#   STEP 4 — Redeploy. No code changes needed.
+#
+# Until you integrate a real provider, set SMS_BACKEND='console' to log codes
+# to your server output (Render logs) instead of crashing.
+#
+SMS_BACKEND = os.environ.get('SMS_BACKEND', 'console')

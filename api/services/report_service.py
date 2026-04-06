@@ -29,14 +29,14 @@ def generate_draft_data(student, cycle, inputs, doc_type):
     Generates draft data based on document type.
     Returns: dict of draft data
     """
-    from api.document_extractor import extract_assessment_draft, extract_iep_draft, extract_weekly_draft
+    from api.document_extractor import extract_assessment_draft, extract_iep_draft, extract_monthly_draft
 
     if doc_type == 'ASSESSMENT':
         return extract_assessment_draft(student, cycle, inputs)
     elif doc_type == 'IEP':
         return extract_iep_draft(student, cycle, inputs)
-    elif doc_type == 'WEEKLY':
-        return extract_weekly_draft(student, cycle, inputs)
+    elif doc_type == 'MONTHLY':
+        return extract_monthly_draft(student, cycle, inputs)
     return {}
 
 

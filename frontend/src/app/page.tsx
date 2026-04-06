@@ -8,7 +8,7 @@ export default function Home() {
           Automated Reporting App for SPED
         </h1>
         <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '2.5rem' }}>
-          Streamlining IEP, Assessment, and Weekly Progress reporting for Special Needs Education through unified inputs and AI-driven goals.
+          Streamlining IEP, Assessment, and Monthly Progress reporting for Special Needs Education through unified inputs and AI-driven goals.
         </p>
         <div className="flex-center" style={{ gap: '1rem' }}>
           <a href="/login" className="btn-primary" style={{ textDecoration: 'none', fontSize: '1.1rem' }}>

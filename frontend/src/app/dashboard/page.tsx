@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
+import SMSVerificationModal from "@/components/SMSVerificationModal";
 
 interface Student {
     id: number;
@@ -14,6 +15,7 @@ interface Student {
     last_name: string;
     grade: string;
     status: string;
+    has_parent_assessment?: boolean;
 }
 
 const statusColors: Record<string, { bg: string; color: string }> = {
@@ -27,9 +29,11 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 };
 
 export default function DashboardPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading, refreshUser } = useAuth();
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showSMSModal, setShowSMSModal] = useState(false);
+    const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
 
     // Advanced Table States
     const [searchQuery, setSearchQuery] = useState("");
@@ -51,6 +55,9 @@ export default function DashboardPage() {
         };
         if (user && user.role !== "ADMIN") {
             fetchStudents();
+            // is_phone_verified comes back as true/false/undefined from /api/auth/me/
+            // Treat undefined (old accounts) as false so the banner still shows
+            setIsPhoneVerified(user.is_phone_verified === true ? true : false);
         } else {
             setLoading(false);
         }
@@ -132,6 +139,55 @@ export default function DashboardPage() {
     return (
         <ProtectedRoute>
             <>
+                {/* SMS Verification Banner — Parent only */}
+                {user?.role === "PARENT" && isPhoneVerified === false && (
+                    <div style={{
+                        background: "linear-gradient(90deg, #fef3c7, #fffbeb)",
+                        border: "1px solid #fbbf24",
+                        borderRadius: "8px",
+                        padding: "12px 20px",
+                        marginBottom: "1.5rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        flexWrap: "wrap",
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ fontSize: "1.2rem" }}>📱</span>
+                            <p style={{ margin: 0, fontSize: "0.9rem", color: "#92400e", fontWeight: 500 }}>
+                                {user?.phone_number
+                                    ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
+                                    : <>Your phone number has not been verified yet. Verify it to enable SMS alerts and notifications.</>
+                                }
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowSMSModal(true)}
+                            style={{
+                                background: "#f59e0b", color: "white", border: "none",
+                                borderRadius: "6px", padding: "8px 16px", fontWeight: 700,
+                                cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap"
+                            }}
+                        >
+                            Verify Now
+                        </button>
+                    </div>
+                )}
+
+                {showSMSModal && (
+                    <SMSVerificationModal
+                        onClose={() => setShowSMSModal(false)}
+                        onVerified={async () => {
+                            setIsPhoneVerified(true);
+                            setShowSMSModal(false);
+                            if (refreshUser) {
+                                await refreshUser();
+                            }
+                        }}
+                    />
+                )}
+
                 {/* Page header */}
                 <div style={{ marginBottom: "2rem" }}>
                     <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
@@ -286,7 +342,7 @@ export default function DashboardPage() {
                                                 </div>
 
                                                 <div className="mt-auto flex flex-col gap-2 pt-2">
-                                                    {s.status === "PENDING_ASSESSMENT" ? (
+                                                    {(s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) ? (
                                                         <Link 
                                                             href={`/parent-onboarding?studentId=${s.id}`}
                                                             className="btn-primary w-full flex items-center justify-center gap-2"
@@ -301,7 +357,7 @@ export default function DashboardPage() {
                                                             className="btn-indigo w-full flex items-center justify-center gap-2"
                                                             style={{ textDecoration: "none", padding: "12px" }}
                                                         >
-                                                            View Submitted Form
+                                                            View Student Profile
                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                                                         </Link>
                                                     )}

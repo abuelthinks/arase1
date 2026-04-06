@@ -31,9 +31,10 @@ function AdminReportsContent() {
     const [studentStatus, setStudentStatus] = useState("Pending Assessment");
     const [studentName, setStudentName] = useState("");
     const [formStatuses, setFormStatuses] = useState<FormStatuses | null>(null);
+    const [cycleStatus, setCycleStatus] = useState<any>(null);
 
     const [loading, setLoading] = useState(false);
-    const [weeklyLoading, setWeeklyLoading] = useState(false);
+    const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
 
     useEffect(() => {
@@ -51,6 +52,9 @@ function AdminReportsContent() {
                         multi_tracker:  fs.multi_tracker  ?? { submitted: false, id: null },
                         sped_tracker:   fs.sped_tracker   ?? { submitted: false, id: null },
                     });
+                    if (res.data.cycle_status) {
+                        setCycleStatus(res.data.cycle_status);
+                    }
                 })
                 .catch(() => {});
         }
@@ -75,22 +79,22 @@ function AdminReportsContent() {
         }
     };
 
-    const handleGenerateWeekly = async () => {
+    const handleGenerateMonthly = async () => {
         if (!studentId || !reportCycleId) {
             setErrorMsg("Student ID and Report Cycle ID are required.");
             return;
         }
-        setWeeklyLoading(true);
+        setMonthlyLoading(true);
         setErrorMsg("");
         try {
-            const res = await api.post("/api/weekly-report/generate/", {
+            const res = await api.post("/api/monthly-report/generate/", {
                 student_id: parseInt(studentId),
                 report_cycle_id: parseInt(reportCycleId),
             });
-            router.push(`/admin/weekly-report?id=${res.data.report_id}`);
+            router.push(`/admin/monthly-report?id=${res.data.report_id}`);
         } catch (err: any) {
-            setErrorMsg(err.response?.data?.error || "Failed to generate weekly report.");
-            setWeeklyLoading(false);
+            setErrorMsg(err.response?.data?.error || "Failed to generate monthly report.");
+            setMonthlyLoading(false);
         }
     };
 
@@ -98,7 +102,7 @@ function AdminReportsContent() {
         ? Object.values(formStatuses).every(fs => fs.submitted)
         : false;
 
-    const weeklyEnabled = studentStatus === "Enrolled" && allTrackersSubmitted && !weeklyLoading;
+    const monthlyEnabled = studentStatus === "Enrolled" && allTrackersSubmitted && !monthlyLoading;
 
     if (!studentId) {
         return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing student context. Return to dashboard.</div>;
@@ -143,6 +147,25 @@ function AdminReportsContent() {
                                 }}>
                                     {studentStatus}
                                 </span>
+                                {cycleStatus && (
+                                    <>
+                                        <span style={{ color: "#cbd5e1" }}>|</span>
+                                        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748b" }}>Current Month:</span>
+                                        <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.8rem" }}>{cycleStatus.label}</span>
+                                        <span style={{ 
+                                            fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", 
+                                            padding: "2px 8px", borderRadius: "6px", 
+                                            background: cycleStatus.status === "OPEN" ? "#dcfce7" : cycleStatus.status === "GRACE" ? "#fee2e2" : "#f1f5f9",
+                                            color: cycleStatus.status === "OPEN" ? "#166534" : cycleStatus.status === "GRACE" ? "#991b1b" : "#475569",
+                                            marginLeft: "4px"
+                                        }}>
+                                            {cycleStatus.status}
+                                        </span>
+                                        <span style={{ marginLeft: "auto", fontSize: "0.75rem", fontWeight: 600, color: cycleStatus.days_remaining <= 5 ? "#dc2626" : "#64748b" }}>
+                                            {cycleStatus.days_remaining} days left
+                                        </span>
+                                    </>
+                                )}
                             </div>
 
                             {errorMsg && (
@@ -179,18 +202,18 @@ function AdminReportsContent() {
                                 </div>
                             </div>
 
-                            {/* Weekly Progress Card */}
+                            {/* Monthly Progress Card */}
                             <div style={{
-                                border: `1px solid ${weeklyEnabled ? "#bbf7d0" : "#e2e8f0"}`,
+                                border: `1px solid ${monthlyEnabled ? "#bbf7d0" : "#e2e8f0"}`,
                                 borderRadius: "12px", padding: "1.25rem", background: "white",
                             }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                                     <div style={{ flex: 1 }}>
                                         <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-                                            <span style={{ marginRight: "8px" }}>📊</span>Weekly Progress Report
+                                            <span style={{ marginRight: "8px" }}>📊</span>Monthly Progress Report
                                         </h3>
                                         <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px", marginBottom: "14px" }}>
-                                            Generates the AI weekly tracking document from all 3 submitted progress tracker forms. Also updates IEP Section 10.
+                                            Generates the AI monthly tracking document from all 3 submitted progress tracker forms. Also updates IEP Section 10.
                                         </p>
 
                                         {/* Progress Tracker Status Pills */}
@@ -227,26 +250,26 @@ function AdminReportsContent() {
                                     </div>
 
                                     <button
-                                        onClick={handleGenerateWeekly}
-                                        disabled={!weeklyEnabled}
+                                        onClick={handleGenerateMonthly}
+                                        disabled={!monthlyEnabled}
                                         title={
                                             studentStatus.toLowerCase() !== "enrolled"
                                                 ? "Requires Active status"
                                                 : !allTrackersSubmitted
                                                 ? "All 3 progress tracker forms must be submitted first"
-                                                : "Generate weekly progress report"
+                                                : "Generate monthly progress report"
                                         }
                                         style={{
                                             padding: "10px 20px", borderRadius: "8px", border: "none",
-                                            background: weeklyLoading ? "#6ee7b7" : weeklyEnabled ? "#059669" : "#e2e8f0",
-                                            color: weeklyEnabled ? "white" : "#94a3b8",
+                                            background: monthlyLoading ? "#6ee7b7" : monthlyEnabled ? "#059669" : "#e2e8f0",
+                                            color: monthlyEnabled ? "white" : "#94a3b8",
                                             fontWeight: 700, fontSize: "0.85rem",
-                                            cursor: weeklyEnabled ? "pointer" : "not-allowed",
+                                            cursor: monthlyEnabled ? "pointer" : "not-allowed",
                                             whiteSpace: "nowrap", flexShrink: 0,
                                             marginTop: "4px",
                                         }}
                                     >
-                                        {weeklyLoading ? "⏳ Generating…"
+                                        {monthlyLoading ? "⏳ Generating…"
                                             : studentStatus.toLowerCase() !== "active" ? "Requires Active"
                                             : !allTrackersSubmitted ? "Forms Pending"
                                             : "🤖 Generate"}

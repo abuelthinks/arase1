@@ -10,9 +10,11 @@ from .views import (
     UserViewSet, CreateInvitationView, AcceptInvitationView, ManageInvitationView, ResendInvitationView,
     StaffListView,
     GenerateIEPView, IEPDetailView, IEPDownloadView,
-    GenerateWeeklyReportView, WeeklyReportDetailView, WeeklyReportDownloadView,
+    GenerateMonthlyReportView, MonthlyReportDetailView, MonthlyReportDownloadView,
     AdminDashboardActionsView,
     DocumentHistoryView,
+    SendVerificationSMSView, VerifySMSView,
+    CreateCycleView, SendRemindersView,
 )
 
 router = DefaultRouter()
@@ -34,7 +36,8 @@ urlpatterns = [
     path('students/<int:student_id>/assign-parent/', AssignParentView.as_view(), name='assign-parent'),
     path('students/<int:student_id>/recommend-specialty/', AIRecommendSpecialtyView.as_view(), name='recommend-specialty'),
     path('students/<int:student_id>/enroll/', EnrollStudentView.as_view(), name='enroll-student'),
-    path('students/<int:student_id>/archive/', ArchiveStudentView.as_view(), name='archive-student'),
+    path('users/send-verification-sms/', SendVerificationSMSView.as_view(), name='send-verification-sms'),
+    path('users/verify-sms/', VerifySMSView.as_view(), name='verify-sms'),
     path('', include(router.urls)),
     path('staff/', StaffListView.as_view(), name='staff-list'),
     path('ai/generate-goals/', AIGenerateGoalsView.as_view(), name='ai-generate-goals'),
@@ -45,17 +48,22 @@ urlpatterns = [
     path('invitations/<int:pk>/resend/', ResendInvitationView.as_view(), name='resend-invitation'),
     path('invitations/accept/', AcceptInvitationView.as_view(), name='accept-invitation'),
     
+    
     path('dashboard/actions/', AdminDashboardActionsView.as_view(), name='dashboard-actions'),
     
     # IEP endpoints
     path('iep/generate/', GenerateIEPView.as_view(), name='generate-iep'),
     path('iep/<int:pk>/', IEPDetailView.as_view(), name='iep-detail'),
     path('iep/<int:pk>/download/', IEPDownloadView.as_view(), name='iep-download'),
-    # Weekly Report endpoints
-    path('weekly-report/generate/', GenerateWeeklyReportView.as_view(), name='generate-weekly-report'),
-    path('weekly-report/<int:pk>/', WeeklyReportDetailView.as_view(), name='weekly-report-detail'),
-    path('weekly-report/<int:pk>/download/', WeeklyReportDownloadView.as_view(), name='weekly-report-download'),
+    # Monthly Report endpoints
+    path('monthly-report/generate/', GenerateMonthlyReportView.as_view(), name='generate-monthly-report'),
+    path('monthly-report/<int:pk>/', MonthlyReportDetailView.as_view(), name='monthly-report-detail'),
+    path('monthly-report/<int:pk>/download/', MonthlyReportDownloadView.as_view(), name='monthly-report-download'),
     
     # Audit Logs
     path('documents/<int:pk>/history/', DocumentHistoryView.as_view(), name='document-history'),
+    
+    # Cycle Management
+    path('cycles/create/', CreateCycleView.as_view(), name='create-cycle'),
+    path('cycles/send-reminders/', SendRemindersView.as_view(), name='send-reminders'),
 ]

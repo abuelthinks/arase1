@@ -135,7 +135,7 @@ function ParentFormContent() {
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     useEffect(() => {
-        if (isViewMode && submissionId) {
+        if (submissionId) {
             api.get(`/api/inputs/parent-assessment/${submissionId}/`)
                 .then(res => {
                     const fd = res.data.form_data;
@@ -158,7 +158,9 @@ function ParentFormContent() {
                     }
                 })
                 .catch(console.error);
-            return;
+            
+            // If we are actively viewing, stop here. But if editing, we might still want to merge in user overrides.
+            if (isViewMode) return;
         }
 
         // Restore draft first
@@ -182,7 +184,17 @@ function ParentFormContent() {
                 })
                 .catch(() => {});
         }
-    }, [isViewMode, submissionId]);
+
+        // Prefill parent info from the authenticated user
+        if (user && user.role === "PARENT") {
+            setForm(prev => ({
+                ...prev,
+                parent_name: prev.parent_name || [user.first_name, user.last_name].filter(Boolean).join(" ") || "",
+                email: prev.email || user.email || "",
+                phone: prev.phone || user.phone_number || ""
+            }));
+        }
+    }, [isViewMode, submissionId, studentIdParam, user]);
 
     // Auto-save form data periodically
     useEffect(() => {
@@ -205,8 +217,8 @@ function ParentFormContent() {
     };
 
     const handleSubmit = async () => {
-        if (!form.first_name || !form.last_name || !form.date_of_birth) {
-            setErrorMsg("Please fill in the child's First Name, Last Name and Date of Birth.");
+        if (!form.first_name || !form.last_name || !form.date_of_birth || !form.grade) {
+            setErrorMsg("Please fill in the child's First Name, Last Name, Date of Birth, and Grade.");
             window.scrollTo(0, 0);
             return;
         }
@@ -348,7 +360,7 @@ function ParentFormContent() {
                             </Field>
                         </div>
 
-                        <Field label="Grade / Level">
+                        <Field label="Grade / Level" required>
                             <div className="flex flex-wrap gap-3">
                                 {["Nursery/Early Years", "Pre-K/Kinder", "Primary", "Not yet in school"].map(g => (
                                     <Cb key={g} label={g} checked={form.grade === g} onChange={() => set("grade")(form.grade === g ? "" : g)} disabled={dis} />

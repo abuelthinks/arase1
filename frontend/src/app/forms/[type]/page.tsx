@@ -534,6 +534,55 @@ function FormEntryContent() {
                     </div>
                 )}
 
+                {/* Previous Recommendations Banner (for Trackers) */}
+                {formType.includes('tracker') && studentProfile?.previous_recommendations && (
+                    <div style={{ 
+                        background: "#fffbeb", 
+                        borderRadius: "14px", 
+                        padding: "1.5rem", 
+                        border: "1px solid #fde68a", 
+                        marginBottom: "2rem",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                            <div style={{ background: "#fef3c7", padding: "8px", borderRadius: "8px", color: "#92400e" }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#92400e", margin: 0 }}>
+                                    Context: Carried Forward from {studentProfile.previous_recommendations.report_period}
+                                </h3>
+                                <p style={{ fontSize: "0.8rem", color: "#b45309", margin: "2px 0 0" }}>
+                                    Use these previous focus areas to guide your monthly progress evaluation.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {studentProfile.previous_recommendations.focus_areas?.length > 0 && (
+                                <div>
+                                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>
+                                        🎯 Last Month's Focus Areas
+                                    </h4>
+                                    <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.875rem", color: "#b45309", display: "flex", flexDirection: "column", gap: "4px" }}>
+                                        {studentProfile.previous_recommendations.focus_areas.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            {studentProfile.previous_recommendations.recommendations?.length > 0 && (
+                                <div>
+                                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>
+                                        📋 Active Recommendations
+                                    </h4>
+                                    <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.875rem", color: "#b45309", display: "flex", flexDirection: "column", gap: "4px" }}>
+                                        {studentProfile.previous_recommendations.recommendations.map((r: string, i: number) => <li key={i}>{r}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit}>
                     <fieldset disabled={isViewMode} style={{ border: "none", padding: 0, margin: 0 }}>
                         {/* Dynamic sections from schema */}

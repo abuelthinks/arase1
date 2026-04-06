@@ -46,7 +46,7 @@ function ProgressSection({ title, data }: { title: string; data: any }) {
 
 /* ─── Types ───────────────────────────────────────────────────────────────── */
 
-interface WeeklyReportData {
+interface MonthlyReportData {
     student_info: Record<string, string>;
     report_period: string;
     executive_summary: string;
@@ -59,18 +59,18 @@ interface WeeklyReportData {
     therapy_session_summary: Record<string, any>;
     parent_observations: Record<string, any>;
     recommendations: Record<string, string[]>;
-    next_week_focus_areas: string[];
+    next_month_focus_areas: string[];
 }
 
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 
-function WeeklyReportContent() {
+function MonthlyReportContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const reportId = searchParams.get("id");
     const { user } = useAuth();
 
-    const [report, setReport] = useState<WeeklyReportData | null>(null);
+    const [report, setReport] = useState<MonthlyReportData | null>(null);
     const [meta, setMeta] = useState<{ student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
     const [reportStatus, setReportStatus] = useState<string>("DRAFT");
     const [loading, setLoading] = useState(true);
@@ -83,37 +83,37 @@ function WeeklyReportContent() {
     useEffect(() => {
         if (!reportId) return;
         setLoading(true);
-        api.get(`/api/weekly-report/${reportId}/`)
+        api.get(`/api/monthly-report/${reportId}/`)
             .then(res => {
                 setReport(res.data.report_data);
                 setMeta({ student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
                 setReportStatus(res.data.status);
             })
-            .catch(() => setErrorMsg("Failed to load weekly report."))
+            .catch(() => setErrorMsg("Failed to load monthly report."))
             .finally(() => setLoading(false));
     }, [reportId]);
 
     if (!reportId) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing Report ID.</div>;
-    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading Weekly Report…</div>;
+    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading Monthly Report…</div>;
     if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
     if (!report || !meta) return null;
 
     const handleDownload = () => {
         // Redirect to download endpoint
-        window.location.href = `${API_BASE_URL}/api/weekly-report/${reportId}/download/`;
+        window.location.href = `${API_BASE_URL}/api/monthly-report/${reportId}/download/`;
     };
 
     const handleSaveStatus = async (newStatus: string) => {
         setSaving(true);
         try {
-            const res = await api.patch(`/api/weekly-report/${reportId}/`, { status: newStatus });
+            const res = await api.patch(`/api/monthly-report/${reportId}/`, { status: newStatus });
             setReportStatus(res.data.status);
         } catch { setErrorMsg("Failed to save status."); }
         finally { setSaving(false); }
     };
 
     const handleCopyLink = () => {
-        const url = `${window.location.origin}/admin/weekly-report?id=${reportId}`;
+        const url = `${window.location.origin}/admin/monthly-report?id=${reportId}`;
         navigator.clipboard.writeText(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -134,7 +134,7 @@ function WeeklyReportContent() {
     const tss = report.therapy_session_summary || {};
     const po = report.parent_observations || {};
     const recs = report.recommendations || {};
-    const focus = report.next_week_focus_areas || [];
+    const focus = report.next_month_focus_areas || [];
 
     const scoreColor = (s: number) => {
         if (s >= 5) return { bg: "#dcfce7", color: "#166534" };
@@ -160,7 +160,7 @@ function WeeklyReportContent() {
                 </button>
                 <span style={{ color: "#cbd5e1" }}>›</span>
                 <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
-                    Weekly Report for {meta.student_name}
+                    Monthly Report for {meta.student_name}
                 </span>
             </div>
 
@@ -168,7 +168,7 @@ function WeeklyReportContent() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
-                        📊 Weekly Progress Report
+                        📊 Monthly Progress Report
                         <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatus === "FINAL" ? "#dcfce7" : "#fef3c7", color: reportStatus === "FINAL" ? "#166534" : "#92400e", border: `1px solid ${reportStatus === "FINAL" ? "#bbf7d0" : "#fde68a"}` }}>
                             {reportStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
@@ -282,7 +282,7 @@ function WeeklyReportContent() {
                     )}
                     {po.parent_goals?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#059669", marginBottom: "4px" }}>Goals for Next Week</p>
+                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#059669", marginBottom: "4px" }}>Goals for Next Month</p>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                                 {po.parent_goals.map((g: string, i: number) => <span key={i} style={{ padding: "3px 10px", borderRadius: "999px", background: "#dcfce7", color: "#166534", fontSize: "0.78rem", fontWeight: 600 }}>{g}</span>)}
                             </div>
@@ -323,7 +323,7 @@ function WeeklyReportContent() {
 
             {/* Next Week Focus Areas */}
             {focus.length > 0 && (
-                <SectionCard title="Next Week Focus Areas">
+                <SectionCard title="Next Month Focus Areas">
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         {focus.map((f, i) => (
                             <span key={i} style={{ padding: "6px 14px", borderRadius: "999px", background: "#e0f2fe", color: "#0369a1", fontSize: "0.82rem", fontWeight: 600 }}>🎯 {f}</span>
@@ -366,11 +366,11 @@ function WeeklyReportContent() {
     );
 }
 
-export default function WeeklyReportPage() {
+export default function MonthlyReportPage() {
     return (
         <ProtectedRoute>
-            <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading Weekly Report…</div>}>
-                <WeeklyReportContent />
+            <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading Monthly Report…</div>}>
+                <MonthlyReportContent />
             </Suspense>
         </ProtectedRoute>
     );

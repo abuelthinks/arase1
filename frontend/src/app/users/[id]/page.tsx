@@ -22,6 +22,8 @@ interface UserData {
     first_name: string;
     last_name: string;
     specialty: string;
+    phone_number?: string;
+    is_phone_verified?: boolean;
     assigned_students_count: number;
     assigned_students: AssignedStudent[];
     last_login?: string;
@@ -144,65 +146,99 @@ export default function UserProfile() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }} className="lg:col-span-1">
                     
                     {/* Main Profile Info */}
-                    <div className="glass-panel" style={{ background: "white", borderRadius: "14px", padding: "1.75rem", border: "1px solid var(--border-light)", position: "relative" }}>
+                    <div className="glass-panel" style={{ background: "white", borderRadius: "14px", padding: "1.75rem", border: "1px solid var(--border-light)" }}>
                         
-                        <button 
-                            onClick={() => setIsEditingProfile(!isEditingProfile)}
-                            style={{ position: "absolute", top: "1.5rem", right: "1.5rem", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "4px" }}
-                            className="hover:text-blue-600 transition-colors"
-                            title="Edit Profile"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                        </button>
+                        <div className="flex flex-col md:flex-row lg:flex-col items-center gap-6">
+                            {/* Avatar & Name */}
+                            <div className="flex flex-col items-center text-center flex-shrink-0 md:w-1/3 lg:w-full">
+                                <div style={{
+                                    width: "80px", height: "80px", borderRadius: "50%",
+                                    background: roleBadge.bg, color: roleBadge.color,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: "1.8rem", fontWeight: 700, marginBottom: "1rem",
+                                    boxShadow: "0 4px 10px rgba(0,0,0,0.05)", border: `2px solid ${roleBadge.bg}`
+                                }}>
+                                    {initials}
+                                </div>
 
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: "1.5rem" }}>
-                            <div style={{
-                                width: "80px", height: "80px", borderRadius: "50%",
-                                background: roleBadge.bg, color: roleBadge.color,
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: "1.8rem", fontWeight: 700, marginBottom: "1rem",
-                                boxShadow: "0 4px 10px rgba(0,0,0,0.05)", border: `2px solid ${roleBadge.bg}`
-                            }}>
-                                {initials}
+                                <h1 style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 6px" }}>
+                                    {displayName}
+                                </h1>
+
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <span style={{
+                                        display: "inline-block",
+                                        fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase",
+                                        letterSpacing: "0.5px", padding: "4px 10px", borderRadius: "999px",
+                                        background: roleBadge.bg, color: roleBadge.color,
+                                    }}>
+                                        {user.role}
+                                    </span>
+                                </div>
                             </div>
 
-                            <h1 style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 6px" }}>
-                                {displayName}
-                            </h1>
-
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span style={{
-                                    display: "inline-block",
-                                    fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase",
-                                    letterSpacing: "0.5px", padding: "4px 10px", borderRadius: "999px",
-                                    background: roleBadge.bg, color: roleBadge.color,
-                                }}>
-                                    {user.role}
-                                </span>
+                            {/* Details List */}
+                            <div className="flex-1 w-full flex flex-col justify-center">
+                                <div style={{ background: "#f8fafc", borderRadius: "10px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
+                                    {[
+                                        { label: "Email", value: user.email },
+                                        ...(user.username !== user.email ? [{ label: "Username", value: `@${user.username}` }] : []),
+                                        { 
+                                            label: "Phone", 
+                                            value: user.phone_number ? (
+                                                <div style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end" }}>
+                                                    <span>{user.phone_number}</span>
+                                                    {user.is_phone_verified ? (
+                                                        <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 6px", background: "#dcfce7", color: "#16a34a", borderRadius: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                            <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                            Verified
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 6px", background: "#fef3c7", color: "#d97706", borderRadius: "12px" }}>
+                                                            Unverified
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontStyle: "italic", color: "#94a3b8" }}>Not provided</span>
+                                            )
+                                        }
+                                    ].map(({ label, value }, idx, arr) => (
+                                        <div key={label} style={{ 
+                                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                                            padding: "12px 16px",
+                                            borderBottom: idx < arr.length - 1 ? "1px solid var(--border-light)" : "none",
+                                            fontSize: "0.85rem"
+                                        }}>
+                                            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{label}</span>
+                                            <div style={{ color: "var(--text-primary)", fontWeight: 600, wordBreak: "break-all", textAlign: "right" }}>{value}</div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Details List */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.85rem" }}>
-                            {[
-                                { label: "Email",    value: user.email },
-                                { label: "Username", value: `@${user.username}` },
-                                { label: "User ID",  value: `#${user.id}` },
-                            ].map(({ label, value }) => (
-                                <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                    <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</span>
-                                    <span style={{ fontWeight: 500, color: "var(--text-primary)", wordBreak: "break-all" }}>{value}</span>
-                                </div>
-                            ))}
-
                             {/* Specialty System */}
                             {(role === "SPECIALIST" || role === "TEACHER") && (
-                                <div style={{ marginTop: "4px" }}>
-                                    <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>
-                                        Registered Specialty
-                                    </span>
+                                <div style={{ marginTop: "1rem" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                                        <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                            Registered Specialty
+                                        </span>
+                                        {isAdmin && (
+                                            <button 
+                                                onClick={() => setIsEditingProfile(!isEditingProfile)}
+                                                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "2px" }}
+                                                className="hover:text-blue-600 transition-colors"
+                                                title="Edit Specialty"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                                            </button>
+                                        )}
+                                    </div>
                                     
                                     {isEditingProfile && isAdmin ? (
+
                                         <div style={{ display: "flex", gap: "6px", flexDirection: "column" }}>
                                             <input
                                                 type="text"
@@ -246,7 +282,6 @@ export default function UserProfile() {
                                     )}
                                 </div>
                             )}
-                        </div>
                     </div>
 
                     {/* Verification / Credentials Card */}

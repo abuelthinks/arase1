@@ -55,6 +55,33 @@ interface ProfileData {
         has_iep_data?: boolean;
     }[];
     assigned_staff: { id: number; role: string }[];
+    cycle_status: {
+        cycle_id: number;
+        label: string;
+        start_date: string;
+        end_date: string;
+        status: string;
+        days_remaining: number;
+        grace_deadline: string;
+        trackers: {
+            parent: boolean;
+            specialist: boolean;
+            teacher: boolean;
+            submitted_count: number;
+            total: number;
+        };
+        report: {
+            exists: boolean;
+            id: number | null;
+            status: string | null;
+        } | null;
+    } | null;
+    previous_recommendations: {
+        focus_areas: string[];
+        recommendations: string[];
+        report_period: string;
+        report_id: number;
+    } | null;
 }
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
@@ -178,7 +205,7 @@ export default function StudentProfilePage() {
     if (error)   return <div className="p-8 text-center text-red-500">{error}</div>;
     if (!data)   return null;
 
-    const { student, active_cycle, form_statuses, generated_documents } = data;
+    const { student, active_cycle, form_statuses, generated_documents, cycle_status, previous_recommendations } = data;
     const statusBadge = statusConfig[student.status] ?? { label: student.status, bg: "#f1f5f9", color: "#475569" };
 
     // Which form keys to show for the current user
@@ -208,12 +235,18 @@ export default function StudentProfilePage() {
                     );
                 }
                 return (
-                    <button
-                        onClick={() => handleAction("request-assessment")}
-                        className="btn-primary px-5 py-2 text-sm"
-                    >
-                        Request Evaluation
-                    </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <span className="text-sm text-slate-500 italic" style={{ display: "block", background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                            Assessment submitted. Awaiting administrator review and specialist assignment...
+                        </span>
+                        <Link
+                            href={`/parent-onboarding?studentId=${student.id}&submissionId=${form_statuses.parent_assessment?.id}`}
+                            className="btn-slate px-5 py-2 text-sm text-center"
+                            style={{ textDecoration: "none", display: "inline-block" }}
+                        >
+                            Edit Assessment
+                        </Link>
+                    </div>
                 );
             }
             if (student.status === "Assessment Scheduled") {
@@ -247,6 +280,28 @@ export default function StudentProfilePage() {
             return null;
         }
         return null;
+    };
+
+    const renderDangerZone = () => {
+        if (user?.role !== "ADMIN") return null;
+        return (
+            <div style={{ borderRadius: "14px", padding: "1.5rem", border: "1px solid #fca5a5", background: "#fff5f5" }}>
+                <p style={{ fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase", color: "#b91c1c", letterSpacing: "0.5px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                    Danger Zone
+                </p>
+                <p style={{ fontSize: "0.8rem", color: "#7f1d1d", marginBottom: "16px", lineHeight: 1.4 }}>
+                    Deleting this student will permanently remove all associated assessments, documents, and records. This cannot be undone.
+                </p>
+                <button
+                    onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }}
+                    className="btn-red"
+                    style={{ width: "100%" }}
+                >
+                    Delete Student
+                </button>
+            </div>
+        );
     };
 
     return (
@@ -287,66 +342,135 @@ export default function StudentProfilePage() {
                     
                     {/* Main Profile Card */}
                     <div className="glass-panel" style={{ background: "white", borderRadius: "14px", padding: "1.75rem", border: "1px solid var(--border-light)" }}>
-                        {/* Avatar */}
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: "1.5rem" }}>
-                            <div style={{
-                                width: "80px", height: "80px", borderRadius: "50%",
-                                background: "#dbeafe", color: "#1e40af",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: "1.8rem", fontWeight: 700, marginBottom: "1rem",
-                                boxShadow: "0 4px 10px rgba(0,0,0,0.05)", border: "2px solid #bfdbfe"
-                            }}>
-                                {student.first_name[0]}{student.last_name[0]}
+                        <div className="flex flex-col md:flex-row lg:flex-col items-center gap-6">
+                            {/* Avatar */}
+                            <div className="flex flex-col items-center text-center flex-shrink-0 md:w-1/3 lg:w-full">
+                                <div style={{
+                                    width: "80px", height: "80px", borderRadius: "50%",
+                                    background: "#dbeafe", color: "#1e40af",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: "1.8rem", fontWeight: 700, marginBottom: "1rem",
+                                    boxShadow: "0 4px 10px rgba(0,0,0,0.05)", border: "2px solid #bfdbfe"
+                                }}>
+                                    {student.first_name[0]}{student.last_name[0]}
+                                </div>
+
+                                <h1 style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 6px" }}>
+                                    {student.first_name} {student.last_name}
+                                </h1>
+
+                                <span style={{
+                                    display: "inline-block",
+                                    fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase",
+                                    letterSpacing: "0.5px", padding: "4px 10px", borderRadius: "999px",
+                                    background: statusBadge.bg, color: statusBadge.color,
+                                }}>
+                                    {statusBadge.label}
+                                </span>
                             </div>
 
-                            <h1 style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 6px" }}>
-                                {student.first_name} {student.last_name}
-                            </h1>
-
-                            <span style={{
-                                display: "inline-block",
-                                fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase",
-                                letterSpacing: "0.5px", padding: "4px 10px", borderRadius: "999px",
-                                background: statusBadge.bg, color: statusBadge.color,
-                            }}>
-                                {statusBadge.label}
-                            </span>
-                        </div>
-
-                        {/* Details */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.85rem" }}>
-                            {[
-                                { label: "Grade",         value: student.grade || "TBD" },
-                                { label: "Date of Birth", value: new Date(student.date_of_birth + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
-                                { label: "Student ID",    value: `#${student.id}` },
-                            ].map(({ label, value }) => (
-                                <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                    <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</span>
-                                    <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>{value}</span>
+                            <div className="flex-1 w-full flex flex-col justify-center">
+                                <div style={{ background: "#f8fafc", borderRadius: "10px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
+                                    {[
+                                        { label: "Grade",         value: student.grade || "TBD" },
+                                        { label: "Date of Birth", value: new Date(student.date_of_birth + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                                        { label: "Current Age",   value: (() => {
+                                            const today = new Date();
+                                            const birthDate = new Date(student.date_of_birth + "T00:00:00");
+                                            let age = today.getFullYear() - birthDate.getFullYear();
+                                            const m = today.getMonth() - birthDate.getMonth();
+                                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                                                age--;
+                                            }
+                                            return `${age} years old`;
+                                        })() },
+                                    ].map((item, idx, arr) => (
+                                        <div key={item.label} style={{ 
+                                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                                            padding: "12px 16px",
+                                            borderBottom: idx < arr.length - 1 ? "1px solid var(--border-light)" : "none",
+                                            fontSize: "0.85rem"
+                                        }}>
+                                            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{item.label}</span>
+                                            <div style={{ color: "var(--text-primary)", fontWeight: 600, wordBreak: "break-all", textAlign: "right" }}>{item.value}</div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Report Cycle Progression Card */}
-                    {active_cycle && (
-                        <div className="glass-panel" style={{ background: "white", borderRadius: "14px", padding: "1.5rem", border: "1px solid var(--border-light)" }}>
-                            <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#3b82f6" }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                                Active Report Cycle
-                            </h3>
-                            
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600 }}>
-                                    <span>{new Date(active_cycle.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                                    <span>{new Date(active_cycle.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                    {/* Monthly Cycle Status Card */}
+                    {student.status === "Enrolled" && cycle_status && (
+                        <div className="glass-panel" style={{ background: "#f8fafc", borderRadius: "14px", padding: "1.5rem", border: "1px solid #e2e8f0" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                                <h3 style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#0ea5e9" }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    {cycle_status.label}
+                                </h3>
+                                <span style={{ 
+                                    fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", 
+                                    padding: "3px 8px", borderRadius: "6px", 
+                                    background: cycle_status.status === "OPEN" ? "#dcfce7" : cycle_status.status === "GRACE" ? "#fee2e2" : "#f1f5f9",
+                                    color: cycle_status.status === "OPEN" ? "#166534" : cycle_status.status === "GRACE" ? "#991b1b" : "#475569"
+                                }}>
+                                    {cycle_status.status}
+                                </span>
+                            </div>
+
+                            <div style={{ marginBottom: "1rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#64748b", marginBottom: "6px" }}>
+                                    <span>Progress ({cycle_status.trackers.submitted_count}/3 trackers)</span>
+                                    <span>{Math.round((cycle_status.trackers.submitted_count/3)*100)}%</span>
                                 </div>
-                                <div style={{ width: "100%", height: "8px", background: "#e2e8f0", borderRadius: "4px", overflow: "hidden" }}>
-                                    <div style={{ width: `${Math.min(100, Math.max(0, Math.round(((new Date().getTime() - new Date(active_cycle.start_date).getTime()) / (new Date(active_cycle.end_date).getTime() - new Date(active_cycle.start_date).getTime())) * 100)))}%`, height: "100%", background: "#3b82f6", borderRadius: "4px" }}></div>
+                                <div style={{ height: "6px", background: "#e2e8f0", borderRadius: "3px", overflow: "hidden" }}>
+                                    <div style={{ width: `${(cycle_status.trackers.submitted_count/3)*100}%`, height: "100%", background: "#0ea5e9", transition: "width 0.5s ease" }}></div>
                                 </div>
-                                <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "4px 0 0", textAlign: "right" }}>
-                                    {Math.min(100, Math.max(0, Math.round(((new Date().getTime() - new Date(active_cycle.start_date).getTime()) / (new Date(active_cycle.end_date).getTime() - new Date(active_cycle.start_date).getTime())) * 100)))}% completed
-                                </p>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <div style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <span style={{ color: "#64748b" }}>Deadline:</span>
+                                    <span style={{ fontWeight: 600, color: cycle_status.days_remaining <= 5 ? "#dc2626" : "var(--text-primary)" }}>
+                                        {cycle_status.days_remaining} days left
+                                    </span>
+                                </div>
+                                {cycle_status.status === "GRACE" && (
+                                    <div style={{ fontSize: "0.75rem", color: "#dc2626", background: "#fee2e2", padding: "6px 10px", borderRadius: "6px", fontWeight: 500 }}>
+                                        ⚠️ Grace period ends: {new Date(cycle_status.grace_deadline).toLocaleDateString()}
+                                    </div>
+                                )}
+                            </div>
+
+                            {user?.role === "ADMIN" && (
+                                <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e2e8f0" }}>
+                                    <button 
+                                        onClick={() => handleAction("cycles/send-reminders")}
+                                        className="btn-indigo text-xs w-full py-2"
+                                    >
+                                        Send Reminder Notification
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Previous Month Recommendations Banner */}
+                    {previous_recommendations && (
+                        <div className="glass-panel" style={{ background: "#fffbeb", borderRadius: "14px", padding: "1.25rem", border: "1px solid #fde68a" }}>
+                            <h4 style={{ fontSize: "0.8rem", fontWeight: 800, color: "#92400e", margin: "0 0 10px", display: "flex", alignItems: "center", gap: "6px", textTransform: "uppercase" }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+                                Carrying forward from {previous_recommendations.report_period}
+                            </h4>
+                            <div style={{ fontSize: "0.8rem", color: "#b45309", lineHeight: 1.5 }}>
+                                {previous_recommendations.focus_areas.length > 0 ? (
+                                    <ul style={{ paddingLeft: "1.25rem", margin: 0 }}>
+                                        {previous_recommendations.focus_areas.slice(0, 3).map((f, i) => <li key={i}>{f}</li>)}
+                                        {previous_recommendations.focus_areas.length > 3 && <li>...</li>}
+                                    </ul>
+                                ) : (
+                                    <p style={{ margin: 0 }}>Review previous recommendations in tracker forms.</p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -362,25 +486,10 @@ export default function StudentProfilePage() {
                         </div>
                     )}
 
-                    {/* Admin: Danger Zone */}
-                    {user?.role === "ADMIN" && (
-                        <div style={{ borderRadius: "14px", padding: "1.5rem", border: "1px solid #fca5a5", background: "#fff5f5" }}>
-                            <p style={{ fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase", color: "#b91c1c", letterSpacing: "0.5px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
-                                Danger Zone
-                            </p>
-                            <p style={{ fontSize: "0.8rem", color: "#7f1d1d", marginBottom: "16px", lineHeight: 1.4 }}>
-                                Deleting this student will permanently remove all associated assessments, documents, and records. This cannot be undone.
-                            </p>
-                            <button
-                                onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }}
-                                className="btn-red"
-                                style={{ width: "100%" }}
-                            >
-                                Delete Student
-                            </button>
-                        </div>
-                    )}
+                    {/* Admin: Danger Zone (Hidden on Mobile) */}
+                    <div className="hidden lg:block">
+                        {renderDangerZone()}
+                    </div>
                 </div>
 
                 {/* ── Right Column: Workflow Engine ── */}
@@ -482,6 +591,15 @@ export default function StudentProfilePage() {
                                 {(["SPECIALIST", "TEACHER"] as const).map(role => {
                                     const assignedIds = (data.assigned_staff ?? []).filter(s => s.role === role).map(s => s.id);
                                     const list = staffList.filter(s => s.role === role);
+                                    
+                                    const isLocked = role === "SPECIALIST" 
+                                        ? !form_statuses.parent_assessment?.submitted 
+                                        : !form_statuses.multi_assessment?.submitted;
+
+                                    const lockReason = role === "SPECIALIST"
+                                        ? "Waiting on Parent Input"
+                                        : "Waiting on Specialist Input";
+
                                     return (
                                         <div key={role}>
                                             <p style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "6px" }}>
@@ -503,7 +621,8 @@ export default function StudentProfilePage() {
                                                                 background: alreadyAssigned ? "#f0fdf4" : "white",
                                                                 gap: "8px",
                                                                 cursor: "pointer",
-                                                                transition: "all 0.2s"
+                                                                transition: "all 0.2s",
+                                                                opacity: (!alreadyAssigned && isLocked) ? 0.6 : 1
                                                             }} className={!alreadyAssigned ? "hover:border-blue-300 hover:shadow-sm" : "hover:shadow-sm"}>
                                                                 <div style={{ minWidth: 0 }}>
                                                                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "2px" }}>
@@ -529,6 +648,11 @@ export default function StudentProfilePage() {
                                                                     <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#16a34a", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "4px" }}>
                                                                         <svg style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                                                         Active
+                                                                    </span>
+                                                                ) : isLocked ? (
+                                                                    <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#94a3b8", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                                        <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                                        {lockReason}
                                                                     </span>
                                                                 ) : (
                                                                     <button
@@ -591,11 +715,11 @@ export default function StudentProfilePage() {
                                 <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
                                     {generated_documents.map((doc) => {
                                         const isIEP = doc.type === "IEP" && doc.has_iep_data;
-                                        const isWeekly = doc.type === "WEEKLY" && doc.has_iep_data;
-                                        const badgeLabel = isIEP ? "IEP" : isWeekly ? "WK" : "PDF";
-                                        const badgeBg = isIEP ? "#dbeafe" : isWeekly ? "#dcfce7" : "#fee2e2";
-                                        const badgeColor = isIEP ? "#2563eb" : isWeekly ? "#16a34a" : "#dc2626";
-                                        const docTitle = isIEP ? "AI-Generated IEP Master" : isWeekly ? "Weekly Progress Snapshot" : `${doc.type} Report`;
+                                        const isMonthly = doc.type === "MONTHLY" && doc.has_iep_data;
+                                        const badgeLabel = isIEP ? "IEP" : isMonthly ? "MO" : "PDF";
+                                        const badgeBg = isIEP ? "#dbeafe" : isMonthly ? "#dcfce7" : "#fee2e2";
+                                        const badgeColor = isIEP ? "#2563eb" : isMonthly ? "#16a34a" : "#dc2626";
+                                        const docTitle = isIEP ? "AI-Generated IEP Master" : isMonthly ? "Monthly Progress Snapshot" : `${doc.type} Report`;
                                         return (
                                         <li key={doc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "white", borderRadius: "10px", border: "1px solid #bae6fd", boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
                                             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
@@ -608,8 +732,8 @@ export default function StudentProfilePage() {
                                                             <a href={`/admin/iep?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-indigo-600 transition-colors">
                                                                 {docTitle}
                                                             </a>
-                                                        ) : isWeekly ? (
-                                                            <a href={`/admin/weekly-report?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-green-600 transition-colors">
+                                                        ) : isMonthly ? (
+                                                            <a href={`/admin/monthly-report?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-green-600 transition-colors">
                                                                 {docTitle}
                                                             </a>
                                                         ) : (
@@ -632,8 +756,8 @@ export default function StudentProfilePage() {
                                                         View IEP
                                                     </a>
                                                 )}
-                                                {isWeekly && (
-                                                    <a href={`/admin/weekly-report?id=${doc.id}`} className="btn-green" style={{ textDecoration: "none" }}>
+                                                {isMonthly && (
+                                                    <a href={`/admin/monthly-report?id=${doc.id}`} className="btn-green" style={{ textDecoration: "none" }}>
                                                         View Report
                                                     </a>
                                                 )}
@@ -648,6 +772,12 @@ export default function StudentProfilePage() {
 
                 </div>
             </div>
+
+            {/* Admin: Danger Zone (Small Screens - Bottom) */}
+            <div className="block lg:hidden mt-6">
+                {renderDangerZone()}
+            </div>
+            
             </div>
         </ProtectedRoute>
 

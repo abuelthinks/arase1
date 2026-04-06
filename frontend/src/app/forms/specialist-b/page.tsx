@@ -202,7 +202,7 @@ function SpecialistBFormContent() {
             // Clear draft upon successful submission
             try { localStorage.removeItem(getDraftKey()); } catch(e) {}
 
-            setSuccessMsg("Weekly Progress Report submitted successfully!");
+            setSuccessMsg("Monthly Progress Report submitted successfully!");
             setTimeout(() => router.push(`/students/${studentId}`), 1500);
         } catch (err: any) {
             setErrorMsg("Failed to submit form.");
@@ -308,11 +308,11 @@ function SpecialistBFormContent() {
             {/* Header */}
             <div style={{ marginBottom: "1.5rem" }}>
                 <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-                    Weekly Progress Report {studentName && `for ${studentName}`}
+                    Monthly Progress Report {studentName && `for ${studentName}`}
                     {ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
                 </h1>
                 <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
-                    {ro ? "Past submission — read only." : "Document weekly therapy goals, session details, and progress measures."}
+                    {ro ? "Past submission — read only." : "Document monthly therapy goals, session details, and progress measures."}
                 </p>
             </div>
 
@@ -536,7 +536,7 @@ function SpecialistBFormContent() {
                     {!ro && (
                         <button type="submit" disabled={loading}
                             style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
-                            {loading ? "Submitting…" : "Submit Weekly Progress"}
+                            {loading ? "Submitting…" : "Submit Monthly Progress"}
                         </button>
                     )}
                 </div>

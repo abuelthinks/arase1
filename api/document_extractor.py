@@ -99,12 +99,12 @@ def extract_iep_draft(student, cycle, inputs):
         "sections": sections
     }
 
-def extract_weekly_draft(student, cycle, inputs):
+def extract_monthly_draft(student, cycle, inputs):
     pt = inputs.get('parent_tracker')
     mt = inputs.get('multi_tracker')
     st = inputs.get('sped_tracker')
     
-    prompt = f"Generate weekly home recommendations for a student in grade {student.grade}. "
+    prompt = f"Generate monthly home recommendations for a student in grade {student.grade}. "
     prompt += f"Parent Tracker: {json.dumps(pt.form_data if pt else {})}. "
     prompt += f"Specialist Tracker: {json.dumps(mt.form_data if mt else {})}. "
     prompt += f"Teacher Tracker: {json.dumps(st.form_data if st else {})}. "
@@ -124,7 +124,7 @@ def extract_weekly_draft(student, cycle, inputs):
     
     sections.append({
         "id": "sec_rec",
-        "title": "Weekly Recommendations (AI Generated)",
+        "title": "Monthly Recommendations (AI Generated)",
         "type": "fields",
         "fields": [
             {"name": "goals", "label": "Home Program", "type": "textarea", "value": ai_recommendations}
@@ -132,7 +132,7 @@ def extract_weekly_draft(student, cycle, inputs):
     })
     
     return {
-        "title": "AI Weekly Progress Report",
-        "header_code": "THERUNI-WEEKLY",
+        "title": "AI Monthly Progress Report",
+        "header_code": "THERUNI-MONTHLY",
         "sections": sections
     }

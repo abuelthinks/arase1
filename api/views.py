@@ -11,7 +11,7 @@ from .models import (
     Student, ReportCycle, GeneratedDocument, DocumentVersion,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    User, Invitation
+    User, Invitation, PhoneVerification
 )
 from .serializers import (
     StudentSerializer, GeneratedDocumentSerializer, CustomTokenObtainPairSerializer,
@@ -149,6 +149,11 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
     queryset = ParentProgressTracker.objects.all()
     serializer_class = ParentProgressTrackerSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save(submitted_by=self.request.user)
+        from .services.cycle_service import check_and_trigger_auto_generation
+        check_and_trigger_auto_generation(instance.student, instance.report_cycle)
+
 
 class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
     queryset = MultidisciplinaryProgressTracker.objects.all()
@@ -165,11 +170,20 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
             pass
         return super().create(request, *args, **kwargs)
 
+    def perform_create(self, serializer):
+        instance = serializer.save(submitted_by=self.request.user)
+        from .services.cycle_service import check_and_trigger_auto_generation
+        check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
 
 class SpedProgressTrackerViewSet(BaseInputViewSet):
     queryset = SpedProgressTracker.objects.all()
     serializer_class = SpedProgressTrackerSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(submitted_by=self.request.user)
+        from .services.cycle_service import check_and_trigger_auto_generation
+        check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
 # ─── Parent Onboarding ───────────────────────────────────────────────────────
 
@@ -235,23 +249,54 @@ class AdminDashboardActionsView(APIView):
         
         actions = []
         
-        # 1. Ready for Weekly Report (all trackers submitted for an ACTIVE student)
-        active_cycle = ReportCycle.objects.filter(is_active=True).first()
-        if active_cycle:
-            active_students = Student.objects.filter(status='ENROLLED')
-            for s in active_students:
-                p_done = ParentProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
-                m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
-                sp_done = SpedProgressTracker.objects.filter(student=s, report_cycle=active_cycle).exists()
-                if p_done and m_done and sp_done:
-                    actions.append({
-                        "id": f"weekly_{s.id}",
-                        "title": f"Ready for Weekly Report: {s.first_name} {s.last_name}",
-                        "description": "All 3 weekly trackers have been submitted.",
-                        "action_text": "Generate \u2192",
-                        "link": f"/admin/reports?studentId={s.id}",
-                        "type": "positive"
-                    })
+        # 1. Monthly report cycle status for each enrolled student
+        active_students = Student.objects.filter(status='ENROLLED')
+        for s in active_students:
+            cycle = ReportCycle.objects.filter(student=s, is_active=True).first()
+            if not cycle:
+                continue
+
+            p_done = ParentProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
+            m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
+            sp_done = SpedProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
+            submitted = sum([p_done, m_done, sp_done])
+
+            # Check if a report was auto-generated and needs review
+            report = GeneratedDocument.objects.filter(
+                student=s, report_cycle=cycle, document_type='MONTHLY'
+            ).first()
+
+            if report and report.status == 'DRAFT':
+                actions.append({
+                    "id": f"review_report_{s.id}",
+                    "title": f"Review Monthly Report: {s.first_name} {s.last_name}",
+                    "description": f"{cycle.label} report auto-generated. Review and finalize.",
+                    "action_text": "Review →",
+                    "link": f"/admin/monthly-report?id={report.id}",
+                    "type": "positive"
+                })
+            elif p_done and m_done and sp_done and not report:
+                actions.append({
+                    "id": f"monthly_{s.id}",
+                    "title": f"Ready for Monthly Report: {s.first_name} {s.last_name}",
+                    "description": "All 3 trackers have been submitted.",
+                    "action_text": "Generate →",
+                    "link": f"/admin/reports?studentId={s.id}",
+                    "type": "positive"
+                })
+            elif submitted > 0 and submitted < 3:
+                missing = []
+                if not p_done: missing.append("Parent")
+                if not m_done: missing.append("Specialist")
+                if not sp_done: missing.append("Teacher")
+                actions.append({
+                    "id": f"pending_{s.id}",
+                    "title": f"Trackers Pending: {s.first_name} {s.last_name}",
+                    "description": f"{submitted}/3 submitted for {cycle.label}. Waiting: {', '.join(missing)}.",
+                    "action_text": "View →",
+                    "link": f"/students/{s.id}",
+                    "type": "warning"
+                })
 
         # 2. Ready for Enrollment Review (all assessments done, waiting for admin decision)
         in_review = Student.objects.filter(status='ASSESSED')
@@ -260,7 +305,7 @@ class AdminDashboardActionsView(APIView):
                 "id": f"review_{s.id}",
                 "title": f"Ready for Enrollment Review: {s.first_name} {s.last_name}",
                 "description": "Both Specialist and Teacher assessments complete. Awaiting admin enrollment decision.",
-                "action_text": "Review \u2192",
+                "action_text": "Review →",
                 "link": f"/students/{s.id}",
                 "type": "info"
             })
@@ -272,7 +317,7 @@ class AdminDashboardActionsView(APIView):
                 "id": f"obs_{s.id}",
                 "title": f"Assign Teacher Observation: {s.first_name} {s.last_name}",
                 "description": "Specialist assessment complete. Review clinical notes and assign a Teacher for trial observation.",
-                "action_text": "Assign \u2192",
+                "action_text": "Assign →",
                 "link": f"/students/{s.id}",
                 "type": "info"
             })
@@ -285,7 +330,7 @@ class AdminDashboardActionsView(APIView):
                     "id": f"inquiry_{s.id}",
                     "title": f"Parent Onboarding Complete: {s.first_name} {s.last_name}",
                     "description": "Parent has submitted initial assessment. Assign a specialist to begin evaluation.",
-                    "action_text": "Assign \u2192",
+                    "action_text": "Assign →",
                     "link": f"/students/{s.id}",
                     "type": "info"
                 })
@@ -462,7 +507,7 @@ class GenerateReportDraftView(APIView):
 
         if doc_type == 'ASSESSMENT' and student.status not in ['ASSESSED', 'ENROLLED']:
             return Response({"error": "Cannot generate Assessment report. Student has not been fully assessed yet."}, status=status.HTTP_400_BAD_REQUEST)
-        if doc_type in ['IEP', 'WEEKLY'] and student.status != 'ENROLLED':
+        if doc_type in ['IEP', 'MONTHLY'] and student.status != 'ENROLLED':
             return Response({"error": f"Cannot generate {doc_type} report. Student is not active (enrolled)."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -622,11 +667,76 @@ class AcceptInvitationView(APIView):
                 serializer.validated_data['password'],
                 serializer.validated_data.get('first_name', ''),
                 serializer.validated_data.get('last_name', ''),
+                serializer.validated_data.get('phone_number', ''),
             )
 
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# ─── SMS Verification ─────────────────────────────────────────────────────────
+
+class SendVerificationSMSView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        if user.is_phone_verified:
+            return Response({"error": "Phone number is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.phone_number:
+            # Account was created before the phone number field was added.
+            # Return a special error code the frontend can use to show a helpful message.
+            return Response(
+                {"error": "no_phone_number", "detail": "No phone number is associated with your account. Please contact the administrator to update your information."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+
+        import random
+        from django.utils import timezone
+
+        # Invalidate any previously issued codes for this user
+        PhoneVerification.objects.filter(user=user, is_used=False).update(is_used=True)
+
+        code = str(random.randint(100000, 999999))
+        PhoneVerification.objects.create(
+            user=user,
+            code=code,
+            expires_at=timezone.now() + timezone.timedelta(minutes=10)
+        )
+
+        from .services.sms_service import send_sms
+        message = f"Your ARASE verification code is: {code}. It expires in 10 minutes."
+        success = send_sms(user.phone_number, message)
+
+        if success:
+            return Response({"message": "Verification code sent.", "phone_number": user.phone_number})
+        else:
+            return Response({"error": "Failed to send SMS. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VerifySMSView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        code = request.data.get('code')
+        if not code:
+            return Response({"error": "Code is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            verification = PhoneVerification.objects.get(user=user, code=code, is_used=False)
+            if not verification.is_valid():
+                return Response({"error": "Verification code has expired."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            verification.is_used = True
+            verification.save()
+
+            user.is_phone_verified = True
+            user.save()
+
+            return Response({"message": "Phone number verified successfully."})
+        except PhoneVerification.DoesNotExist:
+            return Response({"error": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
 
 # ─── IEP Generation & Management ────────────────────────────────────────────
 
@@ -875,10 +985,10 @@ class IEPDownloadView(APIView):
         return response
 
 
-# ─── Weekly Report Generation & Management ───────────────────────────────────
+# ─── Monthly Report Generation & Management ───────────────────────────────────
 
-class GenerateWeeklyReportView(APIView):
-    """POST: Generate a Weekly Progress Report using Gemini AI."""
+class GenerateMonthlyReportView(APIView):
+    """POST: Generate a Monthly Progress Report using Gemini AI."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -899,30 +1009,30 @@ class GenerateWeeklyReportView(APIView):
 
         # Always run synchronously — Celery workers are not guaranteed on deployment.
         try:
-            from .services.iep_service import run_weekly_report_generation
+            from .services.iep_service import run_monthly_report_generation
             from .services.document_service import record_document_version
-            doc, report_data = run_weekly_report_generation(student_id, report_cycle_id)
+            doc, report_data = run_monthly_report_generation(student_id, report_cycle_id)
             record_document_version(doc, request.user, 'GENERATED')
             return Response({
-                "message": "Weekly report generated successfully.",
+                "message": "Monthly report generated successfully.",
                 "report_id": doc.id,
                 "report_data": report_data,
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return Response({"error": f"Failed to generate weekly report: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"Failed to generate monthly report: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class WeeklyReportDetailView(APIView):
-    """GET: Retrieve weekly report data."""
+class MonthlyReportDetailView(APIView):
+    """GET: Retrieve monthly report data."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
         try:
-            doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='WEEKLY')
+            doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='MONTHLY')
         except GeneratedDocument.DoesNotExist:
-            return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Monthly report not found."}, status=status.HTTP_404_NOT_FOUND)
 
         if request.user.role != 'ADMIN':
             from .models import StudentAccess
@@ -946,9 +1056,9 @@ class WeeklyReportDetailView(APIView):
             return Response({"error": "Only admins can edit reports."}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            doc = GeneratedDocument.objects.get(id=pk, document_type='WEEKLY')
+            doc = GeneratedDocument.objects.get(id=pk, document_type='MONTHLY')
         except GeneratedDocument.DoesNotExist:
-            return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Monthly report not found."}, status=status.HTTP_404_NOT_FOUND)
 
         new_data = request.data.get('report_data')
         new_status = request.data.get('status')
@@ -967,11 +1077,29 @@ class WeeklyReportDetailView(APIView):
         action_label = 'FINALIZED' if new_status == 'FINAL' else 'EDITED_DRAFT'
         record_document_version(doc, request.user, action_label)
 
-        return Response({"message": "Weekly Report updated.", "report_data": doc.iep_data, "status": doc.status})
+        # When finalizing, complete the cycle and notify parents
+        if new_status == 'FINAL':
+            try:
+                from .services.cycle_service import complete_cycle
+                complete_cycle(doc.report_cycle)
+            except Exception:
+                pass  # Don't block finalization if cycle update fails
+            try:
+                from .services.notification_service import notify_parent_report_finalized
+                from .models import StudentAccess
+                parents = StudentAccess.objects.filter(
+                    student=doc.student, user__role='PARENT'
+                ).select_related('user')
+                for sa in parents:
+                    notify_parent_report_finalized(sa.user, doc.student, doc.id)
+            except Exception:
+                pass  # Don't block finalization if notification fails
+
+        return Response({"message": "Monthly Report updated.", "report_data": doc.iep_data, "status": doc.status})
 
 
-class WeeklyReportDownloadView(APIView):
-    """GET: Render the Weekly Report JSON as a PDF for download."""
+class MonthlyReportDownloadView(APIView):
+    """GET: Render the Monthly Report JSON as a PDF for download."""
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, pk):
@@ -991,9 +1119,9 @@ class WeeklyReportDownloadView(APIView):
                 return Response({"detail": "Invalid or expired token."}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='WEEKLY')
+            doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='MONTHLY')
         except GeneratedDocument.DoesNotExist:
-            return Response({"error": "Weekly report not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Monthly report not found."}, status=status.HTTP_404_NOT_FOUND)
 
         if user.role != 'ADMIN':
             from .models import StudentAccess
@@ -1021,7 +1149,7 @@ class WeeklyReportDownloadView(APIView):
         report = doc.iep_data
         student = doc.student
 
-        elements.append(Paragraph("THERUNI – Weekly Progress Report", title_style))
+        elements.append(Paragraph("THERUNI – Monthly Progress Report", title_style))
         elements.append(Spacer(1, 10))
 
         si = report.get('student_info', {})
@@ -1047,7 +1175,7 @@ class WeeklyReportDownloadView(APIView):
             section_data = report.get(section_key, {})
             if section_data:
                 elements.append(Paragraph(section_title, h2))
-                elements.append(Paragraph(str(section_data.get('summary', 'No data submitted this week.')), normal))
+                elements.append(Paragraph(str(section_data.get('summary', 'No data submitted this month.')), normal))
                 highlights = section_data.get('highlights', [])
                 if highlights:
                     elements.append(Paragraph("<b>Highlights:</b>", h3))
@@ -1134,9 +1262,9 @@ class WeeklyReportDownloadView(APIView):
                 elements.append(Paragraph(f"  • [Therapy] {rec}", normal))
             elements.append(Spacer(1, 8))
 
-        focus = report.get('next_week_focus_areas', [])
+        focus = report.get('next_month_focus_areas', [])
         if focus:
-            elements.append(Paragraph("Next Week Focus Areas", h2))
+            elements.append(Paragraph("Next Month Focus Areas", h2))
             for item in focus:
                 elements.append(Paragraph(f"  • {item}", normal))
 
@@ -1145,7 +1273,7 @@ class WeeklyReportDownloadView(APIView):
         buffer.close()
 
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{student.last_name}_{student.first_name}_Weekly_Report.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="{student.last_name}_{student.first_name}_Monthly_Report.pdf"'
         return response
 
 # ─── Audit Logs ─────────────────────────────────────────────────────────────
@@ -1179,3 +1307,47 @@ class DocumentHistoryView(APIView):
             })
             
         return Response({"history": history})
+
+# ─── Cycle Management ───────────────────────────────────────────────────────
+
+class CreateCycleView(APIView):
+    """POST: Manually create a new cycle for a student (admin fallback)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Admin only."}, status=status.HTTP_403_FORBIDDEN)
+
+        student_id = request.data.get('student_id')
+        if not student_id:
+            return Response({"error": "student_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            student = Student.objects.get(id=student_id)
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        from .services.cycle_service import ensure_current_cycle
+        cycle = ensure_current_cycle(student)
+        return Response({
+            "message": f"Cycle '{cycle.label}' is active.",
+            "cycle_id": cycle.id,
+            "label": cycle.label,
+            "start_date": str(cycle.start_date),
+            "end_date": str(cycle.end_date),
+            "status": cycle.status,
+        }, status=status.HTTP_200_OK)
+
+
+class SendRemindersView(APIView):
+    """POST: Send tracker submission reminders to all users with missing trackers."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Admin only."}, status=status.HTTP_403_FORBIDDEN)
+
+        from .services.notification_service import send_tracker_reminders_for_all_students
+        sent_count = send_tracker_reminders_for_all_students()
+        return Response({"message": f"Sent {sent_count} reminder(s).", "count": sent_count})
+

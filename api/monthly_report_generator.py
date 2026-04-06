@@ -1,6 +1,6 @@
 """
-Weekly Report Generator — Collects progress tracker data, calls Gemini AI,
-returns a structured Weekly Progress Report JSON.
+Monthly Report Generator — Collects progress tracker data, calls Gemini AI,
+returns a structured Monthly Progress Report JSON.
 """
 import json
 import logging
@@ -85,7 +85,9 @@ def _collect_form_data(inputs):
     result = {}
     for key, obj in inputs.items():
         if obj and hasattr(obj, 'form_data') and obj.form_data:
-            result[key] = _flatten_form_data(obj.form_data)
+            # Prefer translated data if available, otherwise fallback to original form_data
+            data = getattr(obj, 'translated_data', None) or obj.form_data
+            result[key] = _flatten_form_data(data)
         else:
             result[key] = {}
     return result
@@ -96,11 +98,11 @@ def _collect_form_data(inputs):
 # Build prompt for Gemini
 # ---------------------------------------------------------------------------
 
-def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
+def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
     """Build a structured prompt from the three progress tracker datasets."""
 
     lines = [
-        "You are an expert special education coordinator generating a Weekly Progress Report.",
+        "You are an expert special education coordinator generating a Monthly Progress Report.",
         "Use ONLY the data provided below. Do NOT invent observations or data not mentioned.",
         "Write in clear, professional, empathetic language suitable for parents and educators.",
         "",
@@ -123,7 +125,7 @@ def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
     if pt:
         lines.append("=== PARENT PROGRESS TRACKER DATA ===")
         lines.append(f"Person Filing: {_safe(pt, 'person_filling_form')}")
-        lines.append(f"Week of Tracking: {_safe(pt, 'week_of_tracking')}")
+        lines.append(f"Month of Tracking: {_safe(pt, 'week_of_tracking')}")
         lines.append(f"Communication Methods: {_list_join(_safe(pt, 'communication_methods', default=[]))}")
         lines.append(f"Communication Actions: {_list_join(_safe(pt, 'communication_actions', default=[]))}")
         lines.append(f"Communication Notes: {_safe(pt, 'communication_notes')}")
@@ -201,7 +203,7 @@ def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
         lines.append(f"Peer Interaction: {_list_join(_safe(st, 'peer_interaction', default=[]))}")
         lines.append(f"Functional Social Skills: {_list_join(_safe(st, 'functional_social_skills', default=[]))}")
         lines.append(f"Social Skills Notes: {_safe(st, 'social_skills_notes')}")
-        lines.append(f"Weekly Behavior: {_list_join(_safe(st, 'weekly_behavior', default=[]))}")
+        lines.append(f"Monthly Behavior: {_list_join(_safe(st, 'weekly_behavior', default=[]))}")
         lines.append(f"Emotional Regulation: {_list_join(_safe(st, 'emotional_regulation', default=[]))}")
         lines.append(f"Behavior Notes: {_safe(st, 'behavior_notes')}")
         lines.append(f"Independence Routines: {_list_join(_safe(st, 'independence_routines', default=[]))}")
@@ -219,12 +221,12 @@ def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
 
     # Output instructions
     lines.append("=== INSTRUCTIONS ===")
-    lines.append("Generate a Weekly Progress Report as a JSON object with these exact keys:")
+    lines.append("Generate a Monthly Progress Report as a JSON object with these exact keys:")
     lines.append(json.dumps({
-        "report_period": "e.g. Week of March 10-14, 2026",
-        "executive_summary": "2-3 sentence overview of the child's week across all domains",
+        "report_period": "e.g. Month of March 2026",
+        "executive_summary": "2-3 sentence overview of the child's month across all domains",
         "communication_progress": {
-            "summary": "paragraph summarizing communication progress this week",
+            "summary": "paragraph summarizing communication progress this month",
             "highlights": ["key observations"],
             "concerns": ["any concerns noted"]
         },
@@ -234,7 +236,7 @@ def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
             "concerns": ["any concerns noted"]
         },
         "academic_progress": {
-            "summary": "paragraph summarizing academic/learning progress",
+            "summary": "paragraph summarizing academic/learning progress this month",
             "highlights": ["key observations"],
             "concerns": ["any concerns noted"]
         },
@@ -260,18 +262,18 @@ def _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals):
         "parent_observations": {
             "overall_comparison": "e.g. Slightly improved",
             "top_concerns": ["list of parent concerns"],
-            "parent_goals": ["list of parent goals for next week"]
+            "parent_goals": ["list of parent goals for next month"]
         },
         "recommendations": {
             "classroom": ["classroom-level recommendations"],
-            "home_program": ["specific home activities for next week"],
+            "home_program": ["specific home activities for next month"],
             "therapy_adjustments": ["any adjustments to therapy plan"]
         },
-        "next_week_focus_areas": ["list of 3-5 focus areas for the coming week"]
+        "next_month_focus_areas": ["list of 3-5 focus areas for the coming month"]
     }, indent=2))
     lines.append("")
     lines.append("Base the goal_achievement_scores on the GAS scores provided by therapist and teacher (1-5 scale).")
-    lines.append("If data for a section is missing, write 'No data submitted this week' instead of making things up.")
+    lines.append("If data for a section is missing, write 'No data submitted this month' instead of making things up.")
     lines.append("Make recommendations practical and specific to the child's current level.")
     lines.append("Return ONLY valid JSON. No markdown, no explanation, just the JSON object.")
 
@@ -317,9 +319,9 @@ def _call_gemini(prompt):
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def generate_weekly_report(student, cycle, inputs):
+def generate_monthly_report(student, cycle, inputs):
     """
-    Generate a Weekly Progress Report JSON from progress tracker inputs + Gemini AI.
+    Generate a Monthly Progress Report JSON from progress tracker inputs + Gemini AI.
     """
     forms = _collect_form_data(inputs)
     pt = forms.get('parent_tracker', {})
@@ -336,8 +338,8 @@ def generate_weekly_report(student, cycle, inputs):
         iep_goals = latest_iep.iep_data.get('section5_ltg', [])
 
     # Build and send prompt
-    prompt = _build_weekly_prompt(student, cycle, pt, mt, st, iep_goals)
-    logger.info("Calling Gemini for Weekly Report generation (student=%s)", student.id)
+    prompt = _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals)
+    logger.info("Calling Gemini for Monthly Report generation (student=%s)", student.id)
 
     try:
         ai_data = _call_gemini(prompt)
@@ -364,7 +366,7 @@ def generate_weekly_report(student, cycle, inputs):
         "therapy_session_summary": ai_data.get("therapy_session_summary", {}),
         "parent_observations": ai_data.get("parent_observations", {}),
         "recommendations": ai_data.get("recommendations", {}),
-        "next_week_focus_areas": ai_data.get("next_week_focus_areas", []),
+        "next_month_focus_areas": ai_data.get("next_month_focus_areas", []),
     }
 
     return report

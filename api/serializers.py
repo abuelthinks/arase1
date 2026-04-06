@@ -23,7 +23,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'first_name', 'last_name', 'specialty', 'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students']
+        fields = ['id', 'username', 'email', 'role', 'first_name', 'last_name', 'specialty',
+                  'phone_number', 'is_phone_verified',
+                  'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students']
 
     def get_assigned_students_count(self, obj):
         return obj.student_access.count()
@@ -55,9 +57,14 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class StudentSerializer(serializers.ModelSerializer):
+    has_parent_assessment = serializers.SerializerMethodField()
+
     class Meta:
         model = Student
         fields = '__all__'
+
+    def get_has_parent_assessment(self, obj):
+        return ParentAssessment.objects.filter(student=obj).exists()
 
 class StudentAccessSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)
@@ -122,3 +129,10 @@ class AcceptInvitationSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     first_name = serializers.CharField(required=False, allow_blank=True, default="")
     last_name = serializers.CharField(required=False, allow_blank=True, default="")
+    phone_number = serializers.RegexField(
+        regex=r'^\+?[0-9\s\-\(\)]{7,15}$',
+        required=False, 
+        allow_blank=True, 
+        default="",
+        error_messages={'invalid': 'Please enter a valid phone number (7-15 characters).'}
+    )
