@@ -48,7 +48,7 @@ SECURE_HSTS_PRELOAD = True
 
 # --- Secure Proxy & Redirects ---
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_REDIRECT_EXEMPT = [r'^api/']
+SECURE_REDIRECT_EXEMPT = [r'^api/', r'^$']
 # CSRF and Allowed Hosts are handled via Render Environment Variables
 
 # ─── SMS — Production Configuration ──────────────────────────────────────────
