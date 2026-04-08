@@ -23,7 +23,14 @@ export default function LoginPage() {
             await login(username, password);
             router.push("/dashboard");
         } catch (err: any) {
-            setError(err.response?.data?.detail || "Invalid credentials. Please try again.");
+            const status = err.response?.status;
+            const detail = err.response?.data?.detail || err.response?.data?.error;
+
+            if (!status) {
+                setError("Login request could not reach the server. Check your deployed API URL and auth cookie configuration.");
+            } else {
+                setError(detail || "Invalid credentials. Please try again.");
+            }
         } finally {
             setLoading(false);
         }

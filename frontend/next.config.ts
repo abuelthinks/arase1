@@ -1,19 +1,19 @@
 import type { NextConfig } from "next";
 
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const baseUrl = rawApiUrl ? rawApiUrl.replace(/\/$/, "") : "";
+
 const nextConfig: NextConfig = {
   trailingSlash: true,
   async rewrites() {
-    // Strip trailing slash to prevent infinite redirect loops with Django APPEND_SLASH
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL 
-      ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') 
-      : 'http://localhost:8000';
+    if (!baseUrl) {
+      return [];
+    }
 
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${baseUrl}/api/:path*`
-      }
-    ];
+    return [{
+      source: "/api/:path*",
+      destination: `${baseUrl}/api/:path*`,
+    }];
   }
 };
 

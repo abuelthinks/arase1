@@ -1,8 +1,24 @@
 import axios from 'axios';
 
-export const API_BASE_URL = typeof window !== 'undefined' 
-    ? '' 
-    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const envApiUrl = rawApiUrl ? rawApiUrl.replace(/\/$/, '') : '';
+
+const getBrowserApiBaseUrl = () => {
+    if (envApiUrl) {
+        return envApiUrl;
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+        return 'http://localhost:8000';
+    }
+
+    return '';
+};
+
+export const API_BASE_URL =
+    typeof window !== 'undefined'
+        ? getBrowserApiBaseUrl()
+        : (envApiUrl || 'http://localhost:8000');
 
 /**
  * Axios instance configured for cookie-based HttpOnly JWT auth.
