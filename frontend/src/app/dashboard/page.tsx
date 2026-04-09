@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
     return (
         <ProtectedRoute>
-            <div className="px-4 md:px-0 max-w-7xl mx-auto">
+            <div className="px-4 md:px-0">
                 {/* SMS Verification Banner — Parent only */}
                 {user?.role === "PARENT" && isPhoneVerified === false && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 sm:px-5 sm:py-3 rounded-lg border border-amber-400"
