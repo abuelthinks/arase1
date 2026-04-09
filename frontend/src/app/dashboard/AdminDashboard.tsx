@@ -519,21 +519,21 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-                {/* Desktop: original card wrapper. Mobile: full-bleed card */}
-                <div className="-mx-4 px-4 py-4 bg-white border-t border-slate-100 md:mx-0 md:px-0 md:py-0 md:bg-transparent md:border-0 md:glass-panel md:p-8 md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] md:min-h-[60vh]">
-                    {/* Mobile-only title inside the card */}
-                    <div className="md:hidden mb-4 pb-3 border-b border-slate-100">
+                {/* Desktop only: card wrapper. Mobile: px-4 content padding */}
+                <div className="px-4 md:px-0 md:glass-panel md:p-8 md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] md:min-h-[60vh]">
+                    {/* Mobile-only title */}
+                    <div className="md:hidden mb-5">
                         <h2 className="m-0 text-xl font-bold text-slate-800">
                             {activeTab === "analytics" && "Analytics Dashboard"}
-                            {activeTab === "students" && "Student Roster"}
-                            {activeTab === "users" && "System Users"}
-                            {activeTab === "invitations" && "Pending Invitations"}
+                            {activeTab === "students" && <>Student Roster <span className="text-base font-normal text-slate-400">({processedStudents.length})</span></>}
+                            {activeTab === "users" && <>System Users <span className="text-base font-normal text-slate-400">({processedUsers.length})</span></>}
+                            {activeTab === "invitations" && <>Pending Invitations <span className="text-base font-normal text-slate-400">({processedInvitations.length})</span></>}
                         </h2>
-                        <p className="m-0 mt-0.5 text-sm text-slate-400 font-normal">
-                            {activeTab === "analytics" && "Overview & metrics"}
-                            {activeTab === "students" && `${processedStudents.length} students`}
-                            {activeTab === "users" && `${processedUsers.length} users`}
-                            {activeTab === "invitations" && `${processedInvitations.length} pending`}
+                        <p className="m-0 mt-1 text-sm text-slate-400">
+                            {activeTab === "analytics" && "High-level metrics, breakdowns, and bottlenecks."}
+                            {activeTab === "students" && "Manage all registered students in the system."}
+                            {activeTab === "users" && "Manage active system users and clinical roles."}
+                            {activeTab === "invitations" && "Track and revoke pending access invitations."}
                         </p>
                     </div>
                     {loading ? (
@@ -839,9 +839,9 @@ export default function AdminDashboard() {
                                             return (
                                                 <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col min-w-0">
                                                             <span className="text-xs font-mono text-slate-400 mb-1">#{s.id}</span>
-                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors">
+                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                             <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>
@@ -1061,11 +1061,11 @@ export default function AdminDashboard() {
                                             return (
                                                 <div key={u.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
-                                                        <div className="flex flex-col">
-                                                            <Link href={`/users/${u.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors">
+                                                        <div className="flex flex-col min-w-0">
+                                                            <Link href={`/users/${u.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {displayName}
                                                             </Link>
-                                                            <span className="text-sm text-slate-500 mt-1">{u.email}</span>
+                                                            <span className="text-sm text-slate-500 mt-1 truncate">{u.email}</span>
                                                         </div>
                                                         <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, textAlign: "center", whiteSpace: "nowrap" }}>
                                                             {u.role}

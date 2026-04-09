@@ -66,7 +66,7 @@ export default function AdminSidebar() {
                 </Link>
                 <Link href="/dashboard?tab=students" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'students' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
                     <GraduationCap size={20} className={activeTab === 'students' ? "stroke-[2.5px]" : ""} />
-                    <span className="text-[0.65rem] font-medium">Roster</span>
+                    <span className="text-[0.65rem] font-medium">Students</span>
                 </Link>
                 <Link href="/dashboard?tab=users" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'users' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
                     <UsersRound size={20} className={activeTab === 'users' ? "stroke-[2.5px]" : ""} />

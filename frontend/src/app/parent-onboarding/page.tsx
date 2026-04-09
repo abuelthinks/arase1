@@ -272,12 +272,11 @@ function ParentFormContent() {
 
     return (
         <ProtectedRoute allowedRoles={isViewMode ? undefined : ["PARENT"]}>
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-5xl mx-auto px-4">
                 {/* Breadcrumb Nav */}
                 {isViewMode && (
-                    <div style={{ 
+                    <div className="hidden md:flex" style={{ 
                         marginBottom: "2rem", 
-                        display: "flex", 
                         justifyContent: "space-between", 
                         alignItems: "center", 
                         background: "white", 
@@ -319,7 +318,7 @@ function ParentFormContent() {
                     </div>
                 )}
                 {!isViewMode && (
-                    <div className="mb-6 flex flex-wrap items-center gap-2">
+                    <div className="hidden md:flex mb-6 flex-wrap items-center gap-2">
                         <button type="button" onClick={() => router.back()}
                             className="inline-flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-semibold text-sm transition-colors cursor-pointer"
                         >

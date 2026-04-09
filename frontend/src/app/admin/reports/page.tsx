@@ -113,7 +113,7 @@ function AdminReportsContent() {
             <div style={{ minHeight: "100vh", background: "#f8fafc", padding: "3rem 1rem" }}>
                 <div style={{ maxWidth: "700px", margin: "0 auto" }}>
                     {/* Breadcrumb Nav */}
-                    <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
                         <button type="button" onClick={() => router.back()}
                             className="btn-slate"
                             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}

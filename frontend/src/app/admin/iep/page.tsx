@@ -163,7 +163,7 @@ function IEPViewerContent() {
     return (
         <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1rem 4rem" }}>
             {/* Breadcrumb Nav */}
-            <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
                 <button type="button" onClick={() => router.back()}
                     className="btn-slate"
                     style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
@@ -218,7 +218,7 @@ function IEPViewerContent() {
 
             {/* Section 1 — Student Info */}
             <SectionCard title="Section 1 — Student Information">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     {[["Student Name", "student_name"], ["Date of Birth", "date_of_birth"], ["Gender", "gender"], ["Grade/Level", "grade_level"], ["IEP Start", "iep_start_date"], ["IEP End", "iep_end_date"]].map(([label, key]) => (
                         <Field key={key} label={label} value={s1[key] || ""} edit={false} />
                     ))}
@@ -259,12 +259,14 @@ function IEPViewerContent() {
                 }).map(([key, lbl]) => {
                     const domain = s4[key] || {};
                     return (
-                        <div key={key} style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
-                            <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0ea5e9", marginBottom: "6px" }}>{lbl}</p>
+                        <div key={key} style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "14px" }}>
+                            <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0ea5e9", marginBottom: "10px" }}>{lbl}</p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                             {Object.entries(domain).map(([fk, fv]) => (
                                 <Field key={fk} label={fk.replace(/_/g, ' ')} value={String(fv)} edit={editing}
                                     onChange={v => set("section4_plop", [key, fk], v)} />
                             ))}
+                            </div>
                         </div>
                     );
                 })}
@@ -289,7 +291,7 @@ function IEPViewerContent() {
                         <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#059669", margin: "0 0 4px" }}>Objective {sto.id} → {sto.ltg_ref}</p>
                         <Field label="Objective" value={sto.objective} edit={editing}
                             onChange={v => { const c = [...s6]; c[i] = { ...c[i], objective: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "4px" }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
                             <Field label="Target Skill" value={sto.target_skill} edit={editing}
                                 onChange={v => { const c = [...s6]; c[i] = { ...c[i], target_skill: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                             <Field label="Teaching Method" value={sto.teaching_method} edit={editing}
@@ -323,8 +325,8 @@ function IEPViewerContent() {
                 }).map(([key, lbl]) => {
                     const t = s8[key] || {};
                     return (
-                        <div key={key} style={{ display: "flex", gap: "12px", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f1f5f9" }}>
-                            <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#1e293b", minWidth: "160px" }}>{lbl}</span>
+                        <div key={key} style={{ padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                            <p style={{ fontWeight: 700, fontSize: "0.85rem", color: "#1e293b", margin: "0 0 2px" }}>{lbl}</p>
                             {key === "shadow_teacher" ? (
                                 <span style={{ fontSize: "0.85rem", color: "#475569" }}>Hours: {t.hours || "N/A"}</span>
                             ) : (

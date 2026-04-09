@@ -506,9 +506,8 @@ function FormEntryContent() {
             <div style={{ maxWidth: "1024px", margin: "0 auto", padding: "2rem 1rem 3rem" }}>
                 {/* Breadcrumb Nav */}
                 {studentProfile && (
-                    <div style={{ 
+                    <div className="hidden md:flex" style={{ 
                         marginBottom: "2rem", 
-                        display: "flex", 
                         justifyContent: "space-between", 
                         alignItems: "center", 
                         background: "white", 

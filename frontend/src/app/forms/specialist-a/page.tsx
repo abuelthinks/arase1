@@ -246,9 +246,8 @@ function SpecialistAFormContent() {
         <div style={{ maxWidth: "1024px", margin: "0 auto", paddingBottom: "3rem" }}>
             {/* Breadcrumb Nav */}
             {studentProfile && (
-                <div style={{ 
+                <div className="hidden md:flex" style={{ 
                     marginBottom: "2rem", 
-                    display: "flex", 
                     justifyContent: "space-between", 
                     alignItems: "center", 
                     background: "white", 
@@ -339,7 +338,7 @@ function SpecialistAFormContent() {
             <SectionCard title="Section A — Background (Parent Input + Therapist Verification)" subtitle="A1 is auto-filled from parent submission. Complete A2 and A3.">
                 {/* A1 Read-only parent info */}
                 <FieldGroup label="A1. Parent-Provided Information (Auto-filled)">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         {[
                             ["Child Name", `${parentInfo.first_name || ""} ${parentInfo.last_name || ""}`.trim() || "—"],
                             ["Date of Birth", parentInfo.date_of_birth || "—"],
@@ -369,7 +368,7 @@ function SpecialistAFormContent() {
                     )}
                 </FieldGroup>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "15px" }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Therapist Name</p>
                         <input
