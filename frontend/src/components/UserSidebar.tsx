@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Users, User, BookOpen } from "lucide-react";
+import { Users, User, BookOpen, LogOut } from "lucide-react";
 
 export default function UserSidebar() {
     const pathname = usePathname();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
 
     const isTeacher = user?.role === "TEACHER";
     const isSpecialist = user?.role === "SPECIALIST";
@@ -54,10 +54,17 @@ export default function UserSidebar() {
                     </div>
 
                     {user && (
-                        <Link href={`/users/${user.user_id}`}  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
-                            <User size={18} />
-                            <span>My Profile</span>
-                        </Link>
+                        <>
+                            <Link href={`/users/${user.user_id}`}  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                                <User size={18} />
+                                <span>My Profile</span>
+                            </Link>
+
+                            <button onClick={logout} className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 text-red-600 hover:bg-red-50 font-medium text-left w-full mt-1">
+                                <LogOut size={18} />
+                                <span>Logout</span>
+                            </button>
+                        </>
                     )}
                 </nav>
             </aside>
@@ -69,10 +76,17 @@ export default function UserSidebar() {
                     <span className="text-[0.65rem] font-medium">{isTeacher || isSpecialist ? "Students" : "Children"}</span>
                 </Link>
                 {user && (
-                    <Link href={`/users/${user.user_id}`} className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProfile ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
-                        <User size={20} className={isProfile ? "stroke-[2.5px]" : ""} />
-                        <span className="text-[0.65rem] font-medium">Profile</span>
-                    </Link>
+                        <>
+                            <Link href={`/users/${user.user_id}`} className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProfile ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                                <User size={20} className={isProfile ? "stroke-[2.5px]" : ""} />
+                                <span className="text-[0.65rem] font-medium">Profile</span>
+                            </Link>
+
+                            <button onClick={logout} className="flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 text-red-500 hover:bg-red-50 transition-colors">
+                                <LogOut size={20} />
+                                <span className="text-[0.65rem] font-medium">Logout</span>
+                            </button>
+                        </>
                 )}
             </nav>
         </>

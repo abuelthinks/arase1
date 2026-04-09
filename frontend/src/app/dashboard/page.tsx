@@ -139,24 +139,14 @@ export default function DashboardPage() {
 
     return (
         <ProtectedRoute>
-            <>
+            <div className="px-4 md:px-0 max-w-7xl mx-auto">
                 {/* SMS Verification Banner — Parent only */}
                 {user?.role === "PARENT" && isPhoneVerified === false && (
-                    <div style={{
-                        background: "linear-gradient(90deg, #fef3c7, #fffbeb)",
-                        border: "1px solid #fbbf24",
-                        borderRadius: "8px",
-                        padding: "12px 20px",
-                        marginBottom: "1.5rem",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "12px",
-                        flexWrap: "wrap",
-                    }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <span style={{ fontSize: "1.2rem" }}>📱</span>
-                            <p style={{ margin: 0, fontSize: "0.9rem", color: "#92400e", fontWeight: 500 }}>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 sm:px-5 sm:py-3 rounded-lg border border-amber-400"
+                        style={{ background: "linear-gradient(90deg, #fef3c7, #fffbeb)" }}>
+                        <div className="flex items-start gap-3">
+                            <span className="text-xl leading-none mt-0.5">📱</span>
+                            <p className="m-0 text-sm md:text-[0.9rem] text-amber-900 font-medium">
                                 {user?.phone_number
                                     ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
                                     : <>Your phone number has not been verified yet. Verify it to enable SMS alerts and notifications.</>
@@ -165,11 +155,7 @@ export default function DashboardPage() {
                         </div>
                         <button
                             onClick={() => setShowSMSModal(true)}
-                            style={{
-                                background: "#f59e0b", color: "white", border: "none",
-                                borderRadius: "6px", padding: "8px 16px", fontWeight: 700,
-                                cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap"
-                            }}
+                            className="bg-amber-500 hover:bg-amber-600 text-white border-none rounded-md px-4 py-2 font-bold cursor-pointer text-sm whitespace-nowrap transition-colors w-full sm:w-auto mt-2 sm:mt-0"
                         >
                             Verify Now
                         </button>
@@ -189,19 +175,19 @@ export default function DashboardPage() {
                     />
                 )}
 
-                {/* Page header */}
-                <div style={{ marginBottom: "2rem" }}>
-                    <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
-                        {user?.role === "PARENT" ? "My Children" : "My Students"} 
-                        {students.length > 0 && <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedStudents.length})</span>}
-                    </h2>
-                    <p style={{ color: "var(--text-secondary)", marginTop: "5px" }}>{getSubtitle()}</p>
-                </div>
-
                 <WelcomeBanner students={students} />
 
+                {/* Page header */}
+                <div className="mb-5 md:mb-8">
+                    <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-baseline gap-2">
+                        {user?.role === "PARENT" ? "My Children" : "My Students"} 
+                        {students.length > 0 && <span className="text-base md:text-xl text-slate-400 font-normal">({processedStudents.length})</span>}
+                    </h2>
+                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
+                </div>
+
                 {/* Content panel */}
-                <div className="glass-panel" style={{ padding: "2rem", background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
+                <div className="glass-panel p-4 sm:p-6 md:p-8" style={{ background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
                     {loading ? (
                         <p>Loading...</p>
                     ) : students.length === 0 ? (
@@ -527,7 +513,7 @@ export default function DashboardPage() {
                         </div>
                     )}
                 </div>
-            </>
+            </div>
         </ProtectedRoute>
     );
 }

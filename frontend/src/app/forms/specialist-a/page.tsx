@@ -19,12 +19,12 @@ function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; c
 
 function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
     return (
-        <div style={{ background: "white", borderRadius: "14px", border: "1px solid var(--border-light)", overflow: "hidden", marginBottom: "1.25rem" }}>
-            <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-light)", background: "#f8fafc" }}>
-                <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h2>
-                {subtitle && <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: "2px 0 0" }}>{subtitle}</p>}
+        <div className="bg-white rounded-xl border border-[var(--border-light)] overflow-hidden mb-5 shadow-sm">
+            <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--border-light)] bg-slate-50">
+                <h2 className="text-lg font-bold text-[var(--text-primary)] m-0">{title}</h2>
+                {subtitle && <p className="text-sm text-[var(--text-secondary)] m-0 mt-1">{subtitle}</p>}
             </div>
-            <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div className="p-4 sm:p-6 flex flex-col gap-4">
                 {children}
             </div>
         </div>
@@ -301,32 +301,24 @@ function SpecialistAFormContent() {
                 </div>
             )}
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+            <div className="flex flex-col items-start gap-4 mb-6 w-full">
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-                        Multidisciplinary Assessment Form {ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
+                    <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] m-0 flex flex-wrap items-baseline gap-2">
+                        Multidisciplinary Assessment Form {ro && <span className="text-sm font-medium text-slate-500">— Read Only</span>}
                     </h1>
-                    {ro && <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>Past submission — read only.</p>}
+                    {ro && <p className="text-sm text-[var(--text-secondary)] mt-1 mb-0">Past submission — read only.</p>}
                 </div>
                 {ro && hasTranslation && (
-                    <div style={{ display: "flex", gap: "4px", background: "#f8fafc", padding: "4px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <div className="flex gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
                         <button
                             onClick={() => setIsTranslated(false)}
-                            style={{
-                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: !isTranslated ? 700 : 500,
-                                color: !isTranslated ? "#0f172a" : "#64748b", background: !isTranslated ? "white" : "transparent",
-                                boxShadow: !isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
-                            }}
+                            className={`px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${!isTranslated ? "font-bold text-slate-900 bg-white shadow-sm" : "font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100"}`}
                         >
                             Original
                         </button>
                         <button
                             onClick={() => setIsTranslated(true)}
-                            style={{
-                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: isTranslated ? 700 : 500,
-                                color: isTranslated ? "#4f46e5" : "#64748b", background: isTranslated ? "white" : "transparent",
-                                boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
-                            }}
+                            className={`px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${isTranslated ? "font-bold text-indigo-600 bg-white shadow-sm" : "font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100"}`}
                         >
                             English (AI) ✨
                         </button>

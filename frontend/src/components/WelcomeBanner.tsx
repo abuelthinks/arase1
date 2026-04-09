@@ -88,7 +88,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
     }
 
     return (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-8 shadow-sm mb-8 transition-all duration-300">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-6 md:p-8 shadow-sm mb-8 transition-all duration-300">
             {/* Soft decorative shapes */}
             <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-blue-400/10 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 left-1/4 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl pointer-events-none" />

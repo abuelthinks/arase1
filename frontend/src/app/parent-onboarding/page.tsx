@@ -335,7 +335,7 @@ function ParentFormContent() {
                 )}
 
                 {/* Top bar */}
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex flex-col items-start gap-4 mb-5 w-full">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">
                             {isViewMode ? "Parent Input Form — Read Only" : "Parent Assessment Form"}
@@ -402,7 +402,7 @@ function ParentFormContent() {
                 <fieldset disabled={dis} className="space-y-10">
 
                     {/* ── SECTION A ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section A — Background Information" />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -482,7 +482,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION B ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section B — Developmental History" />
 
                         <div className="space-y-3">
@@ -536,7 +536,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION C ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section C — Parent Input" />
 
                         <Field label="Primary Concerns">
@@ -573,7 +573,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION D ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section D — Behavior & Social Interaction" />
 
                         <Field label="Difficulties">
@@ -626,7 +626,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION E ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section E — Sensory & Physical Needs" />
 
                         <Field label="Sensory Sensitivities">
@@ -657,7 +657,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION F ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section F — Goals & Expectations" />
 
                         <Field label="Goals for This Year">
@@ -686,7 +686,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION G ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section G — Home Environment & Support" />
 
                         <Field label="Home Strategies">
@@ -711,7 +711,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION H ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section H — Child Strengths" />
 
                         <Field label="My Child's Strengths">
@@ -728,7 +728,7 @@ function ParentFormContent() {
                     </section>
 
                     {/* ── SECTION I ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section I — Daily Living Skills" />
 
                         {[

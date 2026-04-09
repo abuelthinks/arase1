@@ -520,7 +520,7 @@ export default function AdminDashboard() {
             </div>
 
                 {/* Desktop only: card wrapper. Mobile: px-4 content padding */}
-                <div className="px-4 md:px-0 md:glass-panel md:p-8 md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] md:min-h-[60vh]">
+                <div className="p-4 sm:p-6 md:p-8 md:glass-panel md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] md:min-h-[60vh]">
                     {/* Mobile-only title */}
                     <div className="md:hidden mb-5">
                         <h2 className="m-0 text-xl font-bold text-slate-800">
@@ -670,8 +670,8 @@ export default function AdminDashboard() {
                     ) : activeTab === "students" ? (
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}
-                            <div className="flex flex-col md:flex-row justify-between gap-4 mb-5 items-start">
-                                <div className="flex flex-col md:flex-row gap-3 items-start md:items-center w-full md:flex-1">
+                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
+                                <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
                                     <div className="relative w-full md:flex-1 md:max-w-[400px]">
                                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
@@ -884,8 +884,8 @@ export default function AdminDashboard() {
                     ) : activeTab === "users" ? (
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}
-                            <div className="flex flex-col md:flex-row justify-between gap-4 mb-5 items-start">
-                                <div className="flex flex-col md:flex-row gap-3 items-start md:items-center w-full md:flex-1">
+                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
+                                <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
                                     <div className="relative w-full md:flex-1 md:max-w-[400px]">
                                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
@@ -1122,8 +1122,8 @@ export default function AdminDashboard() {
                     ) : activeTab === "invitations" ? (
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}
-                            <div className="flex flex-col md:flex-row justify-between gap-4 mb-5 items-start">
-                                <div className="flex flex-col md:flex-row gap-3 items-start md:items-center w-full md:flex-1">
+                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
+                                <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
                                     <div className="relative w-full md:flex-1 md:max-w-[400px]">
                                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
