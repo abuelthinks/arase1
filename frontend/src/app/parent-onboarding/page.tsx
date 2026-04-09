@@ -406,7 +406,7 @@ function ParentFormContent() {
                     <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section A — Background Information" />
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <Field label="Child's First Name" required>
                                 <input type="text" className={inputCls} value={form.first_name} onChange={e => set("first_name")(e.target.value)} />
                             </Field>
@@ -434,7 +434,7 @@ function ParentFormContent() {
                         </Field>
 
                         {canViewPII && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <Field label="Parent/Guardian Name">
                                     <input type="text" className={inputCls} value={form.parent_name} onChange={e => set("parent_name")(e.target.value)} />
                                 </Field>

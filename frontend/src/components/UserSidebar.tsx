@@ -2,164 +2,79 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-
-// Lazy initializer: reads localStorage synchronously on mount.
-// For client-side navigation (Link clicks), window is always defined,
-// so collapsed starts at the correct value and there is no flash.
-function getInitialCollapsed(key: string): boolean {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(key) === "true";
-}
+import { Users, User, BookOpen } from "lucide-react";
 
 export default function UserSidebar() {
     const pathname = usePathname();
     const { user } = useAuth();
 
-    const [collapsed, setCollapsed] = useState(() => getInitialCollapsed("user-sidebar-collapsed"));
-    const [transitioning, setTransitioning] = useState(false);
-
-    const toggleCollapse = () => {
-        setTransitioning(true);
-        setCollapsed(prev => {
-            const next = !prev;
-            localStorage.setItem("user-sidebar-collapsed", String(next));
-            return next;
-        });
-    };
-
     const isTeacher = user?.role === "TEACHER";
     const isSpecialist = user?.role === "SPECIALIST";
 
     const portalTitle = isTeacher ? "Teacher Portal" : isSpecialist ? "Specialist Portal" : "Parent Portal";
-    const portalIcon = isTeacher ? "🏫" : isSpecialist ? "🩺" : "👨‍👩‍👧";
 
-    const navLinkStyle = (active: boolean): React.CSSProperties => ({
-        padding: collapsed ? "12px" : "12px 16px",
-        background: active ? "var(--accent-primary)" : "transparent",
-        color: active ? "white" : "var(--text-primary)",
-        borderRadius: "8px",
-        fontWeight: active ? "bold" : "normal",
-        cursor: "pointer",
-        fontSize: "1rem",
-        textDecoration: "none",
-        display: "flex",
-        alignItems: "center",
-        gap: collapsed ? "0" : "10px",
-        justifyContent: collapsed ? "center" : "flex-start",
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        transition: transitioning ? "background 0.2s ease, padding 0.25s ease" : "background 0.2s ease",
-    });
-
-    const labelStyle: React.CSSProperties = {
-        overflow: "hidden",
-        maxWidth: collapsed ? "0" : "160px",
-        opacity: collapsed ? 0 : 1,
-        transition: transitioning ? "max-width 0.25s ease, opacity 0.2s ease" : "none",
-        whiteSpace: "nowrap",
-    };
-
-    const isDashboard = pathname === "/dashboard";
+    const isMyChildren =
+        pathname === "/dashboard" ||
+        pathname.startsWith("/dashboard/") ||
+        pathname.startsWith("/students") ||
+        pathname.startsWith("/parent-onboarding");
     const isProfile = pathname.startsWith("/profile") || pathname.startsWith("/users");
 
     return (
-        <aside
-            suppressHydrationWarning
-            style={{
-                position: "sticky",
-                top: 0,
-                height: "100%",
-                overflowY: "auto",
-                width: collapsed ? "68px" : "250px",
-                transition: transitioning ? "width 0.25s ease" : "none",
-                backgroundColor: "white",
-                borderRight: "1px solid var(--border-light)",
-                display: "flex",
-                flexDirection: "column",
-                padding: "2rem 0.75rem",
-                boxShadow: "2px 0 5px rgba(0,0,0,0.02)",
-                flexShrink: 0,
-            }}
-        >
-            {/* Logo / Branding */}
-            <div
-                style={{ marginBottom: "3rem", padding: "0 10px", cursor: "pointer", overflow: "hidden" }}
-                onClick={() => window.location.href = "/dashboard"}
-            >
-                {collapsed ? (
-                    <div style={{ fontSize: "1.4rem", textAlign: "center" }}>{portalIcon}</div>
-                ) : (
-                    <>
-                        <h1 style={{ fontSize: "1.5rem", color: "var(--accent-primary)", margin: "0 0 0.25rem 0", whiteSpace: "nowrap" }}>
-                            {portalIcon} {portalTitle}
-                        </h1>
-                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>
-                            Workspace
-                        </span>
-                    </>
-                )}
-            </div>
+        <>
+            {/* Desktop Sidebar */}
+            <aside className="hidden md:flex flex-col w-56 bg-white border-r border-[var(--border-light)] p-6 shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0">
+                {/* Logo / Branding */}
+                <div
+                    className="mb-10 cursor-pointer px-2"
+                    onClick={() => window.location.href = "/dashboard"}
+                >
+                    <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 mb-1 leading-tight">
+                        {portalTitle}
+                    </h1>
+                    <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider">
+                        Workspace
+                    </span>
+                </div>
 
-            {/* Navigation */}
-            <nav style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {!collapsed && (
-                    <div style={{ padding: "4px 16px 4px 16px", fontSize: "0.75rem", fontWeight: "bold", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "4px" }}>
+                {/* Navigation */}
+                <nav className="flex flex-col gap-1">
+                    <div className="px-3 pb-1 text-[0.7rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
                         My Work
                     </div>
-                )}
 
-                <Link href="/dashboard" style={navLinkStyle(isDashboard)}>
-                    <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>📚</span>
-                    <span style={labelStyle}>{isTeacher || isSpecialist ? "My Students" : "My Children"}</span>
-                </Link>
+                    <Link href="/dashboard" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${isMyChildren ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`} aria-current={isMyChildren ? "page" : undefined}>
+                        <BookOpen size={18} />
+                        <span>{isTeacher || isSpecialist ? "My Students" : "My Children"}</span>
+                    </Link>
 
-                {!collapsed && (
-                    <div style={{ padding: "8px 16px 4px 16px", marginTop: "1rem", fontSize: "0.75rem", fontWeight: "bold", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
+                    <div className="px-3 pb-1 mt-6 text-[0.7rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
                         Account
                     </div>
-                )}
-                {collapsed && <div style={{ height: "1.5rem" }} />}
 
+                    {user && (
+                        <Link href={`/users/${user.user_id}`}  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                            <User size={18} />
+                            <span>My Profile</span>
+                        </Link>
+                    )}
+                </nav>
+            </aside>
+
+            {/* Mobile Bottom Navigation */}
+            <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+                <Link href="/dashboard" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isMyChildren ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                    <BookOpen size={20} className={isMyChildren ? "stroke-[2.5px]" : ""} />
+                    <span className="text-[0.65rem] font-medium">{isTeacher || isSpecialist ? "Students" : "Children"}</span>
+                </Link>
                 {user && (
-                    <Link href={`/users/${user.user_id}`} style={navLinkStyle(isProfile)}>
-                        <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>👤</span>
-                        <span style={labelStyle}>My Profile</span>
+                    <Link href={`/users/${user.user_id}`} className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProfile ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                        <User size={20} className={isProfile ? "stroke-[2.5px]" : ""} />
+                        <span className="text-[0.65rem] font-medium">Profile</span>
                     </Link>
                 )}
             </nav>
-
-            {/* Collapse Toggle — sits right below the nav, not at the bottom */}
-            <button
-                onClick={toggleCollapse}
-                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                style={{
-                    marginTop: "1rem",
-                    width: "100%",
-                    padding: "10px",
-                    background: "transparent",
-                    border: "1px solid var(--border-light)",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    color: "var(--text-muted)",
-                    fontSize: "1rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    transition: "background 0.2s ease",
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f1f5f9")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-            >
-                <span style={{
-                    transition: transitioning ? "transform 0.25s ease" : "none",
-                    display: "inline-block",
-                    transform: collapsed ? "rotate(180deg)" : "rotate(0deg)"
-                }}>‹‹</span>
-                {!collapsed && <span style={labelStyle}>Collapse</span>}
-            </button>
-        </aside>
+        </>
     );
 }

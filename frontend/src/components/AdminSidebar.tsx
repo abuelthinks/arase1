@@ -2,27 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
-
-function getInitialCollapsed(key: string): boolean {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(key) === "true";
-}
+import { BarChart3, GraduationCap, UsersRound, Mail } from "lucide-react";
 
 export default function AdminSidebar() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const [collapsed, setCollapsed] = useState(() => getInitialCollapsed("admin-sidebar-collapsed"));
-    const [transitioning, setTransitioning] = useState(false);
-
-    const toggleCollapse = () => {
-        setTransitioning(true);
-        setCollapsed(prev => {
-            const next = !prev;
-            localStorage.setItem("admin-sidebar-collapsed", String(next));
-            return next;
-        });
-    };
 
     // Determine active tab dynamically
     let activeTab = "analytics";
@@ -35,118 +19,64 @@ export default function AdminSidebar() {
         if (tabParam) activeTab = tabParam;
     }
 
-    const navLinkStyle = (active: boolean): React.CSSProperties => ({
-        padding: collapsed ? "12px" : "12px 16px",
-        background: active ? "var(--accent-primary)" : "transparent",
-        color: active ? "white" : "var(--text-primary)",
-        borderRadius: "8px",
-        textAlign: "left",
-        fontWeight: active ? "bold" : "normal",
-        cursor: "pointer",
-        fontSize: "1rem",
-        transition: "all 0.2s ease",
-        textDecoration: "none",
-        display: "flex",
-        alignItems: "center",
-        gap: collapsed ? "0" : "10px",
-        justifyContent: collapsed ? "center" : "flex-start",
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-    });
-
-    const labelStyle: React.CSSProperties = {
-        overflow: "hidden",
-        maxWidth: collapsed ? "0" : "160px",
-        opacity: collapsed ? 0 : 1,
-        transition: transitioning ? "max-width 0.25s ease, opacity 0.2s ease" : "none",
-        whiteSpace: "nowrap",
-    };
-
     return (
-        <aside style={{
-            position: "sticky",
-            top: 0,
-            height: "100%",
-            overflowY: "auto",
-            width: collapsed ? "68px" : "250px",
-            transition: transitioning ? "width 0.25s ease" : "none",
-            backgroundColor: "white",
-            borderRight: "1px solid var(--border-light)",
-            display: "flex",
-            flexDirection: "column",
-            padding: "2rem 0.75rem",
-            boxShadow: "2px 0 5px rgba(0,0,0,0.02)",
-            flexShrink: 0,
-        }}>
-            {/* Logo */}
-            <div
-                style={{ marginBottom: "3rem", padding: "0 10px", cursor: "pointer", overflow: "hidden" }}
-                onClick={() => window.location.href = "/dashboard"}
-            >
-                {collapsed ? (
-                    <div style={{ fontSize: "1.4rem", textAlign: "center" }}>🛡️</div>
-                ) : (
-                    <>
-                        <h1 style={{ fontSize: "1.5rem", color: "var(--accent-primary)", margin: "0 0 0.5rem 0", whiteSpace: "nowrap" }}>Admin Portal</h1>
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>Workspace</span>
-                    </>
-                )}
-            </div>
+        <>
+            {/* Desktop Sidebar */}
+            <aside className="hidden md:flex flex-col w-56 bg-white border-r border-[var(--border-light)] p-6 shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0">
+                {/* Logo */}
+                <div
+                    className="mb-10 cursor-pointer px-2"
+                    onClick={() => window.location.href = "/dashboard"}
+                >
+                    <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 mb-1 leading-tight">Admin Portal</h1>
+                    <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider">Workspace</span>
+                </div>
 
-            {/* Nav */}
-            <nav style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <Link href="/dashboard?tab=analytics" style={navLinkStyle(activeTab === "analytics")}>
-                    <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>📊</span>
-                    <span style={labelStyle}>Analytics</span>
-                </Link>
-                <Link href="/dashboard?tab=students" style={navLinkStyle(activeTab === "students")}>
-                    <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>📚</span>
-                    <span style={labelStyle}>Student Roster</span>
-                </Link>
+                {/* Nav */}
+                <nav className="flex flex-col gap-1">
+                    <Link href="/dashboard?tab=analytics" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                        <BarChart3 size={18} />
+                        <span>Analytics</span>
+                    </Link>
+                    <Link href="/dashboard?tab=students" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                        <GraduationCap size={18} />
+                        <span>Student Roster</span>
+                    </Link>
 
-                {!collapsed && (
-                    <div style={{ padding: "8px 16px 4px 16px", marginTop: "1rem", fontSize: "0.75rem", fontWeight: "bold", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
+                    <div className="px-3 pb-1 mt-6 text-[0.7rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
                         Organization
                     </div>
-                )}
-                {collapsed && <div style={{ height: "1.5rem" }} />}
 
-                <Link href="/dashboard?tab=users" style={navLinkStyle(activeTab === "users")}>
-                    <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>👥</span>
-                    <span style={labelStyle}>System Users</span>
+                    <Link href="/dashboard?tab=users" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                        <UsersRound size={18} />
+                        <span>System Users</span>
+                    </Link>
+                    <Link href="/dashboard?tab=invitations" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                        <Mail size={18} />
+                        <span>Pending Invites</span>
+                    </Link>
+                </nav>
+            </aside>
+
+            {/* Mobile Bottom Navigation */}
+            <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+                <Link href="/dashboard?tab=analytics" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'analytics' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                    <BarChart3 size={20} className={activeTab === 'analytics' ? "stroke-[2.5px]" : ""} />
+                    <span className="text-[0.65rem] font-medium">Analytics</span>
                 </Link>
-                <Link href="/dashboard?tab=invitations" style={navLinkStyle(activeTab === "invitations")}>
-                    <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>✉️</span>
-                    <span style={labelStyle}>Pending Invites</span>
+                <Link href="/dashboard?tab=students" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'students' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                    <GraduationCap size={20} className={activeTab === 'students' ? "stroke-[2.5px]" : ""} />
+                    <span className="text-[0.65rem] font-medium">Roster</span>
+                </Link>
+                <Link href="/dashboard?tab=users" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'users' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                    <UsersRound size={20} className={activeTab === 'users' ? "stroke-[2.5px]" : ""} />
+                    <span className="text-[0.65rem] font-medium">Users</span>
+                </Link>
+                <Link href="/dashboard?tab=invitations" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'invitations' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                    <Mail size={20} className={activeTab === 'invitations' ? "stroke-[2.5px]" : ""} />
+                    <span className="text-[0.65rem] font-medium">Invites</span>
                 </Link>
             </nav>
-
-            {/* Collapse Toggle */}
-            <button
-                onClick={toggleCollapse}
-                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                style={{
-                    marginTop: "1rem",
-                    width: "100%",
-                    padding: "10px",
-                    background: "transparent",
-                    border: "1px solid var(--border-light)",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    color: "var(--text-muted)",
-                    fontSize: "1rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    transition: "all 0.2s ease",
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f1f5f9")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-            >
-                <span style={{ transition: "transform 0.25s ease", display: "inline-block", transform: collapsed ? "rotate(180deg)" : "rotate(0deg)" }}>‹‹</span>
-                {!collapsed && <span style={labelStyle}>Collapse</span>}
-            </button>
-        </aside>
+        </>
     );
 }
