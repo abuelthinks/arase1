@@ -5,6 +5,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
@@ -138,24 +139,14 @@ export default function DashboardPage() {
 
     return (
         <ProtectedRoute>
-            <>
+            <div className="px-4 md:px-0 max-w-7xl mx-auto">
                 {/* SMS Verification Banner — Parent only */}
                 {user?.role === "PARENT" && isPhoneVerified === false && (
-                    <div style={{
-                        background: "linear-gradient(90deg, #fef3c7, #fffbeb)",
-                        border: "1px solid #fbbf24",
-                        borderRadius: "8px",
-                        padding: "12px 20px",
-                        marginBottom: "1.5rem",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "12px",
-                        flexWrap: "wrap",
-                    }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <span style={{ fontSize: "1.2rem" }}>📱</span>
-                            <p style={{ margin: 0, fontSize: "0.9rem", color: "#92400e", fontWeight: 500 }}>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 sm:px-5 sm:py-3 rounded-lg border border-amber-400"
+                        style={{ background: "linear-gradient(90deg, #fef3c7, #fffbeb)" }}>
+                        <div className="flex items-start gap-3">
+                            <span className="text-xl leading-none mt-0.5">📱</span>
+                            <p className="m-0 text-sm md:text-[0.9rem] text-amber-900 font-medium">
                                 {user?.phone_number
                                     ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
                                     : <>Your phone number has not been verified yet. Verify it to enable SMS alerts and notifications.</>
@@ -164,11 +155,7 @@ export default function DashboardPage() {
                         </div>
                         <button
                             onClick={() => setShowSMSModal(true)}
-                            style={{
-                                background: "#f59e0b", color: "white", border: "none",
-                                borderRadius: "6px", padding: "8px 16px", fontWeight: 700,
-                                cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap"
-                            }}
+                            className="bg-amber-500 hover:bg-amber-600 text-white border-none rounded-md px-4 py-2 font-bold cursor-pointer text-sm whitespace-nowrap transition-colors w-full sm:w-auto mt-2 sm:mt-0"
                         >
                             Verify Now
                         </button>
@@ -188,19 +175,19 @@ export default function DashboardPage() {
                     />
                 )}
 
-                {/* Page header */}
-                <div style={{ marginBottom: "2rem" }}>
-                    <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
-                        {user?.role === "PARENT" ? "My Children" : "My Students"} 
-                        {students.length > 0 && <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedStudents.length})</span>}
-                    </h2>
-                    <p style={{ color: "var(--text-secondary)", marginTop: "5px" }}>{getSubtitle()}</p>
-                </div>
-
                 <WelcomeBanner students={students} />
 
+                {/* Page header */}
+                <div className="mb-5 md:mb-8">
+                    <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-baseline gap-2">
+                        {user?.role === "PARENT" ? "My Children" : "My Students"} 
+                        {students.length > 0 && <span className="text-base md:text-xl text-slate-400 font-normal">({processedStudents.length})</span>}
+                    </h2>
+                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
+                </div>
+
                 {/* Content panel */}
-                <div className="glass-panel" style={{ padding: "2rem", background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
+                <div className="glass-panel p-4 sm:p-6 md:p-8" style={{ background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
                     {loading ? (
                         <p>Loading...</p>
                     ) : students.length === 0 ? (
@@ -217,7 +204,7 @@ export default function DashboardPage() {
                                     <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
                                         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
                                             <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
-                                                <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                                 <input
                                                     type="text"
                                                     placeholder="Search by name or ID..."
@@ -390,91 +377,119 @@ export default function DashboardPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                                    <table style={{ width: "100%", minWidth: "500px", borderCollapse: "collapse", textAlign: "left" }}>
-                                        <thead>
-                                            <tr>
-                                                <th onClick={() => handleSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        NAME
-                                                        <span style={{ opacity: sortConfig?.key === 'name' ? 1 : 0.3 }}>
-                                                            {sortConfig?.key === 'name' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        GRADE
-                                                        <span style={{ opacity: sortConfig?.key === 'grade' ? 1 : 0.3 }}>
-                                                            {sortConfig?.key === 'grade' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleSort('status')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        STATUS
-                                                        <span style={{ opacity: sortConfig?.key === 'status' ? 1 : 0.3 }}>
-                                                            {sortConfig?.key === 'status' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginatedStudents.map(s => {
-                                                const badge = statusColors[s.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
-                                                return (
-                                                    <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
-                                                        <td style={{ padding: "12px" }}>
-                                                            <Link href={`/students/${s.id}`} style={{ fontWeight: "bold", color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-blue-600 transition-colors">
+                                <>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                        <table style={{ width: "100%", minWidth: "500px", borderCollapse: "collapse", textAlign: "left" }}>
+                                            <thead>
+                                                <tr>
+                                                    <th onClick={() => handleSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            NAME
+                                                            <span style={{ opacity: sortConfig?.key === 'name' ? 1 : 0.3 }}>
+                                                                {sortConfig?.key === 'name' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            GRADE
+                                                            <span style={{ opacity: sortConfig?.key === 'grade' ? 1 : 0.3 }}>
+                                                                {sortConfig?.key === 'grade' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleSort('status')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            STATUS
+                                                            <span style={{ opacity: sortConfig?.key === 'status' ? 1 : 0.3 }}>
+                                                                {sortConfig?.key === 'status' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedStudents.map(s => {
+                                                    const badge = statusColors[s.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
+                                                    return (
+                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
+                                                            <td style={{ padding: "12px" }}>
+                                                                <Link href={`/students/${s.id}`} style={{ fontWeight: "bold", color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-blue-600 transition-colors">
+                                                                    {s.first_name} {s.last_name}
+                                                                </Link>
+                                                            </td>
+                                                            <td style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                                                                {s.grade && s.grade !== "TBD" ? s.grade : <span className="text-slate-400 italic">Not yet assigned</span>}
+                                                            </td>
+                                                            <td style={{ padding: "12px" }}>
+                                                                <span style={{
+                                                                    fontSize: "0.72rem",
+                                                                    fontWeight: "bold",
+                                                                    padding: "4px 10px",
+                                                                    borderRadius: "12px",
+                                                                    textTransform: "uppercase",
+                                                                    letterSpacing: "0.3px",
+                                                                    background: badge.bg,
+                                                                    color: badge.color,
+                                                                }}>
+                                                                    {s.status?.replace(/_/g, " ")}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: "12px", textAlign: "right" }}>
+                                                                <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
+                                                                    {s.status === "PENDING_ASSESSMENT" && (
+                                                                        <Link 
+                                                                            href={`/students/${s.id}`}
+                                                                            className="btn-indigo"
+                                                                            style={{ textDecoration: "none" }}
+                                                                        >
+                                                                            Start Assessment
+                                                                        </Link>
+                                                                    )}
+                                                                    <Link 
+                                                                        href={`/students/${s.id}`} 
+                                                                        className="hover:bg-blue-50 transition-colors duration-200 block"
+                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", color: "#3b82f6" }}
+                                                                        title="View Profile"
+                                                                    >
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                                    </Link>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="md:hidden flex flex-col gap-4 w-full">
+                                        {paginatedStudents.map(s => {
+                                            const badge = statusColors[s.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
+                                            return (
+                                                <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex flex-col">
+                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-lg hover:text-blue-600 transition-colors">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
-                                                        </td>
-                                                        <td style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                                                            {s.grade && s.grade !== "TBD" ? s.grade : <span className="text-slate-400 italic">Not yet assigned</span>}
-                                                        </td>
-                                                        <td style={{ padding: "12px" }}>
-                                                            <span style={{
-                                                                fontSize: "0.72rem",
-                                                                fontWeight: "bold",
-                                                                padding: "4px 10px",
-                                                                borderRadius: "12px",
-                                                                textTransform: "uppercase",
-                                                                letterSpacing: "0.3px",
-                                                                background: badge.bg,
-                                                                color: badge.color,
-                                                            }}>
-                                                                {s.status?.replace(/_/g, " ")}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ padding: "12px", textAlign: "right" }}>
-                                                            <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                                                                {s.status === "PENDING_ASSESSMENT" && (
-                                                                    <Link 
-                                                                        href={`/students/${s.id}`}
-                                                                        className="btn-indigo"
-                                                                        style={{ textDecoration: "none" }}
-                                                                    >
-                                                                        Start Assessment
-                                                                    </Link>
-                                                                )}
-                                                                <Link 
-                                                                    href={`/students/${s.id}`} 
-                                                                    className="hover:bg-blue-50 transition-colors duration-200"
-                                                                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", color: "#3b82f6" }}
-                                                                    title="View Profile"
-                                                                >
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                                                                </Link>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                            <span className="text-sm text-slate-500 mt-0.5">{s.grade && s.grade !== "TBD" ? `Grade: ${s.grade}` : "Grade: Unassigned"}</span>
+                                                        </div>
+                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: badge.bg, color: badge.color, textAlign: "center", whiteSpace: "nowrap" }}>
+                                                            {s.status?.replace(/_/g, " ")}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-slate-100">
+                                                        {s.status === "PENDING_ASSESSMENT" && (
+                                                            <Link href={`/students/${s.id}`} className="btn-indigo flex-1 text-center justify-center text-sm py-2">Start Assessment</Link>
+                                                        )}
+                                                        <Link href={`/students/${s.id}`} className="btn-secondary flex-1 text-center justify-center text-sm py-2">View Profile</Link>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
                             )}
 
                             {/* Pagination Controls */}
@@ -498,7 +513,7 @@ export default function DashboardPage() {
                         </div>
                     )}
                 </div>
-            </>
+            </div>
         </ProtectedRoute>
     );
 }

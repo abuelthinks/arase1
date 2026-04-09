@@ -5,6 +5,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
+import { Search } from "lucide-react";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
@@ -498,28 +499,43 @@ export default function AdminDashboard() {
     // Bottlenecks: students stuck in INQUIRY or EVALUATION (no parent input yet)
     const bottlenecks = students.filter(s => s.status === 'INQUIRY').slice(0, 5);
 
-    /* ─── Render ─────────────────────────────────────────────────────────── */
-
     return (
         <>
-            <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
-                            {activeTab === "analytics" && <>Analytics Dashboard</>}
-                            {activeTab === "students" && <>Student Roster <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedStudents.length})</span></>}
-                            {activeTab === "users" && <>System Users <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedUsers.length})</span></>}
-                            {activeTab === "invitations" && <>Pending Invitations <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedInvitations.length})</span></>}
+            {/* Desktop heading — unchanged */}
+            <div className="hidden md:flex mb-8 justify-between items-center">
+                <div>
+                    <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
+                        {activeTab === "analytics" && <>Analytics Dashboard</>}
+                        {activeTab === "students" && <>Student Roster <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedStudents.length})</span></>}
+                        {activeTab === "users" && <>System Users <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedUsers.length})</span></>}
+                        {activeTab === "invitations" && <>Pending Invitations <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedInvitations.length})</span></>}
+                    </h2>
+                    <p style={{ margin: "5px 0 0 0", color: "var(--text-secondary)" }}>
+                        {activeTab === "analytics" && "High-level metrics, demographic breakdowns, and active bottlenecks."}
+                        {activeTab === "students" && "Manage all registered students in the system."}
+                        {activeTab === "users" && "Manage active system users and clinical roles."}
+                        {activeTab === "invitations" && "Track and revoke pending access invitations."}
+                    </p>
+                </div>
+            </div>
+
+                {/* Desktop only: card wrapper. Mobile: px-4 content padding */}
+                <div className="p-4 sm:p-6 md:p-8 md:glass-panel md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] md:min-h-[60vh]">
+                    {/* Mobile-only title */}
+                    <div className="md:hidden mb-5">
+                        <h2 className="m-0 text-xl font-bold text-slate-800">
+                            {activeTab === "analytics" && "Analytics Dashboard"}
+                            {activeTab === "students" && <>Student Roster <span className="text-base font-normal text-slate-400">({processedStudents.length})</span></>}
+                            {activeTab === "users" && <>System Users <span className="text-base font-normal text-slate-400">({processedUsers.length})</span></>}
+                            {activeTab === "invitations" && <>Pending Invitations <span className="text-base font-normal text-slate-400">({processedInvitations.length})</span></>}
                         </h2>
-                        <p style={{ margin: "5px 0 0 0", color: "var(--text-secondary)" }}>
-                            {activeTab === "analytics" && "High-level metrics, demographic breakdowns, and active bottlenecks."}
+                        <p className="m-0 mt-1 text-sm text-slate-400">
+                            {activeTab === "analytics" && "High-level metrics, breakdowns, and bottlenecks."}
                             {activeTab === "students" && "Manage all registered students in the system."}
                             {activeTab === "users" && "Manage active system users and clinical roles."}
                             {activeTab === "invitations" && "Track and revoke pending access invitations."}
                         </p>
                     </div>
-                </div>
-
-                <div className="glass-panel" style={{ padding: "2rem", background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
                     {loading ? (
                         <p>Loading database...</p>
                     ) : activeTab === "analytics" ? (
@@ -654,10 +670,10 @@ export default function AdminDashboard() {
                     ) : activeTab === "students" ? (
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
-                                    <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
-                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
+                                <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
+                                    <div className="relative w-full md:flex-1 md:max-w-[400px]">
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
                                             type="text"
                                             placeholder="Search by name or ID..."
@@ -676,7 +692,7 @@ export default function AdminDashboard() {
                                             }}
                                         />
                                     </div>
-                                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                    <div className="flex gap-2 items-center overflow-x-auto w-full md:w-auto pb-1 md:pb-0" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                                         {uniqueStatuses.map(s => {
                                             const isActive = statusFilters.includes(s);
                                             return (
@@ -709,8 +725,8 @@ export default function AdminDashboard() {
                                         )}
                                     </div>
                                 </div>
-                                <div style={{ display: "flex", alignItems: "center" }}>
-                                    <button onClick={() => setShowStudentModal(true)} className="btn-primary" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
+                                <div className="w-full md:w-auto flex items-center shrink-0">
+                                    <button onClick={() => setShowStudentModal(true)} className="btn-primary w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
                                         + Register New Student
                                     </button>
                                 </div>
@@ -740,82 +756,110 @@ export default function AdminDashboard() {
                                         : `No students found matching '${studentSearch}'. Try a different search term or relaxing your filters?`}
                                 </p>
                             ) : (
-                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                                    <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse", textAlign: "left" }}>
-                                        <thead>
-                                            <tr>
-                                                <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        ID
-                                                        <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
-                                                            {studentSortConfig.key === 'id' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        NAME
-                                                        <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
-                                                            {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        GRADE
-                                                        <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
-                                                            {studentSortConfig.key === 'grade' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleStudentSort('status')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        STATUS
-                                                        <span style={{ opacity: studentSortConfig.key === 'status' ? 1 : 0.3 }}>
-                                                            {studentSortConfig.key === 'status' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginatedStudents.map(s => {
-                                                const ss = getStatusStyle(s.status);
-                                                return (
-                                                    <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
-                                                        <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
-                                                        <td style={{ padding: "12px" }}>
-                                                            <Link href={`/students/${s.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                <>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                        <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse", textAlign: "left" }}>
+                                            <thead>
+                                                <tr>
+                                                    <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            ID
+                                                            <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
+                                                                {studentSortConfig.key === 'id' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            NAME
+                                                            <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
+                                                                {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            GRADE
+                                                            <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
+                                                                {studentSortConfig.key === 'grade' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleStudentSort('status')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            STATUS
+                                                            <span style={{ opacity: studentSortConfig.key === 'status' ? 1 : 0.3 }}>
+                                                                {studentSortConfig.key === 'status' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedStudents.map(s => {
+                                                    const ss = getStatusStyle(s.status);
+                                                    return (
+                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                            <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
+                                                            <td style={{ padding: "12px" }}>
+                                                                <Link href={`/students/${s.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                    {s.first_name} {s.last_name}
+                                                                </Link>
+                                                            </td>
+                                                            <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{s.grade}</td>
+                                                            <td style={{ padding: "12px" }}>
+                                                                <span style={{
+                                                                    fontSize: "0.72rem",
+                                                                    textTransform: "uppercase",
+                                                                    background: ss.bg,
+                                                                    color: ss.color,
+                                                                    padding: "4px 10px",
+                                                                    borderRadius: "12px",
+                                                                    fontWeight: "bold",
+                                                                    letterSpacing: "0.3px",
+                                                                }}>{s.status.replace(/_/g, " ")}</span>
+                                                            </td>
+                                                            <td style={{ padding: "12px", textAlign: "right" }}>
+                                                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
+                                                                    <Link href={`/students/${s.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="Manage Student">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                                                    </Link>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="md:hidden flex flex-col gap-3">
+                                        {paginatedStudents.map(s => {
+                                            const ss = getStatusStyle(s.status);
+                                            return (
+                                                <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-xs font-mono text-slate-400 mb-1">#{s.id}</span>
+                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
-                                                        </td>
-                                                        <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{s.grade}</td>
-                                                        <td style={{ padding: "12px" }}>
-                                                            <span style={{
-                                                                fontSize: "0.72rem",
-                                                                textTransform: "uppercase",
-                                                                background: ss.bg,
-                                                                color: ss.color,
-                                                                padding: "4px 10px",
-                                                                borderRadius: "12px",
-                                                                fontWeight: "bold",
-                                                                letterSpacing: "0.3px",
-                                                            }}>{s.status}</span>
-                                                        </td>
-                                                        <td style={{ padding: "12px", textAlign: "right" }}>
-                                                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
-                                                                <Link href={`/students/${s.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="Manage Student">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
-                                                                </Link>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                            <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>
+                                                        </div>
+                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: ss.bg, color: ss.color, textAlign: "center", whiteSpace: "nowrap" }}>
+                                                            {s.status.replace(/_/g, " ")}
+                                                        </span>
+                                                    </div>
+                                                    <div className="border-t border-slate-100 pt-3 flex justify-end">
+                                                        <Link href={`/students/${s.id}`} className="btn-slate text-sm w-full text-center flex justify-center py-2" title="Manage Student">
+                                                            Manage Student
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
                             )}
                             
                             {/* Pagination Controls */}
@@ -840,10 +884,10 @@ export default function AdminDashboard() {
                     ) : activeTab === "users" ? (
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
-                                    <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
-                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
+                                <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
+                                    <div className="relative w-full md:flex-1 md:max-w-[400px]">
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
                                             type="text"
                                             placeholder="Search by name, email, or username..."
@@ -862,7 +906,7 @@ export default function AdminDashboard() {
                                             }}
                                         />
                                     </div>
-                                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                    <div className="flex gap-2 items-center overflow-x-auto w-full md:w-auto pb-1 md:pb-0" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                                         {uniqueUserRoles.map(r => {
                                             const isActive = userRoleFilters.includes(r);
                                             return (
@@ -895,8 +939,8 @@ export default function AdminDashboard() {
                                         )}
                                     </div>
                                 </div>
-                                <div style={{ display: "flex", alignItems: "center" }}>
-                                    <button onClick={() => setShowUserModal(true)} className="btn-primary" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
+                                <div className="w-full md:w-auto flex items-center shrink-0">
+                                    <button onClick={() => setShowUserModal(true)} className="btn-primary w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
                                         + Create New User
                                     </button>
                                 </div>
@@ -926,89 +970,134 @@ export default function AdminDashboard() {
                                         : `No users found matching '${userSearch}'. Try a different search term or relaxing your filters?`}
                                 </p>
                             ) : (
-                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                                    <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse", textAlign: "left" }}>
-                                        <thead>
-                                            <tr>
-                                                <th onClick={() => handleUserSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        NAME
-                                                        <span style={{ opacity: userSortConfig.key === 'name' ? 1 : 0.3 }}>
-                                                            {userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleUserSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        ROLE
-                                                        <span style={{ opacity: userSortConfig.key === 'role' ? 1 : 0.3 }}>
-                                                            {userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleUserSort('kids')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        ASSIGNED KIDS
-                                                        <span style={{ opacity: userSortConfig.key === 'kids' ? 1 : 0.3 }}>
-                                                            {userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginatedUsers.map(u => {
-                                                const hasName = u.first_name || u.last_name;
-                                                const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@${u.username}` : u.email);
-                                                return (
-                                                    <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
-                                                        <td style={{ padding: "12px" }}>
-                                                            <div style={{ display: "flex", flexDirection: "column" }}>
-                                                                <Link href={`/users/${u.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
-                                                                    {displayName}
-                                                                </Link>
-                                                                <span style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>{u.email}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: "12px" }}>
-                                                            <span style={{ fontSize: "0.75rem", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "600", letterSpacing: "0.3px" }}>
-                                                                {u.role}
+                                <>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                        <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse", textAlign: "left" }}>
+                                            <thead>
+                                                <tr>
+                                                    <th onClick={() => handleUserSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            NAME
+                                                            <span style={{ opacity: userSortConfig.key === 'name' ? 1 : 0.3 }}>
+                                                                {userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
-                                                        </td>
-                                                        <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                                                            {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
-                                                                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "#f1f5f9", color: "#475569", fontWeight: "bold", fontSize: "0.8rem", padding: "0 6px" }}>
-                                                                    {u.assigned_students_count}
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleUserSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            ROLE
+                                                            <span style={{ opacity: userSortConfig.key === 'role' ? 1 : 0.3 }}>
+                                                                {userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleUserSort('kids')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            ASSIGNED KIDS
+                                                            <span style={{ opacity: userSortConfig.key === 'kids' ? 1 : 0.3 }}>
+                                                                {userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedUsers.map(u => {
+                                                    const hasName = u.first_name || u.last_name;
+                                                    const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@${u.username}` : u.email);
+                                                    return (
+                                                        <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                            <td style={{ padding: "12px" }}>
+                                                                <div style={{ display: "flex", flexDirection: "column" }}>
+                                                                    <Link href={`/users/${u.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                        {displayName}
+                                                                    </Link>
+                                                                    <span style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>{u.email}</span>
                                                                 </div>
-                                                            ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
-                                                                <div style={{ color: "var(--text-primary)", fontSize: "0.85rem", maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={u.assigned_student_names.join(', ')}>
-                                                                    {u.assigned_student_names.join(', ')}
+                                                            </td>
+                                                            <td style={{ padding: "12px" }}>
+                                                                <span style={{ fontSize: "0.75rem", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "600", letterSpacing: "0.3px" }}>
+                                                                    {u.role}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                                                                {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
+                                                                    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "#f1f5f9", color: "#475569", fontWeight: "bold", fontSize: "0.8rem", padding: "0 6px" }}>
+                                                                        {u.assigned_students_count}
+                                                                    </div>
+                                                                ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
+                                                                    <div style={{ color: "var(--text-primary)", fontSize: "0.85rem", maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={u.assigned_student_names.join(', ')}>
+                                                                        {u.assigned_student_names.join(', ')}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span style={{ color: "#cbd5e1" }}>-</span>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ padding: "12px", textAlign: "right" }}>
+                                                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
+                                                                    <Link href={`/users/${u.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                                                    </Link>
+                                                                    <button onClick={() => {
+                                                                        setUserToDelete(u);
+                                                                        setDeleteConfirmText("");
+                                                                        setDeleteError("");
+                                                                    }} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                                                    </button>
                                                                 </div>
-                                                            ) : (
-                                                                <span style={{ color: "#cbd5e1" }}>-</span>
-                                                            )}
-                                                        </td>
-                                                        <td style={{ padding: "12px", textAlign: "right" }}>
-                                                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
-                                                                <Link href={`/users/${u.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
-                                                                </Link>
-                                                                <button onClick={() => {
-                                                                    setUserToDelete(u);
-                                                                    setDeleteConfirmText("");
-                                                                    setDeleteError("");
-                                                                }} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="md:hidden flex flex-col gap-3">
+                                        {paginatedUsers.map(u => {
+                                            const hasName = u.first_name || u.last_name;
+                                            const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@${u.username}` : u.email);
+                                            return (
+                                                <div key={u.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex flex-col min-w-0">
+                                                            <Link href={`/users/${u.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
+                                                                {displayName}
+                                                            </Link>
+                                                            <span className="text-sm text-slate-500 mt-1 truncate">{u.email}</span>
+                                                        </div>
+                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, textAlign: "center", whiteSpace: "nowrap" }}>
+                                                            {u.role}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-sm text-slate-600">
+                                                        <span className="font-semibold mr-1">Assigned Kids:</span>
+                                                        {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
+                                                            <span>{u.assigned_students_count}</span>
+                                                        ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
+                                                            <span>{u.assigned_student_names.join(', ')}</span>
+                                                        ) : (
+                                                            <span className="text-slate-400">None</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="border-t border-slate-100 pt-3 flex justify-end gap-2">
+                                                        <Link href={`/users/${u.id}`} className="btn-slate text-sm flex-1 text-center py-2" title="View Profile">
+                                                            Profile
+                                                        </Link>
+                                                        <button onClick={() => {
+                                                            setUserToDelete(u);
+                                                            setDeleteConfirmText("");
+                                                            setDeleteError("");
+                                                        }} className="btn-red text-sm flex-1 py-2" title="Delete User">
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
                             )}
                             
                             {/* Pagination Controls */}
@@ -1033,10 +1122,10 @@ export default function AdminDashboard() {
                     ) : activeTab === "invitations" ? (
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
-                                    <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
-                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem", pointerEvents: "none" }}>🔍</span>
+                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
+                                <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
+                                    <div className="relative w-full md:flex-1 md:max-w-[400px]">
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
                                             type="text"
                                             placeholder="Search by email..."
@@ -1055,7 +1144,7 @@ export default function AdminDashboard() {
                                             }}
                                         />
                                     </div>
-                                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                    <div className="flex gap-2 items-center overflow-x-auto w-full md:w-auto pb-1 md:pb-0" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                                         {uniqueInvitationRoles.map(r => {
                                             const isActive = invitationRoleFilters.includes(r);
                                             return (
@@ -1088,8 +1177,8 @@ export default function AdminDashboard() {
                                         )}
                                     </div>
                                 </div>
-                                <div style={{ display: "flex", alignItems: "center" }}>
-                                    <button onClick={() => setShowInviteModal(true)} className="btn-secondary" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap", background: "#f8fafc", color: "var(--accent-primary)", border: "1px solid var(--accent-primary)", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
+                                <div className="w-full md:w-auto flex items-center shrink-0">
+                                    <button onClick={() => setShowInviteModal(true)} className="btn-secondary w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap", background: "#f8fafc", color: "var(--accent-primary)", border: "1px solid var(--accent-primary)", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
                                         ✉️ Invite New User
                                     </button>
                                 </div>
@@ -1119,92 +1208,139 @@ export default function AdminDashboard() {
                                         : `No invitations found matching '${invitationSearch}'.`}
                                 </p>
                             ) : (
-                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                                    <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", textAlign: "left" }}>
-                                        <thead>
-                                            <tr>
-                                                <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        EMAIL
-                                                        <span style={{ opacity: invitationSortConfig.key === 'email' ? 1 : 0.3 }}>
-                                                            {invitationSortConfig.key === 'email' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleInvitationSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        ROLE
-                                                        <span style={{ opacity: invitationSortConfig.key === 'role' ? 1 : 0.3 }}>
-                                                            {invitationSortConfig.key === 'role' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th onClick={() => handleInvitationSort('date')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                        SENT DATE
-                                                        <span style={{ opacity: invitationSortConfig.key === 'date' ? 1 : 0.3 }}>
-                                                            {invitationSortConfig.key === 'date' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                        </span>
-                                                    </div>
-                                                </th>
-                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>EXPIRES</th>
-                                                <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginatedInvitations.map(inv => {
-                                                const expiry = inv.expires_at ? getExpiryDisplay(inv.expires_at) : null;
-                                                return (
-                                                <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-slate-100 transition-colors duration-150">
-                                                    <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)", textDecoration: expiry?.isExpired ? 'line-through' : 'none' }}>{inv.email}</td>
-                                                    <td style={{ padding: "12px" }}>
-                                                        <span style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+                                <>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                        <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", textAlign: "left" }}>
+                                            <thead>
+                                                <tr>
+                                                    <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            EMAIL
+                                                            <span style={{ opacity: invitationSortConfig.key === 'email' ? 1 : 0.3 }}>
+                                                                {invitationSortConfig.key === 'email' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleInvitationSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            ROLE
+                                                            <span style={{ opacity: invitationSortConfig.key === 'role' ? 1 : 0.3 }}>
+                                                                {invitationSortConfig.key === 'role' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th onClick={() => handleInvitationSort('date')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            SENT DATE
+                                                            <span style={{ opacity: invitationSortConfig.key === 'date' ? 1 : 0.3 }}>
+                                                                {invitationSortConfig.key === 'date' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                            </span>
+                                                        </div>
+                                                    </th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>EXPIRES</th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedInvitations.map(inv => {
+                                                    const expiry = inv.expires_at ? getExpiryDisplay(inv.expires_at) : null;
+                                                    return (
+                                                    <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                        <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)", textDecoration: expiry?.isExpired ? 'line-through' : 'none' }}>{inv.email}</td>
+                                                        <td style={{ padding: "12px" }}>
+                                                            <span style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+                                                                {inv.role}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{new Date(inv.created_at).toLocaleDateString()}</td>
+                                                        <td style={{ padding: "12px" }}>
+                                                            {expiry ? (
+                                                                <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+                                                                    {expiry.label}
+                                                                </span>
+                                                            ) : <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>}
+                                                        </td>
+                                                        <td style={{ padding: "12px", textAlign: "right" }}>
+                                                            <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
+                                                                {expiry?.isExpired ? (
+                                                                    <button
+                                                                        onClick={() => handleResendInvite(inv.id, inv.email)}
+                                                                        className="hover:bg-green-50 transition-colors duration-200"
+                                                                        style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", height: "32px", borderRadius: "6px", background: "none", border: "1px solid #16a34a", color: "#16a34a", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                                                        title="Resend Invitation"
+                                                                    >
+                                                                        🔄 Resend
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
+                                                                            alert('Invite link copied to clipboard!');
+                                                                        }}
+                                                                        className="hover:bg-blue-50 transition-colors duration-200"
+                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}
+                                                                        title="Copy Invite Link"
+                                                                    >
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                                                    </button>
+                                                                )}
+                                                                <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="md:hidden flex flex-col gap-3">
+                                        {paginatedInvitations.map(inv => {
+                                            const expiry = inv.expires_at ? getExpiryDisplay(inv.expires_at) : null;
+                                            return (
+                                                <div key={inv.id} className={`bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3 ${expiry?.isExpired ? 'opacity-65' : ''}`}>
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex flex-col flex-1 min-w-0">
+                                                            <span className={`font-bold text-[var(--text-primary)] text-[1rem] truncate ${expiry?.isExpired ? 'line-through' : ''}`} title={inv.email}>
+                                                                {inv.email}
+                                                            </span>
+                                                            <span className="text-sm text-slate-500 mt-1">Sent: {new Date(inv.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, textAlign: "center", whiteSpace: "nowrap", flexShrink: 0 }}>
                                                             {inv.role}
                                                         </span>
-                                                    </td>
-                                                    <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{new Date(inv.created_at).toLocaleDateString()}</td>
-                                                    <td style={{ padding: "12px" }}>
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                                                        <span className="text-slate-500">Expires:</span>
                                                         {expiry ? (
-                                                            <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+                                                            <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "2px 8px", borderRadius: "12px", fontWeight: "bold", whiteSpace: "nowrap" }}>
                                                                 {expiry.label}
                                                             </span>
-                                                        ) : <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>}
-                                                    </td>
-                                                    <td style={{ padding: "12px", textAlign: "right" }}>
-                                                        <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                                                            {expiry?.isExpired ? (
-                                                                <button
-                                                                    onClick={() => handleResendInvite(inv.id, inv.email)}
-                                                                    className="hover:bg-green-50 transition-colors duration-200"
-                                                                    style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", height: "32px", borderRadius: "6px", background: "none", border: "1px solid #16a34a", color: "#16a34a", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
-                                                                    title="Resend Invitation"
-                                                                >
-                                                                    🔄 Resend
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
-                                                                        alert('Invite link copied to clipboard!');
-                                                                    }}
-                                                                    className="hover:bg-blue-50 transition-colors duration-200"
-                                                                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}
-                                                                    title="Copy Invite Link"
-                                                                >
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                                                                </button>
-                                                            )}
-                                                            <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                                        ) : <span className="text-slate-400">—</span>}
+                                                    </div>
+                                                    <div className="border-t border-slate-100 pt-3 flex justify-end gap-2">
+                                                        {expiry?.isExpired ? (
+                                                            <button onClick={() => handleResendInvite(inv.id, inv.email)} className="btn-secondary text-sm flex-1 text-center py-2" title="Resend Invitation">
+                                                                Resend
                                                             </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                        ) : (
+                                                            <button onClick={() => {
+                                                                navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
+                                                                alert('Invite link copied to clipboard!');
+                                                            }} className="btn-secondary text-sm flex-1 text-center py-2" title="Copy Invite Link">
+                                                                Copy Link
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="btn-red text-sm flex-1 py-2" title="Revoke Invite">
+                                                            Revoke
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
                             )}
 
                             {/* Pagination Controls */}

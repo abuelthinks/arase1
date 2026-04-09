@@ -22,9 +22,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const isAdmin = user.role === "ADMIN";
 
     return (
-        <div style={{ display: "flex", height: "calc(100vh - 40px)", overflow: "hidden", backgroundColor: "var(--bg-lighter)" }}>
+        <div className="flex flex-col md:flex-row h-[calc(100vh-40px)] overflow-hidden bg-[var(--bg-lighter)]">
             {isAdmin ? <AdminSidebar /> : <UserSidebar />}
-            <main style={{ flex: 1, padding: "2rem 3rem", overflowY: "auto", height: "100%" }}>
+            <main className="flex-1 px-0 pt-6 pb-28 md:py-8 md:px-12 overflow-y-auto h-full md:pb-8">
                 {children}
             </main>
         </div>

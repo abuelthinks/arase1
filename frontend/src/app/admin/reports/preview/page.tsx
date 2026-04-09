@@ -71,7 +71,7 @@ function PreviewReportContent() {
 
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <button onClick={() => router.back()} className="text-sm text-slate-500 hover:text-slate-800 mb-2 font-medium">← Back to Generator</button>
+                            <button onClick={() => router.back()} className="hidden md:block text-sm text-slate-500 hover:text-slate-800 mb-2 font-medium">← Back to Generator</button>
                             <h1 className="text-3xl font-bold text-slate-900">Preview & Edit Document</h1>
                             <p className="text-slate-500 mt-1">Review the AI-generated and extracted text before finalizing the PDF.</p>
                         </div>

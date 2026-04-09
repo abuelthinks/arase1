@@ -64,7 +64,7 @@ export default function UserActivityPage() {
             <div className="max-w-3xl mx-auto pb-16 px-4">
                 
                 {/* Site Header / Breadcrumbs */}
-                <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                <div className="hidden md:flex" style={{ marginBottom: "2rem", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <button type="button" onClick={() => router.back()}
                             style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#475569", fontWeight: 600, fontSize: "0.85rem", transition: "all 0.2s" }}

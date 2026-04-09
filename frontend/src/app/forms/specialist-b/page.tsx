@@ -265,9 +265,8 @@ function SpecialistBFormContent() {
         <div style={{ maxWidth: "1024px", margin: "0 auto", padding: "2rem 1rem 3rem" }}>
             {/* Breadcrumb Nav */}
             {studentProfile && (
-                <div style={{ 
+                <div className="hidden md:flex" style={{ 
                     marginBottom: "2rem", 
-                    display: "flex", 
                     justifyContent: "space-between", 
                     alignItems: "center", 
                     background: "white", 
@@ -372,7 +371,7 @@ function SpecialistBFormContent() {
             <form onSubmit={handleSubmit}>
                 {/* Section A */}
                 <SectionCard title="Section A — General Information">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Child Name</p>
                             <TextInput value={studentName} readOnly={true} />

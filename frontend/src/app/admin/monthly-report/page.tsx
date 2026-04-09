@@ -147,7 +147,7 @@ function MonthlyReportContent() {
     return (
         <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1rem 4rem" }}>
             {/* Breadcrumb Nav */}
-            <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
                 <button type="button" onClick={() => router.back()}
                     style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
                     onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
@@ -167,7 +167,7 @@ function MonthlyReportContent() {
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                         📊 Monthly Progress Report
                         <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatus === "FINAL" ? "#dcfce7" : "#fef3c7", color: reportStatus === "FINAL" ? "#166534" : "#92400e", border: `1px solid ${reportStatus === "FINAL" ? "#bbf7d0" : "#fde68a"}` }}>
                             {reportStatus === "FINAL" ? "FINAL" : "DRAFT"}
@@ -191,7 +191,7 @@ function MonthlyReportContent() {
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
                             📥 Download PDF
                         </button>
-                        <span style={{ width: "1px", height: "24px", background: "#cbd5e1", margin: "0 4px" }}></span>
+                        <span className="hidden md:block" style={{ width: "1px", height: "24px", background: "#cbd5e1", margin: "0 4px" }}></span>
                         {reportStatus !== "FINAL" ? (
                             <button onClick={() => handleSaveStatus("FINAL")} disabled={saving}
                                 style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
@@ -209,7 +209,7 @@ function MonthlyReportContent() {
 
             {/* Student Info */}
             <SectionCard title="Student Information">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     {[["Student Name", si.student_name], ["Date of Birth", si.date_of_birth], ["Grade/Level", si.grade_level], ["Report Period", report.report_period]].map(([label, val]) => (
                         <div key={label}>
                             <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "3px" }}>{label}</p>
@@ -256,7 +256,7 @@ function MonthlyReportContent() {
             {/* Therapy Session Summary */}
             {tss.discipline && (
                 <SectionCard title="Therapy Session Summary">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         {[["Discipline", tss.discipline], ["Sessions Completed", tss.sessions_completed], ["Attendance", tss.attendance]].map(([label, val]) => (
                             <div key={label as string}>
                                 <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "3px" }}>{label}</p>

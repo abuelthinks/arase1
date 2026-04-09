@@ -249,9 +249,8 @@ function TeacherFormContent() {
         <div style={{ maxWidth: "1024px", margin: "0 auto", paddingBottom: "3rem" }}>
             {/* Breadcrumb Nav */}
             {studentProfile && (
-                <div style={{ 
+                <div className="hidden md:flex" style={{ 
                     marginBottom: "2rem", 
-                    display: "flex", 
                     justifyContent: "space-between", 
                     alignItems: "center", 
                     background: "white", 
@@ -353,7 +352,7 @@ function TeacherFormContent() {
 
             {/* SECTION A */}
             <SectionCard title="Section A — General Information">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     <FieldGroup label="Student Name">
                         <TextInput value={form.student_name} readOnly={true} />
                     </FieldGroup>

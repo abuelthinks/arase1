@@ -117,7 +117,7 @@ export default function UserProfile() {
         <div className="max-w-7xl mx-auto pb-16 px-4">
 
             {/* Breadcrumb Nav / Site Header */}
-            <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+            <div className="hidden md:flex" style={{ marginBottom: "2rem", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <button type="button" onClick={() => router.back()}
                         className="btn-slate"
@@ -349,53 +349,75 @@ export default function UserProfile() {
                                     <p style={{ fontSize: "0.95rem", color: "#64748b", fontWeight: 500, margin: 0 }}>No students currently assigned to this user's caseload.</p>
                                 </div>
                             ) : (
-                                <div style={{ overflowX: "auto", border: "1px solid var(--border-light)", borderRadius: "8px" }}>
-                                    <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                                        <thead>
-                                            <tr>
-                                                {["Name", "Grade", "Status"].map(h => (
-                                                    <th key={h} style={{
-                                                        padding: "12px 16px",
-                                                        fontSize: "0.75rem", fontWeight: 700,
-                                                        textTransform: "uppercase", letterSpacing: "0.5px",
-                                                        color: "var(--text-secondary)",
-                                                        borderBottom: "2px solid var(--border-light)",
-                                                        background: "#f8fafc",
-                                                    }}>
-                                                        {h}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {[...user.assigned_students].sort((a, b) => b.id - a.id).map(student => {
-                                                const badge = statusColors[student.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
-                                                return (
-                                                    <tr key={student.id} style={{ borderBottom: "1px solid var(--border-light)" }} className="hover:bg-slate-50 transition-colors">
-                                                        <td style={{ padding: "14px 16px", fontWeight: 600 }}>
-                                                            <Link href={`/students/${student.id}`} style={{ color: "#2563eb", textDecoration: "none" }} className="hover:underline">
+                                <>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", border: "1px solid var(--border-light)", borderRadius: "8px" }}>
+                                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                                            <thead>
+                                                <tr>
+                                                    {["Name", "Grade", "Status"].map(h => (
+                                                        <th key={h} style={{
+                                                            padding: "12px 16px",
+                                                            fontSize: "0.75rem", fontWeight: 700,
+                                                            textTransform: "uppercase", letterSpacing: "0.5px",
+                                                            color: "var(--text-secondary)",
+                                                            borderBottom: "2px solid var(--border-light)",
+                                                            background: "#f8fafc",
+                                                        }}>
+                                                            {h}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {[...user.assigned_students].sort((a, b) => b.id - a.id).map(student => {
+                                                    const badge = statusColors[student.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
+                                                    return (
+                                                        <tr key={student.id} style={{ borderBottom: "1px solid var(--border-light)" }} className="hover:bg-slate-50 transition-colors">
+                                                            <td style={{ padding: "14px 16px", fontWeight: 600 }}>
+                                                                <Link href={`/students/${student.id}`} style={{ color: "#2563eb", textDecoration: "none" }} className="hover:underline">
+                                                                    {student.first_name} {student.last_name}
+                                                                </Link>
+                                                            </td>
+                                                            <td style={{ padding: "14px 16px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                                                                {student.grade || "TBD"}
+                                                            </td>
+                                                            <td style={{ padding: "14px 16px" }}>
+                                                                <span style={{
+                                                                    fontSize: "0.72rem", fontWeight: 700,
+                                                                    textTransform: "uppercase", letterSpacing: "0.5px",
+                                                                    padding: "4px 10px", borderRadius: "999px",
+                                                                    background: badge.bg, color: badge.color,
+                                                                }}>
+                                                                    {student.status}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="md:hidden flex flex-col gap-3">
+                                        {[...user.assigned_students].sort((a, b) => b.id - a.id).map(student => {
+                                            const badge = statusColors[student.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
+                                            return (
+                                                <div key={student.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-2">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex flex-col">
+                                                            <Link href={`/students/${student.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.05rem] hover:text-blue-600 transition-colors">
                                                                 {student.first_name} {student.last_name}
                                                             </Link>
-                                                        </td>
-                                                        <td style={{ padding: "14px 16px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                                                            {student.grade || "TBD"}
-                                                        </td>
-                                                        <td style={{ padding: "14px 16px" }}>
-                                                            <span style={{
-                                                                fontSize: "0.72rem", fontWeight: 700,
-                                                                textTransform: "uppercase", letterSpacing: "0.5px",
-                                                                padding: "4px 10px", borderRadius: "999px",
-                                                                background: badge.bg, color: badge.color,
-                                                            }}>
-                                                                {student.status}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                            <span className="text-sm text-slate-500 mt-0.5">{student.grade || "Grade: TBD"}</span>
+                                                        </div>
+                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: badge.bg, color: badge.color, textAlign: "center", whiteSpace: "nowrap" }}>
+                                                            {student.status?.replace(/_/g, " ")}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>

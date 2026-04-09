@@ -309,8 +309,8 @@ export default function StudentProfilePage() {
         <ProtectedRoute>
             <div className="max-w-7xl mx-auto pb-16 px-4">
             
-            {/* Breadcrumb Nav / Site Header */}
-            <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+            {/* Desktop Breadcrumb — unchanged */}
+            <div className="hidden md:flex" style={{ marginBottom: "2rem", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <button type="button" onClick={() => router.back()}
                         className="btn-slate"
@@ -334,6 +334,8 @@ export default function StudentProfilePage() {
                     Status: {statusBadge.label}
                 </div>
             </div>
+
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
@@ -587,7 +589,7 @@ export default function StudentProfilePage() {
                                 <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>Clinical Caseload Team</h2>
                                 <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "4px 0 0" }}>Manage assigned specialists and teachers.</p>
                             </div>
-                            <div style={{ padding: "1.5rem 1.75rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
+                            <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {(["SPECIALIST", "TEACHER"] as const).map(role => {
                                     const assignedIds = (data.assigned_staff ?? []).filter(s => s.role === role).map(s => s.id);
                                     const list = staffList.filter(s => s.role === role);
@@ -719,15 +721,15 @@ export default function StudentProfilePage() {
                                         const badgeLabel = isIEP ? "IEP" : isMonthly ? "MO" : "PDF";
                                         const badgeBg = isIEP ? "#dbeafe" : isMonthly ? "#dcfce7" : "#fee2e2";
                                         const badgeColor = isIEP ? "#2563eb" : isMonthly ? "#16a34a" : "#dc2626";
-                                        const docTitle = isIEP ? "AI-Generated IEP Master" : isMonthly ? "Monthly Progress Snapshot" : `${doc.type} Report`;
+                                        const docTitle = isIEP ? "AI-Generated IEP Master" : isMonthly ? "Monthly Progress Report" : `${doc.type} Report`;
                                         return (
-                                        <li key={doc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "white", borderRadius: "10px", border: "1px solid #bae6fd", boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
+                                        <li key={doc.id} style={{ padding: "14px 16px", background: "white", borderRadius: "10px", border: "1px solid #bae6fd", boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
                                             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                                                <div style={{ width: 42, height: 42, background: badgeBg, color: badgeColor, borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 800 }}>
+                                                <div className="hidden md:flex" style={{ width: 42, height: 42, background: badgeBg, color: badgeColor, borderRadius: "8px", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 800, flexShrink: 0 }}>
                                                     {badgeLabel}
                                                 </div>
-                                                <div>
-                                                    <p style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <p style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                                                         {isIEP ? (
                                                             <a href={`/admin/iep?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-indigo-600 transition-colors">
                                                                 {docTitle}
@@ -744,23 +746,25 @@ export default function StudentProfilePage() {
                                                         )}
                                                     </p>
 
-                                                    <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "2px 0 0", display: "flex", alignItems: "center", gap: "4px" }}>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                                        {new Date(doc.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                                                    </p>
+                                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "6px", gap: "8px", flexWrap: "wrap" }}>
+                                                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0, display: "flex", alignItems: "center", gap: "4px" }}>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                                            {new Date(doc.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                                                        </p>
+                                                        <div style={{ display: "flex", gap: "8px" }}>
+                                                            {isIEP && (
+                                                                <a href={`/admin/iep?id=${doc.id}`} className="btn-indigo" style={{ textDecoration: "none", fontSize: "0.78rem", padding: "5px 12px" }}>
+                                                                    View IEP
+                                                                </a>
+                                                            )}
+                                                            {isMonthly && (
+                                                                <a href={`/admin/monthly-report?id=${doc.id}`} className="btn-green" style={{ textDecoration: "none", fontSize: "0.78rem", padding: "5px 12px" }}>
+                                                                    View Report
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div style={{ display: "flex", gap: "8px" }}>
-                                                {isIEP && (
-                                                    <a href={`/admin/iep?id=${doc.id}`} className="btn-indigo" style={{ textDecoration: "none" }}>
-                                                        View IEP
-                                                    </a>
-                                                )}
-                                                {isMonthly && (
-                                                    <a href={`/admin/monthly-report?id=${doc.id}`} className="btn-green" style={{ textDecoration: "none" }}>
-                                                        View Report
-                                                    </a>
-                                                )}
                                             </div>
                                         </li>
                                     );
