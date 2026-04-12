@@ -24,7 +24,15 @@ DATABASES = {
 }
 
 # ─── CORS — loosened for testing to ensure errors are readable ─────────────────
-CORS_ALLOW_ALL_ORIGINS = True
+_raw_cors = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _raw_cors.split(',') if o.strip()]
+
+if not CORS_ALLOWED_ORIGINS:
+    frontend_url = os.environ.get('FRONTEND_URL', '').strip()
+    if frontend_url:
+        CORS_ALLOWED_ORIGINS = [frontend_url]
+
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 # ─── CSRF trusted origins ───────────────────────────────────────────────────

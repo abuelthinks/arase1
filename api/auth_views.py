@@ -6,7 +6,7 @@ Sets tokens as HttpOnly cookies instead of returning them in JSON body.
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.conf import settings
@@ -95,15 +95,15 @@ class CookieTokenRefreshView(APIView):
                         token.blacklist()
                     except Exception:
                         pass  # blacklist app may not be installed
-                # Issue a fresh refresh token for the same user
-                from rest_framework_simplejwt.tokens import RefreshToken as RT
-                new_refresh_token = RT.for_user(
-                    self.get_user_from_token(token)
-                ) if hasattr(self, 'get_user_from_token') else token
+                # Reuse the validated token payload and mint a fresh refresh token.
+                token.set_jti()
+                token.set_exp()
+                token.set_iat()
+                token.outstand()
                 is_secure = not getattr(settings, 'DEBUG', False)
                 response.set_cookie(
                     settings.JWT_AUTH_REFRESH_COOKIE,
-                    str(new_refresh_token),
+                    str(token),
                     httponly=True,
                     samesite='None' if is_secure else 'Lax',
                     secure=is_secure,
