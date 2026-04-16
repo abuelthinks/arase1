@@ -1,6 +1,5 @@
-# Tell Railway this is a Python project and where to find dependencies
-[phases.setup]
-nixPkgs = ["python314"]
+# Railway/Nixpacks configuration — Python project
+providers = ["python"]
 
 [phases.install]
 cmds = ["pip install -r backend/requirements.txt"]
