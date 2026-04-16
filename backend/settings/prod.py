@@ -11,6 +11,8 @@ DEBUG = False
 SECRET_KEY = os.environ['SECRET_KEY']
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['*'] # Fallback for initial Railway deployment
 
 # ─── Database — PostgreSQL required in production ────────────────────────────
 import dj_database_url
@@ -30,6 +32,12 @@ CORS_ALLOW_CREDENTIALS = True
 # ─── CSRF trusted origins ───────────────────────────────────────────────────
 _raw_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
+
+# Add railway domain patterns if they appear in ALLOWED_HOSTS
+for host in ALLOWED_HOSTS:
+    if 'railway.app' in host:
+        if not host.startswith('http'):
+            CSRF_TRUSTED_ORIGINS.append(f"https://{host}")
 
 
 

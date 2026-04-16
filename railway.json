@@ -1,0 +1,22 @@
+{
+  "$schema": "https://railway.app/v2.schema.json",
+  "services": {
+    "web": {
+      "name": "theruni-api",
+      "deploy": {
+        "startCommand": "gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT",
+        "healthcheckPath": "/api/health/",
+        "numReplicas": 1,
+        "sleepService": false
+      }
+    },
+    "worker": {
+      "name": "theruni-worker",
+      "deploy": {
+        "startCommand": "celery -A backend worker -l INFO --pool=solo",
+        "numReplicas": 1,
+        "sleepService": false
+      }
+    }
+  }
+}
