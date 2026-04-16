@@ -3,6 +3,10 @@
   "services": {
     "web": {
       "name": "theruni-api",
+      "build": {
+        "builder": "NIXPACKS",
+        "buildCommand": "bash build.sh"
+      },
       "deploy": {
         "startCommand": "gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT",
         "healthcheckPath": "/api/health/",
@@ -12,6 +16,10 @@
     },
     "worker": {
       "name": "theruni-worker",
+      "build": {
+        "builder": "NIXPACKS",
+        "buildCommand": "bash build.sh"
+      },
       "deploy": {
         "startCommand": "celery -A backend worker -l INFO --pool=solo",
         "numReplicas": 1,
