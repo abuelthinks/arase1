@@ -10,9 +10,7 @@ DEBUG = False
 # SECRET_KEY MUST be set via environment variable in production
 SECRET_KEY = os.environ['SECRET_KEY']
 
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
-if not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ['*'] # Fallback for initial Railway deployment
+ALLOWED_HOSTS = ['*']  # Allow all hosts — CORS handles origin security
 
 # ─── Database — PostgreSQL required in production ────────────────────────────
 import dj_database_url
