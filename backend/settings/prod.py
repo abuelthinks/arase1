@@ -10,7 +10,12 @@ DEBUG = False
 # SECRET_KEY MUST be set via environment variable in production
 SECRET_KEY = os.environ['SECRET_KEY']
 
-ALLOWED_HOSTS = ['*']  # Allow all hosts — CORS handles origin security
+ALLOWED_HOSTS = [
+    'arase1-production.up.railway.app',
+    'arase1.vercel.app',
+    # Allow overriding via env var for future domain changes
+    *[h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()],
+]
 
 # ─── Database — PostgreSQL required in production ────────────────────────────
 import dj_database_url
