@@ -1,0 +1,2 @@
+# Root-level requirements pointer for Railway/Railpack auto-detection
+-r backend/requirements.txt

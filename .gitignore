@@ -49,4 +49,6 @@ seed.py
 test_*.py
 *.docx
 *.txt
+!requirements.txt
+!backend/requirements.txt
 *.pdf
