@@ -107,12 +107,12 @@ type FormState = ReturnType<typeof initState>;
 
 // ── main component ────────────────────────────────────────────────────────────
 
-function ParentFormContent() {
+export function ParentFormContent({ propStudentId, propSubmissionId, propMode, propHideNavigation }: { propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean } = {}) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const isViewMode = searchParams.get("mode") === "view";
-    const submissionId = searchParams.get("submissionId");
-    const studentIdParam = searchParams.get("studentId");
+    const isViewMode = propMode === "view" || searchParams.get("mode") === "view";
+    const submissionId = propSubmissionId || searchParams.get("submissionId");
+    const studentIdParam = propStudentId || searchParams.get("studentId");
     const draftKey = studentIdParam ? `parent_form_draft_v2_${studentIdParam}` : null;
     const { user } = useAuth();
     const canViewPII = !isViewMode || user?.role === "ADMIN";
@@ -272,9 +272,9 @@ function ParentFormContent() {
 
     return (
         <ProtectedRoute allowedRoles={isViewMode ? undefined : ["PARENT"]}>
-            <div className="max-w-5xl mx-auto px-4">
+            <div className="max-w-5xl mx-auto px-4 pt-8 pb-12">
                 {/* Breadcrumb Nav */}
-                {isViewMode && (
+                {isViewMode && !propHideNavigation && (
                     <div className="hidden md:flex" style={{ 
                         marginBottom: "2rem", 
                         justifyContent: "space-between", 
@@ -317,7 +317,7 @@ function ParentFormContent() {
                         </div>
                     </div>
                 )}
-                {!isViewMode && (
+                {!isViewMode && !propHideNavigation && (
                     <div className="hidden md:flex mb-6 flex-wrap items-center gap-2">
                         <button type="button" onClick={() => router.back()}
                             className="inline-flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-semibold text-sm transition-colors cursor-pointer"

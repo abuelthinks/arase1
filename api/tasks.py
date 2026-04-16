@@ -7,7 +7,7 @@ from celery import shared_task
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
-def generate_iep_task(self, student_id, cycle_id):
+def generate_iep_task(self, student_id, cycle_id, user_id=None):
     """
     Generate an IEP asynchronously using Gemini AI.
     Returns the generated document ID.
@@ -15,13 +15,22 @@ def generate_iep_task(self, student_id, cycle_id):
     try:
         from api.services.iep_service import run_iep_generation
         doc, iep_data = run_iep_generation(student_id, cycle_id)
+        if user_id:
+            from django.contrib.auth import get_user_model
+            from api.services.document_service import record_document_version
+            User = get_user_model()
+            try:
+                user = User.objects.get(id=user_id)
+                record_document_version(doc, user, 'GENERATED')
+            except User.DoesNotExist:
+                pass
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
         raise self.retry(exc=exc)
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
-def generate_monthly_report_task(self, student_id, cycle_id):
+def generate_monthly_report_task(self, student_id, cycle_id, user_id=None):
     """
     Generate a Monthly Report asynchronously using Gemini AI.
     Returns the generated document ID.
@@ -29,6 +38,15 @@ def generate_monthly_report_task(self, student_id, cycle_id):
     try:
         from api.services.iep_service import run_monthly_report_generation
         doc, report_data = run_monthly_report_generation(student_id, cycle_id)
+        if user_id:
+            from django.contrib.auth import get_user_model
+            from api.services.document_service import record_document_version
+            User = get_user_model()
+            try:
+                user = User.objects.get(id=user_id)
+                record_document_version(doc, user, 'GENERATED')
+            except User.DoesNotExist:
+                pass
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
         raise self.retry(exc=exc)

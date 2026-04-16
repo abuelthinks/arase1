@@ -64,10 +64,10 @@ interface MonthlyReportData {
 
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 
-function MonthlyReportContent() {
+export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: string; propHideNavigation?: boolean }) {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const reportId = searchParams.get("id");
+    const reportId = propId || searchParams.get("id");
     const { user } = useAuth();
 
     const [report, setReport] = useState<MonthlyReportData | null>(null);
@@ -145,9 +145,10 @@ function MonthlyReportContent() {
     };
 
     return (
-        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1rem 4rem" }}>
+        <div style={{ maxWidth: propHideNavigation ? "1024px" : "900px", margin: "0 auto", padding: propHideNavigation ? "2rem 1.5rem 4rem" : "2rem 1rem 4rem" }}>
             {/* Breadcrumb Nav */}
-            <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
+            {!propHideNavigation && (
+                <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
                 <button type="button" onClick={() => router.back()}
                     style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
                     onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
@@ -163,6 +164,7 @@ function MonthlyReportContent() {
                     Monthly Report for {meta.student_name}
                 </span>
             </div>
+            )}
 
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>

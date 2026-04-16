@@ -19,7 +19,6 @@ def collect_iep_inputs(student, cycle):
     return {
         'parent_assessment': ParentAssessment.objects.filter(student=student, report_cycle=cycle).first(),
         'multi_assessment': MultidisciplinaryAssessment.objects.filter(student=student, report_cycle=cycle).first(),
-        'sped_assessment': SpedAssessment.objects.filter(student=student, report_cycle=cycle).first(),
     }
 
 

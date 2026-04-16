@@ -14,7 +14,7 @@ from .views import (
     AdminDashboardActionsView,
     DocumentHistoryView,
     SendVerificationSMSView, VerifySMSView,
-    CreateCycleView, SendRemindersView,
+    CreateCycleView, SendRemindersView, TaskStatusView,
 )
 
 router = DefaultRouter()
@@ -50,6 +50,7 @@ urlpatterns = [
     
     
     path('dashboard/actions/', AdminDashboardActionsView.as_view(), name='dashboard-actions'),
+    path('tasks/<str:task_id>/status/', TaskStatusView.as_view(), name='task-status'),
     
     # IEP endpoints
     path('iep/generate/', GenerateIEPView.as_view(), name='generate-iep'),

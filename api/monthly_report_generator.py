@@ -285,25 +285,25 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
 # ---------------------------------------------------------------------------
 
 def _call_gemini(prompt):
-    """Call Google Gemini API using stable SDK and return parsed JSON."""
-    import google.generativeai as genai
+    """Call Google Gemini API using the new genai SDK and return parsed JSON."""
+    from google import genai
+    from google.genai import types
     from django.conf import settings
 
     api_key = settings.GEMINI_API_KEY
     if not api_key:
         raise ValueError("GEMINI_API_KEY not configured in settings.")
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
     
-    model = genai.GenerativeModel(
-        model_name='gemini-2.5-flash-lite',
-        generation_config={
-            "temperature": 0.7,
-            "response_mime_type": "application/json",
-        }
+    response = client.models.generate_content(
+        model='gemini-2.5-flash-lite',
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.7,
+            response_mime_type="application/json",
+        )
     )
-
-    response = model.generate_content(prompt)
     raw = response.text.strip()
 
     # Strip markdown code fences if present

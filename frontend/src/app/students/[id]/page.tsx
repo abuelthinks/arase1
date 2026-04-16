@@ -95,14 +95,14 @@ const statusConfig: Record<string, { label: string; bg: string; color: string }>
 // Which form keys each role CAN FILL (owns)
 const ownedFormKeys: Record<string, string[]> = {
     PARENT:     ["parent_assessment", "parent_tracker"],
-    TEACHER:    ["sped_assessment",   "sped_tracker"],
+    TEACHER:    ["sped_tracker"],
     SPECIALIST: ["multi_assessment",  "multi_tracker"],
 };
 
 // Which form keys each role can VIEW (includes read-only access to parent form for staff)
 const roleFormKeys: Record<string, string[]> = {
     PARENT:     ["parent_assessment", "parent_tracker"],
-    TEACHER:    ["parent_assessment", "sped_assessment", "sped_tracker"],
+    TEACHER:    ["parent_assessment", "sped_tracker"],
     SPECIALIST: ["parent_assessment", "multi_assessment", "multi_tracker"],
 };
 
@@ -211,7 +211,7 @@ export default function StudentProfilePage() {
     // Which form keys to show for the current user
     const visibleFormKeys: (keyof typeof form_statuses)[] =
         user?.role === "ADMIN"
-            ? (Object.keys(form_statuses) as (keyof typeof form_statuses)[])
+            ? (Object.keys(form_statuses) as (keyof typeof form_statuses)[]).filter(k => k !== "sped_assessment")
             : (roleFormKeys[user?.role ?? ""] ?? []) as (keyof typeof form_statuses)[];
 
     const renderLifecycleAction = () => {
@@ -596,11 +596,11 @@ export default function StudentProfilePage() {
                                     
                                     const isLocked = role === "SPECIALIST" 
                                         ? !form_statuses.parent_assessment?.submitted 
-                                        : !form_statuses.multi_assessment?.submitted;
+                                        : student.status !== "Enrolled";
 
                                     const lockReason = role === "SPECIALIST"
                                         ? "Waiting on Parent Input"
-                                        : "Waiting on Specialist Input";
+                                        : "Waiting for Enrollment";
 
                                     return (
                                         <div key={role}>

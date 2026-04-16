@@ -104,24 +104,6 @@ class BaseInputViewSet(viewsets.ModelViewSet):
         serializer.save(submitted_by=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        # On-demand translation fallback for missing background tasks
-        if request.user.role in ['ADMIN', 'SPECIALIST', 'TEACHER'] and \
-           not instance.translated_data and instance.form_data:
-            try:
-                from .services.translation_service import translate_form_data
-                translated_data, detected_lang = translate_form_data(instance.form_data)
-                # If a translation was actually found (not just English)
-                if detected_lang not in ['en', 'english']:
-                    instance.translated_data = translated_data
-                    instance.original_language = detected_lang
-                    # Use update_fields to avoid triggering signals that might expect full saves
-                    instance.save(update_fields=['translated_data', 'original_language'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"On-demand translation failed for {instance._meta.model_name} {instance.id}: {e}")
-        
         return super().retrieve(request, *args, **kwargs)
 
     def get_queryset(self):
@@ -147,9 +129,9 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         student = instance.student
-        # Auto-advance to OBSERVATION_PENDING when a specialist submits an assessment
+        # Auto-advance to ASSESSED when a specialist submits an assessment (new workflow)
         if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
-            student.status = 'OBSERVATION_PENDING'
+            student.status = 'ASSESSED'
             student.save()
 
 
@@ -160,10 +142,8 @@ class SpedAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         student = instance.student
-        # Auto-advance to ASSESSED when a teacher submits an assessment
-        if student.status in ['OBSERVATION_PENDING', 'OBSERVATION_SCHEDULED']:
-            student.status = 'ASSESSED'
-            student.save()
+        # In the new workflow, Sped Assessment is done post-enrollment.
+        # No status auto-advance is required here.
 
 
 class ParentProgressTrackerViewSet(BaseInputViewSet):
@@ -781,22 +761,12 @@ class GenerateIEPView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Always run synchronously — Celery workers are not guaranteed on deployment.
-        # Sync generation returns the doc.id immediately so the frontend can navigate.
-        try:
-            from .services.iep_service import run_iep_generation
-            from .services.document_service import record_document_version
-            doc, iep_data = run_iep_generation(student_id, report_cycle_id)
-            record_document_version(doc, request.user, 'GENERATED')
-            return Response({
-                "message": "IEP generated successfully.",
-                "iep_id": doc.id,
-                "iep_data": iep_data,
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            return Response({"error": f"Failed to generate IEP: {str(e)}", "debug_traceback": tb}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        from .tasks import generate_iep_task
+        task = generate_iep_task.delay(student_id, report_cycle_id, request.user.id)
+        return Response({
+            "message": "IEP generation started.",
+            "task_id": task.id,
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class IEPDetailView(APIView):
@@ -1028,21 +998,12 @@ class GenerateMonthlyReportView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Always run synchronously — Celery workers are not guaranteed on deployment.
-        try:
-            from .services.iep_service import run_monthly_report_generation
-            from .services.document_service import record_document_version
-            doc, report_data = run_monthly_report_generation(student_id, report_cycle_id)
-            record_document_version(doc, request.user, 'GENERATED')
-            return Response({
-                "message": "Monthly report generated successfully.",
-                "report_id": doc.id,
-                "report_data": report_data,
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return Response({"error": f"Failed to generate monthly report: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        from .tasks import generate_monthly_report_task
+        task = generate_monthly_report_task.delay(student_id, report_cycle_id, request.user.id)
+        return Response({
+            "message": "Monthly report generation started.",
+            "task_id": task.id,
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class MonthlyReportDetailView(APIView):
@@ -1372,3 +1333,28 @@ class SendRemindersView(APIView):
         sent_count = send_tracker_reminders_for_all_students()
         return Response({"message": f"Sent {sent_count} reminder(s).", "count": sent_count})
 
+
+class TaskStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, task_id):
+        from celery.result import AsyncResult
+        task = AsyncResult(task_id)
+        
+        # Celery standard states: PENDING, STARTED, RETRY, FAILURE, SUCCESS
+        if task.state == 'PENDING' or task.state == 'STARTED':
+            response = {"status": "PENDING"}
+        elif task.state == 'SUCCESS':
+            response = {
+                "status": "SUCCESS",
+                "result": task.result
+            }
+        elif task.state == 'FAILURE':
+            response = {
+                "status": "FAILURE",
+                "error": str(task.info)
+            }
+        else:
+            response = {"status": task.state}
+            
+        return Response(response)

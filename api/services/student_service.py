@@ -254,10 +254,9 @@ def assign_staff_to_student(student_id, staff_id, expected_role):
             raise ValidationError("Cannot assign a Specialist until the Parent Assessment is submitted.")
             
     elif expected_role == 'TEACHER':
-        # Must have Specialist Assessment input before assigning Teacher
-        has_specialist_input = MultidisciplinaryAssessment.objects.filter(student=student).exists()
-        if not has_specialist_input and student.status not in ['OBSERVATION_PENDING', 'OBSERVATION_SCHEDULED', 'ASSESSED', 'ENROLLED']:
-            raise ValidationError("Cannot assign a Teacher until the Specialist Assessment is submitted.")
+        # Teacher assignment is locked until the student is Enrolled
+        if student.status != 'ENROLLED':
+            raise ValidationError("Cannot assign a Teacher until the student is ENROLLED.")
             
     StudentAccess.objects.get_or_create(user=staff, student=student)
 
@@ -265,8 +264,6 @@ def assign_staff_to_student(student_id, staff_id, expected_role):
     if expected_role == 'SPECIALIST' and student.status == 'PENDING_ASSESSMENT':
         student.status = 'ASSESSMENT_SCHEDULED'
         student.save()
-    elif expected_role == 'TEACHER' and student.status == 'OBSERVATION_PENDING':
-        student.status = 'OBSERVATION_SCHEDULED'
-        student.save()
+    # Removed observation status update because teacher is assigned post-enrollment
 
     return staff, student

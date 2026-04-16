@@ -22,11 +22,11 @@ const progressTrackerLabels: Record<string, string> = {
     sped_tracker: "Teacher Progress",
 };
 
-function AdminReportsContent() {
+export function AdminReportsContent({ propStudentId, propHideNavigation }: { propStudentId?: string; propHideNavigation?: boolean }) {
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    const studentId = searchParams.get("studentId");
+    const studentId = propStudentId || searchParams.get("studentId");
     const [reportCycleId, setReportCycleId] = useState("1");
     const [studentStatus, setStudentStatus] = useState("Pending Assessment");
     const [studentName, setStudentName] = useState("");
@@ -60,6 +60,24 @@ function AdminReportsContent() {
         }
     }, [studentId]);
 
+    const pollTaskStatus = (taskId: string, onSuccess: (result: any) => void, onError: (err: string) => void) => {
+        const interval = setInterval(async () => {
+            try {
+                const res = await api.get(`/api/tasks/${taskId}/status/`);
+                if (res.data.status === "SUCCESS") {
+                    clearInterval(interval);
+                    onSuccess(res.data.result);
+                } else if (res.data.status === "FAILURE") {
+                    clearInterval(interval);
+                    onError(res.data.error || "Background task failed.");
+                }
+            } catch (err) {
+                clearInterval(interval);
+                onError("Failed to poll task status.");
+            }
+        }, 3000);
+    };
+
     const handleGenerateIEP = async () => {
         if (!studentId || !reportCycleId) {
             setErrorMsg("Student ID and Report Cycle ID are required.");
@@ -72,7 +90,14 @@ function AdminReportsContent() {
                 student_id: studentId,
                 report_cycle_id: reportCycleId,
             });
-            router.push(`/admin/iep?id=${res.data.iep_id}`);
+            if (res.data.task_id) {
+                pollTaskStatus(res.data.task_id, 
+                    (result) => router.push(`/admin/iep?id=${result.doc_id}`),
+                    (err) => { setErrorMsg(err); setLoading(false); }
+                );
+            } else {
+                router.push(`/admin/iep?id=${res.data.iep_id}`);
+            }
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Failed to generate IEP.");
             setLoading(false);
@@ -91,7 +116,14 @@ function AdminReportsContent() {
                 student_id: parseInt(studentId),
                 report_cycle_id: parseInt(reportCycleId),
             });
-            router.push(`/admin/monthly-report?id=${res.data.report_id}`);
+            if (res.data.task_id) {
+                pollTaskStatus(res.data.task_id, 
+                    (result) => router.push(`/admin/monthly-report?id=${result.doc_id}`),
+                    (err) => { setErrorMsg(err); setMonthlyLoading(false); }
+                );
+            } else {
+                router.push(`/admin/monthly-report?id=${res.data.report_id}`);
+            }
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Failed to generate monthly report.");
             setMonthlyLoading(false);
@@ -110,22 +142,24 @@ function AdminReportsContent() {
 
     return (
         <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <div style={{ minHeight: "100vh", background: "#f8fafc", padding: "3rem 1rem" }}>
-                <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+            <div style={propHideNavigation ? { padding: "2rem 1.5rem 4rem" } : { minHeight: "100vh", background: "#f8fafc", padding: "3rem 1rem" }}>
+                <div style={{ maxWidth: propHideNavigation ? "1024px" : "700px", margin: "0 auto" }}>
                     {/* Breadcrumb Nav */}
-                    <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
-                        <button type="button" onClick={() => router.back()}
-                            className="btn-slate"
-                            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-                        >
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Back to Student Profile
-                        </button>
-                        <span style={{ color: "#cbd5e1" }}>›</span>
-                        <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>Report Generator</span>
-                    </div>
+                    {!propHideNavigation && (
+                        <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
+                            <button type="button" onClick={() => router.back()}
+                                className="btn-slate"
+                                style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                            >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back to Student Profile
+                            </button>
+                            <span style={{ color: "#cbd5e1" }}>›</span>
+                            <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>Report Generator</span>
+                        </div>
+                    )}
 
                     <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
                         {/* Header */}

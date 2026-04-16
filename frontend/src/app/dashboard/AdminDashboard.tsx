@@ -85,8 +85,6 @@ const getStatusStyle = (status: string) => {
     const s = status?.toUpperCase() || '';
     if (s === 'ENROLLED')     return { bg: '#dcfce7', color: '#166534' };   // Green
     if (s === 'ASSESSED')     return { bg: '#dbeafe', color: '#1e40af' };   // Blue
-    if (s === 'OBSERVATION_SCHEDULED') return { bg: '#e0e7ff', color: '#3730a3' }; // Indigo
-    if (s === 'OBSERVATION_PENDING')   return { bg: '#f3e8ff', color: '#6b21a8' }; // Purple
     if (s === 'ASSESSMENT_SCHEDULED') return { bg: '#fef3c7', color: '#92400e' };   // Amber
     if (s === 'PENDING_ASSESSMENT')    return { bg: '#fce7f3', color: '#9d174d' };   // Pink
     if (s === 'ARCHIVED')   return { bg: '#f1f5f9', color: '#64748b' };   // Grey
@@ -493,7 +491,7 @@ export default function AdminDashboard() {
     /* ─── Analytics Metrics ──────────────────────────────────────────────── */
     const totalStudents = students.filter(s => s.status !== 'ARCHIVED').length;
     const activeStudents = students.filter(s => s.status === 'ENROLLED').length;
-    const inProgressStudents = students.filter(s => s.status === 'ASSESSMENT_SCHEDULED' || s.status === 'ASSESSED' || s.status.includes('OBSERVATION')).length;
+    const inProgressStudents = students.filter(s => s.status === 'ASSESSMENT_SCHEDULED' || s.status === 'ASSESSED').length;
     const pendingStudents = students.filter(s => s.status === 'INQUIRY').length;
 
     // Bottlenecks: students stuck in INQUIRY or EVALUATION (no parent input yet)
@@ -803,7 +801,7 @@ export default function AdminDashboard() {
                                                         <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
                                                             <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <Link href={`/students/${s.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                <Link href={`/students/${s.id}/workspace?tab=parent_assessment`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                     {s.first_name} {s.last_name}
                                                                 </Link>
                                                             </td>
@@ -822,7 +820,7 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
                                                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
-                                                                    <Link href={`/students/${s.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="Manage Student">
+                                                                    <Link href={`/students/${s.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
                                                                     </Link>
                                                                 </div>
@@ -841,7 +839,7 @@ export default function AdminDashboard() {
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
                                                             <span className="text-xs font-mono text-slate-400 mb-1">#{s.id}</span>
-                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
+                                                            <Link href={`/students/${s.id}/workspace?tab=parent_assessment`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                             <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>
@@ -851,8 +849,8 @@ export default function AdminDashboard() {
                                                         </span>
                                                     </div>
                                                     <div className="border-t border-slate-100 pt-3 flex justify-end">
-                                                        <Link href={`/students/${s.id}`} className="btn-slate text-sm w-full text-center flex justify-center py-2" title="Manage Student">
-                                                            Manage Student
+                                                        <Link href={`/students/${s.id}`} className="btn-slate text-sm w-full text-center flex justify-center py-2" title="View Profile">
+                                                            View Profile
                                                         </Link>
                                                     </div>
                                                 </div>

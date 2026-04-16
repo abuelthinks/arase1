@@ -108,14 +108,14 @@ function RadioGroup({ options, value, onChange }: { options: string[]; value: st
 
 /* ─── Main Component ───────────────────────────────────────────────────────── */
 
-function FormEntryContent() {
+export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean } = {}) {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
     const { user } = useAuth();
 
-    const formType = (params?.type as string) || "unknown";
-    const studentId = searchParams.get("studentId");
+    const formType = propType || (params?.type as string) || "unknown";
+    const studentId = propStudentId || searchParams.get("studentId");
 
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
@@ -130,8 +130,8 @@ function FormEntryContent() {
         setShowDescriptions(prev => ({ ...prev, [fieldId]: !prev[fieldId] }));
     };
 
-    const isViewMode = searchParams.get("mode") === "view";
-    const formIdStr = searchParams.get("submissionId") || searchParams.get("formId");
+    const isViewMode = propMode === "view" || searchParams.get("mode") === "view";
+    const formIdStr = propSubmissionId || searchParams.get("submissionId") || searchParams.get("formId");
 
     // For Translation Toggle
     const [fullSubmission, setFullSubmission] = useState<any>(null);
@@ -505,7 +505,7 @@ function FormEntryContent() {
         <ProtectedRoute>
             <div style={{ maxWidth: "1024px", margin: "0 auto", padding: "2rem 1rem 3rem" }}>
                 {/* Breadcrumb Nav */}
-                {studentProfile && (
+                {studentProfile && !propHideNavigation && (
                     <div className="hidden md:flex" style={{ 
                         marginBottom: "2rem", 
                         justifyContent: "space-between", 

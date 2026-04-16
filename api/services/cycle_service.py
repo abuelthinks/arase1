@@ -110,24 +110,16 @@ def check_and_trigger_auto_generation(student, cycle):
     cycle.status = 'GENERATING'
     cycle.save(update_fields=['status'])
 
-    # Try Celery first, fall back to synchronous generation
     try:
         from api.tasks import generate_monthly_report_task
         generate_monthly_report_task.delay(student.id, cycle.id)
         logger.info("Auto-generation dispatched via Celery for student=%s cycle=%s", student.id, cycle.id)
         return True, None
-    except Exception:
-        logger.info("Celery unavailable — running synchronous auto-generation for student=%s", student.id)
-        try:
-            from api.services.iep_service import run_monthly_report_generation
-            doc, _ = run_monthly_report_generation(student.id, cycle.id)
-            _notify_admins_report_ready(student, doc)
-            return True, doc
-        except Exception as exc:
-            logger.error("Synchronous auto-generation failed for student=%s: %s", student.id, exc)
-            cycle.status = 'OPEN'  # Reset so it can be retried
-            cycle.save(update_fields=['status'])
-            return False, None
+    except Exception as exc:
+        logger.error("Failed to dispatch Celery worker for student=%s: %s", student.id, exc)
+        cycle.status = 'OPEN'  # Reset so it can be retried
+        cycle.save(update_fields=['status'])
+        return False, None
 
 
 # ─── Carry-Forward Recommendations ───────────────────────────────────────────

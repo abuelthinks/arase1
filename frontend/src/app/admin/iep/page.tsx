@@ -65,10 +65,10 @@ interface IEPData {
 
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 
-function IEPViewerContent() {
+export function IEPViewerContent({ propId, propHideNavigation }: { propId?: string; propHideNavigation?: boolean }) {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const iepId = searchParams.get("id");
+    const iepId = propId || searchParams.get("id");
     const { user } = useAuth();
 
     const [iep, setIep] = useState<IEPData | null>(null);
@@ -161,9 +161,10 @@ function IEPViewerContent() {
     const s9 = iep.section9_home_program || {};
 
     return (
-        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1rem 4rem" }}>
+        <div style={{ maxWidth: propHideNavigation ? "1024px" : "900px", margin: "0 auto", padding: propHideNavigation ? "2rem 1.5rem 4rem" : "2rem 1rem 4rem" }}>
             {/* Breadcrumb Nav */}
-            <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
+            {!propHideNavigation && (
+                <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
                 <button type="button" onClick={() => router.back()}
                     className="btn-slate"
                     style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
@@ -178,6 +179,7 @@ function IEPViewerContent() {
                     IEP for {meta.student_name}
                 </span>
             </div>
+            )}
             
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
