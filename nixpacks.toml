@@ -1,0 +1,13 @@
+# Tell Railway this is a Python project and where to find dependencies
+[phases.setup]
+nixPkgs = ["python314"]
+
+[phases.install]
+cmds = ["pip install -r backend/requirements.txt"]
+
+[phases.build]
+cmds = [
+    "python manage.py migrate",
+    "python provision_admin.py",
+    "python manage.py collectstatic --no-input"
+]
