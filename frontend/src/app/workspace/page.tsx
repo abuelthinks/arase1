@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Search } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -26,13 +26,12 @@ const TABS = [
 ];
 
 function UnifiedWorkspaceContent() {
-    const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user } = useAuth();
     
-    const studentId = params?.id as string;
     // -- Global State --
+    const studentId = searchParams.get("studentId");
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [studentSearch, setStudentSearch] = useState("");
     const [studentName, setStudentName] = useState("");
@@ -42,6 +41,7 @@ function UnifiedWorkspaceContent() {
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
     const activeFormTab = searchParams.get("tab") || "parent_assessment";
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     
     // -- Reports State --
     const [docs, setDocs] = useState<any[]>([]);
@@ -55,16 +55,28 @@ function UnifiedWorkspaceContent() {
     const activeTeamRole = searchParams.get("teamRole") || "SPECIALIST";
 
     // -- Master Tab Switcher --
-    // Tracks whether we are rendering the forms workspace or reports workspace
     const workspace = searchParams.get("workspace") || "forms";
 
+    useEffect(() => {
+        api.get("/api/students/").then(res => {
+            setAllStudents(res.data);
+            
+            // If no student is explicitly active but we have students, automatically redirect to first
+            if (!studentId && res.data.length > 0) {
+                const url = new URL(window.location.href);
+                url.searchParams.set("studentId", res.data[0].id.toString());
+                router.replace(url.pathname + url.search);
+            } else if (!studentId && res.data.length === 0) {
+                setLoading(false); // Finished loading but no students exist
+            }
+        }).catch(err => {
+            console.error(err);
+            setLoading(false);
+        });
+    }, [studentId, router]);
 
     useEffect(() => {
-        api.get("/api/students/").then(res => setAllStudents(res.data)).catch(console.error);
-    }, []);
-
-    useEffect(() => {
-        if (!studentId) return;
+        if (!studentId) return; // Prevent fetch if no student is active
         
         api.get(`/api/students/${studentId}/profile/`)
             .then(res => {
@@ -140,8 +152,24 @@ function UnifiedWorkspaceContent() {
     };
 
     if (loading) {
-        return <div className="p-8 text-center text-slate-500">Loading workspace...</div>;
+        return <div className="p-8 h-full flex items-center justify-center text-slate-500">Loading workspace...</div>;
     }
+    
+    // Empty State Check
+    if (!studentId && allStudents.length === 0) {
+        return (
+            <div className="flex w-full h-full items-center justify-center bg-[var(--bg-lighter)]">
+                <div className="flex flex-col items-center bg-white p-12 rounded-xl shadow-sm border border-slate-200">
+                    <svg className="w-16 h-16 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">No Students Found</h2>
+                    <p className="text-slate-500 max-w-sm text-center">Your caseload is currently empty. You must be assigned students before accessing the workspace.</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!formStatuses) {
         return <div className="p-8 text-center text-red-500">Failed to load student data.</div>;
     }
@@ -218,9 +246,9 @@ function UnifiedWorkspaceContent() {
                     ) : (
                         <div className="w-full">
                             {activeFormTab === "parent_assessment" ? (
-                                <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId} propSubmissionId={currentStatus.id?.toString()} />
+                                <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} />
                             ) : (
-                                <FormEntryContent propType={currentTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId} propSubmissionId={currentStatus.id?.toString()} />
+                                <FormEntryContent propType={currentTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} />
                             )}
                         </div>
                     )}
@@ -306,7 +334,7 @@ function UnifiedWorkspaceContent() {
 
                 <div className="flex-1 bg-white relative overflow-y-auto">
                     {activeReportView === "generator" && (
-                        <AdminReportsContent propStudentId={studentId} propHideNavigation={true} />
+                        <AdminReportsContent propStudentId={studentId as string} propHideNavigation={true} />
                     )}
                     {activeReportView === "iep" && activeDocId && (
                         <IEPViewerContent propId={activeDocId} propHideNavigation={true} />
@@ -439,7 +467,7 @@ function UnifiedWorkspaceContent() {
     const renderProfileWorkspace = () => {
         return (
             <div className="w-full flex-1 overflow-y-auto">
-                <StudentProfileContent propStudentId={studentId} propHideNavigation={true} propEmbedded={true} />
+                <StudentProfileContent propStudentId={studentId as string} propHideNavigation={true} propEmbedded={true} />
             </div>
         );
     }
@@ -451,10 +479,10 @@ function UnifiedWorkspaceContent() {
 
     return (
         <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
-            <div className="flex h-full w-full overflow-hidden">
+            <div className="flex h-full w-full overflow-hidden relative">
                 {/* Student List Sidebar — fixed secondary sidebar */}
-                <div className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 shrink-0 h-full">
-                    <div className="p-4 border-b border-slate-200">
+                <div className={`hidden md:flex flex-col bg-white border-r border-slate-200 shrink-0 h-full overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'w-0 border-r-0' : 'w-56'}`}>
+                    <div className="p-4 border-b border-slate-200 shrink-0 w-56">
                         <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-2">Students</p>
                         <div className="relative">
                             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -479,7 +507,7 @@ function UnifiedWorkspaceContent() {
                                     return (
                                         <button
                                             key={s.id}
-                                            onClick={() => !isCurrent && router.push(`/students/${s.id}/workspace?workspace=${workspace}`)}
+                                            onClick={() => !isCurrent && router.push(`/workspace?studentId=${s.id}&workspace=${workspace}`)}
                                             className={`w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
                                                 isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm' : 'border border-transparent hover:bg-slate-50'
                                             }`}
@@ -505,8 +533,17 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
+                {/* Floating Toggle Button (Outside hidden overflow containers) */}
+                <button
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    className={`hidden md:flex absolute top-[1.35rem] z-[50] items-center justify-center bg-white border border-slate-200 shadow-sm rounded-full w-6 h-6 text-slate-400 hover:text-indigo-600 hover:border-indigo-400 transition-all duration-300 ${isSidebarCollapsed ? 'left-2' : 'left-[calc(14rem-12px)]'}`}
+                    aria-label="Toggle Student List"
+                >
+                    {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                </button>
+
                 {/* Main Workspace Area */}
-                <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
+                <div className="flex-1 flex flex-col min-w-0 h-full relative z-10 bg-slate-50 md:bg-white overflow-hidden">
                     <div className="px-4 md:px-8 pt-4 md:pt-6 flex-1 flex flex-col min-h-0">
                         {/* Master Tab Bar */}
                         <div className="flex items-end gap-1 mb-4 border-b border-slate-300 px-2 mt-4 md:mt-0 shrink-0">
@@ -557,7 +594,7 @@ function UnifiedWorkspaceContent() {
 
 export default function UnifiedWorkspacePage() {
     return (
-        <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading master workspace...</div>}>
+        <Suspense fallback={<div className="p-8 h-full flex items-center justify-center font-medium text-slate-500">Loading master workspace...</div>}>
             <UnifiedWorkspaceContent />
         </Suspense>
     );

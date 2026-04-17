@@ -20,11 +20,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     const isAdmin = user.role === "ADMIN";
+    const isWorkspace = pathname.includes("/workspace");
 
     return (
-        <div className="flex flex-col md:flex-row h-[calc(100vh-40px)] overflow-hidden bg-[var(--bg-lighter)]">
+        <div className="flex flex-col md:flex-row h-full w-full overflow-hidden bg-[var(--bg-lighter)]">
             {isAdmin ? <AdminSidebar /> : <UserSidebar />}
-            <main className="flex-1 px-0 pt-6 pb-28 md:py-8 md:px-12 overflow-y-auto h-full md:pb-8">
+            <main className={`flex-1 h-full ${isWorkspace ? 'p-0 overflow-hidden' : 'px-0 pt-6 pb-28 md:py-8 md:px-12 md:pb-8 overflow-y-auto'}`}>
                 {children}
             </main>
         </div>

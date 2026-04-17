@@ -193,12 +193,16 @@ def get_student_profile_data(student, user=None):
                 "gender": v2.get("gender", ""),
                 "primary_language": v2.get("primary_language", []),
                 "parent_guardian_name": v2.get("parent_name", ""),
+                "parent_phone": v2.get("phone", ""),
+                "parent_email": v2.get("email", ""),
             }
         else:
             parent_info = {
                 "gender": fd.get("gender", ""),
                 "primary_language": fd.get("primary_language", ""),
                 "parent_guardian_name": fd.get("parent_guardian_name", ""),
+                "parent_phone": fd.get("phone", ""),
+                "parent_email": fd.get("email", ""),
             }
 
     # Assigned staff

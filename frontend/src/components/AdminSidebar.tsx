@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BarChart3, GraduationCap, UsersRound, Mail } from "lucide-react";
+import { BarChart3, GraduationCap, UsersRound, Mail, LayoutTemplate } from "lucide-react";
 
 export default function AdminSidebar() {
     const pathname = usePathname();
@@ -10,7 +10,9 @@ export default function AdminSidebar() {
 
     // Determine active tab dynamically
     let activeTab = "analytics";
-    if (pathname.includes("/users")) {
+    if (pathname.includes("/workspace")) {
+        activeTab = "workspace";
+    } else if (pathname.includes("/users")) {
         activeTab = "users";
     } else if (pathname.includes("/students")) {
         activeTab = "students";
@@ -22,38 +24,46 @@ export default function AdminSidebar() {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="hidden md:flex flex-col w-56 bg-white border-r border-[var(--border-light)] p-6 shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0">
+            <aside className="hidden md:flex flex-col w-[180px] bg-white border-r border-[var(--border-light)] p-4 shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0">
                 {/* Logo */}
                 <div
-                    className="mb-10 cursor-pointer px-2"
+                    className="mb-8 cursor-pointer px-1"
                     onClick={() => window.location.href = "/dashboard"}
                 >
-                    <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 mb-1 leading-tight">Admin Portal</h1>
-                    <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider">Workspace</span>
+                    <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 leading-tight truncate">Admin Portal</h1>
                 </div>
 
                 {/* Nav */}
-                <nav className="flex flex-col gap-1">
-                    <Link href="/dashboard?tab=analytics" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
-                        <BarChart3 size={18} />
-                        <span>Analytics</span>
-                    </Link>
-                    <Link href="/dashboard?tab=students" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
-                        <GraduationCap size={18} />
-                        <span>Student Roster</span>
+                <nav className="flex flex-col gap-1 w-full">
+                    <Link href="/workspace" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                        <LayoutTemplate size={18} />
+                        <span className="truncate">Workspace</span>
                     </Link>
 
-                    <div className="px-3 pb-1 mt-6 text-[0.7rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    <div className="px-2 pb-1 mt-5 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                        System Data
+                    </div>
+                    
+                    <Link href="/dashboard?tab=analytics" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                        <BarChart3 size={18} />
+                        <span className="truncate">Analytics</span>
+                    </Link>
+                    <Link href="/dashboard?tab=students" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                        <GraduationCap size={18} />
+                        <span className="truncate">Student Roster</span>
+                    </Link>
+
+                    <div className="px-2 pb-1 mt-5 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
                         Organization
                     </div>
 
-                    <Link href="/dashboard?tab=users" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=users" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
                         <UsersRound size={18} />
-                        <span>System Users</span>
+                        <span className="truncate">System Users</span>
                     </Link>
-                    <Link href="/dashboard?tab=invitations" className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=invitations" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
                         <Mail size={18} />
-                        <span>Pending Invites</span>
+                        <span className="truncate">Pending Invites</span>
                     </Link>
                 </nav>
             </aside>

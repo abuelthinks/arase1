@@ -801,7 +801,7 @@ export default function AdminDashboard() {
                                                         <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
                                                             <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <Link href={`/students/${s.id}/workspace?tab=parent_assessment`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                <Link href={`/workspace?studentId=${s.id}&tab=parent_assessment`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                     {s.first_name} {s.last_name}
                                                                 </Link>
                                                             </td>
@@ -839,7 +839,7 @@ export default function AdminDashboard() {
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
                                                             <span className="text-xs font-mono text-slate-400 mb-1">#{s.id}</span>
-                                                            <Link href={`/students/${s.id}/workspace?tab=parent_assessment`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
+                                                            <Link href={`/workspace?studentId=${s.id}&tab=parent_assessment`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                             <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>

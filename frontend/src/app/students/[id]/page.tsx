@@ -32,6 +32,9 @@ interface ProfileData {
         grade: string;
         date_of_birth: string;
         status: string;
+        parent_guardian_name?: string;
+        parent_phone?: string;
+        parent_email?: string;
     };
     active_cycle: {
         id: number;
@@ -126,8 +129,9 @@ const formRoutes: Record<string, string> = {
     multi_tracker:     "/forms/multidisciplinary-tracker",
 };
 
-export default function StudentProfilePage() {
-    const { id } = useParams();
+export function StudentProfileContent({ propStudentId, propHideNavigation, propEmbedded }: { propStudentId?: string, propHideNavigation?: boolean, propEmbedded?: boolean } = {}) {
+    const params = useParams();
+    const id = propStudentId || (params?.id as string);
     const router = useRouter();
     const { user } = useAuth();
     const [data, setData] = useState<ProfileData | null>(null);
@@ -306,10 +310,10 @@ export default function StudentProfilePage() {
 
     return (
         <>
-        <ProtectedRoute>
-            <div className="max-w-7xl mx-auto pb-16 px-4">
+            <div className={`max-w-7xl mx-auto pb-16 px-4 ${propHideNavigation ? 'pt-4' : ''}`}>
             
-            {/* Desktop Breadcrumb — unchanged */}
+            {/* Desktop Breadcrumb — hidden when embedded */}
+            {!propHideNavigation && (
             <div className="hidden md:flex" style={{ marginBottom: "2rem", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <button type="button" onClick={() => router.back()}
@@ -334,30 +338,31 @@ export default function StudentProfilePage() {
                     Status: {statusBadge.label}
                 </div>
             </div>
+            )}
 
 
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="flex flex-col gap-6 max-w-4xl mx-auto mt-2">
 
-                {/* ── Left Sidebar: Identity & Lifecycle ── */}
-                <div className="flex flex-col gap-6 lg:col-span-1">
+                {/* ── Profile Identity & Lifecycle ── */}
+                <div className="flex flex-col gap-6">
                     
                     {/* Main Profile Card */}
                     <div className="glass-panel" style={{ background: "white", borderRadius: "14px", padding: "1.75rem", border: "1px solid var(--border-light)" }}>
-                        <div className="flex flex-col md:flex-row lg:flex-col items-center gap-6">
+                        <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
                             {/* Avatar */}
-                            <div className="flex flex-col items-center text-center flex-shrink-0 md:w-1/3 lg:w-full">
+                            <div className="flex flex-col items-center text-center flex-shrink-0 md:w-1/3">
                                 <div style={{
-                                    width: "80px", height: "80px", borderRadius: "50%",
+                                    width: "96px", height: "96px", borderRadius: "50%",
                                     background: "#dbeafe", color: "#1e40af",
                                     display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: "1.8rem", fontWeight: 700, marginBottom: "1rem",
+                                    fontSize: "2.2rem", fontWeight: 700, marginBottom: "1rem",
                                     boxShadow: "0 4px 10px rgba(0,0,0,0.05)", border: "2px solid #bfdbfe"
                                 }}>
                                     {student.first_name[0]}{student.last_name[0]}
                                 </div>
 
-                                <h1 style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 6px" }}>
+                                <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 8px" }}>
                                     {student.first_name} {student.last_name}
                                 </h1>
 
@@ -386,15 +391,18 @@ export default function StudentProfilePage() {
                                             }
                                             return `${age} years old`;
                                         })() },
+                                        { label: "Parent/Guardian", value: student.parent_guardian_name || "Not provided" },
+                                        { label: "Parent Email", value: student.parent_email || "Not provided" },
+                                        { label: "Parent Phone", value: student.parent_phone || "Not provided" },
                                     ].map((item, idx, arr) => (
                                         <div key={item.label} style={{ 
                                             display: "flex", justifyContent: "space-between", alignItems: "center",
-                                            padding: "12px 16px",
+                                            padding: "14px 20px",
                                             borderBottom: idx < arr.length - 1 ? "1px solid var(--border-light)" : "none",
-                                            fontSize: "0.85rem"
+                                            fontSize: "0.9rem"
                                         }}>
                                             <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{item.label}</span>
-                                            <div style={{ color: "var(--text-primary)", fontWeight: 600, wordBreak: "break-all", textAlign: "right" }}>{item.value}</div>
+                                            <div style={{ color: "var(--text-primary)", fontWeight: 700, wordBreak: "break-all", textAlign: "right" }}>{item.value}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -488,302 +496,13 @@ export default function StudentProfilePage() {
                         </div>
                     )}
 
-                    {/* Admin: Danger Zone (Hidden on Mobile) */}
-                    <div className="hidden lg:block">
+                    {/* Admin: Danger Zone */}
+                    <div>
                         {renderDangerZone()}
                     </div>
                 </div>
-
-                {/* ── Right Column: Workflow Engine ── */}
-                <div className="flex flex-col gap-6 lg:col-span-2">
-
-                    {/* Input Forms */}
-                    {visibleFormKeys.length > 0 && (
-                        <div className="glass-panel" style={{ background: "white", borderRadius: "14px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
-                            <div style={{ padding: "1.25rem 1.75rem", borderBottom: "1px solid var(--border-light)", background: "#f8fafc" }}>
-                                <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>
-                                    Input Forms Grid
-                                </h2>
-                                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "4px 0 0" }}>
-                                    Monitor workflow submissions.
-                                </p>
-                            </div>
-                            <div style={{ padding: "1.5rem 1.75rem" }}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                                    {visibleFormKeys.map((key) => {
-                                        const fs: FormStatus = form_statuses[key] ?? { submitted: false, id: null };
-                                        const label = formLabels[key] ?? key;
-                                        const route = formRoutes[key] ?? "#";
-                                        
-                                        // "Remind Teacher" capability context for ADMIN
-                                        const isSpedForm = key.includes("sped");
-                                        const assignedTeacher = isSpedForm ? staffList.find(s => s.role === "TEACHER" && (data.assigned_staff || []).some(a => a.id === s.id && a.role === "TEACHER")) : null;
-
-                                        return (
-                                            <div key={key} style={{
-                                                borderRadius: "10px", padding: "16px",
-                                                border: `1px solid ${fs.submitted ? "#a7f3d0" : "#e2e8f0"}`,
-                                                background: fs.submitted ? "#f0fdf4" : "white",
-                                                display: "flex", flexDirection: "column", justifyContent: "space-between",
-                                                boxShadow: fs.submitted ? "none" : "0 1px 2px rgba(0,0,0,0.02)"
-                                            }}>
-                                                <div>
-                                                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "12px", gap: "8px" }}>
-                                                        <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, lineHeight: 1.2 }}>
-                                                            {label}
-                                                        </p>
-                                                        {fs.submitted ? (
-                                                            <svg style={{ width: 20, height: 20, color: "#16a34a", flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                        ) : (
-                                                            <svg style={{ width: 20, height: 20, color: "#cbd5e1", flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    {/* Missing Action Text */}
-                                                    {!fs.submitted && user?.role === "ADMIN" && isSpedForm && (
-                                                        <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                                                            {assignedTeacher ? `Waiting on: ${assignedTeacher.first_name}` : "No teacher assigned"}
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                <div style={{ marginTop: "auto" }}>
-                                                    {fs.submitted ? (
-                                                        <Link href={`${route}?studentId=${student.id}&mode=view&submissionId=${fs.id}`} style={{ fontSize: "0.8rem", color: "#16a34a", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }} className="hover:underline">
-                                                            View Result →
-                                                        </Link>
-                                                    ) : (
-                                                        ownedFormKeys[user?.role ?? ""]?.includes(key) ? (
-                                                            (key.includes("tracker") && student.status !== "Enrolled") ? (
-                                                                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
-                                                                    <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                                    Locked
-                                                                </div>
-                                                            ) : (key === "sped_assessment" && !["Observation Scheduled", "Assessed", "Enrolled"].includes(student.status)) ? (
-                                                                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
-                                                                    <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                                    Waiting for Admin
-                                                                </div>
-                                                            ) : (
-                                                                <Link href={`${route}?studentId=${student.id}`} className="btn-indigo" style={{ textDecoration: "none" }}>
-                                                                    + Complete Form
-                                                                </Link>
-                                                            )
-                                                        ) : (
-                                                            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8" }}>Pending Input</span>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Admin: Staff Assignment Panel */}
-                    {user?.role === "ADMIN" && (
-                        <div className="glass-panel" style={{ background: "white", borderRadius: "14px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
-                            <div style={{ padding: "1.25rem 1.75rem", borderBottom: "1px solid var(--border-light)", background: "#f8fafc" }}>
-                                <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>Clinical Caseload Team</h2>
-                                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "4px 0 0" }}>Manage assigned specialists and teachers.</p>
-                            </div>
-                            <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {(["SPECIALIST", "TEACHER"] as const).map(role => {
-                                    const assignedIds = (data.assigned_staff ?? []).filter(s => s.role === role).map(s => s.id);
-                                    const list = staffList.filter(s => s.role === role);
-                                    
-                                    const isLocked = role === "SPECIALIST" 
-                                        ? !form_statuses.parent_assessment?.submitted 
-                                        : student.status !== "Enrolled";
-
-                                    const lockReason = role === "SPECIALIST"
-                                        ? "Waiting on Parent Input"
-                                        : "Waiting for Enrollment";
-
-                                    return (
-                                        <div key={role}>
-                                            <p style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "6px" }}>
-                                                {role === "SPECIALIST" ? "Specialists" : "Teachers"}
-                                            </p>
-                                            {list.length === 0 ? (
-                                                <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>No staff found.</p>
-                                            ) : (
-                                                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                                    {list.map(s => {
-                                                        const alreadyAssigned = assignedIds.includes(s.id);
-                                                        const isLoading = assigning === s.id;
-                                                        return (
-                                                            <div key={s.id} onClick={() => router.push(`/users/${s.id}`)} style={{
-                                                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                                                padding: "12px 14px",
-                                                                borderRadius: "10px",
-                                                                border: `2px solid ${alreadyAssigned ? "#22c55e" : "#e2e8f0"}`,
-                                                                background: alreadyAssigned ? "#f0fdf4" : "white",
-                                                                gap: "8px",
-                                                                cursor: "pointer",
-                                                                transition: "all 0.2s",
-                                                                opacity: (!alreadyAssigned && isLocked) ? 0.6 : 1
-                                                            }} className={!alreadyAssigned ? "hover:border-blue-300 hover:shadow-sm" : "hover:shadow-sm"}>
-                                                                <div style={{ minWidth: 0 }}>
-                                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "2px" }}>
-                                                                        <p style={{ fontSize: "0.9rem", fontWeight: 700, color: alreadyAssigned ? "#166534" : "var(--text-primary)", margin: 0 }}>
-                                                                            {s.first_name || s.last_name ? `${s.first_name} ${s.last_name}`.trim() : s.username}
-                                                                        </p>
-                                                                        {s.recommended && (
-                                                                            <span style={{ fontSize: "0.65rem", fontWeight: 800, background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "3px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                                                                                ⭐ Best Match
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    {s.specialty && (
-                                                                        <p style={{ fontSize: "0.75rem", color: "#6366f1", fontWeight: 500, margin: "0 0 2px" }}>
-                                                                            {s.specialty}
-                                                                        </p>
-                                                                    )}
-                                                                    <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
-                                                                        <strong style={{ color: "#334155" }}>{s.caseload}</strong> student{s.caseload !== 1 ? "s" : ""}
-                                                                    </p>
-                                                                </div>
-                                                                {alreadyAssigned ? (
-                                                                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#16a34a", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "4px" }}>
-                                                                        <svg style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                                        Active
-                                                                    </span>
-                                                                ) : isLocked ? (
-                                                                    <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#94a3b8", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "4px" }}>
-                                                                        <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                                        {lockReason}
-                                                                    </span>
-                                                                ) : (
-                                                                    <button
-                                                                        disabled={isLoading}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleAssign(role === "SPECIALIST" ? "specialist" : "teacher", s.id);
-                                                                        }}
-                                                                        className="btn-indigo"
-                                                                        style={{ opacity: isLoading ? 0.6 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}
-                                                                    >
-                                                                        {isLoading ? "…" : "Assign"}
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Generated documents */}
-                    <div className="glass-panel" style={{ background: "#f0f9ff", borderRadius: "14px", border: "1px solid #bae6fd", overflow: "hidden" }}>
-                        <div style={{ padding: "1.25rem 1.75rem", borderBottom: "1px solid #e0f2fe", background: "#e0f2fe", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-                            <div>
-                                <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#0369a1", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
-                                    Generated Documents Output
-                                </h2>
-                                <p style={{ fontSize: "0.85rem", color: "#0ea5e9", margin: "4px 0 0" }}>Finalized clinical AI outputs approved for this student.</p>
-                            </div>
-                            {user?.role === "ADMIN" && (student.status === "Assessed" || student.status === "Enrolled") && (
-                        <Link
-                                    href={`/admin/reports?studentId=${student.id}`}
-                                    className="btn-primary"
-                                    style={{ display: "inline-flex", alignItems: "center", gap: "6px", textDecoration: "none", whiteSpace: "nowrap" }}
-                                >
-                                    <svg style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                    Generate Report Now
-                                </Link>
-                            )}
-                        </div>
-                        <div style={{ padding: "1.5rem 1.75rem" }}>
-                            {generated_documents.length === 0 ? (
-                                <div style={{ textAlign: "center", padding: "3rem 1rem", color: "#38bdf8", background: "#e0f2fe", borderRadius: "8px", border: "1px dashed #7dd3fc" }}>
-                                    <svg style={{ width: 44, height: 44, margin: "0 auto 12px", opacity: 0.8 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <p style={{ fontSize: "0.95rem", fontWeight: 600, margin: 0, color: "#0284c7" }}>No final reports generated yet.</p>
-                                    <p style={{ fontSize: "0.85rem", margin: "6px 0 0", color: "#0ea5e9" }}>Generations will appear here.</p>
-                                </div>
-                            ) : (
-                                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
-                                    {generated_documents.map((doc) => {
-                                        const isIEP = doc.type === "IEP" && doc.has_iep_data;
-                                        const isMonthly = doc.type === "MONTHLY" && doc.has_iep_data;
-                                        const badgeLabel = isIEP ? "IEP" : isMonthly ? "MO" : "PDF";
-                                        const badgeBg = isIEP ? "#dbeafe" : isMonthly ? "#dcfce7" : "#fee2e2";
-                                        const badgeColor = isIEP ? "#2563eb" : isMonthly ? "#16a34a" : "#dc2626";
-                                        const docTitle = isIEP ? "AI-Generated IEP Master" : isMonthly ? "Monthly Progress Report" : `${doc.type} Report`;
-                                        return (
-                                        <li key={doc.id} style={{ padding: "14px 16px", background: "white", borderRadius: "10px", border: "1px solid #bae6fd", boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
-                                            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                                                <div className="hidden md:flex" style={{ width: 42, height: 42, background: badgeBg, color: badgeColor, borderRadius: "8px", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 800, flexShrink: 0 }}>
-                                                    {badgeLabel}
-                                                </div>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <p style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                                                        {isIEP ? (
-                                                            <a href={`/admin/iep?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-indigo-600 transition-colors">
-                                                                {docTitle}
-                                                            </a>
-                                                        ) : isMonthly ? (
-                                                            <a href={`/admin/monthly-report?id=${doc.id}`} style={{ color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-green-600 transition-colors">
-                                                                {docTitle}
-                                                            </a>
-                                                        ) : (
-                                                            <span style={{ color: "var(--text-primary)" }}>{docTitle}</span>
-                                                        )}
-                                                        {doc.status === "DRAFT" && (
-                                                            <span style={{ fontSize: "0.65rem", fontWeight: 800, padding: "2px 6px", borderRadius: "4px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>DRAFT</span>
-                                                        )}
-                                                    </p>
-
-                                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "6px", gap: "8px", flexWrap: "wrap" }}>
-                                                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0, display: "flex", alignItems: "center", gap: "4px" }}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                                            {new Date(doc.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                                                        </p>
-                                                        <div style={{ display: "flex", gap: "8px" }}>
-                                                            {isIEP && (
-                                                                <a href={`/admin/iep?id=${doc.id}`} className="btn-indigo" style={{ textDecoration: "none", fontSize: "0.78rem", padding: "5px 12px" }}>
-                                                                    View IEP
-                                                                </a>
-                                                            )}
-                                                            {isMonthly && (
-                                                                <a href={`/admin/monthly-report?id=${doc.id}`} className="btn-green" style={{ textDecoration: "none", fontSize: "0.78rem", padding: "5px 12px" }}>
-                                                                    View Report
-                                                                </a>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    );
-                                    })}
-                                </ul>
-                            )}
-                        </div>
-                    </div>
-
-                </div>
             </div>
-
-            {/* Admin: Danger Zone (Small Screens - Bottom) */}
-            <div className="block lg:hidden mt-6">
-                {renderDangerZone()}
-            </div>
-            
-            </div>
-        </ProtectedRoute>
+        </div>
 
         {/* Delete Student Confirmation Modal */}
         {showDeleteModal && data && (
@@ -836,5 +555,14 @@ export default function StudentProfilePage() {
             </div>
         )}
         </>
+    );
+}
+
+export default function StudentProfilePage() {
+    const { id } = useParams();
+    return (
+        <ProtectedRoute>
+            <StudentProfileContent propStudentId={id as string} />
+        </ProtectedRoute>
     );
 }
