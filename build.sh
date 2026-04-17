@@ -8,8 +8,5 @@ pip install -r backend/requirements.txt
 # Run migrations
 python manage.py migrate
 
-# Provision master admin if env vars are present
-python provision_admin.py
-
 # Collect static files
 python manage.py collectstatic --no-input

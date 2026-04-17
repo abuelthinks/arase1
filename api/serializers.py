@@ -4,7 +4,7 @@ from .models import (
     User, Student, StudentAccess, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    Invitation
+    Invitation, Notification
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -14,7 +14,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['role'] = user.role
         return token
 
-class UserSerializer(serializers.ModelSerializer):
+class AdminUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     assigned_students_count = serializers.SerializerMethodField()
     assigned_student_names = serializers.SerializerMethodField()
@@ -55,6 +55,28 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
             user.save()
         return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        if 'first_name' in validated_data:
+            validated_data['first_name'] = validated_data['first_name'].strip().title()
+        if 'last_name' in validated_data:
+            validated_data['last_name'] = validated_data['last_name'].strip().title()
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save(update_fields=['password'])
+        return user
+
+
+class SelfUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email', 'role', 'first_name', 'last_name',
+            'specialty', 'phone_number', 'is_phone_verified'
+        ]
+        read_only_fields = fields
 
 class StudentSerializer(serializers.ModelSerializer):
     has_parent_assessment = serializers.SerializerMethodField()
@@ -136,3 +158,10 @@ class AcceptInvitationSerializer(serializers.Serializer):
         default="",
         error_messages={'invalid': 'Please enter a valid phone number (7-15 characters).'}
     )
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'notification_type', 'title', 'message', 'link', 'is_read', 'created_at']
+        read_only_fields = ['id', 'notification_type', 'title', 'message', 'link', 'created_at']

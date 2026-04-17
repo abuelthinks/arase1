@@ -7,6 +7,5 @@ cmds = ["pip install -r backend/requirements.txt"]
 [phases.build]
 cmds = [
     "python manage.py migrate",
-    "python provision_admin.py",
     "python manage.py collectstatic --no-input"
 ]

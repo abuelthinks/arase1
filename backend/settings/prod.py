@@ -14,7 +14,7 @@ ALLOWED_HOSTS = [
     'arase1-production.up.railway.app',
     'arase1.vercel.app',
     # Allow overriding via env var for future domain changes
-    *[h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()],
+    *parse_csv_env('ALLOWED_HOSTS'),
 ]
 
 # ─── Database — PostgreSQL required in production ────────────────────────────
@@ -29,12 +29,17 @@ DATABASES = {
 }
 
 # ─── CORS — loosened for testing to ensure errors are readable ─────────────────
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = parse_csv_env('CORS_ALLOWED_ORIGINS')
+configured_frontend_url = os.environ.get('FRONTEND_URL', '').rstrip('/')
+if configured_frontend_url and configured_frontend_url not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(configured_frontend_url)
 CORS_ALLOW_CREDENTIALS = True
 
 # ─── CSRF trusted origins ───────────────────────────────────────────────────
-_raw_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
+CSRF_TRUSTED_ORIGINS = parse_csv_env('CSRF_TRUSTED_ORIGINS')
+for origin in CORS_ALLOWED_ORIGINS:
+    if origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
 
 # Add railway domain patterns if they appear in ALLOWED_HOSTS
 for host in ALLOWED_HOSTS:

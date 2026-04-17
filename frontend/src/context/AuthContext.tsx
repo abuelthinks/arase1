@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import api from "@/lib/api";
+import api, { fetchCsrfCookie } from "@/lib/api";
 
 type Role = "ADMIN" | "TEACHER" | "SPECIALIST" | "PARENT";
 
@@ -43,10 +43,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // On mount, check auth state by calling /api/auth/me/
     useEffect(() => {
-        checkAuth();
+        const initializeAuth = async () => {
+            try {
+                await fetchCsrfCookie();
+            } catch {
+                // Ignore bootstrap failures here; auth check below will surface real problems.
+            }
+            await checkAuth();
+        };
+        initializeAuth();
     }, []);
 
     const login = async (username: string, password: string) => {
+        await fetchCsrfCookie();
         // POST credentials — server sets HttpOnly cookies in the response
         const res = await api.post("/api/auth/token/", { username, password });
         setUser({
@@ -61,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             // Server clears HttpOnly cookies and blacklists the refresh token
+            await fetchCsrfCookie();
             await api.post("/api/auth/logout/");
         } catch {
             // Ignore errors — clear state anyway

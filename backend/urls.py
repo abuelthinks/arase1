@@ -12,6 +12,7 @@ from api.models import User
 
 # Cookie-based auth views (HttpOnly cookies)
 from api.auth_views import (
+    CsrfCookieView,
     CookieTokenObtainPairView,
     CookieTokenRefreshView,
     LogoutView,
@@ -40,6 +41,7 @@ urlpatterns = [
     path('api/auth/token/', CookieTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/logout/', LogoutView.as_view(), name='auth_logout'),
+    path('api/auth/csrf/', CsrfCookieView.as_view(), name='auth_csrf'),
     path('api/auth/me/', MeView.as_view(), name='auth_me'),
 ]
 
