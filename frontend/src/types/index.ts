@@ -34,8 +34,6 @@ export interface UserProfile {
 export type StudentStatus =
     | "PENDING_ASSESSMENT"
     | "ASSESSMENT_SCHEDULED"
-    | "OBSERVATION_PENDING"
-    | "OBSERVATION_SCHEDULED"
     | "ASSESSED"
     | "ENROLLED"
     | "ARCHIVED";

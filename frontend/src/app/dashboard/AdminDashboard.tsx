@@ -170,7 +170,7 @@ export default function AdminDashboard() {
                 api.get("/api/invitations/"),
                 api.get("/api/dashboard/actions/").catch(() => ({ data: { actions: [] } }))
             ]);
-            setStudents(studentRes.data.sort((a: any, b: any) => b.id - a.id));
+            setStudents(studentRes.data);
             setUsers(userRes.data.sort((a: any, b: any) => b.id - a.id));
             setInvitations(inviteRes.data.sort((a: any, b: any) => b.id - a.id));
             setDashboardActions(actionsRes.data?.actions || []);

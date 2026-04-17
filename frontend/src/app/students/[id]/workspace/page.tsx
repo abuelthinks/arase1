@@ -17,6 +17,17 @@ import { MonthlyReportContent } from "@/app/admin/monthly-report/page";
 import { AdminReportsContent } from "@/app/admin/reports/page";
 import { StudentProfileContent } from "@/app/students/[id]/page";
 
+const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+    "PENDING_ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d", label: "Pending Assessment" },
+    "PENDING ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d", label: "Pending Assessment" },
+    "ASSESSMENT_SCHEDULED": { bg: "#fef3c7", color: "#92400e", label: "Assessment Scheduled" },
+    "ASSESSMENT SCHEDULED": { bg: "#fef3c7", color: "#92400e", label: "Assessment Scheduled" },
+    "ASSESSED":     { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
+    "ASSESSED (AWAITING ENROLLMENT)": { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
+    "ENROLLED":     { bg: "#dcfce7", color: "#14532d", label: "Enrolled" },
+    "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b", label: "Archived" },
+};
+
 const TABS = [
     { id: "parent_assessment", label: "Parent Assessment", formType: null },
     { id: "multi_assessment", label: "Specialist Assessment", formType: "multidisciplinary-assessment" },
@@ -156,16 +167,21 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 flex flex-col gap-4">
+                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
                         <div>
                             <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
-                            <p className="text-xs text-slate-400 mt-1 mb-0 uppercase tracking-wider font-semibold">Data Collection</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <button onClick={() => router.push(`/students/${studentId}`)} className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 whitespace-nowrap">
-                                View Profile
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                            </button>
+                            {studentStatus && (
+                                <span style={{
+                                    fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                    padding: "2px 8px", borderRadius: "999px",
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                }}>
+                                    {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -238,10 +254,21 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 flex flex-col gap-4">
+                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
                         <div>
                             <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
-                            <p className="text-xs text-slate-400 mt-1 mb-0 uppercase tracking-wider font-semibold">Reports & Outputs</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {studentStatus && (
+                                <span style={{
+                                    fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                    padding: "2px 8px", borderRadius: "999px",
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                }}>
+                                    {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -337,10 +364,21 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 flex flex-col gap-4">
+                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
                         <div>
                             <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
-                            <p className="text-xs text-slate-400 mt-1 mb-0 uppercase tracking-wider font-semibold">Staff Assignment</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {studentStatus && (
+                                <span style={{
+                                    fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                    padding: "2px 8px", borderRadius: "999px",
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                }}>
+                                    {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -474,7 +512,7 @@ function UnifiedWorkspaceContent() {
                             ) : (
                                 filteredStudents.map(s => {
                                     const isCurrent = s.id.toString() === studentId;
-                                    const dotColor: Record<string, string> = { ENROLLED: "#22c55e", ASSESSED: "#3b82f6", PENDING_ASSESSMENT: "#f59e0b", ARCHIVED: "#94a3b8", OBSERVATION_PENDING: "#8b5cf6" };
+                                    const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", ARCHIVED: "#94a3b8" };
                                     const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
                                     return (
                                         <button

@@ -22,8 +22,6 @@ interface Student {
 const statusColors: Record<string, { bg: string; color: string }> = {
     PENDING_ASSESSMENT:    { bg: "#fce7f3", color: "#9d174d" },
     ASSESSMENT_SCHEDULED: { bg: "#fef3c7", color: "#92400e" },
-    OBSERVATION_PENDING:  { bg: "#f3e8ff", color: "#6b21a8" },
-    OBSERVATION_SCHEDULED:{ bg: "#e0e7ff", color: "#3730a3" },
     ASSESSED:     { bg: "#dbeafe", color: "#1e40af" },
     ENROLLED:     { bg: "#dcfce7", color: "#14532d" },
     ARCHIVED:   { bg: "#f1f5f9", color: "#64748b" },
@@ -47,7 +45,7 @@ export default function DashboardPage() {
         const fetchStudents = async () => {
             try {
                 const res = await api.get("/api/students/");
-                setStudents(res.data.sort((a: Student, b: Student) => b.id - a.id));
+                setStudents(res.data);
             } catch (err) {
                 console.error("Failed to fetch students");
             } finally {

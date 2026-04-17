@@ -3,6 +3,7 @@ API Views — thin orchestrators.
 Business logic lives in api/services/*.
 """
 
+from django.db.models import Case, When, Value, IntegerField
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -33,9 +34,26 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        
+        # 1. PENDING_ASSESSMENT / ASSESSMENT_SCHEDULED -> 1
+        # 2. ASSESSED -> 2
+        # 3. ENROLLED -> 3
+        # 4. ARCHIVED -> 4
+        urgency_case = Case(
+            When(status__in=['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED'], then=Value(1)),
+            When(status='ASSESSED', then=Value(2)),
+            When(status='ENROLLED', then=Value(3)),
+            When(status='ARCHIVED', then=Value(4)),
+            default=Value(5),
+            output_field=IntegerField()
+        )
+
         if user.role == 'ADMIN':
-            return Student.objects.all()
-        return Student.objects.filter(assigned_users__user=user).distinct()
+            qs = Student.objects.all()
+        else:
+            qs = Student.objects.filter(assigned_users__user=user).distinct()
+            
+        return qs.alias(urgency=urgency_case).order_by('urgency', '-id')
 
     def create(self, request, *args, **kwargs):
         if request.user.role != 'ADMIN':
@@ -311,17 +329,6 @@ class AdminDashboardActionsView(APIView):
                 "type": "info"
             })
 
-        # 2.5 Ready for Teacher Trial Assignment
-        obs_pending = Student.objects.filter(status='OBSERVATION_PENDING')
-        for s in obs_pending:
-            actions.append({
-                "id": f"obs_{s.id}",
-                "title": f"Assign Teacher Observation: {s.first_name} {s.last_name}",
-                "description": "Specialist assessment complete. Review clinical notes and assign a Teacher for trial observation.",
-                "action_text": "Assign →",
-                "link": f"/students/{s.id}",
-                "type": "info"
-            })
 
         # 3. Parent Onboarding Submitted (in INQUIRY, parent input received)
         inquiry = Student.objects.filter(status='PENDING_ASSESSMENT')

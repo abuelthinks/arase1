@@ -26,7 +26,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
 
     const pendingStudent = students.find(s => s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment);
     const analyzingStudent = students.find(s => 
-        ["ASSESSMENT_SCHEDULED", "OBSERVATION_PENDING", "OBSERVATION_SCHEDULED", "ASSESSED"].includes(s.status) || 
+        ["ASSESSMENT_SCHEDULED", "ASSESSED"].includes(s.status) || 
         (s.status === "PENDING_ASSESSMENT" && s.has_parent_assessment)
     );
     const activeStudent = students.find(s => s.status === "ENROLLED");

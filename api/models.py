@@ -47,8 +47,6 @@ class Student(models.Model):
     STATUS_CHOICES = (
         ('PENDING_ASSESSMENT', 'Pending Assessment'),
         ('ASSESSMENT_SCHEDULED', 'Assessment Scheduled'),
-        ('OBSERVATION_PENDING', 'Observation Pending'),
-        ('OBSERVATION_SCHEDULED', 'Observation Scheduled'),
         ('ASSESSED', 'Assessed'),
         ('ENROLLED', 'Enrolled'),
         ('ARCHIVED', 'Archived'),

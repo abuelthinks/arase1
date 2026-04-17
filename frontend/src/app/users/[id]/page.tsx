@@ -39,8 +39,6 @@ const roleConfig: Record<string, { bg: string; color: string }> = {
 const statusColors: Record<string, { bg: string; color: string }> = {
     "PENDING_ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d" },
     "ASSESSMENT_SCHEDULED": { bg: "#fef3c7", color: "#92400e" },
-    "OBSERVATION_PENDING":  { bg: "#f3e8ff", color: "#6b21a8" },
-    "OBSERVATION_SCHEDULED":{ bg: "#e0e7ff", color: "#3730a3" },
     "ASSESSED":     { bg: "#dbeafe", color: "#1e40af" },
     "ENROLLED":     { bg: "#dcfce7", color: "#14532d" },
     "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b" },
@@ -102,7 +100,7 @@ export default function UserProfile() {
     const roleBadge = roleConfig[role] ?? { bg: "#f1f5f9", color: "#475569" };
 
     const activeCount = user.assigned_students?.filter(s => s.status === "ENROLLED").length || 0;
-    const pendingCount = user.assigned_students?.filter(s => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED", "OBSERVATION_PENDING", "OBSERVATION_SCHEDULED"].includes(s.status)).length || 0;
+    const pendingCount = user.assigned_students?.filter(s => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"].includes(s.status)).length || 0;
 
     // Static mock data for Clinical UI
     const mockCredentials = role === "SPECIALIST" ? ["SLP-CCC License #102938", "State Board Certified"] : (role === "TEACHER" ? ["M.Ed Special Education", "State Credential #9821"] : []);
