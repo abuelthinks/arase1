@@ -15,11 +15,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'), override=True)
 load_dotenv(os.path.join(BASE_DIR, 'backend', '.env'), override=True)
 
+
+def parse_csv_env(name):
+    return [item.strip() for item in os.environ.get(name, '').split(',') if item.strip()]
+
 # ─── API Keys ────────────────────────────────────────────────────────────────
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 # ─── Security ────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ.get('SECRET_KEY', '')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
 # ─── Application definition ─────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -136,6 +141,7 @@ else:
 
 # ─── CORS ────────────────────────────────────────────────────────────────────
 CORS_ALLOW_CREDENTIALS = True
+CSRF_COOKIE_HTTPONLY = False
 
 # ─── Custom User Model ──────────────────────────────────────────────────────
 AUTH_USER_MODEL = 'api.User'

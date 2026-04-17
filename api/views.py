@@ -5,6 +5,7 @@ Business logic lives in api/services/*.
 
 from django.db.models import Case, When, Value, IntegerField
 from rest_framework import viewsets, permissions, status
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -12,13 +13,14 @@ from .models import (
     Student, ReportCycle, GeneratedDocument, DocumentVersion,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    User, Invitation, PhoneVerification
+    User, Invitation, PhoneVerification, Notification
 )
+from .services.notification_service import notify_admins_in_app
 from .serializers import (
     StudentSerializer, GeneratedDocumentSerializer, CustomTokenObtainPairSerializer,
     ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer, SpedAssessmentSerializer,
     ParentProgressTrackerSerializer, MultidisciplinaryProgressTrackerSerializer, SpedProgressTrackerSerializer,
-    UserSerializer, InvitationSerializer, AcceptInvitationSerializer
+    AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer
 )
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -95,7 +97,6 @@ class StudentViewSet(viewsets.ModelViewSet):
 # ─── Users ───────────────────────────────────────────────────────────────────
 
 class UserViewSet(viewsets.ModelViewSet):
-    serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -104,9 +105,33 @@ class UserViewSet(viewsets.ModelViewSet):
             return User.objects.all().order_by('-date_joined')
         return User.objects.filter(id=user.id)
 
-    def destroy(self, request, *args, **kwargs):
+    def get_serializer_class(self):
+        if self.request.user.role == 'ADMIN':
+            return AdminUserSerializer
+        return SelfUserSerializer
+
+    def _require_admin(self, request):
         if request.user.role != 'ADMIN':
-            return Response({"error": "Only admins can delete users."}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only admins can manage users.")
+
+    def list(self, request, *args, **kwargs):
+        self._require_admin(request)
+        return super().list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        self._require_admin(request)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._require_admin(request)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._require_admin(request)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._require_admin(request)
         instance = self.get_object()
         if instance == request.user:
             return Response({"error": "Cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST)
@@ -117,9 +142,53 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class BaseInputViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
+    allowed_submitter_roles = ()
+    require_enrolled_student = False
+    require_active_cycle = False
 
     def perform_create(self, serializer):
         serializer.save(submitted_by=self.request.user)
+
+    def _validate_submission(self, validated_data):
+        user = self.request.user
+        student = validated_data.get('student')
+        report_cycle = validated_data.get('report_cycle')
+
+        if student is None or report_cycle is None:
+            raise ValidationError("Both student and report_cycle are required.")
+
+        if report_cycle.student_id != student.id:
+            raise ValidationError("The selected report cycle does not belong to this student.")
+
+        if user.role != 'ADMIN' and user.role not in self.allowed_submitter_roles:
+            allowed_roles = ', '.join(self.allowed_submitter_roles)
+            raise PermissionDenied(f"Only {allowed_roles} users can submit this form.")
+
+        if user.role == 'ADMIN':
+            return
+
+        from .models import StudentAccess
+
+        if not StudentAccess.objects.filter(user=user, student=student).exists():
+            raise PermissionDenied("You do not have access to this student.")
+
+        if self.require_enrolled_student and student.status != 'ENROLLED':
+            raise ValidationError("Progress tracking is only available for active (enrolled) students.")
+
+        if self.require_active_cycle and not ReportCycle.objects.filter(
+            id=report_cycle.id,
+            student=student,
+            is_active=True,
+        ).exists():
+            raise ValidationError("Trackers can only be submitted for the active report cycle.")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self._validate_submission(serializer.validated_data)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
@@ -134,15 +203,32 @@ class BaseInputViewSet(viewsets.ModelViewSet):
         assigned_student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
         return self.queryset.filter(student_id__in=assigned_student_ids)
 
+    def update(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied("Only admins can modify submitted forms.")
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied("Only admins can modify submitted forms.")
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied("Only admins can delete submitted forms.")
+        return super().destroy(request, *args, **kwargs)
+
 
 class ParentAssessmentViewSet(BaseInputViewSet):
     queryset = ParentAssessment.objects.all()
     serializer_class = ParentAssessmentSerializer
+    allowed_submitter_roles = ('PARENT',)
 
 
 class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     queryset = MultidisciplinaryAssessment.objects.all()
     serializer_class = MultidisciplinaryAssessmentSerializer
+    allowed_submitter_roles = ('SPECIALIST',)
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
@@ -156,6 +242,7 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
 class SpedAssessmentViewSet(BaseInputViewSet):
     queryset = SpedAssessment.objects.all()
     serializer_class = SpedAssessmentSerializer
+    allowed_submitter_roles = ('TEACHER',)
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
@@ -167,6 +254,9 @@ class SpedAssessmentViewSet(BaseInputViewSet):
 class ParentProgressTrackerViewSet(BaseInputViewSet):
     queryset = ParentProgressTracker.objects.all()
     serializer_class = ParentProgressTrackerSerializer
+    allowed_submitter_roles = ('PARENT',)
+    require_enrolled_student = True
+    require_active_cycle = True
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
@@ -177,17 +267,9 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
 class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
     queryset = MultidisciplinaryProgressTracker.objects.all()
     serializer_class = MultidisciplinaryProgressTrackerSerializer
-
-    def create(self, request, *args, **kwargs):
-        # Double check student status for progress tracking
-        student_id = request.data.get('student')
-        try:
-            student = Student.objects.get(id=student_id)
-            if student.status != 'ENROLLED' and request.user.role != 'ADMIN':
-                return Response({"error": "Progress tracking is only available for active (enrolled) students."}, status=status.HTTP_400_BAD_REQUEST)
-        except Student.DoesNotExist:
-            pass
-        return super().create(request, *args, **kwargs)
+    allowed_submitter_roles = ('SPECIALIST',)
+    require_enrolled_student = True
+    require_active_cycle = True
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
@@ -198,6 +280,9 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
 class SpedProgressTrackerViewSet(BaseInputViewSet):
     queryset = SpedProgressTracker.objects.all()
     serializer_class = SpedProgressTrackerSerializer
+    allowed_submitter_roles = ('TEACHER',)
+    require_enrolled_student = True
+    require_active_cycle = True
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
@@ -236,6 +321,13 @@ class ParentOnboardView(APIView):
                     "message": "Student profile updated and input submitted successfully.",
                     "student_id": student.id,
                 }, status=status.HTTP_200_OK)
+        except PermissionDenied as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except ValidationError as exc:
+            detail = exc.detail if hasattr(exc, 'detail') else str(exc)
+            return Response({"error": detail}, status=status.HTTP_400_BAD_REQUEST)
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -452,6 +544,15 @@ class EnrollStudentView(APIView):
             student = Student.objects.get(id=student_id)
             student.status = 'ENROLLED'
             student.save()
+            
+            # Notify admins of enrollment
+            notify_admins_in_app(
+                notification_type='STUDENT_ENROLLED',
+                title=f"Student Enrolled: {student.first_name} {student.last_name}",
+                message=f"{request.user.first_name} {request.user.last_name} has formally enrolled the student.",
+                link=f"/dashboard?student={student.id}"
+            )
+            
             return Response({"message": "Student successfully enrolled and set to Active."})
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -1365,3 +1466,42 @@ class TaskStatusView(APIView):
             response = {"status": task.state}
             
         return Response(response)
+
+
+# ─── Notifications ───────────────────────────────────────────────────────────
+
+class NotificationListView(APIView):
+    """GET: List notifications for the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        qs = Notification.objects.filter(recipient=request.user)[:50]
+        unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+        serializer = NotificationSerializer(qs, many=True)
+        return Response({
+            'notifications': serializer.data,
+            'unread_count': unread_count
+        })
+
+
+class NotificationMarkReadView(APIView):
+    """POST: Mark a single notification as read."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notif = Notification.objects.get(pk=pk, recipient=request.user)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        notif.is_read = True
+        notif.save(update_fields=['is_read'])
+        return Response({'status': 'ok'})
+
+
+class NotificationMarkAllReadView(APIView):
+    """POST: Mark all notifications as read for the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+        return Response({'status': 'ok'})

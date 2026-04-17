@@ -3,13 +3,17 @@ Cookie-based JWT authentication views.
 Sets tokens as HttpOnly cookies instead of returning them in JSON body.
 """
 
+from django.conf import settings
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
-from django.conf import settings
+from .authentication import enforce_csrf
 from .serializers import CustomTokenObtainPairSerializer
 
 
@@ -36,6 +40,15 @@ def _set_auth_cookies(response, access_token, refresh_token=None):
             **cookie_kwargs,
         )
     return response
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class CsrfCookieView(APIView):
+    """Ensure the browser receives a CSRF cookie for cookie-authenticated writes."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        return Response({'detail': 'CSRF cookie set.'}, status=status.HTTP_200_OK)
 
 
 class CookieTokenObtainPairView(TokenObtainPairView):
@@ -74,6 +87,7 @@ class CookieTokenRefreshView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+        enforce_csrf(request)
         refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
         if not refresh_token:
             return Response(
@@ -82,37 +96,15 @@ class CookieTokenRefreshView(APIView):
             )
 
         try:
-            token = RefreshToken(refresh_token)
-            access = str(token.access_token)
-
+            serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
+            serializer.is_valid(raise_exception=True)
             response = Response({'message': 'Token refreshed.'}, status=status.HTTP_200_OK)
-            _set_auth_cookies(response, access)
-
-            # Rotate refresh token if configured: blacklist old, issue new
-            if settings.SIMPLE_JWT.get('ROTATE_REFRESH_TOKENS', False):
-                if settings.SIMPLE_JWT.get('BLACKLIST_AFTER_ROTATION', False):
-                    try:
-                        token.blacklist()
-                    except Exception:
-                        pass  # blacklist app may not be installed
-                # Issue a fresh refresh token for the same user
-                from rest_framework_simplejwt.tokens import RefreshToken as RT
-                new_refresh_token = RT.for_user(
-                    self.get_user_from_token(token)
-                ) if hasattr(self, 'get_user_from_token') else token
-                is_secure = not getattr(settings, 'DEBUG', False)
-                response.set_cookie(
-                    settings.JWT_AUTH_REFRESH_COOKIE,
-                    str(new_refresh_token),
-                    httponly=True,
-                    samesite='None' if is_secure else 'Lax',
-                    secure=is_secure,
-                    path='/',
-                    max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
-                )
-
-            return response
-        except TokenError:
+            return _set_auth_cookies(
+                response,
+                serializer.validated_data['access'],
+                serializer.validated_data.get('refresh'),
+            )
+        except (TokenError, InvalidToken):
             response = Response(
                 {'error': 'Invalid or expired refresh token.'},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -129,6 +121,7 @@ class LogoutView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+        enforce_csrf(request)
         refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
 
         response = Response({'message': 'Logged out.'}, status=status.HTTP_200_OK)

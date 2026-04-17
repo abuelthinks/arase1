@@ -8,7 +8,7 @@ from api.models import (
     Student, StudentAccess, ReportCycle,
     ParentAssessment, MultidisciplinaryAssessment, User, Invitation,
 )
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
 def create_student_with_invitation(student_data, parent_email):
@@ -60,13 +60,13 @@ def onboard_parent_student(user, student_data, form_data, student_id=None):
     if student_id:
         # Update existing student
         student = Student.objects.get(id=student_id)
+        if not StudentAccess.objects.filter(user=user, student=student).exists():
+            raise PermissionDenied("You do not have permission to update this student.")
         student.first_name = first_name
         student.last_name = last_name
         student.date_of_birth = dob
         student.grade = grade
         student.save()
-
-        StudentAccess.objects.get_or_create(user=user, student=student)
 
         cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
         if not cycle:
