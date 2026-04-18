@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .specialties import validate_specialty
 from .models import (
     User, Student, StudentAccess, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
@@ -45,6 +46,13 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        try:
+            validated_data['specialty'] = validate_specialty(
+                validated_data.get('role', ''),
+                validated_data.get('specialty'),
+            )
+        except ValueError as exc:
+            raise serializers.ValidationError({"specialty": str(exc)})
         # Title-case names
         if 'first_name' in validated_data:
             validated_data['first_name'] = validated_data['first_name'].strip().title()
@@ -58,6 +66,14 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
+        next_role = validated_data.get('role', instance.role)
+        try:
+            validated_data['specialty'] = validate_specialty(
+                next_role,
+                validated_data.get('specialty', instance.specialty),
+            )
+        except ValueError as exc:
+            raise serializers.ValidationError({"specialty": str(exc)})
         if 'first_name' in validated_data:
             validated_data['first_name'] = validated_data['first_name'].strip().title()
         if 'last_name' in validated_data:

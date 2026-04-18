@@ -28,7 +28,7 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 };
 
 export default function DashboardPage() {
-    const { user, loading: authLoading, refreshUser } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [showSMSModal, setShowSMSModal] = useState(false);
@@ -46,7 +46,7 @@ export default function DashboardPage() {
             try {
                 const res = await api.get("/api/students/");
                 setStudents(res.data);
-            } catch (err) {
+            } catch {
                 console.error("Failed to fetch students");
             } finally {
                 setLoading(false);

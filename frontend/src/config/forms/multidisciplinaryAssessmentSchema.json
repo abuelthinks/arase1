@@ -75,7 +75,7 @@
         },
         {
             "id": "section_c",
-            "title": "SECTION C — SPEECH & LANGUAGE PATHOLOGY (SLP) ASSESSMENT",
+            "title": "SECTION C — SPEECH-LANGUAGE PATHOLOGY (SLP) ASSESSMENT",
             "fields": [
                 {
                     "id": "expressive_language",
@@ -240,7 +240,7 @@
         },
         {
             "id": "section_f",
-            "title": "SECTION F — PSYCHOLOGY / BEHAVIORAL ASSESSMENT",
+            "title": "SECTION F — ABA / DEVELOPMENTAL PSYCHOLOGY ASSESSMENT",
             "fields": [
                 {
                     "id": "behavioral_observations",
@@ -256,7 +256,7 @@
                 },
                 {
                     "id": "psych_emotional_functioning",
-                    "label": "F2. Emotional Functioning",
+                    "label": "F2. ABA Regulation / Behavior Support",
                     "type": "checkbox_group",
                     "options": [
                         "Anxiety",
@@ -266,7 +266,7 @@
                 },
                 {
                     "id": "cognitive_play_skills",
-                    "label": "F3. Cognitive/Play Skills Screening",
+                    "label": "F3. Developmental Psychology Cognitive / Play Skills Screening",
                     "type": "checkbox_group",
                     "options": [
                         "Memory",
@@ -276,7 +276,7 @@
                 },
                 {
                     "id": "autism_characteristics",
-                    "label": "F4. Autism Characteristics Screening",
+                    "label": "F4. Developmental Psychology Autism / Social-Development Screening",
                     "type": "checkbox_group",
                     "options": [
                         "Reduced eye contact",
@@ -286,7 +286,7 @@
                 },
                 {
                     "id": "psych_notes",
-                    "label": "Psychologist Notes",
+                    "label": "ABA / Developmental Psychology Notes",
                     "type": "textarea"
                 }
             ]
@@ -311,8 +311,13 @@
                     "type": "textarea"
                 },
                 {
-                    "id": "psych_summary",
-                    "label": "Psych Summary",
+                    "id": "aba_summary",
+                    "label": "ABA Summary",
+                    "type": "textarea"
+                },
+                {
+                    "id": "developmental_psychology_summary",
+                    "label": "Developmental Psychology Summary",
                     "type": "textarea"
                 },
                 {
@@ -334,7 +339,8 @@
                         "Speech therapy",
                         "Occupational therapy",
                         "Physical therapy",
-                        "Behavioral intervention"
+                        "ABA support",
+                        "Developmental psychology support"
                     ]
                 },
                 {

@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 
 import { IEPViewerContent } from "@/app/admin/iep/page";
 import { MonthlyReportContent } from "@/app/admin/monthly-report/page";
@@ -14,7 +13,6 @@ function UnifiedReportsViewer() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user } = useAuth();
     
     const studentId = params?.id as string;
     

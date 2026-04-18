@@ -124,7 +124,7 @@ def _generate_iep_pdf(student, iep_data):
         "communication_slp": "Communication (SLP)",
         "fine_motor_ot": "Fine Motor, Sensory and ADLs (OT)",
         "gross_motor_pt": "Gross Motor (PT)",
-        "behavioral_psych": "Behavioral and Emotional (Psych)",
+        "behavioral_psych": "Behavioral and Emotional (ABA / Developmental Psychology)",
         "academic_sped": "Academic/Learning (SPED)",
         "adaptive_life_skills": "Adaptive and Life Skills",
     }
@@ -158,7 +158,16 @@ def _generate_iep_pdf(student, iep_data):
 
     s8 = iep.get('section8_therapies', {})
     elements.append(Paragraph("Section 8 - Therapies and Intervention Plan", h2))
-    for therapy_key, therapy_label in [("speech_therapy", "Speech Therapy"), ("occupational_therapy", "OT"), ("physical_therapy", "PT"), ("psychology", "Psychology"), ("sped_sessions", "SPED"), ("shadow_teacher", "Shadow Teacher")]:
+    for therapy_key, therapy_label in [
+        ("speech_therapy", "Speech-Language Pathology"),
+        ("occupational_therapy", "Occupational Therapy"),
+        ("physical_therapy", "Physical Therapy"),
+        ("applied_behavior_analysis", "Applied Behavior Analysis (ABA)"),
+        ("developmental_psychology", "Developmental Psychology"),
+        ("psychology", "Applied Behavior Analysis (ABA) / Developmental Psychology"),
+        ("sped_sessions", "SPED"),
+        ("shadow_teacher", "Shadow Teacher"),
+    ]:
         t = s8.get(therapy_key, {})
         if therapy_key == "shadow_teacher":
             elements.append(Paragraph(f"<b>{therapy_label}:</b> Hours: {t.get('hours', 'N/A')}", normal))

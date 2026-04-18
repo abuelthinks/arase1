@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 
 // Import components
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -22,7 +21,6 @@ export default function UnifiedFormsViewer() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user } = useAuth();
     
     const studentId = params?.id as string;
     
@@ -30,8 +28,6 @@ export default function UnifiedFormsViewer() {
     const defaultTab = searchParams.get("tab") || "parent_assessment";
     const [activeTab, setActiveTab] = useState(defaultTab);
     const [studentName, setStudentName] = useState("");
-    const [generatedDocs, setGeneratedDocs] = useState<any[]>([]);
-    const [showDocsMenu, setShowDocsMenu] = useState(false);
     const [formStatuses, setFormStatuses] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -43,11 +39,6 @@ export default function UnifiedFormsViewer() {
                 const data = res.data;
                 setStudentName(`${data.student.first_name} ${data.student.last_name}`);
                 setFormStatuses(data.form_statuses);
-                
-                // Keep only valid readable documents (IEP and Monthly with data)
-                const docs = data.generated_documents?.filter((d: any) => d.has_iep_data) || [];
-                setGeneratedDocs(docs);
-                
                 setLoading(false);
             })
             .catch(err => {

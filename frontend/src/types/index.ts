@@ -3,6 +3,8 @@
  * Import from '@/types' in components.
  */
 
+import type { SpecialistSpecialty } from "@/lib/specialties";
+
 // ─── User & Auth ────────────────────────────────────────────────────────────
 
 export type Role = "ADMIN" | "TEACHER" | "SPECIALIST" | "PARENT";
@@ -23,7 +25,7 @@ export interface UserProfile {
     role: Role;
     first_name: string;
     last_name: string;
-    specialty: string;
+    specialty: SpecialistSpecialty | "";
     assigned_students_count: number;
     assigned_student_names: string[];
     assigned_students: StudentSummary[];
@@ -104,7 +106,7 @@ export interface StaffMember {
     email: string;
     username: string;
     role: Role;
-    specialty: string;
+    specialty: SpecialistSpecialty | "";
     caseload: number;
     recommended: boolean;
 }

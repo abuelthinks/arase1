@@ -90,7 +90,7 @@ function defaultForm() {
         e3_posture: [] as string[],
         e4_motor_planning: [] as string[],
         e_notes: "",
-        // Section F – Psychology
+        // Section F – ABA / Developmental Psychology
         f1_behavior: [] as string[],
         f2_emotional: [] as string[],
         f3_cognitive: [] as string[],
@@ -100,7 +100,8 @@ function defaultForm() {
         g1_slp_summary: "",
         g1_ot_summary: "",
         g1_pt_summary: "",
-        g1_psych_summary: "",
+        g1_aba_summary: "",
+        g1_developmental_psychology_summary: "",
         g2_strengths: [] as string[],
         g3_needs: [] as string[],
         g4_frequency: [] as string[],
@@ -137,13 +138,13 @@ function SpecialistAFormContent() {
     const [isTranslated, setIsTranslated] = useState(false);
     const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
 
-    const getDraftKey = () => `draft_specialist-a_${studentId}`;
+    const draftKey = `draft_specialist-a_${studentId}`;
 
     // Load Draft from LocalStorage 
     useEffect(() => {
         if (!isViewMode && studentId) {
             try {
-                const saved = localStorage.getItem(getDraftKey());
+                const saved = localStorage.getItem(draftKey);
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     // Merge with default to ensure new fields are present
@@ -153,7 +154,7 @@ function SpecialistAFormContent() {
                 console.error("Failed to load draft:", err);
             }
         }
-    }, [isViewMode, studentId]);
+    }, [draftKey, isViewMode, studentId]);
 
     // Load existing submission in view mode
     useEffect(() => {
@@ -192,7 +193,7 @@ function SpecialistAFormContent() {
                 })
                 .catch(console.error);
         }
-    }, [studentId, isViewMode, submissionId]);
+    }, [form.therapist_name, isViewMode, studentId, submissionId, user]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission) {
@@ -210,13 +211,13 @@ function SpecialistAFormContent() {
         
         const timeoutId = setTimeout(() => {
             try {
-                localStorage.setItem(getDraftKey(), JSON.stringify(form));
+                localStorage.setItem(draftKey, JSON.stringify(form));
             } catch (err) {
                 console.error("Failed to save draft:", err);
             }
         }, 1000);
         return () => clearTimeout(timeoutId);
-    }, [form, studentId, isViewMode]);
+    }, [draftKey, form, isViewMode, studentId]);
 
     const handleSubmit = async () => {
         if (!studentId) { setErrorMsg("No student selected."); return; }
@@ -229,7 +230,7 @@ function SpecialistAFormContent() {
             });
 
             // Clear draft upon successful submission
-            try { localStorage.removeItem(getDraftKey()); } catch(e) {}
+            try { localStorage.removeItem(draftKey); } catch {}
 
             setSuccessMsg("Assessment submitted successfully!");
             setTimeout(() => router.back(), 1500);
@@ -510,33 +511,33 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION F: Psychology */}
-            <SectionCard title="Section F — Psychology / Behavioral Assessment">
-                <FieldGroup label="F1. Behavioral Observations">
+            <SectionCard title="Section F — ABA / Developmental Psychology Assessment">
+                <FieldGroup label="F1. Applied Behavior Analysis (ABA) Observations">
                     {["Inattentive", "Hyperactive", "Impulsive", "Withdrawn", "Aggressive"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.f1_behavior.includes(item)} readOnly={ro}
                             onChange={() => tog("f1_behavior", item)} />
                     ))}
                 </FieldGroup>
-                <FieldGroup label="F2. Emotional Functioning">
+                <FieldGroup label="F2. ABA Regulation / Behavior Support">
                     {["Anxiety", "Mood changes", "Easily overwhelmed"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.f2_emotional.includes(item)} readOnly={ro}
                             onChange={() => tog("f2_emotional", item)} />
                     ))}
                 </FieldGroup>
-                <FieldGroup label="F3. Cognitive / Play Skills Screening">
+                <FieldGroup label="F3. Developmental Psychology Cognitive / Play Skills Screening">
                     {["Memory", "Problem-solving", "Academic readiness"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.f3_cognitive.includes(item)} readOnly={ro}
                             onChange={() => tog("f3_cognitive", item)} />
                     ))}
                 </FieldGroup>
-                <FieldGroup label="F4. Autism Characteristics Screening">
+                <FieldGroup label="F4. Developmental Psychology Autism / Social-Development Screening">
                     {["Reduced eye contact", "Repetitive behaviors", "Restricted interests"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.f4_autism.includes(item)} readOnly={ro}
                             onChange={() => tog("f4_autism", item)} />
                     ))}
                 </FieldGroup>
-                <FieldGroup label="Psychologist Notes">
-                    <TextArea value={form.f_notes} onChange={ro ? undefined : v => set("f_notes", v)} placeholder="Psychology clinical notes…" readOnly={ro} />
+                <FieldGroup label="ABA / Developmental Psychology Notes">
+                    <TextArea value={form.f_notes} onChange={ro ? undefined : v => set("f_notes", v)} placeholder="ABA and developmental psychology clinical notes…" readOnly={ro} />
                 </FieldGroup>
             </SectionCard>
 
@@ -547,7 +548,8 @@ function SpecialistAFormContent() {
                         ["SLP Summary", "g1_slp_summary", "Speech & Language observations and conclusions…"],
                         ["OT Summary", "g1_ot_summary", "Occupational Therapy observations and conclusions…"],
                         ["PT Summary", "g1_pt_summary", "Physical Therapy observations and conclusions…"],
-                        ["Psych Summary", "g1_psych_summary", "Psychology observations and conclusions…"],
+                        ["ABA Summary", "g1_aba_summary", "ABA observations and conclusions…"],
+                        ["Developmental Psychology Summary", "g1_developmental_psychology_summary", "Developmental psychology observations and conclusions…"],
                     ].map(([label, key, placeholder]) => (
                         <div key={key}>
                             <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}>{label}</p>
@@ -562,7 +564,7 @@ function SpecialistAFormContent() {
                     ))}
                 </FieldGroup>
                 <FieldGroup label="G3. Unified Needs">
-                    {["Speech therapy", "Occupational therapy", "Physical therapy", "Behavioral intervention"].map(item => (
+                    {["Speech therapy", "Occupational therapy", "Physical therapy", "ABA support", "Developmental psychology support"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.g3_needs.includes(item)} readOnly={ro}
                             onChange={() => tog("g3_needs", item)} />
                     ))}

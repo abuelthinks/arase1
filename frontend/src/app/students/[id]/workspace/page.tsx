@@ -85,7 +85,7 @@ function UnifiedWorkspaceContent() {
                 setFormStatuses(data.form_statuses);
                 setAssignedStaff(data.assigned_staff || []);
                 
-                const generatedDocs = data.generated_documents?.filter((d: any) => d.has_iep_data) || [];
+                const generatedDocs = data.generated_documents || [];
                 generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 setDocs(generatedDocs);
                 
@@ -121,6 +121,16 @@ function UnifiedWorkspaceContent() {
     const setWorkspace = (newWorkspace: string) => {
         const url = new URL(window.location.href);
         url.searchParams.set("workspace", newWorkspace);
+        if (newWorkspace === "reports" && user?.role !== "ADMIN") {
+            const latestDoc = docs[0];
+            if (latestDoc) {
+                url.searchParams.set("view", latestDoc.type === "MONTHLY" ? "monthly" : "iep");
+                url.searchParams.set("docId", latestDoc.id.toString());
+            } else {
+                url.searchParams.set("view", "empty");
+                url.searchParams.delete("docId");
+            }
+        }
         router.push(url.pathname + url.search);
     };
 
@@ -247,9 +257,19 @@ function UnifiedWorkspaceContent() {
 
     // 2. REPORTS WORKSPACE RENDERER
     const renderReportsWorkspace = () => {
-        const isGenerator = activeReportView === "generator";
+        const hasDocs = docs.length > 0;
         const iepDocs = docs.filter(d => d.type === "IEP");
         const monthlyDocs = docs.filter(d => d.type === "MONTHLY");
+        const reportView = user?.role === "ADMIN"
+            ? activeReportView
+            : activeReportView === "generator"
+                ? (hasDocs ? (docs[0].type === "MONTHLY" ? "monthly" : "iep") : "empty")
+                : activeReportView;
+        const selectedDocId = reportView === "iep" || reportView === "monthly"
+            ? (activeDocId || docs[0]?.id?.toString())
+            : undefined;
+        const isGenerator = reportView === "generator";
+        const isEmptyState = reportView === "empty";
 
         return (
             <>
@@ -273,13 +293,15 @@ function UnifiedWorkspaceContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
-                        <div className="px-6 mb-8">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3">Actions</p>
-                            <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'}`}>
-                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                Report Generator
-                            </button>
-                        </div>
+                        {user?.role === "ADMIN" && (
+                            <div className="px-6 mb-8">
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3">Actions</p>
+                                <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'}`}>
+                                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                    Report Generator
+                                </button>
+                            </div>
+                        )}
 
                         <div className="px-4 mb-8">
                             <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">IEP Documents</p>
@@ -288,7 +310,7 @@ function UnifiedWorkspaceContent() {
                             ) : (
                                 <div className="flex flex-col gap-1">
                                     {iepDocs.map((doc, idx) => {
-                                        const isActive = activeReportView === "iep" && activeDocId === doc.id.toString();
+                                        const isActive = reportView === "iep" && selectedDocId === doc.id.toString();
                                         const isLatest = idx === 0;
                                         return (
                                             <button key={doc.id} onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
@@ -312,7 +334,7 @@ function UnifiedWorkspaceContent() {
                             ) : (
                                 <div className="flex flex-col gap-1">
                                     {monthlyDocs.map((doc, idx) => {
-                                        const isActive = activeReportView === "monthly" && activeDocId === doc.id.toString();
+                                        const isActive = reportView === "monthly" && selectedDocId === doc.id.toString();
                                         const isLatest = idx === 0;
                                         return (
                                             <button key={doc.id} onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
@@ -332,14 +354,23 @@ function UnifiedWorkspaceContent() {
                 </div>
 
                 <div className="flex-1 bg-white relative overflow-y-auto">
-                    {activeReportView === "generator" && (
+                    {isGenerator && (
                         <AdminReportsContent propStudentId={studentId} propHideNavigation={true} />
                     )}
-                    {activeReportView === "iep" && activeDocId && (
-                        <IEPViewerContent propId={activeDocId} propHideNavigation={true} />
+                    {reportView === "iep" && selectedDocId && (
+                        <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
                     )}
-                    {activeReportView === "monthly" && activeDocId && (
-                        <MonthlyReportContent propId={activeDocId} propHideNavigation={true} />
+                    {reportView === "monthly" && selectedDocId && (
+                        <MonthlyReportContent propId={selectedDocId} propHideNavigation={true} />
+                    )}
+                    {isEmptyState && (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">No Reports Yet</h3>
+                            <p className="text-sm text-slate-500 max-w-sm">There are no reports or documents associated with this student yet.</p>
+                        </div>
                     )}
                 </div>
             </>

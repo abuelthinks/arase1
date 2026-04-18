@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 interface UserData {
@@ -29,20 +28,16 @@ const mockFullActivities = [
 export default function UserActivityPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { user: authUser } = useAuth();
-    
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-
-    const isAdmin = authUser?.role === "ADMIN";
     
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const res = await api.get(`/api/users/${id}/`);
                 setUser(res.data);
-            } catch (err: any) {
+            } catch {
                 setError("Failed to load user info.");
             } finally {
                 setLoading(false);

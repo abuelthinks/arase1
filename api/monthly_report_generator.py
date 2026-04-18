@@ -163,10 +163,16 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
         lines.append(f"OT Notes: {_safe(mt, 'ot_notes')}")
         lines.append(f"Gross Motor (PT): {_list_join(_safe(mt, 'gross_motor', default=[]))}")
         lines.append(f"PT Notes: {_safe(mt, 'pt_notes')}")
-        lines.append(f"Behavior/Emotional (Psych): {_list_join(_safe(mt, 'behavior_emotional', default=[]))}")
-        lines.append(f"Psych Notes: {_safe(mt, 'psych_notes')}")
-        lines.append(f"Academic/Learning (SPED): {_list_join(_safe(mt, 'academic_learning', default=[]))}")
-        lines.append(f"SPED Notes: {_safe(mt, 'sped_notes')}")
+        lines.append(f"ABA Progress: {_list_join(_safe(mt, 'aba_goals', default=_safe(mt, 'psych_goals', default=[])))}")
+        lines.append(f"ABA Notes: {_safe(mt, 'aba_notes', default=_safe(mt, 'psych_notes'))}")
+        lines.append(
+            "Developmental Psychology Progress: "
+            + _list_join(_safe(mt, 'developmental_psychology_goals', default=_safe(mt, 'academic_learning', default=[])))
+        )
+        lines.append(
+            "Developmental Psychology Notes: "
+            + _safe(mt, 'developmental_psychology_notes', default=_safe(mt, 'sped_notes'))
+        )
         lines.append(f"Independent Skills: {_safe(mt, 'independent_skills')}")
         lines.append(f"Behavior Interaction: {_safe(mt, 'behavior_interaction')}")
         lines.append(f"Sensory/Motor Regulation: {_safe(mt, 'sensory_motor_regulation')}")

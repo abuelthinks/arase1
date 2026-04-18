@@ -19,7 +19,7 @@ interface UserPayload {
 interface AuthContextType {
     user: UserPayload | null;
     loading: boolean;
-    login: (username: string, password: string) => Promise<void>;
+    login: (username: string, password: string) => Promise<UserPayload>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
 }
@@ -58,13 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await fetchCsrfCookie();
         // POST credentials — server sets HttpOnly cookies in the response
         const res = await api.post("/api/auth/token/", { username, password });
-        setUser({
+        const basicUser = {
             user_id: res.data.user_id,
             role: res.data.role,
             username: res.data.username,
-        });
+        };
+        setUser(basicUser);
         // We'll also invoke checkAuth to fetch the full rich payload including phone verification
         await checkAuth();
+        return basicUser;
     };
 
     const logout = async () => {

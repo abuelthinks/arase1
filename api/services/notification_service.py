@@ -11,6 +11,27 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def notify_admins_in_app(notification_type, title, message, link=''):
+    """
+    Create an in-app notification for every admin user.
+    """
+    from api.models import Notification, User
+
+    admins = User.objects.filter(role='ADMIN')
+    notifications = [
+        Notification(
+            recipient=admin,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            link=link,
+        )
+        for admin in admins
+    ]
+    if notifications:
+        Notification.objects.bulk_create(notifications)
+
+
 def notify_tracker_reminder(user, student, days_remaining):
     """
     Remind a user (parent/specialist/teacher) to submit their monthly tracker.

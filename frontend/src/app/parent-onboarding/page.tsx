@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 
@@ -200,7 +199,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                 phone: prev.phone || user.phone_number || ""
             }));
         }
-    }, [isViewMode, submissionId, studentIdParam, user]);
+    }, [draftKey, isViewMode, submissionId, studentIdParam, user]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission) {

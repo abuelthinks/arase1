@@ -3,6 +3,14 @@ User/invitation business logic extracted from views.py.
 """
 
 from api.models import User, Invitation, Student, StudentAccess
+from api.specialties import (
+    APPLIED_BEHAVIOR_ANALYSIS,
+    DEVELOPMENTAL_PSYCHOLOGY,
+    OCCUPATIONAL_THERAPY,
+    PHYSICAL_THERAPY,
+    SPEECH_LANGUAGE_PATHOLOGY,
+    normalize_specialty,
+)
 
 
 def send_invitation_email(invitation):
@@ -127,19 +135,23 @@ def score_staff_for_student(student_id=None):
     from api.models import ParentAssessment
 
     CONCERN_SPECIALTY = {
-        "communication": ["speech", "language", "slp"],
-        "speech": ["speech", "language", "slp"],
-        "motor": ["occupational", "ot", "physical", "motor"],
-        "motor skills": ["occupational", "ot", "physical", "motor"],
-        "sensory": ["occupational", "ot", "sensory"],
-        "behavior": ["behavioral", "aba", "behavior", "applied"],
-        "emotions": ["behavioral", "aba", "psychology", "counseling"],
-        "social": ["behavioral", "social", "autism", "aba"],
-        "autism": ["autism", "aba", "behavioral"],
-        "adhd": ["adhd", "behavioral", "executive"],
-        "learning": ["learning", "sped", "academic", "education"],
-        "daily living": ["occupational", "ot", "life skills"],
-        "safety": ["behavioral", "aba"],
+        "communication": {SPEECH_LANGUAGE_PATHOLOGY},
+        "speech": {SPEECH_LANGUAGE_PATHOLOGY},
+        "speech delay": {SPEECH_LANGUAGE_PATHOLOGY},
+        "motor": {OCCUPATIONAL_THERAPY, PHYSICAL_THERAPY},
+        "motor skills": {OCCUPATIONAL_THERAPY, PHYSICAL_THERAPY},
+        "sensory": {OCCUPATIONAL_THERAPY},
+        "sensory difficulty": {OCCUPATIONAL_THERAPY},
+        "daily living": {OCCUPATIONAL_THERAPY},
+        "behavior": {APPLIED_BEHAVIOR_ANALYSIS},
+        "behavioral concerns": {APPLIED_BEHAVIOR_ANALYSIS},
+        "emotions": {DEVELOPMENTAL_PSYCHOLOGY},
+        "social": {APPLIED_BEHAVIOR_ANALYSIS, DEVELOPMENTAL_PSYCHOLOGY},
+        "autism": {APPLIED_BEHAVIOR_ANALYSIS, DEVELOPMENTAL_PSYCHOLOGY},
+        "adhd": {APPLIED_BEHAVIOR_ANALYSIS, DEVELOPMENTAL_PSYCHOLOGY},
+        "learning": {DEVELOPMENTAL_PSYCHOLOGY},
+        "developmental delay": {DEVELOPMENTAL_PSYCHOLOGY},
+        "safety": {APPLIED_BEHAVIOR_ANALYSIS},
     }
 
     concerns = []
@@ -168,14 +180,13 @@ def score_staff_for_student(student_id=None):
     ).order_by('role', 'first_name')
 
     def _score(specialty, concerns_list):
-        specialty_lower = specialty.lower()
+        normalized_specialty = normalize_specialty(specialty)
+        if not normalized_specialty:
+            return 0
         score = 0
         for concern in concerns_list:
-            keywords = CONCERN_SPECIALTY.get(concern.lower(), [])
-            for kw in keywords:
-                if kw in specialty_lower:
-                    score += 2
-                    break
+            if normalized_specialty in CONCERN_SPECIALTY.get(concern.lower(), set()):
+                score += 2
         return score
 
     scored = []
@@ -199,7 +210,7 @@ def score_staff_for_student(student_id=None):
             "email": u.email,
             "username": u.username,
             "role": u.role,
-            "specialty": u.specialty,
+            "specialty": normalize_specialty(u.specialty),
             "caseload": u.caseload,
             "recommended": is_recommended,
         })

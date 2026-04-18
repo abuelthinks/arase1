@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
+import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
@@ -26,6 +26,7 @@ interface UserData {
     role: string;
     first_name: string;
     last_name: string;
+    specialty?: SpecialistSpecialty | "";
     assigned_students_count: number;
     assigned_student_names: string[];
 }
@@ -94,7 +95,6 @@ const getStatusStyle = (status: string) => {
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function AdminDashboard() {
-    const { user, logout } = useAuth();
     const searchParams = useSearchParams();
 
     // Check URL for explicit tab, default to students
@@ -141,7 +141,16 @@ export default function AdminDashboard() {
 
     // Modal state for User
     const [showUserModal, setShowUserModal] = useState(false);
-    const [newUser, setNewUser] = useState({ username: '', password: '', confirm_password: '', email: '', role: 'TEACHER', first_name: '', last_name: '' });
+    const [newUser, setNewUser] = useState({
+        username: '',
+        password: '',
+        confirm_password: '',
+        email: '',
+        role: 'TEACHER',
+        specialty: '' as SpecialistSpecialty | "",
+        first_name: '',
+        last_name: ''
+    });
     const [userFormError, setUserFormError] = useState("");
     const [creatingUser, setCreatingUser] = useState(false);
 
@@ -196,7 +205,7 @@ export default function AdminDashboard() {
 
     const uniqueStatuses = Array.from(new Set(students.map(s => s.status)));
 
-    let processedStudents = students.filter(s => {
+    const processedStudents = students.filter(s => {
         const searchTerms = studentSearch.toLowerCase().trim().split(/\s+/);
         const searchableString = `${s.first_name} ${s.last_name} ${s.id}`.toLowerCase();
         const matchesSearch = searchTerms.every(term => searchableString.includes(term));
@@ -235,7 +244,7 @@ export default function AdminDashboard() {
 
     const uniqueUserRoles = Array.from(new Set(users.map(u => u.role)));
 
-    let processedUsers = users.filter(u => {
+    const processedUsers = users.filter(u => {
         // Fuzzy search logic (matches all words)
         const searchTerms = userSearch.toLowerCase().trim().split(/\s+/);
         const searchableString = `${u.first_name} ${u.last_name} ${u.email} ${u.username}`.toLowerCase();
@@ -280,7 +289,7 @@ export default function AdminDashboard() {
 
     const uniqueInvitationRoles = Array.from(new Set(invitations.map(i => i.role)));
 
-    let processedInvitations = invitations.filter(i => {
+    const processedInvitations = invitations.filter(i => {
         if (i.is_used) return false;
         const searchTerms = invitationSearch.toLowerCase().trim().split(/\s+/);
         const searchableString = `${i.email}`.toLowerCase();
@@ -396,16 +405,22 @@ export default function AdminDashboard() {
                 password: newUser.password,
                 email: newUser.email,
                 role: newUser.role,
+                specialty: newUser.role === "SPECIALIST" ? newUser.specialty : "",
                 first_name: toTitleCase(newUser.first_name),
                 last_name: toTitleCase(newUser.last_name),
             };
             await api.post("/api/users/", payload);
             setShowUserModal(false);
-            setNewUser({ username: '', password: '', confirm_password: '', email: '', role: 'TEACHER', first_name: '', last_name: '' });
+            setNewUser({ username: '', password: '', confirm_password: '', email: '', role: 'TEACHER', specialty: '', first_name: '', last_name: '' });
             fetchData();
             alert("User created successfully");
         } catch (err: any) {
-            setUserFormError(err.response?.data?.username || err.response?.data?.detail || "Failed to create user");
+            setUserFormError(
+                err.response?.data?.specialty?.[0]
+                || err.response?.data?.username
+                || err.response?.data?.detail
+                || "Failed to create user"
+            );
         } finally {
             setCreatingUser(false);
         }
@@ -1394,12 +1409,26 @@ export default function AdminDashboard() {
                             {newUser.confirm_password && newUser.password !== newUser.confirm_password && (
                                 <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: "-6px 0 0 0" }}>Passwords do not match</p>
                             )}
-                            <select required value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}>
+                            <select required value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value, specialty: e.target.value === "SPECIALIST" ? newUser.specialty : "" })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}>
                                 <option value="ADMIN">Admin</option>
                                 <option value="TEACHER">Teacher</option>
                                 <option value="SPECIALIST">Specialist</option>
                                 <option value="PARENT">Parent</option>
                             </select>
+                            {newUser.role === "SPECIALIST" && (
+                                <select
+                                    required
+                                    value={newUser.specialty}
+                                    onChange={e => setNewUser({ ...newUser, specialty: e.target.value as SpecialistSpecialty })}
+                                    className="form-input"
+                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+                                >
+                                    <option value="">Select specialist discipline</option>
+                                    {SPECIALIST_SPECIALTIES.map(option => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
+                                </select>
+                            )}
                             <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
                                 <button type="submit" className="btn-primary" style={{ flex: 1, padding: "10px", opacity: creatingUser ? 0.6 : 1 }} disabled={creatingUser}>
                                     {creatingUser ? "Creating..." : "Create"}

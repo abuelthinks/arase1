@@ -111,19 +111,30 @@ function SpecialistBFormContent() {
     const [formData, setFormData] = useState({
         section_a: { date: new Date().toISOString().split('T')[0], therapist_name: "", discipline: "", session_type: "", sessions_completed: "0" },
         section_b: { attendance: "", participation_level: "", notes: "" },
-        section_c: { slp_goals: [] as string[], slp_notes: "", ot_goals: [] as string[], ot_notes: "", pt_goals: [] as string[], pt_notes: "", psych_goals: [] as string[], psych_notes: "", sped_goals: [] as string[], sped_notes: "" },
+        section_c: {
+            slp_goals: [] as string[],
+            slp_notes: "",
+            ot_goals: [] as string[],
+            ot_notes: "",
+            pt_goals: [] as string[],
+            pt_notes: "",
+            aba_goals: [] as string[],
+            aba_notes: "",
+            developmental_psychology_goals: [] as string[],
+            developmental_psychology_notes: "",
+        },
         section_d: { independent_skills: "", behavior_interaction: "", sensory_motor: "", communication_adults: "", notes: "" },
         section_e: { goal_1: "", goal_2: "", goal_3: "", goal_4: "", comments: "" },
         section_f: { therapy_recommendations: [] as string[], home_strategies: [] as string[], therapist_suggested_activities: "" }
     });
 
-    const getDraftKey = () => `draft_specialist-b_${studentId}`;
+    const draftKey = `draft_specialist-b_${studentId}`;
 
     // Load Draft from LocalStorage
     useEffect(() => {
         if (!isViewMode && studentId) {
             try {
-                const saved = localStorage.getItem(getDraftKey());
+                const saved = localStorage.getItem(draftKey);
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     setFormData(prev => ({
@@ -139,18 +150,18 @@ function SpecialistBFormContent() {
                 console.error("Failed to load draft:", err);
             }
         }
-    }, [isViewMode, studentId]);
+    }, [draftKey, isViewMode, studentId]);
 
     const OPTIONS = {
-        discipline: ["Speech-Language Pathology", "Occupational Therapy", "Physical Therapy", "Psychology / Behavioral", "SPED / Educational", "Shadow Teacher"],
+        discipline: ["Speech-Language Pathology", "Occupational Therapy", "Physical Therapy", "Applied Behavior Analysis (ABA)", "Developmental Psychology"],
         session_type: ["Online", "Onsite"],
         attendance: ["Present", "Late", "Absent", "Rescheduled"],
         participation: ["Fully engaged", "Needed minimal cues", "Needed moderate prompts", "Needed full assistance", "Refused tasks", "Limited engagement", "Easily distracted", "Overstimulated", "Fatigued"],
         slp_goals: ["Increased verbal output", "Improved receptive skills", "Better articulation", "Improved social communication", "Used AAC/Picture cards", "No improvement", "Regression noted"],
         ot_goals: ["Improved hand strength", "Better pencil grasp", "Improved scissor skills", "Followed sensory strategies", "Reduced sensory overload", "Increased independence in ADLs", "No improvement", "Regression noted"],
         pt_goals: ["Improved balance", "Stronger core strength", "Better coordination", "Improved gait", "Increased endurance", "No improvement", "Regression observed"],
-        psych_goals: ["Reduced tantrums", "Improved coping strategies", "Better attention", "Less impulsivity", "Improved emotional expression", "Better transitions", "No improvement", "Regression observed"],
-        sped_goals: ["Improved focus", "Better task completion", "Improved literacy skills", "Improved numeracy skills", "Followed classroom routines", "Better peer interaction", "No improvement", "Regression noted"],
+        aba_goals: ["Reduced tantrums", "Improved coping strategies", "Better attention", "Less impulsivity", "Improved transitions", "Improved task behavior", "No improvement", "Regression observed"],
+        developmental_psychology_goals: ["Improved emotional expression", "Improved play skills", "Better problem-solving", "Improved social reciprocity", "Improved developmental regulation", "Improved adaptive functioning", "No improvement", "Regression observed"],
         independent_skills: ["Improved", "Slight improvement", "No change", "Declined"],
         behavior_interaction: ["Cooperative", "Needs support", "Resistant", "Aggressive", "Withdrawn"],
         sensory_motor: ["Calm", "Hyperactive", "Sensory seeking", "Sensory avoidant", "Easily overwhelmed"],
@@ -183,13 +194,13 @@ function SpecialistBFormContent() {
         
         const timeoutId = setTimeout(() => {
             try {
-                localStorage.setItem(getDraftKey(), JSON.stringify(formData));
+                localStorage.setItem(draftKey, JSON.stringify(formData));
             } catch (err) {
                 console.error("Failed to save draft:", err);
             }
         }, 1000);
         return () => clearTimeout(timeoutId);
-    }, [formData, studentId, isViewMode]);
+    }, [draftKey, formData, isViewMode, studentId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -205,11 +216,11 @@ function SpecialistBFormContent() {
             });
             
             // Clear draft upon successful submission
-            try { localStorage.removeItem(getDraftKey()); } catch(e) {}
+            try { localStorage.removeItem(draftKey); } catch {}
 
             setSuccessMsg("Monthly Progress Report submitted successfully!");
             setTimeout(() => router.push(`/students/${studentId}`), 1500);
-        } catch (err: any) {
+        } catch {
             setErrorMsg("Failed to submit form.");
         } finally {
             setLoading(false);
@@ -232,7 +243,13 @@ function SpecialistBFormContent() {
                     // Auto-fill therapist name from logged in user
                     if (!isViewMode && user && !formData.section_a.therapist_name) {
                         const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
-                        handleNestedChange('section_a', 'therapist_name', name || user.username || "");
+                        setFormData(prev => ({
+                            ...prev,
+                            section_a: {
+                                ...prev.section_a,
+                                therapist_name: name || user.username || "",
+                            },
+                        }));
                     }
                 })
                 .catch(err => console.error(err));
@@ -248,7 +265,7 @@ function SpecialistBFormContent() {
                 })
                 .catch(err => console.error("Failed to fetch submission:", err));
         }
-    }, [isViewMode, submissionId, studentId]);
+    }, [formData.section_a.therapist_name, isViewMode, router, studentId, submissionId, user]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission) {
@@ -464,23 +481,23 @@ function SpecialistBFormContent() {
                     </FieldGroup></div>
 
                     {/* C4 */}
-                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C4. Behavior / Emotional Regulation (Psych)">
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C4. Applied Behavior Analysis (ABA)">
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                            {OPTIONS.psych_goals.map(opt => (
-                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.psych_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'psych_goals', opt)} readOnly={ro} />
+                            {OPTIONS.aba_goals.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.aba_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'aba_goals', opt)} readOnly={ro} />
                             ))}
                         </div>
-                        <div style={{ marginTop: "8px" }}><TextArea placeholder="Psych Notes..." value={formData.section_c.psych_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'psych_notes', v)} readOnly={ro} /></div>
+                        <div style={{ marginTop: "8px" }}><TextArea placeholder="ABA Notes..." value={formData.section_c.aba_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'aba_notes', v)} readOnly={ro} /></div>
                     </FieldGroup></div>
 
                     {/* C5 */}
-                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C5. Academic / Learning Behavior (SPED)">
+                    <div style={{ marginTop: "1.5rem" }}><FieldGroup label="C5. Developmental Psychology">
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                            {OPTIONS.sped_goals.map(opt => (
-                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.sped_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'sped_goals', opt)} readOnly={ro} />
+                            {OPTIONS.developmental_psychology_goals.map(opt => (
+                                <CheckboxItem key={opt} label={opt} checked={formData.section_c.developmental_psychology_goals.includes(opt)} onChange={() => handleArrayToggle('section_c', 'developmental_psychology_goals', opt)} readOnly={ro} />
                             ))}
                         </div>
-                        <div style={{ marginTop: "8px" }}><TextArea placeholder="SPED Notes..." value={formData.section_c.sped_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'sped_notes', v)} readOnly={ro} /></div>
+                        <div style={{ marginTop: "8px" }}><TextArea placeholder="Developmental Psychology Notes..." value={formData.section_c.developmental_psychology_notes} onChange={ro ? undefined : v => handleNestedChange('section_c', 'developmental_psychology_notes', v)} readOnly={ro} /></div>
                     </FieldGroup></div>
                 </SectionCard>
 

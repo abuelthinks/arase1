@@ -194,7 +194,7 @@ function TeacherFormContent() {
                 })
                 .catch(console.error);
         }
-    }, [studentId, isViewMode, submissionId]);
+    }, [isViewMode, router, studentId, submissionId]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission) {
@@ -536,7 +536,7 @@ function TeacherFormContent() {
             {/* SECTION H */}
             <SectionCard title="Section H — Goal Achievement (for IEP & AI)">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}>
-                    {['1', '2', '3', '4'].map((g, i) => (
+                    {['1', '2', '3', '4'].map(g => (
                         <div key={g} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                             <p style={{ fontSize: "0.85rem", fontWeight: 700, margin: "0 0 10px 0", color: "#1e293b" }}>Goal {g} Progress</p>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>

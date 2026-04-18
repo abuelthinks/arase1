@@ -131,17 +131,21 @@ def _build_gemini_prompt(student, pa, ma, sa):
         lines.append(f"PT Posture: {_list_join(_safe(ma, 'posture_alignment', default=[]))}")
         lines.append(f"PT Motor Planning: {_list_join(_safe(ma, 'motor_planning', default=[]))}")
         lines.append(f"PT Notes: {_safe(ma, 'pt_notes')}")
-        # Psychology
-        lines.append(f"Psych Behavior: {_list_join(_safe(ma, 'behavioral_observations', default=[]))}")
-        lines.append(f"Psych Emotional: {_list_join(_safe(ma, 'psych_emotional_functioning', default=[]))}")
-        lines.append(f"Psych Cognitive: {_list_join(_safe(ma, 'cognitive_play_skills', default=[]))}")
-        lines.append(f"Psych Autism Screening: {_list_join(_safe(ma, 'autism_characteristics', default=[]))}")
-        lines.append(f"Psych Notes: {_safe(ma, 'psych_notes')}")
+        # ABA / Developmental Psychology
+        lines.append(f"ABA Behavior: {_list_join(_safe(ma, 'behavioral_observations', default=[]))}")
+        lines.append(f"ABA Regulation: {_list_join(_safe(ma, 'psych_emotional_functioning', default=[]))}")
+        lines.append(f"Developmental Psychology Cognitive: {_list_join(_safe(ma, 'cognitive_play_skills', default=[]))}")
+        lines.append(f"Developmental Psychology Autism Screening: {_list_join(_safe(ma, 'autism_characteristics', default=[]))}")
+        lines.append(f"ABA / Developmental Psychology Notes: {_safe(ma, 'psych_notes')}")
         # Summary
         lines.append(f"SLP Summary: {_safe(ma, 'slp_summary')}")
         lines.append(f"OT Summary: {_safe(ma, 'ot_summary')}")
         lines.append(f"PT Summary: {_safe(ma, 'pt_summary')}")
-        lines.append(f"Psych Summary: {_safe(ma, 'psych_summary')}")
+        lines.append(f"ABA Summary: {_safe(ma, 'aba_summary', default=_safe(ma, 'psych_summary'))}")
+        lines.append(
+            "Developmental Psychology Summary: "
+            + _safe(ma, 'developmental_psychology_summary', default=_safe(ma, 'psych_summary'))
+        )
         lines.append(f"Unified Strengths: {_list_join(_safe(ma, 'unified_strengths', default=[]))}")
         lines.append(f"Unified Needs: {_list_join(_safe(ma, 'unified_needs', default=[]))}")
         lines.append(f"Recommended Frequency: {_list_join(_safe(ma, 'recommended_therapy_frequency', default=[]))}")
@@ -198,9 +202,9 @@ def _build_gemini_prompt(student, pa, ma, sa):
             {"id": "LTG1", "domain": "Communication", "goal": "", "disciplines": "SLP, SPED"},
             {"id": "LTG2", "domain": "Sensory/Fine Motor/ADL", "goal": "", "disciplines": "OT, SPED"},
             {"id": "LTG3", "domain": "Gross Motor", "goal": "", "disciplines": "PT"},
-            {"id": "LTG4", "domain": "Behavior & Emotional Regulation", "goal": "", "disciplines": "Psych, SPED"},
+            {"id": "LTG4", "domain": "Behavior & Emotional Regulation", "goal": "", "disciplines": "ABA, Developmental Psychology, SPED"},
             {"id": "LTG5", "domain": "Academic/Functional Learning", "goal": "", "disciplines": "SPED, OT"},
-            {"id": "LTG6", "domain": "Social & Independence", "goal": "", "disciplines": "SPED, Psych, OT"}
+            {"id": "LTG6", "domain": "Social & Independence", "goal": "", "disciplines": "SPED, Developmental Psychology, OT"}
         ],
         "section6_sto": [
             {"id": "1.1", "ltg_ref": "LTG1", "objective": "", "target_skill": "", "teaching_method": "", "success_criteria": "", "frequency": "", "responsible": ""}
@@ -214,7 +218,8 @@ def _build_gemini_prompt(student, pa, ma, sa):
             "speech_therapy": {"frequency": "", "focus_areas": ""},
             "occupational_therapy": {"frequency": "", "focus_areas": ""},
             "physical_therapy": {"frequency": "", "focus_areas": ""},
-            "psychology": {"frequency": "", "focus_areas": ""},
+            "applied_behavior_analysis": {"frequency": "", "focus_areas": ""},
+            "developmental_psychology": {"frequency": "", "focus_areas": ""},
             "sped_sessions": {"frequency": "", "focus_areas": ""},
             "shadow_teacher": {"hours": ""}
         },

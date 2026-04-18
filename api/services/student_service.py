@@ -8,6 +8,7 @@ from api.models import (
     Student, StudentAccess, ReportCycle,
     ParentAssessment, MultidisciplinaryAssessment, User, Invitation,
 )
+from api.specialties import normalize_specialty
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
@@ -214,7 +215,13 @@ def get_student_profile_data(student, user=None):
     )
     assigned_staff = []
     if not (user and user.role == 'PARENT'):
-        assigned_staff = [{"id": sa.user.id, "role": sa.user.role} for sa in assigned_users]
+        assigned_staff = [{
+            "id": sa.user.id,
+            "role": sa.user.role,
+            "first_name": sa.user.first_name,
+            "last_name": sa.user.last_name,
+            "specialty": normalize_specialty(sa.user.specialty),
+        } for sa in assigned_users]
 
     # Cycle status summary and carry-forward recommendations
     cycle_status = get_cycle_status_summary(student, cycle) if cycle and student.status == 'ENROLLED' else None

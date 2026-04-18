@@ -13,7 +13,12 @@ class User(AbstractUser):
         ('PARENT', 'Parent'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    specialty = models.CharField(max_length=100, blank=True, default='', help_text="e.g. Speech Therapy, Occupational Therapy, Behavioral Therapy")
+    specialty = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        help_text="Specialist discipline, e.g. Speech-Language Pathology or Occupational Therapy",
+    )
     phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Contact number for the user")
     is_phone_verified = models.BooleanField(default=False)
 
@@ -203,3 +208,34 @@ for model in [
 ]:
     post_save.connect(trigger_translation_task, sender=model)
 
+
+# ─── In-App Notifications ────────────────────────────────────────────────────
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('FORM_SUBMITTED', 'Form Submitted'),
+        ('STUDENT_ENROLLED', 'Student Enrolled'),
+        ('STUDENT_ASSESSED', 'Student Assessed'),
+        ('IEP_GENERATED', 'IEP Generated'),
+        ('REPORT_GENERATED', 'Report Generated'),
+        ('REPORT_FINALIZED', 'Report Finalized'),
+        ('SPECIALIST_ASSIGNED', 'Specialist Assigned'),
+        ('TEACHER_ASSIGNED', 'Teacher Assigned'),
+        ('CYCLE_CREATED', 'Cycle Created'),
+        ('REMINDER', 'Reminder'),
+        ('SYSTEM', 'System'),
+    )
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default='')
+    link = models.CharField(max_length=500, blank=True, default='')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.notification_type} -> {self.recipient.username}"

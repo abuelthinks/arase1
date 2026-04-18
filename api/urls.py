@@ -15,6 +15,7 @@ from .views import (
     DocumentHistoryView,
     SendVerificationSMSView, VerifySMSView,
     CreateCycleView, SendRemindersView, TaskStatusView,
+    NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView,
 )
 
 router = DefaultRouter()
@@ -67,4 +68,9 @@ urlpatterns = [
     # Cycle Management
     path('cycles/create/', CreateCycleView.as_view(), name='create-cycle'),
     path('cycles/send-reminders/', SendRemindersView.as_view(), name='send-reminders'),
+
+    # Notifications
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
+    path('notifications/read-all/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
 ]

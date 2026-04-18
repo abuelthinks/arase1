@@ -20,8 +20,11 @@ export default function LoginPage() {
 
         try {
             // login() calls the API and sets HttpOnly cookies server-side
-            await login(username, password);
-            router.push("/dashboard");
+            const authenticatedUser = await login(username, password);
+            const landingRoute = ["ADMIN", "TEACHER", "SPECIALIST"].includes(authenticatedUser.role)
+                ? "/workspace"
+                : "/dashboard";
+            router.push(landingRoute);
         } catch (err: any) {
             const status = err.response?.status;
             const detail = err.response?.data?.detail || err.response?.data?.error;

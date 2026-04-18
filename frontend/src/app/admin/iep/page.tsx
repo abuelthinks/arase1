@@ -255,7 +255,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     communication_slp: "Communication (SLP)",
                     fine_motor_ot: "Fine Motor, Sensory & ADLs (OT)",
                     gross_motor_pt: "Gross Motor / Physical (PT)",
-                    behavioral_psych: "Behavioral & Emotional (Psych)",
+                    behavioral_psych: "Behavioral & Emotional (ABA / Developmental Psychology)",
                     academic_sped: "Academic / Learning (SPED)",
                     adaptive_life_skills: "Adaptive & Life Skills"
                 }).map(([key, lbl]) => {
@@ -318,10 +318,12 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Section 8 — Therapies */}
             <SectionCard title="Section 8 — Therapies & Intervention Plan">
                 {Object.entries({
-                    speech_therapy: "Speech Therapy",
+                    speech_therapy: "Speech-Language Pathology",
                     occupational_therapy: "Occupational Therapy",
                     physical_therapy: "Physical Therapy",
-                    psychology: "Psychology / Behavioral",
+                    applied_behavior_analysis: "Applied Behavior Analysis (ABA)",
+                    developmental_psychology: "Developmental Psychology",
+                    psychology: "Applied Behavior Analysis (ABA) / Developmental Psychology",
                     sped_sessions: "SPED Sessions",
                     shadow_teacher: "Shadow Teacher"
                 }).map(([key, lbl]) => {

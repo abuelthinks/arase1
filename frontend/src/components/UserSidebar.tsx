@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Users, User, BookOpen, LayoutTemplate } from "lucide-react";
+import { User, BookOpen, LayoutTemplate } from "lucide-react";
 
 export default function UserSidebar() {
     const pathname = usePathname();

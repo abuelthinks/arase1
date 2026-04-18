@@ -138,7 +138,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [isTranslated, setIsTranslated] = useState(false);
     const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
 
-    const getDraftKey = () => `draft_${formType}_${studentId}`;
+    const draftKey = `draft_${formType}_${studentId}`;
 
     useEffect(() => {
         let isMounted = true;
@@ -146,7 +146,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             const loadedSchema = schemaMap[formType];
             if (!loadedSchema) return;
 
-            let finalSchema = JSON.parse(JSON.stringify(loadedSchema));
+            const finalSchema = JSON.parse(JSON.stringify(loadedSchema));
             let activeIepData: any = null;
             let profileData: any = null;
 
@@ -255,7 +255,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 });
             });
 
-            let mergedData = { ...initialData };
+            const mergedData = { ...initialData };
 
             if (isViewMode && formIdStr) {
                 // If viewing a previous submission
@@ -374,7 +374,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         loadForm();
         
         return () => { isMounted = false; };
-    }, [formType, studentId, user, isViewMode, formIdStr]);
+    }, [draftKey, formIdStr, formType, isViewMode, studentId, user]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission && schema) {
@@ -396,7 +396,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 });
             });
 
-            let mergedData = { ...initialData };
+            const mergedData = { ...initialData };
             const isFlat = !Object.keys(savedData).some(k => k.startsWith("section_"));
             if (isFlat) {
                 schema.sections?.forEach((sec: any) => {
@@ -425,7 +425,6 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         // Use a timeout to debounce the saving slightly
         const timeoutId = setTimeout(() => {
             try {
-                const draftKey = getDraftKey();
                 localStorage.setItem(draftKey, JSON.stringify(formData));
             } catch (err) {
                 console.error("Failed to auto-save draft:", err);
@@ -433,7 +432,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }, 1000); // 1s debounce
 
         return () => clearTimeout(timeoutId);
-    }, [formData, studentId, formType]);
+    }, [draftKey, formData, formType, isViewMode, studentId]);
 
     const handleChange = (sectionId: string, fieldId: string, value: any, isCheckboxArray = false) => {
         setFormData((prev: any) => {
@@ -484,7 +483,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             
             // Clear draft upon successful submission
             try {
-                localStorage.removeItem(getDraftKey());
+                localStorage.removeItem(draftKey);
             } catch (e) {
                 console.error("Failed to clear draft:", e);
             }

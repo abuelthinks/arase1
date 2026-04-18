@@ -26,9 +26,8 @@
                         "Speech-Language Pathology",
                         "Occupational Therapy",
                         "Physical Therapy",
-                        "Psychology / Behavioral",
-                        "SPED / Educational",
-                        "Shadow Teacher"
+                        "Applied Behavior Analysis (ABA)",
+                        "Developmental Psychology"
                     ]
                 },
                 {
@@ -149,42 +148,42 @@
                 },
                 {
                     "id": "behavior_emotional",
-                    "label": "C4. Behavior / Emotional Regulation (Psych)",
+                    "label": "C4. Applied Behavior Analysis (ABA)",
                     "type": "checkbox_group",
                     "options": [
                         "Reduced tantrums",
                         "Improved coping strategies",
                         "Better attention",
                         "Less impulsivity",
-                        "Improved emotional expression",
                         "Better transitions",
+                        "Improved task behavior",
                         "No improvement",
                         "Regression observed"
                     ]
                 },
                 {
-                    "id": "psych_notes",
-                    "label": "Psych Notes",
+                    "id": "aba_notes",
+                    "label": "ABA Notes",
                     "type": "textarea"
                 },
                 {
-                    "id": "academic_learning",
-                    "label": "C5. Academic / Learning Behavior (SPED)",
+                    "id": "developmental_psychology",
+                    "label": "C5. Developmental Psychology",
                     "type": "checkbox_group",
                     "options": [
-                        "Improved focus",
-                        "Better task completion",
-                        "Improved literacy skills",
-                        "Improved numeracy skills",
-                        "Followed classroom routines",
-                        "Better peer interaction",
+                        "Improved emotional expression",
+                        "Improved play skills",
+                        "Better problem-solving",
+                        "Improved social reciprocity",
+                        "Improved developmental regulation",
+                        "Improved adaptive functioning",
                         "No improvement",
-                        "Regression noted"
+                        "Regression observed"
                     ]
                 },
                 {
-                    "id": "sped_notes",
-                    "label": "SPED Notes",
+                    "id": "developmental_psychology_notes",
+                    "label": "Developmental Psychology Notes",
                     "type": "textarea"
                 }
             ]
