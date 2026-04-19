@@ -6,6 +6,9 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
+const getWorkspaceFormUrl = (studentId: string) =>
+    `/workspace?studentId=${encodeURIComponent(studentId)}&workspace=forms&tab=multi_assessment`;
+
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
 function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; checked: boolean; onChange: () => void; readOnly?: boolean }) {
@@ -233,7 +236,7 @@ function SpecialistAFormContent() {
             try { localStorage.removeItem(draftKey); } catch {}
 
             setSuccessMsg("Assessment submitted successfully!");
-            setTimeout(() => router.back(), 1500);
+            setTimeout(() => router.replace(getWorkspaceFormUrl(studentId)), 1500);
         } catch (err: any) {
             setErrorMsg(err.response?.data?.detail || "Submission failed. Please try again.");
         } finally {

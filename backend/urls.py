@@ -38,10 +38,15 @@ urlpatterns = [
     path('api/', include('api.urls')),
 
     # ─── Cookie-based auth endpoints ─────────────────────────────────────
+    path('api/auth/token', CookieTokenObtainPairView.as_view(), name='token_obtain_pair_no_slash'),
     path('api/auth/token/', CookieTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/token/refresh', CookieTokenRefreshView.as_view(), name='token_refresh_no_slash'),
     path('api/auth/token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/logout', LogoutView.as_view(), name='auth_logout_no_slash'),
     path('api/auth/logout/', LogoutView.as_view(), name='auth_logout'),
+    path('api/auth/csrf', CsrfCookieView.as_view(), name='auth_csrf_no_slash'),
     path('api/auth/csrf/', CsrfCookieView.as_view(), name='auth_csrf'),
+    path('api/auth/me', MeView.as_view(), name='auth_me_no_slash'),
     path('api/auth/me/', MeView.as_view(), name='auth_me'),
 ]
 

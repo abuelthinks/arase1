@@ -18,7 +18,7 @@ export default function Navbar() {
     const firstName = user?.first_name || user?.email?.split("@")[0] || "there";
 
     return (
-        <nav className="bg-white border-b border-slate-200 px-4 md:px-6 py-1.5 flex justify-between items-center shadow-sm sticky top-0 z-50">
+        <nav className="bg-white border-b border-slate-200 px-4 md:px-6 py-1 flex justify-between items-center shadow-sm sticky top-0 z-50">
             <div className="flex items-center gap-4">
                 <Link href="/dashboard" className="font-bold text-lg text-blue-600 hover:text-blue-800 transition">
                     ARASE
@@ -26,18 +26,18 @@ export default function Navbar() {
             </div>
 
             {/* Avatar dropdown & Notifications */}
-            <div className="flex items-center gap-2 relative">
+            <div className="flex items-center gap-1.5 relative">
                 <NotificationBell />
 
-                <div className="relative group ml-1">
-                    <div className="flex items-center gap-2.5 cursor-pointer">
+                <div className="relative group">
+                    <div className="flex items-center gap-2 cursor-pointer">
                         <span className="text-sm text-slate-500 hidden md:inline">
                             Howdy, <span className="font-semibold text-slate-700">{firstName}</span>
                         </span>
                         <span className="text-xs text-slate-500 font-medium md:hidden">
                             Howdy, {firstName}
                         </span>
-                        <CircleUserRound size={30} className="text-slate-500 shrink-0" strokeWidth={1.5} />
+                        <CircleUserRound size={26} className="text-slate-500 shrink-0" strokeWidth={1.5} />
                     </div>
 
                     {/* Dropdown — visible on hover (desktop) */}

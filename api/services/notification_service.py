@@ -50,6 +50,35 @@ def notify_tracker_reminder(user, student, days_remaining):
         _send_sms(user.phone_number, f"ARASE: Monthly tracker for {student_name} due in {days_remaining} day(s). Please log in to submit.")
 
 
+def notify_parent_assessment_reminder(user, student):
+    """
+    Remind a parent to complete the initial parent assessment for a student.
+    """
+    from api.models import Notification
+
+    student_name = f"{student.first_name} {student.last_name}"
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+    form_url = f"{frontend_url}/parent-onboarding?studentId={student.id}"
+    title = f"Parent assessment needed for {student_name}"
+    message = (
+        f"Hi {user.first_name or user.username},\n\n"
+        f"This is a friendly reminder to complete the parent assessment for {student_name}.\n\n"
+        f"Complete it here: {form_url}\n\n"
+        f"â€” The ARASE Team"
+    )
+
+    Notification.objects.create(
+        recipient=user,
+        notification_type='REMINDER',
+        title=title,
+        message=f"Please complete the parent assessment for {student_name}.",
+        link=f"/parent-onboarding?studentId={student.id}",
+    )
+    _send_email(user.email, title, message)
+    if user.phone_number and user.is_phone_verified:
+        _send_sms(user.phone_number, f"ARASE: Please complete the parent assessment for {student_name}.")
+
+
 def notify_report_ready(admin_user, student, report_id):
     """
     Notify an admin that a monthly report was auto-generated and is ready for review.

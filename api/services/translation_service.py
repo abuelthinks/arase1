@@ -1,26 +1,16 @@
 import json
 import logging
-from google import genai
-from google.genai import types
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 def translate_form_data(form_data: dict) -> tuple[dict, str]:
     """
     Takes a form_data dict and returns (translated_data, detected_language)
-    using Gemini AI. If no translation is needed or on error, returns the original 
+    using OpenAI. If no translation is needed or on error, returns the original
     form data and 'en'.
     """
     if not form_data:
         return {}, 'en'
-
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        logger.warning("GEMINI_API_KEY not configured. Skipping translation.")
-        return form_data, 'en'
-
-    client = genai.Client(api_key=api_key)
     
     prompt = f"""
     Below is a JSON object representing form input data from an educational assessment or progress tracker. 
@@ -33,23 +23,9 @@ def translate_form_data(form_data: dict) -> tuple[dict, str]:
     """
     
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-lite',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                response_mime_type="application/json",
-            )
-        )
-        raw = response.text.strip()
+        from api.services.openai_service import call_openai_json
 
-        # Strip markdown code fences if present
-        if raw.startswith('```'):
-            raw = raw.split('\n', 1)[1] if '\n' in raw else raw[3:]
-            if raw.endswith('```'):
-                raw = raw[:-3].strip()
-
-        translated_obj = json.loads(raw)
+        translated_obj = call_openai_json(prompt, temperature=0.1)
         detected_language = translated_obj.pop('__detected_language', 'en')
         
         return translated_obj, detected_language

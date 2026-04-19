@@ -92,6 +92,12 @@ const getStatusStyle = (status: string) => {
     return { bg: '#f1f5f9', color: '#475569' };
 };
 
+const getActionTypeStyle = (type: DashboardAction["type"]) => {
+    if (type === 'positive') return { bg: '#f0fdf4', border: '#bbf7d0', title: '#166534', body: '#15803d' };
+    if (type === 'warning') return { bg: '#fffbeb', border: '#fde68a', title: '#b45309', body: '#b45309' };
+    return { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
+};
+
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function AdminDashboard() {
@@ -506,11 +512,69 @@ export default function AdminDashboard() {
     /* ─── Analytics Metrics ──────────────────────────────────────────────── */
     const totalStudents = students.filter(s => s.status !== 'ARCHIVED').length;
     const activeStudents = students.filter(s => s.status === 'ENROLLED').length;
-    const inProgressStudents = students.filter(s => s.status === 'ASSESSMENT_SCHEDULED' || s.status === 'ASSESSED').length;
-    const pendingStudents = students.filter(s => s.status === 'INQUIRY').length;
+    const scheduledStudents = students.filter(s => s.status === 'ASSESSMENT_SCHEDULED').length;
+    const reviewStudents = students.filter(s => s.status === 'ASSESSED').length;
+    const pendingStudents = students.filter(s => s.status === 'PENDING_ASSESSMENT').length;
+    const archivedStudents = students.filter(s => s.status === 'ARCHIVED').length;
+    const inProgressStudents = scheduledStudents + reviewStudents;
 
-    // Bottlenecks: students stuck in INQUIRY or EVALUATION (no parent input yet)
-    const bottlenecks = students.filter(s => s.status === 'INQUIRY').slice(0, 5);
+    const pendingInvitations = invitations.filter(i => !i.is_used);
+    const expiredInvitations = pendingInvitations.filter(i => getExpiryDisplay(i.expires_at).isExpired);
+    const expiringSoonInvitations = pendingInvitations.filter(i => {
+        const expiryTime = new Date(i.expires_at).getTime();
+        const nowTime = Date.now();
+        return expiryTime > nowTime && expiryTime - nowTime <= 24 * 60 * 60 * 1000;
+    });
+
+    const adminUsers = users.filter(u => u.role === 'ADMIN');
+    const teacherUsers = users.filter(u => u.role === 'TEACHER');
+    const specialistUsers = users.filter(u => u.role === 'SPECIALIST');
+    const parentUsers = users.filter(u => u.role === 'PARENT');
+    const instructionalStaff = users.filter(u => u.role === 'TEACHER' || u.role === 'SPECIALIST');
+    const staffSortedByCaseload = [...instructionalStaff].sort((a, b) => (b.assigned_students_count || 0) - (a.assigned_students_count || 0));
+    const unassignedStaff = instructionalStaff.filter(u => (u.assigned_students_count || 0) === 0);
+    const specialistsWithoutSpecialty = specialistUsers.filter(u => !u.specialty);
+    const averageCaseload = instructionalStaff.length
+        ? instructionalStaff.reduce((sum, user) => sum + (user.assigned_students_count || 0), 0) / instructionalStaff.length
+        : 0;
+
+    const actionCounts = dashboardActions.reduce((acc, action) => {
+        acc[action.type] += 1;
+        return acc;
+    }, { positive: 0, info: 0, warning: 0 });
+
+    const watchlistItems = [
+        ...dashboardActions
+            .filter(action => action.type === 'warning')
+            .slice(0, 3)
+            .map(action => ({
+                id: `action-${action.id}`,
+                title: action.title,
+                description: action.description,
+                link: action.link,
+                cta: action.action_text,
+                tone: 'warning' as const,
+            })),
+        ...expiringSoonInvitations.slice(0, 2).map(invite => {
+            const expiry = getExpiryDisplay(invite.expires_at);
+            return {
+                id: `invite-${invite.id}`,
+                title: `Invitation expiring soon: ${invite.email}`,
+                description: `${toTitleCase(invite.role)} access expires ${expiry.label.toLowerCase()}.`,
+                link: "/dashboard?tab=invitations",
+                cta: "Review invites",
+                tone: 'info' as const,
+            };
+        }),
+        ...(specialistsWithoutSpecialty.length > 0 ? [{
+            id: 'missing-specialty',
+            title: `${specialistsWithoutSpecialty.length} specialist account${specialistsWithoutSpecialty.length === 1 ? '' : 's'} missing discipline`,
+            description: "Add specialties so assignment decisions stay accurate and easier to scan.",
+            link: "/dashboard?tab=users",
+            cta: "Review users",
+            tone: 'info' as const,
+        }] : []),
+    ].slice(0, 5);
 
     return (
         <>
@@ -524,7 +588,7 @@ export default function AdminDashboard() {
                         {activeTab === "invitations" && <>Pending Invitations <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedInvitations.length})</span></>}
                     </h2>
                     <p style={{ margin: "5px 0 0 0", color: "var(--text-secondary)" }}>
-                        {activeTab === "analytics" && "High-level metrics, demographic breakdowns, and active bottlenecks."}
+                        {activeTab === "analytics" && "Live pipeline health, admin actions, staffing coverage, and invitation risk."}
                         {activeTab === "students" && "Manage all registered students in the system."}
                         {activeTab === "users" && "Manage active system users and clinical roles."}
                         {activeTab === "invitations" && "Track and revoke pending access invitations."}
@@ -543,7 +607,7 @@ export default function AdminDashboard() {
                             {activeTab === "invitations" && <>Pending Invitations <span className="text-base font-normal text-slate-400">({processedInvitations.length})</span></>}
                         </h2>
                         <p className="m-0 mt-1 text-sm text-slate-400">
-                            {activeTab === "analytics" && "High-level metrics, breakdowns, and bottlenecks."}
+                            {activeTab === "analytics" && "Live pipeline health, actions, staffing coverage, and invitation risk."}
                             {activeTab === "students" && "Manage all registered students in the system."}
                             {activeTab === "users" && "Manage active system users and clinical roles."}
                             {activeTab === "invitations" && "Track and revoke pending access invitations."}
@@ -555,70 +619,59 @@ export default function AdminDashboard() {
                         <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeIn 0.4s ease-out" }}>
                             
                             {/* KPI Row */}
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.5rem" }}>
                                 <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                                     <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b", display: "flex", alignItems: "center", gap: "6px" }}>
                                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                                        Total Active Students
+                                        Active Students
                                     </span>
                                     <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>{totalStudents}</span>
-                                    <span style={{ fontSize: "0.8rem", color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                                        +4 since last month
+                                    <span style={{ fontSize: "0.8rem", color: "#475569", fontWeight: 600 }}>
+                                        {activeStudents} enrolled, {archivedStudents} archived
                                     </span>
                                 </div>
-                                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b", display: "flex", alignItems: "center", gap: "6px" }}>
-                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Completed IEPs (MTD)
+                                <div style={{ background: "#fefce8", border: "1px solid #fde68a", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#a16207", display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Awaiting Assessment Start
                                     </span>
-                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>14</span>
-                                    <span style={{ fontSize: "0.8rem", color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                                        +12% vs previous period
+                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#854d0e", lineHeight: 1 }}>{pendingStudents}</span>
+                                    <span style={{ fontSize: "0.8rem", color: "#a16207", fontWeight: 600 }}>
+                                        Students still waiting on intake completion or scheduling
+                                    </span>
+                                </div>
+                                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#1d4ed8", display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        Awaiting Enrollment Review
+                                    </span>
+                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#1e3a8a", lineHeight: 1 }}>{reviewStudents}</span>
+                                    <span style={{ fontSize: "0.8rem", color: "#2563eb", fontWeight: 600 }}>
+                                        Students already assessed and waiting on an admin decision
                                     </span>
                                 </div>
                                 <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                                     <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#be123c", display: "flex", alignItems: "center", gap: "6px" }}>
                                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Pending &gt; 14 Days
+                                        Pending Invitations
                                     </span>
-                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#9f1239", lineHeight: 1 }}>{bottlenecks.length}</span>
-                                    <span style={{ fontSize: "0.8rem", color: "#e11d48", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                                        Requires admin intervention
+                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#9f1239", lineHeight: 1 }}>{pendingInvitations.length}</span>
+                                    <span style={{ fontSize: "0.8rem", color: "#e11d48", fontWeight: 600 }}>
+                                        {expiringSoonInvitations.length} expiring in 24h, {expiredInvitations.length} already expired
                                     </span>
                                 </div>
                             </div>
 
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem", alignItems: "stretch" }}>
-                                {/* Pipeline Breakdown */}
                                 <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-                                    <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800 }}>Student Pipeline Demographics</h3>
+                                    <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800 }}>Student Workflow Snapshot</h3>
+                                    <p style={{ margin: "0 0 1.5rem 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                                        A live read on where students currently sit in the admin pipeline.
+                                    </p>
                                     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                                        
                                         <div>
                                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#166534" }}>Active (Enrolled)</span>
-                                                <span>{activeStudents}</span>
-                                            </div>
-                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (activeStudents / totalStudents) * 100 : 0}%`, background: "#22c55e", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#1e40af" }}>Evaluation / Review</span>
-                                                <span>{inProgressStudents}</span>
-                                            </div>
-                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (inProgressStudents / totalStudents) * 100 : 0}%`, background: "#3b82f6", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#92400e" }}>Pending Inquiry</span>
+                                                <span style={{ color: "#a16207" }}>Pending Assessment</span>
                                                 <span>{pendingStudents}</span>
                                             </div>
                                             <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
@@ -626,57 +679,173 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
 
+                                        <div>
+                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                                                <span style={{ color: "#0369a1" }}>Assessment Scheduled</span>
+                                                <span>{scheduledStudents}</span>
+                                            </div>
+                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (scheduledStudents / totalStudents) * 100 : 0}%`, background: "#0ea5e9", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                                                <span style={{ color: "#1d4ed8" }}>Awaiting Enrollment Review</span>
+                                                <span>{reviewStudents}</span>
+                                            </div>
+                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (reviewStudents / totalStudents) * 100 : 0}%`, background: "#3b82f6", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                                                <span style={{ color: "#166534" }}>Enrolled</span>
+                                                <span>{activeStudents}</span>
+                                            </div>
+                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
+                                                <div style={{ height: "100%", width: `${totalStudents ? (activeStudents / totalStudents) * 100 : 0}%`, background: "#22c55e", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginTop: "0.5rem", padding: "0.9rem 1rem", borderRadius: "10px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+                                            <span style={{ color: "#334155", fontSize: "0.85rem" }}>{inProgressStudents} students are actively moving through evaluation or review.</span>
+                                            <Link href="/dashboard?tab=students" style={{ color: "#2563eb", fontWeight: 700, fontSize: "0.85rem", textDecoration: "none" }}>
+                                                Open roster →
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Action Center */}
                                 <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                                     <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
                                         <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                         Action Center
                                     </h3>
+                                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "1rem" }}>
+                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", padding: "4px 10px", borderRadius: "999px" }}>{actionCounts.warning} urgent</span>
+                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "4px 10px", borderRadius: "999px" }}>{actionCounts.info} queued</span>
+                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "4px 10px", borderRadius: "999px" }}>{actionCounts.positive} ready</span>
+                                    </div>
                                     {dashboardActions.length === 0 ? (
                                         <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>You're all caught up! No pending actions required right now.</p>
                                     ) : (
                                         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                            {dashboardActions.map(action => (
-                                                <div key={action.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: action.type === 'positive' ? '#f0fdf4' : '#eff6ff', borderRadius: "8px", border: `1px solid ${action.type === 'positive' ? '#dcfce7' : '#dbeafe'}` }}>
-                                                    <div>
-                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: action.type === 'positive' ? '#166534' : '#1e40af' }}>{action.title}</p>
-                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: action.type === 'positive' ? '#15803d' : '#2563eb' }}>{action.description}</p>
+                                            {dashboardActions.map(action => {
+                                                const actionStyle = getActionTypeStyle(action.type);
+                                                return (
+                                                    <div key={action.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: actionStyle.bg, borderRadius: "8px", border: `1px solid ${actionStyle.border}`, gap: "1rem" }}>
+                                                        <div>
+                                                            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: actionStyle.title }}>{action.title}</p>
+                                                            <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: actionStyle.body }}>{action.description}</p>
+                                                        </div>
+                                                        <Link href={action.link} className="hover:scale-105 transition-transform" style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${actionStyle.border}`, color: actionStyle.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "90px" }}>
+                                                            {action.action_text}
+                                                        </Link>
                                                     </div>
-                                                    <Link href={action.link} className="hover:scale-105 transition-transform" style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${action.type === 'positive' ? '#dcfce7' : '#dbeafe'}`, color: action.type === 'positive' ? '#166534' : '#1e40af', borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "80px" }}>
-                                                        {action.action_text}
-                                                    </Link>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Bottlenecks List */}
-                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #fecdd3", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-                                    <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.1rem", color: "#9f1239", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                        Active Bottlenecks
+                                {/* Admin Watchlist */}
+                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                                    <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6 0A10 10 0 1112 2a10 10 0 0110 10z" /></svg>
+                                        Admin Watchlist
                                     </h3>
-                                    {bottlenecks.length === 0 ? (
-                                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Hooray! No severe bottlenecks detected across the system.</p>
+                                    {watchlistItems.length === 0 ? (
+                                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Nothing pressing right now. The system doesn&apos;t have urgent admin follow-ups at the moment.</p>
                                     ) : (
                                         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                            {bottlenecks.map(b => (
-                                                <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#fff1f2", borderRadius: "8px", border: "1px solid #ffe4e6" }}>
+                                            {watchlistItems.map(item => {
+                                                const tone = item.tone === 'warning'
+                                                    ? { bg: '#fffbeb', border: '#fde68a', title: '#92400e', body: '#b45309' }
+                                                    : { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
+
+                                                return (
+                                                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", padding: "12px 14px", borderRadius: "10px", background: tone.bg, border: `1px solid ${tone.border}` }}>
                                                     <div>
-                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#be123c" }}>{b.first_name} {b.last_name}</p>
+                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: tone.title }}>{item.title}</p>
                                                         <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#e11d48" }}>Missing Teacher Input • Pending &gt; 14d</p>
                                                     </div>
-                                                    <Link href={`/students/${b.id}`} style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: "1px solid #fecdd3", color: "#be123c", borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "80px" }}>
+                                                    <p style={{ margin: 0, fontSize: "0.78rem", color: tone.body }}>{item.description}</p>
+                                                    <Link href={item.link} style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${tone.border}`, color: tone.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "96px" }}>
                                                         Resolve →
                                                     </Link>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
+                                </div>
+
+                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                                    <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5V4H2v16h5m10 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m10 0H7" /></svg>
+                                        Team Capacity
+                                    </h3>
+                                    <p style={{ margin: "0 0 1.25rem 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                                        A quick read on staffing coverage before you assign more work.
+                                    </p>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px", marginBottom: "1rem" }}>
+                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
+                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Admins</div>
+                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{adminUsers.length}</div>
+                                        </div>
+                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
+                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Teachers</div>
+                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{teacherUsers.length}</div>
+                                        </div>
+                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
+                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Specialists</div>
+                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{specialistUsers.length}</div>
+                                        </div>
+                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
+                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Parents</div>
+                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{parentUsers.length}</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        <div style={{ padding: "12px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
+                                            <p style={{ margin: 0, fontSize: "0.85rem", color: "#334155", fontWeight: 700 }}>Average instructional caseload</p>
+                                            <p style={{ margin: "4px 0 0 0", fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>{averageCaseload.toFixed(1)} students</p>
+                                        </div>
+                                        <div style={{ padding: "12px 14px", background: unassignedStaff.length > 0 ? "#fffbeb" : "#f0fdf4", border: `1px solid ${unassignedStaff.length > 0 ? '#fde68a' : '#bbf7d0'}`, borderRadius: "10px" }}>
+                                            <p style={{ margin: 0, fontSize: "0.85rem", color: unassignedStaff.length > 0 ? "#92400e" : "#166534", fontWeight: 700 }}>
+                                                {unassignedStaff.length} staff member{unassignedStaff.length === 1 ? '' : 's'} currently have no assigned students
+                                            </p>
+                                            <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: unassignedStaff.length > 0 ? "#b45309" : "#15803d" }}>
+                                                {unassignedStaff.length > 0 ? "Useful if you need assignment capacity right away." : "Everyone currently has at least one student assigned."}
+                                            </p>
+                                        </div>
+                                        <div style={{ padding: "12px 14px", background: specialistsWithoutSpecialty.length > 0 ? "#eff6ff" : "#f8fafc", border: `1px solid ${specialistsWithoutSpecialty.length > 0 ? '#bfdbfe' : '#e2e8f0'}`, borderRadius: "10px" }}>
+                                            <p style={{ margin: 0, fontSize: "0.85rem", color: specialistsWithoutSpecialty.length > 0 ? "#1d4ed8" : "#334155", fontWeight: 700 }}>
+                                                {specialistsWithoutSpecialty.length} specialist account{specialistsWithoutSpecialty.length === 1 ? '' : 's'} missing a specialty
+                                            </p>
+                                            <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: specialistsWithoutSpecialty.length > 0 ? "#2563eb" : "#64748b" }}>
+                                                Filling these in makes assignment decisions clearer for admins.
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p style={{ margin: "0 0 0.6rem 0", fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Highest current caseloads</p>
+                                            {staffSortedByCaseload.slice(0, 4).map(staff => (
+                                                <div key={staff.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "8px", background: "#fff" }}>
+                                                    <div>
+                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>{staff.first_name} {staff.last_name}</p>
+                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
+                                                            {toTitleCase(staff.role)}{staff.specialty ? ` • ${staff.specialty}` : ""}
+                                                        </p>
+                                                    </div>
+                                                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 10px", borderRadius: "999px" }}>
+                                                        {staff.assigned_students_count} students
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

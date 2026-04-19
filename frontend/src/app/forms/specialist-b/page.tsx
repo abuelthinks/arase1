@@ -6,6 +6,9 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
+const getWorkspaceFormUrl = (studentId: string) =>
+    `/workspace?studentId=${encodeURIComponent(studentId)}&workspace=forms&tab=multi_tracker`;
+
 /* ─── Shared UI Components ─────────────────────────────────────────────────── */
 
 function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
@@ -219,7 +222,7 @@ function SpecialistBFormContent() {
             try { localStorage.removeItem(draftKey); } catch {}
 
             setSuccessMsg("Monthly Progress Report submitted successfully!");
-            setTimeout(() => router.push(`/students/${studentId}`), 1500);
+            setTimeout(() => router.replace(getWorkspaceFormUrl(studentId || "")), 1500);
         } catch {
             setErrorMsg("Failed to submit form.");
         } finally {
@@ -233,7 +236,7 @@ function SpecialistBFormContent() {
                 .then(res => {
                     if (!isViewMode && res.data?.student?.status !== "Enrolled") {
                         alert("This progress tracking form is locked until the student is formally enrolled.");
-                        router.push(`/students/${studentId}`);
+                        router.replace(getWorkspaceFormUrl(studentId));
                         return;
                     }
                     setStudentProfile(res.data);

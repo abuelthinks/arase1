@@ -9,7 +9,7 @@ from celery import shared_task
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def generate_iep_task(self, student_id, cycle_id, user_id=None):
     """
-    Generate an IEP asynchronously using Gemini AI.
+    Generate an IEP asynchronously using OpenAI.
     Returns the generated document ID.
     """
     try:
@@ -32,7 +32,7 @@ def generate_iep_task(self, student_id, cycle_id, user_id=None):
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def generate_monthly_report_task(self, student_id, cycle_id, user_id=None):
     """
-    Generate a Monthly Report asynchronously using Gemini AI.
+    Generate a Monthly Report asynchronously using OpenAI.
     Returns the generated document ID.
     """
     try:

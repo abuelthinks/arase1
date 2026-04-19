@@ -106,7 +106,7 @@ type FormState = ReturnType<typeof initState>;
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export function ParentFormContent({ propStudentId, propSubmissionId, propMode, propHideNavigation }: { propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean } = {}) {
+export function ParentFormContent({ propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted }: { propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void> } = {}) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const isViewMode = propMode === "view" || searchParams.get("mode") === "view";
@@ -115,10 +115,12 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     const draftKey = studentIdParam ? `parent_form_draft_v2_${studentIdParam}` : null;
     const { user } = useAuth();
     const canViewPII = !isViewMode || user?.role === "ADMIN";
+    const hideBackgroundSection = isViewMode && ["SPECIALIST", "TEACHER"].includes(user?.role || "");
 
     const [form, setForm] = useState<FormState>(initState());
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
 
     // For Translation Toggle
     const [fullSubmission, setFullSubmission] = useState<any>(null);
@@ -250,6 +252,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
         }
         setLoading(true);
         setErrorMsg("");
+        setSuccessMsg("");
         try {
             const payload = {
                 student: { first_name: form.first_name, last_name: form.last_name, date_of_birth: form.date_of_birth, grade: form.grade },
@@ -258,7 +261,14 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
             };
             await api.post("/api/students/onboard/", payload);
             if (draftKey) localStorage.removeItem(draftKey);
-            router.push(studentIdParam ? `/students/${studentIdParam}` : "/dashboard");
+            const message = "Parent assessment submitted successfully.";
+            setSuccessMsg(message);
+            await propOnSubmitted?.(message);
+            if (propHideNavigation) {
+                setLoading(false);
+                return;
+            }
+            setTimeout(() => router.push(studentIdParam ? `/students/${studentIdParam}` : "/dashboard"), 1500);
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Submission failed. Please try again.");
             setLoading(false);
@@ -394,6 +404,10 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     )}
                 </div>
 
+                {successMsg && (
+                    <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg text-sm font-semibold">{successMsg}</div>
+                )}
+
                 {errorMsg && (
                     <div className="mb-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{errorMsg}</div>
                 )}
@@ -401,6 +415,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                 <fieldset disabled={dis} className="space-y-10">
 
                     {/* ── SECTION A ─────────────────────────────────────────── */}
+                    {!hideBackgroundSection && (
                     <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
                         <SectionHeader title="Section A — Background Information" />
 
@@ -479,6 +494,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
                     </section>
+                    )}
 
                     {/* ── SECTION B ─────────────────────────────────────────── */}
                     <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">

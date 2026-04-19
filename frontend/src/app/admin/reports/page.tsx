@@ -22,7 +22,13 @@ const progressTrackerLabels: Record<string, string> = {
     sped_tracker: "Teacher Progress",
 };
 
-export function AdminReportsContent({ propStudentId, propHideNavigation }: { propStudentId?: string; propHideNavigation?: boolean }) {
+interface AdminReportsContentProps {
+    propStudentId?: string;
+    propHideNavigation?: boolean;
+    propWorkspacePath?: string;
+}
+
+export function AdminReportsContent({ propStudentId, propHideNavigation, propWorkspacePath }: AdminReportsContentProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -78,6 +84,33 @@ export function AdminReportsContent({ propStudentId, propHideNavigation }: { pro
         }, 3000);
     };
 
+    const openGeneratedDocument = (view: "iep" | "monthly", docId: string | number | null | undefined) => {
+        if (!docId) {
+            setErrorMsg("The document was generated, but its ID was not returned.");
+            setLoading(false);
+            setMonthlyLoading(false);
+            return;
+        }
+
+        if (propHideNavigation && studentId) {
+            const workspacePath = propWorkspacePath || "/workspace";
+            const params = new URLSearchParams({
+                workspace: "reports",
+                view,
+                docId: String(docId),
+            });
+
+            if (workspacePath === "/workspace") {
+                params.set("studentId", studentId);
+            }
+
+            router.replace(`${workspacePath}?${params.toString()}`);
+            return;
+        }
+
+        router.push(view === "iep" ? `/admin/iep?id=${docId}` : `/admin/monthly-report?id=${docId}`);
+    };
+
     const handleGenerateIEP = async () => {
         if (!studentId || !reportCycleId) {
             setErrorMsg("Student ID and Report Cycle ID are required.");
@@ -92,11 +125,11 @@ export function AdminReportsContent({ propStudentId, propHideNavigation }: { pro
             });
             if (res.data.task_id) {
                 pollTaskStatus(res.data.task_id, 
-                    (result) => router.push(`/admin/iep?id=${result.doc_id}`),
+                    (result) => openGeneratedDocument("iep", result.doc_id),
                     (err) => { setErrorMsg(err); setLoading(false); }
                 );
             } else {
-                router.push(`/admin/iep?id=${res.data.iep_id}`);
+                openGeneratedDocument("iep", res.data.iep_id);
             }
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Failed to generate IEP.");
@@ -118,11 +151,11 @@ export function AdminReportsContent({ propStudentId, propHideNavigation }: { pro
             });
             if (res.data.task_id) {
                 pollTaskStatus(res.data.task_id, 
-                    (result) => router.push(`/admin/monthly-report?id=${result.doc_id}`),
+                    (result) => openGeneratedDocument("monthly", result.doc_id),
                     (err) => { setErrorMsg(err); setMonthlyLoading(false); }
                 );
             } else {
-                router.push(`/admin/monthly-report?id=${res.data.report_id}`);
+                openGeneratedDocument("monthly", res.data.report_id);
             }
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Failed to generate monthly report.");
@@ -134,7 +167,8 @@ export function AdminReportsContent({ propStudentId, propHideNavigation }: { pro
         ? Object.values(formStatuses).every(fs => fs.submitted)
         : false;
 
-    const monthlyEnabled = studentStatus === "Enrolled" && allTrackersSubmitted && !monthlyLoading;
+    const isEnrolled = ["enrolled", "active"].includes(studentStatus.toLowerCase());
+    const monthlyEnabled = isEnrolled && allTrackersSubmitted && !monthlyLoading;
 
     if (!studentId) {
         return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing student context. Return to dashboard.</div>;
@@ -259,7 +293,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation }: { pro
                         onClick={handleGenerateMonthly}
                         disabled={!monthlyEnabled}
                         title={
-                            studentStatus.toLowerCase() !== "enrolled"
+                            !isEnrolled
                                 ? "Requires Active status"
                                 : !allTrackersSubmitted
                                 ? "All 3 progress tracker forms must be submitted first"
@@ -276,7 +310,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation }: { pro
                         }}
                     >
                         {monthlyLoading ? "⏳ Generating…"
-                            : studentStatus.toLowerCase() !== "active" ? "Requires Active"
+                            : !isEnrolled ? "Requires Active"
                             : !allTrackersSubmitted ? "Forms Pending"
                             : "🤖 Generate"}
                     </button>

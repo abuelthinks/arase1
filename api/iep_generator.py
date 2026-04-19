@@ -1,5 +1,5 @@
 """
-IEP Generator — Collects form data, calls Gemini AI, returns structured IEP JSON
+IEP Generator — Collects form data, calls OpenAI, returns structured IEP JSON
 matching the 12-section THERUNI Comprehensive AI-Generated IEP template.
 """
 import json
@@ -64,10 +64,10 @@ def _collect_form_data(inputs):
 
 
 # ---------------------------------------------------------------------------
-# Build prompt for Gemini
+# Build prompt for OpenAI
 # ---------------------------------------------------------------------------
 
-def _build_gemini_prompt(student, pa, ma, sa):
+def _build_openai_prompt(student, pa, ma, sa):
     """Build a structured prompt from the three assessment form datasets."""
 
     lines = [
@@ -239,38 +239,14 @@ def _build_gemini_prompt(student, pa, ma, sa):
 
 
 # ---------------------------------------------------------------------------
-# Call Gemini
+# Call OpenAI
 # ---------------------------------------------------------------------------
 
-def _call_gemini(prompt):
-    """Call Google Gemini API using the new genai SDK and return parsed JSON."""
-    from google import genai
-    from google.genai import types
-    from django.conf import settings
+def _call_openai(prompt):
+    """Call OpenAI and return parsed JSON."""
+    from api.services.openai_service import call_openai_json
 
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not configured in settings.")
-
-    client = genai.Client(api_key=api_key)
-    
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-lite',
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.7,
-            response_mime_type="application/json",
-        )
-    )
-    raw = response.text.strip()
-
-    # Strip markdown code fences if present
-    if raw.startswith('```'):
-        raw = raw.split('\n', 1)[1] if '\n' in raw else raw[3:]
-        if raw.endswith('```'):
-            raw = raw[:-3].strip()
-
-    return json.loads(raw)
+    return call_openai_json(prompt, temperature=0.7)
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +255,7 @@ def _call_gemini(prompt):
 
 def generate_iep(student, cycle, inputs):
     """
-    Generate a full IEP JSON structure from form inputs + Gemini AI.
+    Generate a full IEP JSON structure from form inputs + OpenAI.
     Returns a dict matching all 12 sections of the THERUNI IEP template.
     """
     forms = _collect_form_data(inputs)
@@ -288,13 +264,13 @@ def generate_iep(student, cycle, inputs):
     sa = forms.get('sped_assessment', {})
 
     # Build and send prompt
-    prompt = _build_gemini_prompt(student, pa, ma, sa)
-    logger.info("Calling Gemini for IEP generation (student=%s)", student.id)
+    prompt = _build_openai_prompt(student, pa, ma, sa)
+    logger.info("Calling OpenAI for IEP generation (student=%s)", student.id)
 
     try:
-        ai_data = _call_gemini(prompt)
+        ai_data = _call_openai(prompt)
     except Exception as e:
-        logger.error("Gemini call failed: %s", e)
+        logger.error("OpenAI call failed: %s", e)
         raise
 
     # Build the complete IEP structure

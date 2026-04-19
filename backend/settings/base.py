@@ -20,7 +20,8 @@ def parse_csv_env(name):
     return [item.strip() for item in os.environ.get(name, '').split(',') if item.strip()]
 
 # ─── API Keys ────────────────────────────────────────────────────────────────
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
 
 # ─── Security ────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ.get('SECRET_KEY', '')

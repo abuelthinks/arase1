@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .specialties import validate_specialty
 from .models import (
@@ -9,6 +11,20 @@ from .models import (
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        identifier = (attrs.get(self.username_field) or "").strip()
+        password = attrs.get("password")
+
+        if identifier and password:
+            user_model = get_user_model()
+            matched_user = user_model.objects.filter(
+                Q(username__iexact=identifier) | Q(email__iexact=identifier)
+            ).first()
+            if matched_user and matched_user.username != identifier:
+                attrs[self.username_field] = matched_user.username
+
+        return super().validate(attrs)
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -96,6 +112,10 @@ class SelfUserSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     has_parent_assessment = serializers.SerializerMethodField()
+    parent_current_tracker_submitted = serializers.SerializerMethodField()
+    active_cycle_label = serializers.SerializerMethodField()
+    latest_final_monthly_report_id = serializers.SerializerMethodField()
+    recent_activity_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
@@ -103,6 +123,60 @@ class StudentSerializer(serializers.ModelSerializer):
 
     def get_has_parent_assessment(self, obj):
         return ParentAssessment.objects.filter(student=obj).exists()
+
+    def _get_active_cycle(self, obj):
+        return (
+            ReportCycle.objects
+            .filter(student=obj, is_active=True)
+            .order_by('-created_at')
+            .first()
+        )
+
+    def get_parent_current_tracker_submitted(self, obj):
+        cycle = self._get_active_cycle(obj)
+        if not cycle:
+            return False
+        return ParentProgressTracker.objects.filter(student=obj, report_cycle=cycle).exists()
+
+    def get_active_cycle_label(self, obj):
+        cycle = self._get_active_cycle(obj)
+        return cycle.label if cycle else None
+
+    def get_latest_final_monthly_report_id(self, obj):
+        report = (
+            GeneratedDocument.objects
+            .filter(student=obj, document_type='MONTHLY', status='FINAL')
+            .order_by('-created_at')
+            .first()
+        )
+        return report.id if report else None
+
+    def get_recent_activity_at(self, obj):
+        timestamps = []
+
+        related_models = [
+            ParentAssessment,
+            MultidisciplinaryAssessment,
+            SpedAssessment,
+            ParentProgressTracker,
+            MultidisciplinaryProgressTracker,
+            SpedProgressTracker,
+            GeneratedDocument,
+            ReportCycle,
+        ]
+
+        for model in related_models:
+            latest = (
+                model.objects
+                .filter(student=obj)
+                .order_by('-created_at')
+                .values_list('created_at', flat=True)
+                .first()
+            )
+            if latest:
+                timestamps.append(latest)
+
+        return max(timestamps) if timestamps else None
 
 class StudentAccessSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)

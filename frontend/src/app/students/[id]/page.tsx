@@ -121,6 +121,11 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
         }
     }, [fetchProfile, id, user]);
 
+    useEffect(() => {
+        if (user?.role !== "PARENT" || !id || typeof window === "undefined") return;
+        window.localStorage.setItem("arase:last-parent-student-id", id);
+    }, [id, user?.role]);
+
     const handleAction = async (endpoint: string, payload: any = {}) => {
         try {
             await api.post(`/api/students/${id}/${endpoint}/`, payload);
@@ -175,6 +180,22 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
 
     const renderLifecycleAction = () => {
         if (user?.role === "PARENT") {
+            if (student.status === "Enrolled") {
+                return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <span className="text-sm text-slate-500 italic" style={{ display: "block", background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                            Your child is enrolled. You can now submit the monthly Parent Progress tracker.
+                        </span>
+                        <Link
+                            href={`/workspace?studentId=${student.id}&workspace=forms&tab=parent_tracker`}
+                            className="btn-primary px-5 py-2 text-sm text-center"
+                            style={{ textDecoration: "none", display: "inline-block" }}
+                        >
+                            Fill Parent Progress
+                        </Link>
+                    </div>
+                );
+            }
             if (student.status === "Pending Assessment") {
                 if (!form_statuses.parent_assessment?.submitted) {
                     return (
@@ -240,6 +261,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
     };
 
     const lifecycleContent = renderLifecycleAction();
+    const isParent = user?.role === "PARENT";
 
     return (
         <>
@@ -276,7 +298,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 )}
 
                 {/* Avatar + Name */}
-                <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", position: "relative", zIndex: 1, flexWrap: "wrap", padding: "2rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", position: "relative", zIndex: 1, flexWrap: "wrap", padding: "2rem 2rem 0.85rem" }}>
                     {/* Avatar */}
                     <div style={{
                         width: "72px", height: "72px", borderRadius: "50%",
@@ -317,48 +339,55 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
 
                 {/* Status Journey Stepper */}
                 {!isArchived && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0", marginTop: "1.5rem", position: "relative", zIndex: 1 }}>
+                    <div style={{ padding: "0 2rem 1.1rem", position: "relative", zIndex: 1, opacity: 0.88 }}>
+                        <div style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: "0",
+                        }}>
                         {STATUS_STEPS.map((step, idx) => {
                             const isCompleted = idx < currentStepIdx;
                             const isCurrent = idx === currentStepIdx;
-                            const isUpcoming = idx > currentStepIdx;
+                            const isFinalCompleted = student.status === "Enrolled" && idx === STATUS_STEPS.length - 1;
                             return (
                                 <div key={step.key} style={{ display: "flex", alignItems: "center", flex: 1 }}>
-                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "0 0 auto", minWidth: "60px" }}>
+                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "0 0 auto", minWidth: "56px" }}>
                                         <div style={{
-                                            width: "28px", height: "28px", borderRadius: "50%",
+                                            width: "24px", height: "24px", borderRadius: "50%",
                                             display: "flex", alignItems: "center", justifyContent: "center",
-                                            fontSize: "0.7rem", fontWeight: 700,
-                                            background: isCompleted ? "#4f46e5" : isCurrent ? "white" : "rgba(255,255,255,0.5)",
-                                            color: isCompleted ? "white" : isCurrent ? "#4f46e5" : "#94a3b8",
-                                            border: isCurrent ? "2px solid #4f46e5" : isCompleted ? "2px solid #4f46e5" : "2px solid #cbd5e1",
-                                            boxShadow: isCurrent ? "0 0 0 4px rgba(79,70,229,0.15)" : "none",
+                                            fontSize: "0.62rem", fontWeight: 700,
+                                            background: isCompleted || isFinalCompleted ? "rgba(79,70,229,0.88)" : isCurrent ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.22)",
+                                            color: isCompleted || isFinalCompleted ? "white" : isCurrent ? "#4f46e5" : "#94a3b8",
+                                            border: isCurrent && !isFinalCompleted ? "1.5px solid rgba(79,70,229,0.75)" : isCompleted || isFinalCompleted ? "1.5px solid rgba(79,70,229,0.65)" : "1.5px solid rgba(148,163,184,0.35)",
+                                            boxShadow: isCurrent && !isFinalCompleted ? "0 0 0 2px rgba(79,70,229,0.08)" : "none",
                                             transition: "all 0.3s ease",
                                         }}>
-                                            {isCompleted ? (
-                                                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                            {isCompleted || isFinalCompleted ? (
+                                                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                             ) : (
                                                 idx + 1
                                             )}
                                         </div>
                                         <span style={{
-                                            fontSize: "0.65rem", fontWeight: isCurrent ? 700 : 600,
-                                            color: isCurrent ? "#312e81" : isCompleted ? "#4338ca" : "#94a3b8",
-                                            marginTop: "6px", textAlign: "center",
+                                            fontSize: "0.62rem", fontWeight: isCurrent ? 700 : 600,
+                                            color: isCurrent || isFinalCompleted ? "#3730a3" : isCompleted ? "#4f46e5" : "#64748b",
+                                            marginTop: "6px", textAlign: "center", lineHeight: 1.1,
                                         }}>
                                             {step.shortLabel}
                                         </span>
                                     </div>
                                     {idx < STATUS_STEPS.length - 1 && (
                                         <div style={{
-                                            flex: 1, height: "2px", marginBottom: "20px",
-                                            background: isCompleted ? "#4f46e5" : "#cbd5e1",
+                                            flex: 1, height: "1.5px", margin: "11px 8px 0",
+                                            background: isCompleted ? "rgba(79,70,229,0.7)" : "rgba(148,163,184,0.28)",
+                                            borderRadius: "999px",
                                             transition: "background 0.3s ease",
                                         }}></div>
                                     )}
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
                 )}
             </div>
@@ -391,30 +420,34 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>generated</div>
                 </div>
 
-                {/* Team */}
-                <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                        <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        </div>
-                        <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Team</span>
-                    </div>
-                    <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{teamCount}</div>
-                    <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>assigned</div>
-                </div>
-
-                {/* Cycle Status (only if enrolled) */}
-                {cycle_status && (
-                    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                            <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#f0f9ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#0ea5e9" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {!isParent && (
+                    <>
+                        {/* Team */}
+                        <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                </div>
+                                <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Team</span>
                             </div>
-                            <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Cycle</span>
+                            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{teamCount}</div>
+                            <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>assigned</div>
                         </div>
-                        <div style={{ fontSize: "1.5rem", fontWeight: 800, color: cycle_status.days_remaining <= 5 ? "#dc2626" : "#1e1b4b" }}>{cycle_status.days_remaining}d</div>
-                        <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>remaining</div>
-                    </div>
+
+                        {/* Cycle Status (only if enrolled) */}
+                        {cycle_status && (
+                            <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                    <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#f0f9ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#0ea5e9" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    </div>
+                                    <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Cycle</span>
+                                </div>
+                                <div style={{ fontSize: "1.5rem", fontWeight: 800, color: cycle_status.days_remaining <= 5 ? "#dc2626" : "#1e1b4b" }}>{cycle_status.days_remaining}d</div>
+                                <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>remaining</div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -484,7 +517,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             {/* ═══════════════════════════════════════════ */}
             {/* ASSIGNED TEAM (if any)                      */}
             {/* ═══════════════════════════════════════════ */}
-            {user?.role !== "PARENT" && (
+            {!isParent && (
                 <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden", marginBottom: "1.5rem" }}>
                     <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -496,7 +529,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                         </div>
                     ) : (
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0" }}>
-                            {assigned_staff.map((staff, idx) => {
+                            {assigned_staff.map((staff) => {
                                 const staffName = (staff.first_name || staff.last_name)
                                     ? `${staff.first_name || ""} ${staff.last_name || ""}`.trim()
                                     : `Staff #${staff.id}`;
@@ -542,7 +575,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             {/* ═══════════════════════════════════════════ */}
             {/* MONTHLY CYCLE STATUS (Enrolled only)       */}
             {/* ═══════════════════════════════════════════ */}
-            {student.status === "Enrolled" && cycle_status && (
+            {!isParent && student.status === "Enrolled" && cycle_status && (
                 <div style={{ background: "white", borderRadius: "14px", padding: "1.25rem", border: "1px solid #e2e8f0", marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                         <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
@@ -595,7 +628,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             )}
 
             {/* Previous Month Recommendations Banner */}
-            {previous_recommendations && (
+            {!isParent && previous_recommendations && (
                 <div style={{ background: "#fffbeb", borderRadius: "14px", padding: "1.25rem", border: "1px solid #fde68a", marginBottom: "1.5rem" }}>
                     <h4 style={{ fontSize: "0.8rem", fontWeight: 800, color: "#92400e", margin: "0 0 10px", display: "flex", alignItems: "center", gap: "6px", textTransform: "uppercase" }}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
@@ -722,6 +755,11 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     grid-template-columns: 1fr !important;
                 }
             }
+            ${isParent ? `
+                .profile-grid {
+                    grid-template-columns: 1fr !important;
+                }
+            ` : ""}
         `}} />
         </>
     );

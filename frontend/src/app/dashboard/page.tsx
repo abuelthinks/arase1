@@ -17,6 +17,9 @@ interface Student {
     grade: string;
     status: string;
     has_parent_assessment?: boolean;
+    parent_current_tracker_submitted?: boolean;
+    active_cycle_label?: string | null;
+    latest_final_monthly_report_id?: number | null;
 }
 
 const statusColors: Record<string, { bg: string; color: string }> = {
@@ -129,6 +132,26 @@ export default function DashboardPage() {
             case "PARENT": return "Select your child to submit home context, milestones, and goals.";
             default: return "";
         }
+    };
+
+    const getStudentWorkspaceHref = (studentId: number, tab?: string) => {
+        const params = new URLSearchParams({
+            studentId: studentId.toString(),
+            workspace: "forms",
+        });
+        if (tab) params.set("tab", tab);
+        return `/workspace?${params.toString()}`;
+    };
+
+    const getPrimaryInputTab = () => {
+        if (user?.role === "SPECIALIST") return "multi_assessment";
+        if (user?.role === "TEACHER") return "sped_tracker";
+        return undefined;
+    };
+
+    const rememberParentStudent = (studentId: number) => {
+        if (user?.role !== "PARENT" || typeof window === "undefined") return;
+        window.localStorage.setItem("arase:last-parent-student-id", studentId.toString());
     };
 
     if (user?.role === "ADMIN") {
@@ -330,6 +353,7 @@ export default function DashboardPage() {
                                                     {(s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) ? (
                                                         <Link 
                                                             href={`/parent-onboarding?studentId=${s.id}`}
+                                                            onClick={() => rememberParentStudent(s.id)}
                                                             className="btn-primary w-full flex items-center justify-center gap-2"
                                                             style={{ textDecoration: "none", padding: "12px" }}
                                                         >
@@ -337,14 +361,28 @@ export default function DashboardPage() {
                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                                                         </Link>
                                                     ) : (
-                                                        <Link 
-                                                            href={`/students/${s.id}`}
-                                                            className="btn-indigo w-full flex items-center justify-center gap-2"
-                                                            style={{ textDecoration: "none", padding: "12px" }}
-                                                        >
-                                                            View Student Profile
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                                                        </Link>
+                                                        <>
+                                                            <Link 
+                                                                href={`/students/${s.id}`}
+                                                                onClick={() => rememberParentStudent(s.id)}
+                                                                className="btn-indigo w-full flex items-center justify-center gap-2"
+                                                                style={{ textDecoration: "none", padding: "12px" }}
+                                                            >
+                                                                View Student Profile
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                                            </Link>
+                                                            {s.status === "ENROLLED" && (
+                                                                <Link 
+                                                                    href={getStudentWorkspaceHref(s.id, "parent_tracker")}
+                                                                    onClick={() => rememberParentStudent(s.id)}
+                                                                    className="btn-secondary w-full flex items-center justify-center gap-2"
+                                                                    style={{ textDecoration: "none", padding: "12px" }}
+                                                                >
+                                                                    Fill Parent Progress
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                                </Link>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
@@ -413,7 +451,7 @@ export default function DashboardPage() {
                                                     return (
                                                         <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
                                                             <td style={{ padding: "12px" }}>
-                                                                <Link href={`/students/${s.id}`} style={{ fontWeight: "bold", color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-blue-600 transition-colors">
+                                                                <Link href={getStudentWorkspaceHref(s.id)} style={{ fontWeight: "bold", color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-blue-600 transition-colors">
                                                                     {s.first_name} {s.last_name}
                                                                 </Link>
                                                             </td>
@@ -438,7 +476,7 @@ export default function DashboardPage() {
                                                                 <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
                                                                     {s.status === "PENDING_ASSESSMENT" && (
                                                                         <Link 
-                                                                            href={`/students/${s.id}`}
+                                                                            href={getStudentWorkspaceHref(s.id, getPrimaryInputTab())}
                                                                             className="btn-indigo"
                                                                             style={{ textDecoration: "none" }}
                                                                         >
@@ -446,10 +484,10 @@ export default function DashboardPage() {
                                                                         </Link>
                                                                     )}
                                                                     <Link 
-                                                                        href={`/students/${s.id}`} 
+                                                                        href={getStudentWorkspaceHref(s.id)} 
                                                                         className="hover:bg-blue-50 transition-colors duration-200 block"
                                                                         style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", color: "#3b82f6" }}
-                                                                        title="View Profile"
+                                                                        title="Open Workspace"
                                                                     >
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                                                                     </Link>
@@ -468,7 +506,7 @@ export default function DashboardPage() {
                                                 <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col">
-                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-lg hover:text-blue-600 transition-colors">
+                                                            <Link href={getStudentWorkspaceHref(s.id)} className="font-bold text-[var(--text-primary)] no-underline text-lg hover:text-blue-600 transition-colors">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                             <span className="text-sm text-slate-500 mt-0.5">{s.grade && s.grade !== "TBD" ? `Grade: ${s.grade}` : "Grade: Unassigned"}</span>
@@ -479,9 +517,9 @@ export default function DashboardPage() {
                                                     </div>
                                                     <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-slate-100">
                                                         {s.status === "PENDING_ASSESSMENT" && (
-                                                            <Link href={`/students/${s.id}`} className="btn-indigo flex-1 text-center justify-center text-sm py-2">Start Assessment</Link>
+                                                            <Link href={getStudentWorkspaceHref(s.id, getPrimaryInputTab())} className="btn-indigo flex-1 text-center justify-center text-sm py-2">Start Assessment</Link>
                                                         )}
-                                                        <Link href={`/students/${s.id}`} className="btn-secondary flex-1 text-center justify-center text-sm py-2">View Profile</Link>
+                                                        <Link href={getStudentWorkspaceHref(s.id)} className="btn-secondary flex-1 text-center justify-center text-sm py-2">Workspace</Link>
                                                     </div>
                                                 </div>
                                             );

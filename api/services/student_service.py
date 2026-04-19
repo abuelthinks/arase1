@@ -165,8 +165,20 @@ def get_student_profile_data(student, user=None):
             if user and user.role == 'PARENT' and key != 'parent_assessment':
                 form_statuses[key] = {"submitted": False, "id": None}
                 continue
-            obj = model.objects.filter(student=student, report_cycle=cycle).first()
-            form_statuses[key] = {"submitted": bool(obj), "id": obj.id if obj else None}
+            obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
+            form_statuses[key] = {
+                "submitted": bool(obj),
+                "id": obj.id if obj else None,
+                "submitted_at": obj.created_at if obj else None,
+                "submitted_by": {
+                    "id": obj.submitted_by.id,
+                    "name": (
+                        f"{obj.submitted_by.first_name} {obj.submitted_by.last_name}".strip()
+                        or obj.submitted_by.username
+                    ),
+                    "role": obj.submitted_by.role,
+                } if obj and obj.submitted_by else None,
+            }
 
     # Generated documents
     docs = GeneratedDocument.objects.filter(student=student).order_by('-created_at')

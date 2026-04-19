@@ -1,5 +1,5 @@
 """
-Monthly Report Generator — Collects progress tracker data, calls Gemini AI,
+Monthly Report Generator — Collects progress tracker data, calls OpenAI,
 returns a structured Monthly Progress Report JSON.
 """
 import json
@@ -95,7 +95,7 @@ def _collect_form_data(inputs):
 
 
 # ---------------------------------------------------------------------------
-# Build prompt for Gemini
+# Build prompt for OpenAI
 # ---------------------------------------------------------------------------
 
 def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
@@ -287,38 +287,14 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
 
 
 # ---------------------------------------------------------------------------
-# Call Gemini
+# Call OpenAI
 # ---------------------------------------------------------------------------
 
-def _call_gemini(prompt):
-    """Call Google Gemini API using the new genai SDK and return parsed JSON."""
-    from google import genai
-    from google.genai import types
-    from django.conf import settings
+def _call_openai(prompt):
+    """Call OpenAI and return parsed JSON."""
+    from api.services.openai_service import call_openai_json
 
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not configured in settings.")
-
-    client = genai.Client(api_key=api_key)
-    
-    response = client.models.generate_content(
-        model='gemini-2.5-flash-lite',
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.7,
-            response_mime_type="application/json",
-        )
-    )
-    raw = response.text.strip()
-
-    # Strip markdown code fences if present
-    if raw.startswith('```'):
-        raw = raw.split('\n', 1)[1] if '\n' in raw else raw[3:]
-        if raw.endswith('```'):
-            raw = raw[:-3].strip()
-
-    return json.loads(raw)
+    return call_openai_json(prompt, temperature=0.7)
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +303,7 @@ def _call_gemini(prompt):
 
 def generate_monthly_report(student, cycle, inputs):
     """
-    Generate a Monthly Progress Report JSON from progress tracker inputs + Gemini AI.
+    Generate a Monthly Progress Report JSON from progress tracker inputs + OpenAI.
     """
     forms = _collect_form_data(inputs)
     pt = forms.get('parent_tracker', {})
@@ -345,12 +321,12 @@ def generate_monthly_report(student, cycle, inputs):
 
     # Build and send prompt
     prompt = _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals)
-    logger.info("Calling Gemini for Monthly Report generation (student=%s)", student.id)
+    logger.info("Calling OpenAI for Monthly Report generation (student=%s)", student.id)
 
     try:
-        ai_data = _call_gemini(prompt)
+        ai_data = _call_openai(prompt)
     except Exception as e:
-        logger.error("Gemini call failed: %s", e)
+        logger.error("OpenAI call failed: %s", e)
         raise
 
     # Build the complete report structure

@@ -158,6 +158,7 @@ export default function UserProfile() {
     const activeCount = assignedStudents.filter(student => student.status === "ENROLLED").length;
     const pendingCount = assignedStudents.filter(student => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"].includes(student.status)).length;
     const assessedCount = assignedStudents.filter(student => student.status === "ASSESSED").length;
+    const isParent = role === "PARENT";
 
     const profileInfo = [
         { label: "Email", value: user.email, href: `mailto:${user.email}` },
@@ -168,17 +169,13 @@ export default function UserProfile() {
         { label: "Account Status", value: "Active" },
     ];
 
-    const statCards = role === "PARENT"
+    const statCards = !isParent
         ? [
-            { label: "Children", value: studentCount, note: "linked to this account", tone: "#4f46e5", bg: "#eef2ff" },
-            { label: "Active Plans", value: activeCount, note: "currently enrolled", tone: "#059669", bg: "#ecfdf5" },
-            { label: "Pending Cases", value: pendingCount + assessedCount, note: "in progress or under review", tone: "#d97706", bg: "#fffbeb" },
-        ]
-        : [
             { label: "Caseload", value: studentCount, note: "total assigned students", tone: "#4f46e5", bg: "#eef2ff" },
             { label: "Active", value: activeCount, note: "enrolled students", tone: "#059669", bg: "#ecfdf5" },
             { label: "Needs Follow-Up", value: pendingCount + assessedCount, note: "pending or assessed students", tone: "#d97706", bg: "#fffbeb" },
-        ];
+        ]
+        : [];
 
     return (
         <div className="profile-shell">
@@ -200,16 +197,18 @@ export default function UserProfile() {
                             Back
                         </button>
 
-                        <div className="profile-hero-actions">
-                            <Link href={`/users/${user.id}/activity`} className="profile-hero-link">
-                                View Activity
-                            </Link>
-                            {user.email && (
-                                <a href={`mailto:${user.email}`} className="profile-hero-link">
-                                    Email User
-                                </a>
-                            )}
-                        </div>
+                        {!isParent && (
+                            <div className="profile-hero-actions">
+                                <Link href={`/users/${user.id}/activity`} className="profile-hero-link">
+                                    View Activity
+                                </Link>
+                                {user.email && (
+                                    <a href={`mailto:${user.email}`} className="profile-hero-link">
+                                        Email User
+                                    </a>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="profile-hero-identity">
@@ -241,17 +240,19 @@ export default function UserProfile() {
                 </div>
             </div>
 
-            <div className="profile-stats-grid">
-                {statCards.map(card => (
-                    <div key={card.label} className="profile-stat-card">
-                        <div className="profile-stat-icon" style={{ background: card.bg, color: card.tone }}>
-                            {card.value}
+            {statCards.length > 0 && (
+                <div className="profile-stats-grid">
+                    {statCards.map(card => (
+                        <div key={card.label} className="profile-stat-card">
+                            <div className="profile-stat-icon" style={{ background: card.bg, color: card.tone }}>
+                                {card.value}
+                            </div>
+                            <p className="profile-stat-label">{card.label}</p>
+                            <p className="profile-stat-note">{card.note}</p>
                         </div>
-                        <p className="profile-stat-label">{card.label}</p>
-                        <p className="profile-stat-note">{card.note}</p>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
             <div className="profile-main-grid">
                 <div className="profile-column">
@@ -285,39 +286,41 @@ export default function UserProfile() {
                         </div>
                     </section>
 
-                    <section className="profile-panel">
-                        <div className="profile-panel-header">
-                            <h2 className="profile-panel-title">Verification & Role Context</h2>
-                            <p className="profile-panel-copy">Important account context at a glance.</p>
-                        </div>
-
-                        <div className="profile-panel-body" style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-                            <div className="profile-context-card">
-                                <div className="profile-context-label">Phone Verification</div>
-                                <div className="profile-context-inline">
-                                    <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>
-                                        {user.phone_number || "No phone number on file"}
-                                    </span>
-                                    <span
-                                        className="profile-status-chip"
-                                        style={{
-                                            background: user.is_phone_verified ? "#dcfce7" : "#fffbeb",
-                                            color: user.is_phone_verified ? "#166534" : "#b45309",
-                                        }}
-                                    >
-                                        {user.is_phone_verified ? "Verified" : "Not verified"}
-                                    </span>
-                                </div>
+                    {!isParent && (
+                        <section className="profile-panel">
+                            <div className="profile-panel-header">
+                                <h2 className="profile-panel-title">Verification & Role Context</h2>
+                                <p className="profile-panel-copy">Important account context at a glance.</p>
                             </div>
 
-                            <div className="profile-context-card">
-                                <div className="profile-context-label">Specialty / Responsibility</div>
-                                <div className="profile-context-value">
-                                    {user.specialty || (role === "PARENT" ? "Parent/guardian account" : "Not configured yet")}
+                            <div className="profile-panel-body" style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+                                <div className="profile-context-card">
+                                    <div className="profile-context-label">Phone Verification</div>
+                                    <div className="profile-context-inline">
+                                        <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>
+                                            {user.phone_number || "No phone number on file"}
+                                        </span>
+                                        <span
+                                            className="profile-status-chip"
+                                            style={{
+                                                background: user.is_phone_verified ? "#dcfce7" : "#fffbeb",
+                                                color: user.is_phone_verified ? "#166534" : "#b45309",
+                                            }}
+                                        >
+                                            {user.is_phone_verified ? "Verified" : "Not verified"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="profile-context-card">
+                                    <div className="profile-context-label">Specialty / Responsibility</div>
+                                    <div className="profile-context-value">
+                                        {user.specialty || "Not configured yet"}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </section>
+                        </section>
+                    )}
 
                     {isAdmin && role === "SPECIALIST" && (
                         <section className="profile-panel">
@@ -422,17 +425,19 @@ export default function UserProfile() {
                         <div className="profile-panel-header split">
                             <div>
                                 <h2 className="profile-panel-title">
-                                    {role === "PARENT" ? "Linked Students" : "Assigned Students"}
+                                    {isParent ? "Children" : "Assigned Students"}
                                 </h2>
                                 <p className="profile-panel-copy">
-                                    {role === "PARENT"
-                                        ? "Children connected to this account and their current status."
+                                    {isParent
+                                        ? "Children connected to this account."
                                         : "Students this user is currently responsible for supporting."}
                                 </p>
                             </div>
-                            <span className="profile-student-summary">
-                                {activeCount} Active • {pendingCount} Pending • {assessedCount} Assessed
-                            </span>
+                            {!isParent && (
+                                <span className="profile-student-summary">
+                                    {activeCount} Active • {pendingCount} Pending • {assessedCount} Assessed
+                                </span>
+                            )}
                         </div>
 
                         {studentCount === 0 ? (

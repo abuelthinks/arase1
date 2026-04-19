@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Search } from "lucide-react";
+import { toast } from "sonner";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -48,11 +49,24 @@ function UnifiedWorkspaceContent() {
     const [studentSearch, setStudentSearch] = useState("");
     const [studentName, setStudentName] = useState("");
     const [studentStatus, setStudentStatus] = useState("");
+    const [studentDetails, setStudentDetails] = useState<any>(null);
+    const showStudentSidebar = user?.role !== "PARENT";
     const [loading, setLoading] = useState(true);
+    const [profileRefreshKey, setProfileRefreshKey] = useState(0);
 
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
-    const activeFormTab = searchParams.get("tab") || "parent_assessment";
+    const requestedFormTab = searchParams.get("tab");
+    const visibleFormTabs = user?.role === "PARENT"
+        ? TABS.filter(tab => ["parent_assessment", "parent_tracker"].includes(tab.id))
+        : user?.role === "TEACHER"
+            ? TABS.filter(tab => tab.id === "sped_tracker")
+            : TABS;
+    const activeFormTab = user?.role === "PARENT"
+        ? (["parent_assessment", "parent_tracker"].includes(requestedFormTab || "") ? requestedFormTab! : "parent_assessment")
+        : user?.role === "TEACHER"
+            ? "sped_tracker"
+            : requestedFormTab || "parent_assessment";
     
     // -- Reports State --
     const [docs, setDocs] = useState<any[]>([]);
@@ -63,11 +77,15 @@ function UnifiedWorkspaceContent() {
     const [assignedStaff, setAssignedStaff] = useState<any[]>([]);
     const [staffList, setStaffList] = useState<any[]>([]);
     const [assigning, setAssigning] = useState<number | null>(null);
+    const [sendingParentReminder, setSendingParentReminder] = useState(false);
+    const [showEnrollConfirm, setShowEnrollConfirm] = useState(false);
+    const [enrollingStudent, setEnrollingStudent] = useState(false);
     const activeTeamRole = searchParams.get("teamRole") || "SPECIALIST";
+    const normalizedStudentStatus = studentStatus?.toUpperCase();
 
     // -- Master Tab Switcher --
     // Tracks whether we are rendering the forms workspace or reports workspace
-    const workspace = searchParams.get("workspace") || "forms";
+    const workspace = searchParams.get("workspace") || (user?.role === "ADMIN" ? "overview" : "forms");
 
 
     useEffect(() => {
@@ -82,6 +100,7 @@ function UnifiedWorkspaceContent() {
                 const data = res.data;
                 setStudentName(`${data.student.first_name} ${data.student.last_name}`);
                 setStudentStatus(data.student.status);
+                setStudentDetails(data.student);
                 setFormStatuses(data.form_statuses);
                 setAssignedStaff(data.assigned_staff || []);
                 
@@ -95,7 +114,7 @@ function UnifiedWorkspaceContent() {
                 console.error("Failed to load profile for workspace", err);
                 setLoading(false);
             });
-    }, [studentId]);
+    }, [studentId, profileRefreshKey]);
 
     useEffect(() => {
         if (!studentId || user?.role !== "ADMIN") return;
@@ -160,6 +179,47 @@ function UnifiedWorkspaceContent() {
         router.push(url.pathname + url.search);
     };
 
+    const handleParentAssessmentReminder = async () => {
+        if (!studentId || sendingParentReminder) return;
+        setSendingParentReminder(true);
+        try {
+            const res = await api.post(`/api/students/${studentId}/parent-assessment-reminder/`);
+            toast.success(res.data.message || "Reminder sent.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to send reminder.");
+        } finally {
+            setSendingParentReminder(false);
+        }
+    };
+
+    const handleEmbeddedFormSubmitted = async (message: string) => {
+        toast.success(message);
+        setProfileRefreshKey(key => key + 1);
+    };
+
+    const handleEnrollStudent = async () => {
+        if (!studentId || enrollingStudent) return;
+        setEnrollingStudent(true);
+        try {
+            const res = await api.post(`/api/students/${studentId}/enroll/`);
+            const profileRes = await api.get(`/api/students/${studentId}/profile/`);
+            const data = profileRes.data;
+            setStudentStatus(data.student.status);
+            setStudentDetails(data.student);
+            setFormStatuses(data.form_statuses);
+            setAssignedStaff(data.assigned_staff || []);
+            const generatedDocs = data.generated_documents || [];
+            generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setDocs(generatedDocs);
+            setShowEnrollConfirm(false);
+            toast.success(res.data.message || "Student enrolled.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to enroll student.");
+        } finally {
+            setEnrollingStudent(false);
+        }
+    };
+
     if (loading) {
         return <div className="p-8 text-center text-slate-500">Loading workspace...</div>;
     }
@@ -168,11 +228,311 @@ function UnifiedWorkspaceContent() {
     }
 
     // -- Sub-renderers for clean structure --
+
+    const formatDate = (value?: string) => {
+        if (!value) return "TBD";
+        return new Date(value + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    };
+
+    const calculateAge = (value?: string) => {
+        if (!value) return "TBD";
+        const today = new Date();
+        const birthDate = new Date(value + "T00:00:00");
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age -= 1;
+        }
+        return `${age} years old`;
+    };
+
+    const staffNames = (staff: any[]) => {
+        if (staff.length === 0) return "None";
+        return staff.map(s => `${s.first_name || ""} ${s.last_name || ""}`.trim() || s.username).join(", ");
+    };
+
+    const compactStudentName = () => {
+        const firstName = studentDetails?.first_name || studentName.split(" ")[0] || "student";
+        const lastName = studentDetails?.last_name || studentName.split(" ").slice(1).join(" ");
+        const fullName = `${firstName} ${lastName}`.trim();
+        if (fullName.length <= 18 || !lastName) return fullName;
+        return `${firstName} ${lastName.charAt(0)}.`;
+    };
+
+    const formatActivityTime = (value?: string) => {
+        if (!value) return "";
+        return new Date(value).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+        });
+    };
+
+    const submitterLabel = (submittedBy?: { name?: string; role?: string } | null) => {
+        if (!submittedBy) return "Submitted";
+        const role = submittedBy.role ? submittedBy.role.toLowerCase() : "user";
+        return `${submittedBy.name || "User"} • ${role}`;
+    };
+
+    const buildRecentActivity = () => {
+        const formActivities = TABS
+            .map(tab => {
+                const status = formStatuses?.[tab.id];
+                if (!status?.submitted || !status.submitted_at) return null;
+                return {
+                    id: `form-${tab.id}-${status.id}`,
+                    title: `${tab.label} submitted`,
+                    meta: submitterLabel(status.submitted_by),
+                    timestamp: status.submitted_at,
+                    tone: "form",
+                };
+            })
+            .filter(Boolean);
+
+        const documentActivities = docs
+            .filter(doc => doc.created_at)
+            .map(doc => ({
+                id: `doc-${doc.id}`,
+                title: doc.type === "IEP" ? "IEP generated" : "Monthly report generated",
+                meta: doc.status ? `${doc.status.toLowerCase()} document` : "Generated document",
+                timestamp: doc.created_at,
+                tone: "document",
+            }));
+
+        // TODO: Replace this derived timeline with a backend audit trail that records every user action.
+        return [...formActivities, ...documentActivities]
+            .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 8);
+    };
+
+    const buildAdminActions = () => {
+        const specialists = assignedStaff.filter(s => s.role === "SPECIALIST");
+        const teachers = assignedStaff.filter(s => s.role === "TEACHER");
+        const latestIep = docs.find(d => d.type === "IEP");
+        const latestMonthlyReport = docs.find(d => d.type === "MONTHLY");
+        const trackerTabs = TABS.slice(2);
+        const pendingTrackers = trackerTabs.filter(tab => !formStatuses?.[tab.id]?.submitted);
+        const allTrackersSubmitted = trackerTabs.every(tab => formStatuses?.[tab.id]?.submitted);
+        const canGenerateMonthlyReport = normalizedStudentStatus === "ENROLLED" && allTrackersSubmitted && !latestMonthlyReport;
+        const actions: { title: string; label: string; onClick: () => void; tone?: "warning" | "positive" }[] = [];
+
+        if (!formStatuses?.parent_assessment?.submitted) {
+            actions.push({ title: "Parent assessment missing", label: sendingParentReminder ? "Sending..." : "Remind", onClick: handleParentAssessmentReminder, tone: "warning" });
+        }
+        if (formStatuses?.parent_assessment?.submitted && specialists.length === 0) {
+            actions.push({ title: "Assign specialist", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST") });
+        }
+        if (normalizedStudentStatus === "ASSESSED") {
+            actions.push({ title: `Enroll ${compactStudentName()}?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive" });
+        }
+        if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && !latestIep) {
+            actions.push({ title: "Generate IEP", label: "Open Reports", onClick: () => handleReportMenuChange("generator") });
+        }
+        if (canGenerateMonthlyReport) {
+            actions.push({ title: "Generate Monthly Progress Report", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), tone: "positive" });
+        }
+        if (normalizedStudentStatus === "ENROLLED" && teachers.length === 0) {
+            actions.push({ title: "Assign teacher", label: "Open Team", onClick: () => handleTeamMenuChange("TEACHER"), tone: "warning" });
+        }
+        if (normalizedStudentStatus === "ENROLLED" && pendingTrackers.length > 0) {
+            actions.push({ title: `${pendingTrackers.length} tracker${pendingTrackers.length === 1 ? "" : "s"} pending`, label: "Open Forms", onClick: () => setWorkspace("forms") });
+        }
+
+        return actions;
+    };
+
+    const renderOverviewWorkspace = () => {
+        const actions = buildAdminActions();
+        const submittedForms = TABS.filter(tab => formStatuses?.[tab.id]?.submitted).length;
+        const latestDoc = docs[0];
+        const specialists = assignedStaff.filter(s => s.role === "SPECIALIST");
+        const teachers = assignedStaff.filter(s => s.role === "TEACHER");
+        const recentActivity = buildRecentActivity();
+        const profileRows = [
+            { label: "Grade", value: studentDetails?.grade || "TBD" },
+            { label: "Age", value: calculateAge(studentDetails?.date_of_birth) },
+            { label: "DOB", value: formatDate(studentDetails?.date_of_birth) },
+            { label: "Forms", value: `${submittedForms}/5 submitted` },
+            { label: "Docs", value: docs.length ? `${docs.length} on file` : "None" },
+            { label: "Team", value: assignedStaff.length ? `${assignedStaff.length} assigned` : "None" },
+        ];
+        const parentRows = [
+            { label: "Name", value: studentDetails?.parent_guardian_name || "Not provided" },
+            { label: "Email", value: studentDetails?.parent_email || "Not provided", href: studentDetails?.parent_email ? `mailto:${studentDetails.parent_email}` : undefined },
+            { label: "Phone", value: studentDetails?.parent_phone || "Not provided", href: studentDetails?.parent_phone ? `tel:${studentDetails.parent_phone}` : undefined },
+        ];
+
+        return (
+            <>
+                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
+                        <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
+                        {studentStatus && (
+                            <span style={{
+                                fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                padding: "2px 8px", borderRadius: "999px", width: "fit-content",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                            }}>
+                                {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
+                        <div className="px-4">
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Admin Overview</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                                    <p className="text-lg font-bold text-slate-900">{actions.length}</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Actions</p>
+                                </div>
+                                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                                    <p className="text-lg font-bold text-slate-900">{submittedForms}/5</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Forms</p>
+                                </div>
+                                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                                    <p className="text-lg font-bold text-slate-900">{docs.length}</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Docs</p>
+                                </div>
+                                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                                    <p className="text-lg font-bold text-slate-900">{assignedStaff.length}</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Team</p>
+                                </div>
+                            </div>
+                            <button onClick={() => router.push(`/students/${studentId}`)} className="mt-4 w-full rounded-lg border border-indigo-200 bg-white px-4 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50">
+                                Open Full Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 bg-white relative overflow-y-auto p-5 md:p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <section className="rounded-xl border border-slate-200 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-base font-bold text-slate-900">Action Queue</h2>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{actions.length} active</span>
+                            </div>
+                            {actions.length === 0 ? (
+                                <p className="text-sm text-slate-500">No urgent admin follow-ups.</p>
+                            ) : (
+                                <div className="flex flex-col gap-1.5">
+                                    {actions.map(action => (
+                                        <div key={action.title} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${action.tone === "warning" ? "border-amber-200 bg-amber-50" : action.tone === "positive" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+                                            <p className="text-sm font-bold text-slate-800">{action.title}</p>
+                                            <button onClick={action.onClick} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                                                {action.label}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="rounded-xl border border-slate-200 p-4">
+                            <h2 className="text-base font-bold text-slate-900 mb-3">Student Snapshot</h2>
+                            <div className="grid grid-cols-1 gap-2">
+                                {profileRows.map(row => (
+                                    <div key={row.label} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5">
+                                        <span className="text-sm font-semibold text-slate-500">{row.label}</span>
+                                        <span className="text-sm font-bold text-slate-800 text-right">{row.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="rounded-xl border border-slate-200 p-4 lg:col-span-2">
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-base font-bold text-slate-900">Recent Activity</h2>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{recentActivity.length} recorded</span>
+                            </div>
+                            {recentActivity.length === 0 ? (
+                                <p className="text-sm text-slate-500">No recorded form or document activity yet.</p>
+                            ) : (
+                                <div className="max-h-72 overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="divide-y divide-slate-100 rounded-lg border border-slate-100 overflow-hidden">
+                                        {recentActivity.map((item: any) => (
+                                            <div key={item.id} className="flex items-center gap-3 bg-white px-3 py-2.5 hover:bg-slate-50">
+                                                <span className={`h-2 w-2 shrink-0 rounded-full ${item.tone === "document" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="m-0 truncate text-sm font-bold text-slate-800">{item.title}</p>
+                                                    <p className="m-0 truncate text-xs font-semibold text-slate-500">{item.meta}</p>
+                                                </div>
+                                                <span className="shrink-0 text-xs font-semibold text-slate-400">{formatActivityTime(item.timestamp)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="rounded-xl border border-slate-200 p-4">
+                            <h2 className="text-base font-bold text-slate-900 mb-3">Parent</h2>
+                            <div className="grid grid-cols-1 gap-2">
+                                {parentRows.map(row => (
+                                    <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
+                                        <span className="text-sm font-semibold text-slate-500">{row.label}</span>
+                                        {row.href ? (
+                                            <a href={row.href} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 truncate">{row.value}</a>
+                                        ) : (
+                                            <span className="text-sm font-bold text-slate-800 text-right truncate">{row.value}</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="rounded-xl border border-slate-200 p-4">
+                            <h2 className="text-base font-bold text-slate-900 mb-3">Team & Documents</h2>
+                            <div className="grid grid-cols-1 gap-2">
+                                <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
+                                    <span className="text-sm font-semibold text-slate-500">Specialists</span>
+                                    <span className="text-sm font-bold text-slate-800 text-right truncate">{staffNames(specialists)}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
+                                    <span className="text-sm font-semibold text-slate-500">Teachers</span>
+                                    <span className="text-sm font-bold text-slate-800 text-right truncate">{staffNames(teachers)}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
+                                    <span className="text-sm font-semibold text-slate-500">Latest document</span>
+                                    <span className="text-sm font-bold text-slate-800 text-right">{latestDoc ? `${latestDoc.type} ${new Date(latestDoc.created_at).toLocaleDateString()}` : "None"}</span>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </>
+        );
+    };
     
     // 1. FORMS WORKSPACE RENDERER
     const renderFormsWorkspace = () => {
-        const currentTabConf = TABS.find(t => t.id === activeFormTab);
+        const currentTabConf = visibleFormTabs.find(t => t.id === activeFormTab);
         const currentStatus = formStatuses[activeFormTab];
+        const isStudentEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
+        const assessmentTabs = user?.role === "PARENT"
+            ? visibleFormTabs.filter(tab => tab.id === "parent_assessment")
+            : user?.role === "TEACHER"
+                ? []
+                : visibleFormTabs.slice(0, 2);
+        const progressTabs = user?.role === "PARENT"
+            ? visibleFormTabs.filter(tab => tab.id === "parent_tracker")
+            : user?.role === "SPECIALIST"
+                ? visibleFormTabs.filter(tab => tab.id === "multi_tracker")
+                : user?.role === "TEACHER"
+                    ? visibleFormTabs.filter(tab => tab.id === "sped_tracker")
+                    : visibleFormTabs.slice(2);
+        const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
+        const isAdminProgressLocked = user?.role === "ADMIN" && TABS.slice(2).some(tab => tab.id === activeFormTab) && !isStudentEnrolled;
+        const isSpecialistProgressLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_tracker" && !isStudentEnrolled;
+        const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && !isStudentEnrolled;
+        const canCreateCurrentForm =
+            !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !currentStatus?.submitted && (
+                (user?.role === "SPECIALIST" && ["multi_assessment", "multi_tracker"].includes(activeFormTab)) ||
+                (user?.role === "TEACHER" && activeFormTab === "sped_tracker") ||
+                (user?.role === "PARENT" && ["parent_assessment", "parent_tracker"].includes(activeFormTab))
+            );
 
         return (
             <>
@@ -196,34 +556,42 @@ function UnifiedWorkspaceContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
-                        <div className="px-4 mb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Assessments</p>
-                            <div className="flex flex-col gap-1">
-                                {TABS.slice(0, 2).map((tab) => {
-                                    const isSub = formStatuses[tab.id]?.submitted;
-                                    const isActive = activeFormTab === tab.id;
-                                    return (
-                                        <button key={tab.id} onClick={() => handleFormTabChange(tab.id)} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
-                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                            <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{tab.label}</span>
-                                            {isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                        </button>
-                                    );
-                                })}
+                        {assessmentTabs.length > 0 && (
+                            <div className="px-4 mb-4">
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Assessments</p>
+                                <div className="flex flex-col gap-1">
+                                    {assessmentTabs.map((tab) => {
+                                        const isSub = formStatuses[tab.id]?.submitted;
+                                        const isActive = activeFormTab === tab.id;
+                                        const isLocked = user?.role === "ADMIN" && !isSub;
+                                        return (
+                                            <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{tab.label}</span>
+                                                {isLocked ? (
+                                                    <svg className="w-4 h-4 text-slate-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="px-4 pb-4">
                             <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Progress Trackers</p>
                             <div className="flex flex-col gap-1">
-                                {TABS.slice(2).map((tab) => {
+                                {progressTabs.map((tab) => {
                                     const isSub = formStatuses[tab.id]?.submitted;
                                     const isActive = activeFormTab === tab.id;
+                                    const isLocked = (user?.role === "ADMIN" && !isStudentEnrolled) || (["SPECIALIST", "TEACHER"].includes(user?.role || "") && !isStudentEnrolled);
                                     return (
-                                        <button key={tab.id} onClick={() => handleFormTabChange(tab.id)} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                            <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{tab.label}</span>
-                                            {isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{tab.label}</span>
+                                            {isLocked ? (
+                                                <svg className="w-4 h-4 text-slate-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                         </button>
                                     );
                                 })}
@@ -233,7 +601,39 @@ function UnifiedWorkspaceContent() {
                 </div>
 
                 <div className="flex-1 bg-white relative overflow-y-auto">
-                    {!currentStatus?.submitted ? (
+                    {isAdminAssessmentLocked ? (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">Assessment Locked</h3>
+                            <p className="text-sm text-slate-500 max-w-sm">This assessment will be available for admin review after it is submitted.</p>
+                        </div>
+                    ) : isAdminProgressLocked ? (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">Progress Locked</h3>
+                            <p className="text-sm text-slate-500 max-w-sm">Progress trackers are available after the student is enrolled.</p>
+                        </div>
+                    ) : isSpecialistProgressLocked || isTeacherProgressLocked ? (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">Progress Locked</h3>
+                            <p className="text-sm text-slate-500 max-w-sm">{user?.role === "TEACHER" ? "Teacher progress" : "Specialist progress"} can be submitted after the student is enrolled.</p>
+                        </div>
+                    ) : canCreateCurrentForm ? (
+                        <div className="w-full">
+                            {activeFormTab === "parent_assessment" ? (
+                                <ParentFormContent propHideNavigation={true} propStudentId={studentId} propOnSubmitted={handleEmbeddedFormSubmitted} />
+                            ) : (
+                                <FormEntryContent propType={currentTabConf?.formType as string} propHideNavigation={true} propStudentId={studentId} propOnSubmitted={handleEmbeddedFormSubmitted} />
+                            )}
+                        </div>
+                    ) : !currentStatus?.submitted ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
                             <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -355,7 +755,7 @@ function UnifiedWorkspaceContent() {
 
                 <div className="flex-1 bg-white relative overflow-y-auto">
                     {isGenerator && (
-                        <AdminReportsContent propStudentId={studentId} propHideNavigation={true} />
+                        <AdminReportsContent propStudentId={studentId} propHideNavigation={true} propWorkspacePath={`/students/${studentId}/workspace`} />
                     )}
                     {reportView === "iep" && selectedDocId && (
                         <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
@@ -513,7 +913,14 @@ function UnifiedWorkspaceContent() {
         );
     }
 
-    const filteredStudents = allStudents.filter(s => {
+    const filteredStudents = [...allStudents].sort((a, b) => {
+        const aRecent = a.recent_activity_at ? new Date(a.recent_activity_at).getTime() : 0;
+        const bRecent = b.recent_activity_at ? new Date(b.recent_activity_at).getTime() : 0;
+        if (aRecent !== bRecent) return bRecent - aRecent;
+        const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim().toLowerCase();
+        const bName = `${b.first_name || ""} ${b.last_name || ""}`.trim().toLowerCase();
+        return aName.localeCompare(bName);
+    }).filter(s => {
         const query = studentSearch.toLowerCase();
         return (s.first_name + " " + s.last_name).toLowerCase().includes(query) || s.status?.toLowerCase().includes(query);
     });
@@ -521,90 +928,124 @@ function UnifiedWorkspaceContent() {
     return (
         <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
             <div className="flex h-full w-full overflow-hidden">
-                {/* Student List Sidebar — fixed secondary sidebar */}
-                <div className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 shrink-0 h-full">
-                    <div className="p-4 border-b border-slate-200">
-                        <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-2">Students</p>
-                        <div className="relative">
-                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search..."
-                                value={studentSearch}
-                                onChange={(e) => setStudentSearch(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            />
+                {showStudentSidebar && (
+                    <div className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 shrink-0 h-full">
+                        <div className="p-4 border-b border-slate-200">
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-2">Students</p>
+                            <div className="relative">
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={studentSearch}
+                                    onChange={(e) => setStudentSearch(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="py-2 px-2">
+                                {filteredStudents.length === 0 ? (
+                                    <p className="text-xs text-slate-400 text-center py-4">No students found.</p>
+                                ) : (
+                                    filteredStudents.map(s => {
+                                        const isCurrent = s.id.toString() === studentId;
+                                        const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", ARCHIVED: "#94a3b8" };
+                                        const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
+                                        return (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => !isCurrent && router.push(`/students/${s.id}/workspace?workspace=${workspace}`)}
+                                                className={`w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
+                                                    isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm' : 'border border-transparent hover:bg-slate-50'
+                                                }`}
+                                                style={{ cursor: isCurrent ? 'default' : 'pointer' }}
+                                            >
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {s.first_name?.[0]}{s.last_name?.[0]}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                                        {s.first_name} {s.last_name}
+                                                    </span>
+                                                </div>
+                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={s.status?.replace(/_/g, ' ')}></span>
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                        <div className="p-3 border-t border-slate-200 bg-slate-50">
+                            <p className="text-[0.6rem] text-slate-400 text-center">{allStudents.length} students total</p>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
-                        <div className="py-2 px-2">
-                            {filteredStudents.length === 0 ? (
-                                <p className="text-xs text-slate-400 text-center py-4">No students found.</p>
-                            ) : (
-                                filteredStudents.map(s => {
-                                    const isCurrent = s.id.toString() === studentId;
-                                    const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", ARCHIVED: "#94a3b8" };
-                                    const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
-                                    return (
-                                        <button
-                                            key={s.id}
-                                            onClick={() => !isCurrent && router.push(`/students/${s.id}/workspace?workspace=${workspace}`)}
-                                            className={`w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
-                                                isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm' : 'border border-transparent hover:bg-slate-50'
-                                            }`}
-                                            style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                        >
-                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500'}`}>
-                                                {s.first_name?.[0]}{s.last_name?.[0]}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-slate-700'}`}>
-                                                    {s.first_name} {s.last_name}
-                                                </span>
-                                            </div>
-                                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={s.status?.replace(/_/g, ' ')}></span>
-                                        </button>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </div>
-                    <div className="p-3 border-t border-slate-200 bg-slate-50">
-                        <p className="text-[0.6rem] text-slate-400 text-center">{allStudents.length} students total</p>
-                    </div>
-                </div>
+                )}
 
                 {/* Main Workspace Area */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
-                    <div className="px-4 md:px-8 pt-4 md:pt-6 flex-1 flex flex-col min-h-0">
+                    <div className="px-4 md:px-8 pt-2 md:pt-3 flex-1 flex flex-col min-h-0">
                         {/* Master Tab Bar */}
-                        <div className="flex items-end gap-1 mb-4 border-b border-slate-300 px-2 mt-4 md:mt-0 shrink-0">
+                        <div className="flex items-end gap-1 mb-2 border-b border-slate-300 px-2 shrink-0">
+                            {user?.role === "ADMIN" && (
+                                <button onClick={() => setWorkspace("overview")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                    Overview
+                                </button>
+                            )}
                             <button onClick={() => setWorkspace("forms")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                                 <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                Input Forms
+                                Forms
                             </button>
                             <button onClick={() => setWorkspace("reports")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                                 <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                                Reports & Documents
+                                Reports
                             </button>
                             {user?.role === "ADMIN" && (
                                 <button onClick={() => setWorkspace("team")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                                     <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                    Assign Team
+                                    Team
                                 </button>
                             )}
-                            <button onClick={() => setWorkspace("profile")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ml-auto ${workspace === "profile" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                                <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                View Profile
-                            </button>
                         </div>
 
                         {/* Unified Card Container */}
-                        <div className="bg-white rounded-xl border border-slate-300 shadow-sm flex-1 mb-4 flex flex-col md:flex-row overflow-hidden min-h-0">
-                            {workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}
+                        <div className="bg-white rounded-xl border border-slate-300 shadow-sm flex-1 mb-2 flex flex-col md:flex-row overflow-hidden min-h-0">
+                            {workspace === "overview" && user?.role === "ADMIN" ? renderOverviewWorkspace() : workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}
                         </div>
                     </div>
                 </div>
+
+                {showEnrollConfirm && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            </div>
+                            <h2 className="mb-2 text-xl font-bold text-slate-900">Enroll {studentName}?</h2>
+                            <p className="mb-6 text-sm leading-6 text-slate-500">
+                                This will mark the student as enrolled and unlock post-enrollment work such as progress trackers, teacher assignment, IEP, and monthly reporting.
+                            </p>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => !enrollingStudent && setShowEnrollConfirm(false)}
+                                    disabled={enrollingStudent}
+                                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleEnrollStudent}
+                                    disabled={enrollingStudent}
+                                    className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                >
+                                    {enrollingStudent ? "Enrolling..." : "Confirm Enrollment"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Custom scrollbar style for this layout */}
                 <style dangerouslySetInnerHTML={{__html: `

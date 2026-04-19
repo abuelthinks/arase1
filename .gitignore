@@ -46,6 +46,8 @@ rewrite_*.py
 add_route_guards.py
 create_test_data.py
 seed.py
+fix.py
+skill.md
 test_*.py
 *.docx
 *.txt

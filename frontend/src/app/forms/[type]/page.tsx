@@ -23,6 +23,21 @@ const schemaMap: Record<string, any> = {
     "sped-tracker": sped_tracker,
 };
 
+const workspaceTabByFormType: Record<string, string> = {
+    "parent-assessment": "parent_assessment",
+    "multidisciplinary-assessment": "multi_assessment",
+    "sped-assessment": "sped_assessment",
+    "parent-tracker": "parent_tracker",
+    "multidisciplinary-tracker": "multi_tracker",
+    "sped-tracker": "sped_tracker",
+};
+
+const getWorkspaceFormUrl = (studentId: string, formType: string) => {
+    const tab = workspaceTabByFormType[formType];
+    if (!studentId || !tab) return null;
+    return `/workspace?studentId=${encodeURIComponent(studentId)}&workspace=forms&tab=${encodeURIComponent(tab)}`;
+};
+
 /* ─── Shared UI Components ─────────────────────────────────────────────────── */
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -108,7 +123,7 @@ function RadioGroup({ options, value, onChange }: { options: string[]; value: st
 
 /* ─── Main Component ───────────────────────────────────────────────────────── */
 
-export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean } = {}) {
+export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void> } = {}) {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -488,8 +503,15 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 console.error("Failed to clear draft:", e);
             }
 
-            setSuccessMsg("Form successfully submitted!");
-            setTimeout(() => router.push("/dashboard"), 2000);
+            const message = `${schema.title || "Form"} submitted successfully.`;
+            setSuccessMsg(message);
+            await propOnSubmitted?.(message);
+            if (propHideNavigation) {
+                setLoading(false);
+                return;
+            }
+            const workspaceUrl = getWorkspaceFormUrl(studentId || "", formType);
+            setTimeout(() => router.replace(workspaceUrl || "/dashboard"), 1500);
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Failed to submit form. Please try again.");
         } finally {

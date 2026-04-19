@@ -4,7 +4,15 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from api.models import ReportCycle, Student, StudentAccess, User
+from api.models import (
+    ParentProgressTracker,
+    MultidisciplinaryProgressTracker,
+    ReportCycle,
+    SpedProgressTracker,
+    Student,
+    StudentAccess,
+    User,
+)
 
 
 @override_settings(ROOT_URLCONF='backend.urls')
@@ -87,6 +95,33 @@ class SecurityHardeningTests(APITestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         return client
+
+    def test_login_accepts_slashless_token_url(self):
+        client = APIClient(enforce_csrf_checks=True)
+        csrf_response = client.get('/api/auth/csrf')
+        self.assertEqual(csrf_response.status_code, status.HTTP_200_OK)
+
+        response = client.post('/api/auth/token', {
+            'username': 'adminuser',
+            'password': self.admin_password,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access_token', response.cookies)
+        self.assertIn('refresh_token', response.cookies)
+
+    def test_refresh_accepts_slashless_refresh_url(self):
+        client = self.login_cookie_client('adminuser', self.admin_password)
+
+        response = client.post(
+            '/api/auth/token/refresh',
+            {},
+            format='json',
+            HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access_token', response.cookies)
 
     def test_non_admin_cannot_create_users(self):
         self.client.force_authenticate(user=self.parent)
@@ -184,6 +219,42 @@ class SecurityHardeningTests(APITestCase):
             'form_data': {'progress': 'blocked'},
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_admin_actions_include_monthly_report_generation_when_trackers_complete(self):
+        ParentProgressTracker.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.parent,
+            form_data={'progress': 'parent submitted'},
+        )
+        MultidisciplinaryProgressTracker.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.specialist,
+            form_data={'progress': 'specialist submitted'},
+        )
+        SpedProgressTracker.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.teacher,
+            form_data={'progress': 'teacher submitted'},
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get('/api/dashboard/actions/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        actions = response.data['actions']
+        monthly_action = next(
+            action for action in actions
+            if action['id'] == f'monthly_{self.student.id}'
+        )
+        self.assertEqual(
+            monthly_action['title'],
+            'Generate Monthly Progress Report: Jamie Doe',
+        )
+        self.assertEqual(monthly_action['link'], f'/admin/reports?studentId={self.student.id}')
+        self.assertEqual(monthly_action['type'], 'positive')
 
     def test_cookie_authenticated_mutation_requires_csrf(self):
         client = self.login_cookie_client('adminuser', self.admin_password)

@@ -371,11 +371,12 @@ class AdminDashboardActionsView(APIView):
             m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
             sp_done = SpedProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
             submitted = sum([p_done, m_done, sp_done])
+            all_trackers_submitted = p_done and m_done and sp_done
 
             # Check if a report was auto-generated and needs review
             report = GeneratedDocument.objects.filter(
                 student=s, report_cycle=cycle, document_type='MONTHLY'
-            ).first()
+            ).order_by('-created_at').first()
 
             if report and report.status == 'DRAFT':
                 actions.append({
@@ -386,11 +387,11 @@ class AdminDashboardActionsView(APIView):
                     "link": f"/admin/monthly-report?id={report.id}",
                     "type": "positive"
                 })
-            elif p_done and m_done and sp_done and not report:
+            elif all_trackers_submitted and not report:
                 actions.append({
                     "id": f"monthly_{s.id}",
-                    "title": f"Ready for Monthly Report: {s.first_name} {s.last_name}",
-                    "description": "All 3 trackers have been submitted.",
+                    "title": f"Generate Monthly Progress Report: {s.first_name} {s.last_name}",
+                    "description": f"All three progress trackers are submitted for {cycle.label or 'the active cycle'}.",
                     "action_text": "Generate →",
                     "link": f"/admin/reports?studentId={s.id}",
                     "type": "positive"
@@ -509,6 +510,61 @@ class AssignParentView(APIView):
             return Response({"error": "Parent or Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
 # ─── Staff List ──────────────────────────────────────────────────────────────
+
+class ParentAssessmentReminderView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can send parent assessment reminders."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            student = Student.objects.get(pk=student_id)
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if ParentAssessment.objects.filter(student=student).exists():
+            return Response({"error": "Parent assessment has already been submitted."}, status=status.HTTP_400_BAD_REQUEST)
+
+        parent_users = User.objects.filter(
+            role='PARENT',
+            student_access__student=student,
+        ).distinct()
+
+        if parent_users.exists():
+            from .services.notification_service import notify_parent_assessment_reminder
+
+            for parent in parent_users:
+                notify_parent_assessment_reminder(parent, student)
+
+            return Response({
+                "message": f"Reminder sent to {parent_users.count()} parent account(s).",
+                "mode": "notification",
+                "count": parent_users.count(),
+            }, status=status.HTTP_200_OK)
+
+        invitation = Invitation.objects.filter(
+            student=student,
+            role='PARENT',
+            is_used=False,
+        ).order_by('-created_at').first()
+
+        if not invitation:
+            return Response({
+                "error": "No pending parent invitation or linked parent account was found for this student."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            from .services.user_service import resend_invitation
+            new_invite = resend_invitation(invitation)
+            return Response({
+                "message": f"Parent invitation resent to {new_invite.email}.",
+                "mode": "invitation",
+                "invitation": InvitationSerializer(new_invite).data,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Failed to send reminder: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class StaffListView(APIView):
     """Returns all specialists and teachers with caseload and recommendation."""
@@ -850,7 +906,7 @@ class VerifySMSView(APIView):
 # ─── IEP Generation & Management ────────────────────────────────────────────
 
 class GenerateIEPView(APIView):
-    """POST: Generate a comprehensive IEP using Gemini AI."""
+    """POST: Generate a comprehensive IEP using OpenAI."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -1096,7 +1152,7 @@ class IEPDownloadView(APIView):
 # ─── Monthly Report Generation & Management ───────────────────────────────────
 
 class GenerateMonthlyReportView(APIView):
-    """POST: Generate a Monthly Progress Report using Gemini AI."""
+    """POST: Generate a Monthly Progress Report using OpenAI."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):

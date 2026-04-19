@@ -10,127 +10,262 @@ interface Student {
     last_name: string;
     status: string;
     has_parent_assessment?: boolean;
+    parent_current_tracker_submitted?: boolean;
+    active_cycle_label?: string | null;
+    latest_final_monthly_report_id?: number | null;
 }
 
 interface WelcomeBannerProps {
     students: Student[];
 }
 
+interface BannerContent {
+    student: Student;
+    priority: number;
+    tone: "action" | "waiting" | "ready" | "neutral";
+    label: string;
+    title: string;
+    body: string;
+    href: string;
+    cta: string;
+    note?: string;
+}
+
+const toneStyles = {
+    action: {
+        bg: "linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)",
+        border: "#bfdbfe",
+        labelBg: "#dbeafe",
+        labelText: "#1d4ed8",
+        accent: "#2563eb",
+    },
+    waiting: {
+        bg: "linear-gradient(135deg, #fffbeb 0%, #f8fafc 100%)",
+        border: "#fde68a",
+        labelBg: "#fef3c7",
+        labelText: "#92400e",
+        accent: "#d97706",
+    },
+    ready: {
+        bg: "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)",
+        border: "#bbf7d0",
+        labelBg: "#dcfce7",
+        labelText: "#166534",
+        accent: "#16a34a",
+    },
+    neutral: {
+        bg: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)",
+        border: "#e2e8f0",
+        labelBg: "#f1f5f9",
+        labelText: "#475569",
+        accent: "#64748b",
+    },
+};
+
+function getWorkspaceHref(studentId: number, tab: string) {
+    const params = new URLSearchParams({
+        studentId: studentId.toString(),
+        workspace: "forms",
+        tab,
+    });
+    return `/workspace?${params.toString()}`;
+}
+
+function getBannerContent(student: Student): BannerContent | null {
+    const firstName = student.first_name;
+
+    if (student.status === "PENDING_ASSESSMENT" && !student.has_parent_assessment) {
+        return {
+            student,
+            priority: 1,
+            tone: "action",
+            label: "Parent action needed",
+            title: `Start ${firstName}'s parent assessment`,
+            body: "Your input is the next step. Share home context, strengths, concerns, and milestones so the team can begin the assessment process.",
+            href: `/parent-onboarding?studentId=${student.id}`,
+            cta: "Start Assessment",
+            note: "Usually takes about 10-15 minutes.",
+        };
+    }
+
+    if (student.status === "ENROLLED" && !student.parent_current_tracker_submitted) {
+        const cycleLabel = student.active_cycle_label || "this month";
+        return {
+            student,
+            priority: 2,
+            tone: "action",
+            label: "Monthly progress due",
+            title: `Add ${firstName}'s home progress for ${cycleLabel}`,
+            body: "The parent progress tracker is ready. Your update helps the team generate the monthly progress report with current home observations.",
+            href: getWorkspaceHref(student.id, "parent_tracker"),
+            cta: "Fill Parent Progress",
+            note: "Submit one parent tracker for each active monthly cycle.",
+        };
+    }
+
+    if (student.status === "PENDING_ASSESSMENT" && student.has_parent_assessment) {
+        return {
+            student,
+            priority: 3,
+            tone: "waiting",
+            label: "Assessment received",
+            title: `${firstName}'s parent assessment is in`,
+            body: "You are caught up for now. The team will review your input and schedule the next assessment step when ready.",
+            href: `/students/${student.id}`,
+            cta: "View Profile",
+        };
+    }
+
+    if (student.status === "ASSESSMENT_SCHEDULED") {
+        return {
+            student,
+            priority: 4,
+            tone: "waiting",
+            label: "Assessment scheduled",
+            title: `${firstName}'s assessment is scheduled`,
+            body: "No form is needed from you right now. Check the profile for current details and wait for the team to complete the assessment.",
+            href: `/students/${student.id}`,
+            cta: "View Schedule",
+        };
+    }
+
+    if (student.status === "ASSESSED") {
+        return {
+            student,
+            priority: 5,
+            tone: "waiting",
+            label: "Enrollment review",
+            title: `${firstName}'s assessment is being reviewed`,
+            body: "The assessment is complete and waiting for admin enrollment review. You will be able to track monthly progress once enrollment is active.",
+            href: `/students/${student.id}`,
+            cta: "View Profile",
+        };
+    }
+
+    if (student.status === "ENROLLED") {
+        return {
+            student,
+            priority: 6,
+            tone: "ready",
+            label: "All caught up",
+            title: `${firstName} is enrolled and current`,
+            body: student.latest_final_monthly_report_id
+                ? "Your parent tracker for the active cycle is submitted. You can review finalized reports, goals, and student updates from the profile."
+                : "Your parent tracker for the active cycle is submitted. You can review goals and student updates from the profile while the report is prepared.",
+            href: `/students/${student.id}`,
+            cta: "View Profile",
+        };
+    }
+
+    if (student.status === "ARCHIVED") {
+        return {
+            student,
+            priority: 7,
+            tone: "neutral",
+            label: "Archived record",
+            title: `${firstName}'s record is archived`,
+            body: "There is no parent action needed right now. The profile remains available for reference.",
+            href: `/students/${student.id}`,
+            cta: "View Record",
+        };
+    }
+
+    return null;
+}
+
 export default function WelcomeBanner({ students }: WelcomeBannerProps) {
     const { user } = useAuth();
     const [dismissed, setDismissed] = useState(false);
-    
-    // Only show for parents
+
     if (user?.role !== "PARENT") return null;
     if (!students || students.length === 0) return null;
 
-    const pendingStudent = students.find(s => s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment);
-    const analyzingStudent = students.find(s => 
-        ["ASSESSMENT_SCHEDULED", "ASSESSED"].includes(s.status) || 
-        (s.status === "PENDING_ASSESSMENT" && s.has_parent_assessment)
-    );
-    const activeStudent = students.find(s => s.status === "ENROLLED");
-    
-    const targetStudent = pendingStudent || analyzingStudent || activeStudent;
-    if (!targetStudent) return null;
+    const content = students
+        .map(getBannerContent)
+        .filter((item): item is BannerContent => Boolean(item))
+        .sort((a, b) => a.priority - b.priority)[0];
+
+    if (!content) return null;
+
+    const style = toneStyles[content.tone];
+    const fullName = `${content.student.first_name} ${content.student.last_name}`.trim();
 
     if (dismissed) {
         return (
-            <button 
+            <button
+                type="button"
                 onClick={() => setDismissed(false)}
-                className="mb-8 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full border border-blue-200 shadow-sm w-fit focus:ring-4 focus:ring-blue-50 outline-none"
-                aria-label="Show welcome message"
+                className="mb-8 flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold shadow-sm transition-colors outline-none focus:ring-4"
+                style={{
+                    color: style.labelText,
+                    background: style.labelBg,
+                    borderColor: style.border,
+                }}
+                aria-label="Show next step"
             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                 </svg>
-                Show Welcome Message
+                Show Next Step
             </button>
-        );
-    }
-
-    let Content = null;
-    const isPending = !!pendingStudent;
-    
-    if (pendingStudent) {
-        Content = (
-            <>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3 text-slate-800">
-                    Welcome! Let's get started with <span className="text-blue-600">{targetStudent.first_name}'s</span> first assessment.
-                </h1>
-                <p className="text-lg text-slate-600 leading-relaxed font-medium">
-                    We're excited to partner with you on this developmental journey. The first step is to complete the Parent Assessment Form.
-                </p>
-            </>
-        );
-    } else if (analyzingStudent) {
-        Content = (
-            <>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3 text-slate-800">
-                    All caught up! We're reviewing <span className="text-blue-600">{targetStudent.first_name}'s</span> milestones.
-                </h1>
-                <p className="text-lg text-slate-600 leading-relaxed font-medium">
-                    Check back soon for the full report and next steps. We'll notify you once our specialists have completed their assessment.
-                </p>
-            </>
-        );
-    } else if (activeStudent) {
-        Content = (
-             <>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3 text-slate-800">
-                    Great news! <span className="text-blue-600">{targetStudent.first_name}</span> is now Enrolled and active.
-                </h1>
-                <p className="text-lg text-slate-600 leading-relaxed font-medium">
-                    You can view progress reports, goals, and update home context anytime from the profile page.
-                </p>
-            </>
         );
     }
 
     return (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-6 md:p-8 shadow-sm mb-8 transition-all duration-300">
-            {/* Soft decorative shapes */}
-            <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-blue-400/10 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 left-1/4 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl pointer-events-none" />
-            
-            {/* Dismiss button */}
-            <button 
+        <section
+            className="relative mb-8 overflow-hidden rounded-2xl border p-6 shadow-sm transition-all duration-300 md:p-8"
+            style={{ background: style.bg, borderColor: style.border }}
+            aria-label={`Next step for ${fullName}`}
+        >
+            <button
+                type="button"
                 onClick={() => setDismissed(true)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors p-1"
+                className="absolute right-4 top-4 border-none bg-transparent p-1 text-slate-400 transition-colors hover:text-slate-700"
                 aria-label="Dismiss banner"
                 title="Dismiss banner"
             >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
-            
-            <div className="relative flex flex-col items-center justify-between gap-6 md:flex-row">
-                <div className="max-w-xl text-center md:text-left">
-                    {Content}
-                </div>
-                
-                {isPending && (
-                    <div className="shrink-0 flex flex-col items-center gap-3 mt-4 md:mt-0">
-                        <Link 
-                            href={`/parent-onboarding?studentId=${targetStudent.id}`}
-                            className="btn-primary inline-flex items-center justify-center gap-2"
-                            style={{ textDecoration: "none", fontSize: "1rem", padding: "12px 28px" }}
-                        >
-                            Start Assessment
-                            <svg className="ml-2 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                            </svg>
-                        </Link>
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Takes about 10-15 minutes
-                        </div>
+
+            <div className="flex flex-col justify-between gap-6 pr-8 md:flex-row md:items-center">
+                <div className="max-w-3xl">
+                    <div
+                        className="mb-4 inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide"
+                        style={{ background: style.labelBg, color: style.labelText }}
+                    >
+                        {content.label}
                     </div>
-                )}
+                    <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
+                        {content.title}
+                    </h2>
+                    <p className="m-0 text-base font-medium leading-relaxed text-slate-600 md:text-lg">
+                        {content.body}
+                    </p>
+                    {content.note && (
+                        <p className="mt-3 text-sm font-semibold text-slate-500">
+                            {content.note}
+                        </p>
+                    )}
+                </div>
+
+                <div className="flex shrink-0 flex-col items-stretch gap-3 md:items-end">
+                    <Link
+                        href={content.href}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-extrabold text-white no-underline shadow-sm transition-transform hover:scale-[1.02]"
+                        style={{ background: style.accent }}
+                    >
+                        {content.cta}
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </Link>
+                    <span className="text-center text-xs font-bold uppercase tracking-wide text-slate-400 md:text-right">
+                        {fullName}
+                    </span>
+                </div>
             </div>
-        </div>
+        </section>
     );
 }
