@@ -1,27 +1,35 @@
 import json
+import google.generativeai as genai
+from django.conf import settings
 
 def _get_check(val):
     return "[X]" if val else "[ ]"
 
-def _mock_llm_call(prompt: str, is_iep=True) -> str:
+def _generate_ai_content(prompt: str, is_iep=True) -> str:
     """
-    Simulates a call to an LLM like GPT-4o or Gemini.
-    In real production, this would use `openai.ChatCompletion.create()`.
+    Calls the Gemini API.
     """
     pii_free_prompt = prompt.replace("John Doe", "The Student")
-    
-    if is_iep:
-        return (
-            "1. Improve expressive communication skills to include 3-word sentences.\n"
-            "2. Enhance fine motor coordination for writing and tracing letters.\n"
-            "3. Develop independent coping strategies for emotional regulation."
-        )
-    else:
-        return (
-            "- Continue 15-minute daily occupational therapy routines at home.\n"
-            "- Emphasize visual schedules to ease transitions.\n"
-            "- Review mathematical grouping concepts weekly."
-        )
+
+    if not settings.GEMINI_API_KEY:
+        return "Error: GEMINI_API_KEY is not configured."
+
+    try:
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        
+        if is_iep:
+            system_instruction = "You are an expert special education teacher writing an IEP. Output 3-4 specific and measurable goals."
+        else:
+            system_instruction = "You are an expert special education teacher. Output 3-4 bullet points of monthly home recommendations."
+            
+        full_prompt = f"{system_instruction}\n\nContext:\n{pii_free_prompt}"
+        
+        response = model.generate_content(full_prompt)
+        return response.text
+    except Exception as e:
+        print(f"Error calling Gemini API: {e}")
+        return "Error: Could not generate content."
 
 def extract_assessment_draft(student, cycle, inputs):
     # Base assessment logic (simplified for mockup)
@@ -70,7 +78,7 @@ def extract_iep_draft(student, cycle, inputs):
     prompt += f"Specialist Input: {json.dumps(ma.form_data if ma else {})}. "
     prompt += f"Teacher Input: {json.dumps(sa.form_data if sa else {})}. "
     
-    ai_goals = _mock_llm_call(prompt, is_iep=True)
+    ai_goals = _generate_ai_content(prompt, is_iep=True)
     
     sections = []
     
@@ -109,7 +117,7 @@ def extract_monthly_draft(student, cycle, inputs):
     prompt += f"Specialist Tracker: {json.dumps(mt.form_data if mt else {})}. "
     prompt += f"Teacher Tracker: {json.dumps(st.form_data if st else {})}. "
     
-    ai_recommendations = _mock_llm_call(prompt, is_iep=False)
+    ai_recommendations = _generate_ai_content(prompt, is_iep=False)
     
     sections = []
     
