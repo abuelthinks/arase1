@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const getWorkspaceFormUrl = (studentId: string) =>
     `/workspace?studentId=${encodeURIComponent(studentId)}&workspace=forms&tab=multi_tracker`;
@@ -235,7 +236,7 @@ function SpecialistBFormContent() {
             api.get(`/api/students/${studentId}/profile/`)
                 .then(res => {
                     if (!isViewMode && res.data?.student?.status !== "Enrolled") {
-                        alert("This progress tracking form is locked until the student is formally enrolled.");
+                        toast.error("This progress tracking form is locked until the student is formally enrolled.");
                         router.replace(getWorkspaceFormUrl(studentId));
                         return;
                     }

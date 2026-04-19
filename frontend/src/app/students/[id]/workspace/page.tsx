@@ -131,7 +131,7 @@ function UnifiedWorkspaceContent() {
             const profileRes = await api.get(`/api/students/${studentId}/profile/`);
             setAssignedStaff(profileRes.data.assigned_staff || []);
         } catch (err: any) {
-            alert(err.response?.data?.error || "Assignment failed.");
+            toast.error(err.response?.data?.error || "Assignment failed.");
         } finally {
             setAssigning(null);
         }

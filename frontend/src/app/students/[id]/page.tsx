@@ -6,6 +6,7 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 interface FormStatus {
     submitted: boolean;
@@ -131,7 +132,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             await api.post(`/api/students/${id}/${endpoint}/`, payload);
             fetchProfile();
         } catch (err: any) {
-            alert(err.response?.data?.error || "Action failed.");
+            toast.error(err.response?.data?.error || "Action failed.");
         }
     };
 

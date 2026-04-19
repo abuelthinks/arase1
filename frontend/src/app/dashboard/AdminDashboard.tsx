@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
+import { toast } from "sonner";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
@@ -419,9 +420,9 @@ export default function AdminDashboard() {
             setShowUserModal(false);
             setNewUser({ username: '', password: '', confirm_password: '', email: '', role: 'TEACHER', specialty: '', first_name: '', last_name: '' });
             fetchData();
-            alert("User created successfully");
+            toast.success("User created successfully");
         } catch (err: any) {
-            setUserFormError(
+            toast.error(
                 err.response?.data?.specialty?.[0]
                 || err.response?.data?.username
                 || err.response?.data?.detail
@@ -440,9 +441,9 @@ export default function AdminDashboard() {
             setInviteEmail('');
             setInviteRole('PARENT');
             fetchData();
-            alert(`Invite sent successfully to ${inviteEmail}.\nToken: ${response.data.token}\n(In a real app, an email would be sent containing the link http://localhost:3000/invite/${response.data.token})`);
+            toast.success(`Invite sent to ${inviteEmail}. Token: ${response.data.token}`);
         } catch (err: any) {
-            alert(err.response?.data?.email?.[0] || err.response?.data?.error || "Failed to send invite");
+            toast.error(err.response?.data?.email?.[0] || err.response?.data?.error || "Failed to send invite");
         }
     };
 
@@ -462,9 +463,9 @@ export default function AdminDashboard() {
             setShowStudentModal(false);
             setNewStudent({ first_name: '', last_name: '', date_of_birth: '', parent_email: '' });
             fetchData();
-            alert("Student registered successfully");
+            toast.success("Student registered successfully");
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to register student");
+            toast.error(err.response?.data?.detail || "Failed to register student");
         } finally {
             setCreatingStudent(false);
         }
@@ -494,7 +495,7 @@ export default function AdminDashboard() {
             await api.delete(`/api/invitations/${inviteId}/`);
             fetchData();
         } catch (err: any) {
-            alert(err.response?.data?.error || "Failed to delete invitation.");
+            toast.error(err.response?.data?.error || "Failed to delete invitation.");
         }
     };
 
@@ -502,10 +503,10 @@ export default function AdminDashboard() {
         if (!confirm(`Resend invitation to ${email}? This will revoke the old link and send a fresh 72-hour one.`)) return;
         try {
             await api.post(`/api/invitations/${inviteId}/resend/`);
-            alert(`✅ Invitation resent to ${email}. Check Mailpit for the email.`);
+            toast.success(`Invitation resent to ${email}.`);
             fetchData();
         } catch (err: any) {
-            alert(err.response?.data?.error || "Failed to resend invitation.");
+            toast.error(err.response?.data?.error || "Failed to resend invitation.");
         }
     };
 
@@ -1457,7 +1458,7 @@ export default function AdminDashboard() {
                                                                     <button
                                                                         onClick={() => {
                                                                             navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
-                                                                            alert('Invite link copied to clipboard!');
+                                                                            toast.success('Invite link copied to clipboard!');
                                                                         }}
                                                                         className="hover:bg-blue-50 transition-colors duration-200"
                                                                         style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}
@@ -1509,7 +1510,7 @@ export default function AdminDashboard() {
                                                         ) : (
                                                             <button onClick={() => {
                                                                 navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
-                                                                alert('Invite link copied to clipboard!');
+                                                                toast.success('Invite link copied to clipboard!');
                                                             }} className="btn-secondary text-sm flex-1 text-center py-2" title="Copy Invite Link">
                                                                 Copy Link
                                                             </button>
