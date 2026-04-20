@@ -129,9 +129,27 @@ export default function DashboardPage() {
         switch (user?.role) {
             case "TEACHER": return "Select a student to provide academic and behavioral inputs.";
             case "SPECIALIST": return "Select a student to log therapy metrics and checklists.";
-            case "PARENT": return "Select your child to submit home context, milestones, and goals.";
+            case "PARENT": {
+                const needsAssessment = students.filter(s => s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment).length;
+                const needsTracker = students.filter(s => s.status === "ENROLLED" && !s.parent_current_tracker_submitted).length;
+                const totalActions = needsAssessment + needsTracker;
+                if (totalActions > 0) {
+                    const parts: string[] = [];
+                    if (needsAssessment > 0) parts.push(`${needsAssessment} assessment${needsAssessment > 1 ? 's' : ''} to complete`);
+                    if (needsTracker > 0) parts.push(`${needsTracker} monthly update${needsTracker > 1 ? 's' : ''} due`);
+                    return `You have ${parts.join(' and ')}.`;
+                }
+                return "All caught up! Nothing needed right now ✨";
+            }
             default: return "";
         }
+    };
+
+    const getTimeGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
+        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
+        return { text: "Good evening", emoji: "🌙" };
     };
 
     const getStudentWorkspaceHref = (studentId: number, tab?: string) => {
@@ -200,11 +218,23 @@ export default function DashboardPage() {
 
                 {/* Page header */}
                 <div className="mb-5 md:mb-8">
-                    <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-baseline gap-2">
-                        {user?.role === "PARENT" ? "My Children" : "My Students"} 
-                        {students.length > 0 && <span className="text-base md:text-xl text-slate-400 font-normal">({processedStudents.length})</span>}
-                    </h2>
-                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
+                    {user?.role === "PARENT" ? (
+                        <>
+                            <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
+                                <span>{getTimeGreeting().text}, {user?.first_name || 'there'}</span>
+                                <span>{getTimeGreeting().emoji}</span>
+                            </h2>
+                            <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
+                        </>
+                    ) : (
+                        <>
+                            <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-baseline gap-2">
+                                My Students
+                                {students.length > 0 && <span className="text-base md:text-xl text-slate-400 font-normal">({processedStudents.length})</span>}
+                            </h2>
+                            <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
+                        </>
+                    )}
                 </div>
 
                 {/* Content panel */}
@@ -303,114 +333,84 @@ export default function DashboardPage() {
                                     No records found matching your filters.
                                 </p>
                             ) : user?.role === "PARENT" ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                                     {paginatedStudents.map(s => {
+                                        // Plain-English status mapping
+                                        const statusMap: Record<string, { text: string; color: string; bg: string; icon: string }> = {
+                                            PENDING_ASSESSMENT: {
+                                                text: s.has_parent_assessment ? "Assessment submitted — awaiting review" : "Waiting for your assessment",
+                                                color: s.has_parent_assessment ? "#92400e" : "#c2410c",
+                                                bg: s.has_parent_assessment ? "#fef3c7" : "#fff7ed",
+                                                icon: s.has_parent_assessment ? "⏳" : "📋",
+                                            },
+                                            ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", color: "#1e40af", bg: "#dbeafe", icon: "🔍" },
+                                            ASSESSED: { text: "Assessment complete — enrollment pending", color: "#1e40af", bg: "#eff6ff", icon: "✅" },
+                                            ENROLLED: {
+                                                text: s.parent_current_tracker_submitted ? "Enrolled & up to date" : "Monthly progress update needed",
+                                                color: s.parent_current_tracker_submitted ? "#166534" : "#c2410c",
+                                                bg: s.parent_current_tracker_submitted ? "#f0fdf4" : "#fff7ed",
+                                                icon: s.parent_current_tracker_submitted ? "🌟" : "📝",
+                                            },
+                                            ARCHIVED: { text: "Record archived", color: "#64748b", bg: "#f1f5f9", icon: "📁" },
+                                        };
                                         const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
-                                        const badge = statusColors[statusKey] ?? { bg: "#f1f5f9", color: "#475569" };
+                                        const statusInfo = statusMap[statusKey] ?? { text: s.status?.replace(/_/g, " "), color: "#475569", bg: "#f1f5f9", icon: "📄" };
+
+                                        // Determine the single primary CTA
+                                        const getPrimaryCTA = () => {
+                                            if (s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) {
+                                                return { label: "Start Assessment", href: `/parent-onboarding?studentId=${s.id}`, style: "primary" as const };
+                                            }
+                                            if (s.status === "ENROLLED" && !s.parent_current_tracker_submitted) {
+                                                return { label: "Submit Monthly Update", href: getStudentWorkspaceHref(s.id, "parent_tracker"), style: "primary" as const };
+                                            }
+                                            return { label: "View Progress", href: `/students/${s.id}`, style: "secondary" as const };
+                                        };
+                                        const cta = getPrimaryCTA();
+
                                         return (
-                                            <div key={s.id} className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group hover:border-blue-200">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-3xl font-black border-4 border-white shadow-sm transition-transform group-hover:scale-105">
+                                            <div key={s.id} className="bg-white rounded-2xl border border-slate-200 p-0 flex flex-col shadow-sm hover:shadow-md transition-all relative overflow-hidden group hover:border-blue-200">
+                                                {/* Child header with gradient */}
+                                                <div style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #dbeafe 100%)", padding: "1.5rem 1.5rem 1.25rem", position: "relative", overflow: "hidden" }}>
+                                                    <div style={{ position: "absolute", top: "-20px", right: "-20px", width: "80px", height: "80px", borderRadius: "50%", background: "rgba(99,102,241,0.06)" }}></div>
+                                                    <div className="flex items-center gap-4 relative z-[1]">
+                                                        <div className="w-14 h-14 rounded-full bg-white text-indigo-600 flex items-center justify-center text-2xl font-black border-2 border-white shadow-sm transition-transform group-hover:scale-105 shrink-0">
                                                             {s.first_name.charAt(0).toUpperCase()}
                                                         </div>
-                                                        <div>
-                                                            <h3 className="font-extrabold text-2xl text-slate-900 leading-tight">{s.first_name}</h3>
-                                                            <p className="text-slate-500 font-medium">{s.last_name}</p>
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <h3 className="font-extrabold text-xl text-slate-900 leading-tight truncate">{s.first_name} {s.last_name}</h3>
+                                                            {s.grade && s.grade !== "TBD" && (
+                                                                <p className="text-slate-500 text-sm font-medium mt-0.5">Grade {s.grade}</p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                                
-                                                <div className="-mx-6 px-6 py-3 bg-slate-50 border-y border-slate-100 flex flex-wrap items-center justify-between gap-y-2">
-                                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</span>
-                                                    <span style={{
-                                                        fontSize: "0.72rem",
-                                                        fontWeight: 800,
-                                                        padding: "4px 12px",
-                                                        borderRadius: "999px",
-                                                        textTransform: "uppercase",
-                                                        letterSpacing: "0.5px",
-                                                        background: badge.bg,
-                                                        color: badge.color,
-                                                        display: "inline-flex",
-                                                        alignItems: "center",
-                                                        gap: "8px",
-                                                        border: `1px solid ${badge.color}25`,
-                                                        whiteSpace: "nowrap",
-                                                        flexShrink: 0
-                                                    }}>
-                                                        {s.status === "PENDING_ASSESSMENT" && (
-                                                            <span className="flex h-2 w-2 rounded-full relative shrink-0">
-                                                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                                                              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-                                                            </span>
-                                                        )}
-                                                        {s.status?.replace(/_/g, " ")}
-                                                    </span>
+
+                                                {/* Status section */}
+                                                <div style={{ padding: "1rem 1.5rem", background: statusInfo.bg, borderBottom: "1px solid #e2e8f0" }}>
+                                                    <div className="flex items-center gap-2">
+                                                        <span style={{ fontSize: "1.1rem" }}>{statusInfo.icon}</span>
+                                                        <span style={{ fontSize: "0.85rem", fontWeight: 600, color: statusInfo.color, lineHeight: 1.4 }}>
+                                                            {statusInfo.text}
+                                                        </span>
+                                                    </div>
                                                 </div>
 
-                                                <div className="mt-auto flex flex-col gap-2 pt-2">
-                                                    {(s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) ? (
-                                                        <Link 
-                                                            href={`/parent-onboarding?studentId=${s.id}`}
-                                                            onClick={() => rememberParentStudent(s.id)}
-                                                            className="btn-primary w-full flex items-center justify-center gap-2"
-                                                            style={{ textDecoration: "none", padding: "12px" }}
-                                                        >
-                                                            Start Assessment
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                                                        </Link>
-                                                    ) : (
-                                                        <>
-                                                            <Link 
-                                                                href={`/students/${s.id}`}
-                                                                onClick={() => rememberParentStudent(s.id)}
-                                                                className="btn-indigo w-full flex items-center justify-center gap-2"
-                                                                style={{ textDecoration: "none", padding: "12px" }}
-                                                            >
-                                                                View Student Profile
-                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                                                            </Link>
-                                                            {s.status === "ENROLLED" && (
-                                                                <Link 
-                                                                    href={getStudentWorkspaceHref(s.id, "parent_tracker")}
-                                                                    onClick={() => rememberParentStudent(s.id)}
-                                                                    className="btn-secondary w-full flex items-center justify-center gap-2"
-                                                                    style={{ textDecoration: "none", padding: "12px" }}
-                                                                >
-                                                                    Fill Parent Progress
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                                </Link>
-                                                            )}
-                                                        </>
-                                                    )}
+                                                {/* CTA section */}
+                                                <div style={{ padding: "1.25rem 1.5rem" }}>
+                                                    <Link
+                                                        href={cta.href}
+                                                        onClick={() => rememberParentStudent(s.id)}
+                                                        className={cta.style === "primary" ? "btn-primary" : "btn-indigo"}
+                                                        style={{ textDecoration: "none", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", boxSizing: "border-box" }}
+                                                    >
+                                                        {cta.label}
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                                    </Link>
                                                 </div>
                                             </div>
                                         );
                                     })}
-
-                                    {/* Supportive Side/Resources Card */}
-                                    <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-2xl border border-slate-200 p-6 flex flex-col gap-4 shadow-sm">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center drop-shadow-sm">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            </div>
-                                            <h3 className="font-bold text-lg text-slate-800">What's Next?</h3>
-                                        </div>
-                                        <p className="text-sm text-slate-600 leading-relaxed flex-grow">
-                                            After you submit the parent assessment, our specialist team will review your insights alongside school reports to develop a personalized milestone plan. You'll be notified when it's ready!
-                                        </p>
-                                        <div className="space-y-3 pt-4 border-t border-slate-200 text-sm">
-                                            <a href="#" className="flex items-center justify-between text-blue-600 hover:text-blue-700 font-medium group transition-colors">
-                                                How we use this data
-                                                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                                            </a>
-                                            <a href="#" className="flex items-center justify-between text-blue-600 hover:text-blue-700 font-medium group transition-colors">
-                                                Contact Support
-                                                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                                            </a>
-                                        </div>
-                                    </div>
                                 </div>
                             ) : (
                                 <>

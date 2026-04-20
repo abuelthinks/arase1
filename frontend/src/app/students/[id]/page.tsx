@@ -185,14 +185,14 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         <span className="text-sm text-slate-500 italic" style={{ display: "block", background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                            Your child is enrolled. You can now submit the monthly Parent Progress tracker.
+                            {student.first_name} is enrolled! Share how things are going at home to help the team prepare the monthly report.
                         </span>
                         <Link
                             href={`/workspace?studentId=${student.id}&workspace=forms&tab=parent_tracker`}
                             className="btn-primary px-5 py-2 text-sm text-center"
                             style={{ textDecoration: "none", display: "inline-block" }}
                         >
-                            Fill Parent Progress
+                            Share Monthly Update
                         </Link>
                     </div>
                 );
@@ -202,14 +202,14 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     return (
                         <div>
                             <p style={{ fontSize: "0.85rem", color: "#92400e", marginBottom: "8px" }}>
-                                Please fill in the <strong>Parent Assessment</strong> form before requesting an evaluation.
+                                Tell us about {student.first_name} — their strengths, daily routine, and any concerns you'd like the team to know.
                             </p>
                             <Link
                                 href={`/parent-onboarding?studentId=${student.id}`}
                                 className="btn-primary px-5 py-2 text-sm"
                                 style={{ textDecoration: "none", display: "inline-block" }}
                             >
-                                + Fill Parent Assessment
+                                Get Started
                             </Link>
                         </div>
                     );
@@ -217,21 +217,21 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         <span className="text-sm text-slate-500 italic" style={{ display: "block", background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                            Assessment submitted. Awaiting administrator review and specialist assignment...
+                            Thank you! We've received your input and the team is reviewing it now.
                         </span>
                         <Link
                             href={`/parent-onboarding?studentId=${student.id}&submissionId=${form_statuses.parent_assessment?.id}`}
                             className="btn-slate px-5 py-2 text-sm text-center"
                             style={{ textDecoration: "none", display: "inline-block" }}
                         >
-                            Edit Assessment
+                            Edit Your Submission
                         </Link>
                     </div>
                 );
             }
             if (student.status === "Assessment Scheduled") {
                 return (
-                    <span className="text-sm text-slate-500 italic">Evaluation in progress — our team will be in touch…</span>
+                    <span className="text-sm text-slate-500 italic">Our specialist team is working on {student.first_name}'s evaluation — we'll let you know when there's an update.</span>
                 );
             }
         }
@@ -396,20 +396,8 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             {/* ═══════════════════════════════════════════ */}
             {/* SUMMARY STAT CARDS                         */}
             {/* ═══════════════════════════════════════════ */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "1.5rem" }}>
-                {/* Forms */}
-                <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                        <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6366f1" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        </div>
-                        <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Forms</span>
-                    </div>
-                    <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{formsSubmittedCount}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#94a3b8" }}>/{totalForms}</span></div>
-                    <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>submitted</div>
-                </div>
-
-                {/* Documents */}
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(140px, 1fr))`, gap: "12px", marginBottom: "1.5rem" }}>
+                {/* Documents — always visible */}
                 <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                         <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -421,8 +409,34 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>generated</div>
                 </div>
 
+                {/* Cycle Status — visible for parents if enrolled */}
+                {isParent && cycle_status && (
+                    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                            <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#f0f9ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#0ea5e9" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Cycle</span>
+                        </div>
+                        <div style={{ fontSize: "1.5rem", fontWeight: 800, color: cycle_status.days_remaining <= 5 ? "#dc2626" : "#1e1b4b" }}>{cycle_status.days_remaining}d</div>
+                        <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>remaining</div>
+                    </div>
+                )}
+
                 {!isParent && (
                     <>
+                        {/* Forms — admin/staff only */}
+                        <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6366f1" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                </div>
+                                <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Forms</span>
+                            </div>
+                            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{formsSubmittedCount}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#94a3b8" }}>/{totalForms}</span></div>
+                            <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>submitted</div>
+                        </div>
+
                         {/* Team */}
                         <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
@@ -461,7 +475,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
                     <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6366f1" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                        <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Student Details</h3>
+                        <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>{isParent ? "About Your Child" : "Student Details"}</h3>
                     </div>
                     <div>
                         {[
@@ -483,36 +497,38 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     </div>
                 </div>
 
-                {/* Parent / Guardian Contact */}
-                <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
-                    <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#10b981" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                        <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Parent / Guardian</h3>
+                {/* Parent / Guardian Contact — hidden for parent users (they know their own info) */}
+                {!isParent && (
+                    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
+                        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#10b981" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                            <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Parent / Guardian</h3>
+                        </div>
+                        <div>
+                            {[
+                                { label: "Name", value: student.parent_guardian_name || "Not provided", isLink: false },
+                                { label: "Email", value: student.parent_email || "Not provided", isLink: !!student.parent_email, href: `mailto:${student.parent_email}` },
+                                { label: "Phone", value: student.parent_phone || "Not provided", isLink: !!student.parent_phone, href: `tel:${student.parent_phone}` },
+                            ].map((item, idx, arr) => (
+                                <div key={item.label} style={{
+                                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                                    padding: "12px 1.25rem",
+                                    borderBottom: idx < arr.length - 1 ? "1px solid #f8fafc" : "none",
+                                    fontSize: "0.85rem"
+                                }}>
+                                    <span style={{ color: "#64748b", fontWeight: 500 }}>{item.label}</span>
+                                    {item.isLink ? (
+                                        <a href={item.href} style={{ color: "#4f46e5", fontWeight: 600, textDecoration: "none", textAlign: "right" }}>
+                                            {item.value}
+                                        </a>
+                                    ) : (
+                                        <span style={{ color: item.value === "Not provided" ? "#cbd5e1" : "#1e1b4b", fontWeight: 600, fontStyle: item.value === "Not provided" ? "italic" : "normal", textAlign: "right" }}>{item.value}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <div>
-                        {[
-                            { label: "Name", value: student.parent_guardian_name || "Not provided", isLink: false },
-                            { label: "Email", value: student.parent_email || "Not provided", isLink: !!student.parent_email, href: `mailto:${student.parent_email}` },
-                            { label: "Phone", value: student.parent_phone || "Not provided", isLink: !!student.parent_phone, href: `tel:${student.parent_phone}` },
-                        ].map((item, idx, arr) => (
-                            <div key={item.label} style={{
-                                display: "flex", justifyContent: "space-between", alignItems: "center",
-                                padding: "12px 1.25rem",
-                                borderBottom: idx < arr.length - 1 ? "1px solid #f8fafc" : "none",
-                                fontSize: "0.85rem"
-                            }}>
-                                <span style={{ color: "#64748b", fontWeight: 500 }}>{item.label}</span>
-                                {item.isLink ? (
-                                    <a href={item.href} style={{ color: "#4f46e5", fontWeight: 600, textDecoration: "none", textAlign: "right" }}>
-                                        {item.value}
-                                    </a>
-                                ) : (
-                                    <span style={{ color: item.value === "Not provided" ? "#cbd5e1" : "#1e1b4b", fontWeight: 600, fontStyle: item.value === "Not provided" ? "italic" : "normal", textAlign: "right" }}>{item.value}</span>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                )}
             </div>
 
             {/* ═══════════════════════════════════════════ */}
@@ -653,7 +669,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 <div style={{ background: "white", borderRadius: "14px", padding: "1.25rem", border: "1px solid #e2e8f0", marginBottom: "1.5rem" }}>
                     <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: "0 0 1rem", display: "flex", alignItems: "center", gap: "8px" }}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                        Next Action
+                        {isParent ? "What You Can Do" : "Next Action"}
                     </h3>
                     {lifecycleContent}
                 </div>

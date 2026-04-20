@@ -79,12 +79,12 @@ function getBannerContent(student: Student): BannerContent | null {
             student,
             priority: 1,
             tone: "action",
-            label: "Parent action needed",
-            title: `Start ${firstName}'s parent assessment`,
-            body: "Your input is the next step. Share home context, strengths, concerns, and milestones so the team can begin the assessment process.",
+            label: "Your input is needed",
+            title: `Tell us about ${firstName}`,
+            body: "Share your insights about your child — their strengths, daily routines, and any concerns. This helps our team understand how to best support them.",
             href: `/parent-onboarding?studentId=${student.id}`,
-            cta: "Start Assessment",
-            note: "Usually takes about 10-15 minutes.",
+            cta: "Get Started",
+            note: "Usually takes about 10–15 minutes.",
         };
     }
 
@@ -94,12 +94,12 @@ function getBannerContent(student: Student): BannerContent | null {
             student,
             priority: 2,
             tone: "action",
-            label: "Monthly progress due",
-            title: `Add ${firstName}'s home progress for ${cycleLabel}`,
-            body: "The parent progress tracker is ready. Your update helps the team generate the monthly progress report with current home observations.",
+            label: "Monthly update due",
+            title: `How is ${firstName} doing at home?`,
+            body: `Share your observations for ${cycleLabel} — what's going well, any changes, and milestones you've noticed. This helps the team prepare the monthly progress report.`,
             href: getWorkspaceHref(student.id, "parent_tracker"),
-            cta: "Fill Parent Progress",
-            note: "Submit one parent tracker for each active monthly cycle.",
+            cta: "Share Update",
+            note: "One update per month keeps the team in sync.",
         };
     }
 
@@ -108,9 +108,9 @@ function getBannerContent(student: Student): BannerContent | null {
             student,
             priority: 3,
             tone: "waiting",
-            label: "Assessment received",
-            title: `${firstName}'s parent assessment is in`,
-            body: "You are caught up for now. The team will review your input and schedule the next assessment step when ready.",
+            label: "Thank you!",
+            title: `We received your input for ${firstName}`,
+            body: "You're all set for now. Our team is reviewing what you shared and will begin the next step of the evaluation soon.",
             href: `/students/${student.id}`,
             cta: "View Profile",
         };
@@ -121,11 +121,11 @@ function getBannerContent(student: Student): BannerContent | null {
             student,
             priority: 4,
             tone: "waiting",
-            label: "Assessment scheduled",
-            title: `${firstName}'s assessment is scheduled`,
-            body: "No form is needed from you right now. Check the profile for current details and wait for the team to complete the assessment.",
+            label: "Evaluation in progress",
+            title: `${firstName}'s evaluation is underway`,
+            body: "Our specialist team is working on the assessment. No action is needed from you right now — we'll let you know when there's an update.",
             href: `/students/${student.id}`,
-            cta: "View Schedule",
+            cta: "View Details",
         };
     }
 
@@ -134,9 +134,9 @@ function getBannerContent(student: Student): BannerContent | null {
             student,
             priority: 5,
             tone: "waiting",
-            label: "Enrollment review",
-            title: `${firstName}'s assessment is being reviewed`,
-            body: "The assessment is complete and waiting for admin enrollment review. You will be able to track monthly progress once enrollment is active.",
+            label: "Almost there",
+            title: `${firstName}'s evaluation is complete`,
+            body: "The assessment is done and is now being reviewed for enrollment. Once approved, you'll be able to track monthly progress together with the team.",
             href: `/students/${student.id}`,
             cta: "View Profile",
         };
@@ -148,12 +148,12 @@ function getBannerContent(student: Student): BannerContent | null {
             priority: 6,
             tone: "ready",
             label: "All caught up",
-            title: `${firstName} is enrolled and current`,
+            title: `${firstName} is on track`,
             body: student.latest_final_monthly_report_id
-                ? "Your parent tracker for the active cycle is submitted. You can review finalized reports, goals, and student updates from the profile."
-                : "Your parent tracker for the active cycle is submitted. You can review goals and student updates from the profile while the report is prepared.",
+                ? "Your monthly update is submitted. You can review finalized reports, goals, and progress from the profile."
+                : "Your monthly update is submitted. The team is preparing the progress report — check back soon!",
             href: `/students/${student.id}`,
-            cta: "View Profile",
+            cta: "View Progress",
         };
     }
 
@@ -162,9 +162,9 @@ function getBannerContent(student: Student): BannerContent | null {
             student,
             priority: 7,
             tone: "neutral",
-            label: "Archived record",
+            label: "Archived",
             title: `${firstName}'s record is archived`,
-            body: "There is no parent action needed right now. The profile remains available for reference.",
+            body: "No action is needed. The profile and past reports remain available for your reference anytime.",
             href: `/students/${student.id}`,
             cta: "View Record",
         };

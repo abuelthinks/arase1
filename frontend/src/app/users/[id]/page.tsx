@@ -87,7 +87,7 @@ function getRoleSummary(role: string): string {
         case "SPECIALIST":
             return "Provides therapeutic services, assessments, and progress monitoring.";
         case "PARENT":
-            return "Shares family context, completes forms, and follows student progress.";
+            return "Your account for staying connected with your child's learning journey.";
         default:
             return "System account";
     }
@@ -160,14 +160,20 @@ export default function UserProfile() {
     const assessedCount = assignedStudents.filter(student => student.status === "ASSESSED").length;
     const isParent = role === "PARENT";
 
-    const profileInfo = [
-        { label: "Email", value: user.email, href: `mailto:${user.email}` },
-        { label: "Username", value: user.username !== user.email ? `@${user.username}` : "Same as email" },
-        { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined },
-        { label: "Role", value: user.role },
-        { label: "Last Active", value: formatLastSeen(user.last_login) },
-        { label: "Account Status", value: "Active" },
-    ];
+    const profileInfo = isParent
+        ? [
+            { label: "Email", value: user.email, href: `mailto:${user.email}` },
+            { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined },
+            { label: "Account Status", value: "Active" },
+        ]
+        : [
+            { label: "Email", value: user.email, href: `mailto:${user.email}` },
+            { label: "Username", value: user.username !== user.email ? `@${user.username}` : "Same as email" },
+            { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined },
+            { label: "Role", value: user.role },
+            { label: "Last Active", value: formatLastSeen(user.last_login) },
+            { label: "Account Status", value: "Active" },
+        ];
 
     const statCards = !isParent
         ? [
@@ -230,10 +236,14 @@ export default function UserProfile() {
 
                             <div className="profile-meta-row">
                                 <span className="profile-meta-pill">{user.email}</span>
-                                <span className="profile-meta-pill">{user.phone_number || "Phone not provided"}</span>
-                                <span className="profile-meta-pill">
-                                    {user.specialty || (role === "PARENT" ? "Family account" : "Specialty not set")}
-                                </span>
+                                {user.phone_number && (
+                                    <span className="profile-meta-pill">{user.phone_number}</span>
+                                )}
+                                {!isParent && (
+                                    <span className="profile-meta-pill">
+                                        {user.specialty || "Specialty not set"}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -258,8 +268,8 @@ export default function UserProfile() {
                 <div className="profile-column">
                     <section className="profile-panel">
                         <div className="profile-panel-header">
-                            <h2 className="profile-panel-title">Profile Information</h2>
-                            <p className="profile-panel-copy">Identity, contact details, and account state.</p>
+                            <h2 className="profile-panel-title">{isParent ? "Your Information" : "Profile Information"}</h2>
+                            <p className="profile-panel-copy">{isParent ? "Your contact details and account status." : "Identity, contact details, and account state."}</p>
                         </div>
 
                         <div>
@@ -448,10 +458,10 @@ export default function UserProfile() {
                                     </svg>
                                 </div>
                                 <p style={{ fontSize: "0.95rem", color: "#334155", fontWeight: 700, marginBottom: "4px" }}>
-                                    No students assigned yet
+                                    {isParent ? "No children linked yet" : "No students assigned yet"}
                                 </p>
                                 <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0 }}>
-                                    This profile will become more useful once students are linked to the account.
+                                    {isParent ? "Once your child is added by the administrator, their profile will appear here." : "This profile will become more useful once students are linked to the account."}
                                 </p>
                             </div>
                         ) : (
@@ -543,37 +553,60 @@ export default function UserProfile() {
 
                     <section className="profile-panel">
                         <div className="profile-panel-header">
-                            <h2 className="profile-panel-title">Next Best Actions</h2>
-                            <p className="profile-panel-copy">Quick paths for reviewing this account and continuing work.</p>
+                            <h2 className="profile-panel-title">{isParent ? "Quick Links" : "Next Best Actions"}</h2>
+                            <p className="profile-panel-copy">{isParent ? "Helpful shortcuts for you." : "Quick paths for reviewing this account and continuing work."}</p>
                         </div>
 
                         <div className="profile-action-list">
-                            <Link href={`/users/${user.id}/activity`} className="profile-action-card">
-                                <div>
-                                    <div className="profile-action-title">Review Activity Log</div>
-                                    <div className="profile-action-copy">See recent account events and history for this user.</div>
-                                </div>
-                                <span className="profile-action-arrow">›</span>
-                            </Link>
+                            {isParent ? (
+                                <>
+                                    <Link href="/dashboard" className="profile-action-card">
+                                        <div>
+                                            <div className="profile-action-title">Go to Dashboard</div>
+                                            <div className="profile-action-copy">See your children and any pending tasks at a glance.</div>
+                                        </div>
+                                        <span className="profile-action-arrow">›</span>
+                                    </Link>
+                                    {studentCount > 0 && (
+                                        <Link href={`/students/${assignedStudents[0].id}`} className="profile-action-card">
+                                            <div>
+                                                <div className="profile-action-title">View {assignedStudents[0].first_name}'s Profile</div>
+                                                <div className="profile-action-copy">Check progress, status, and available actions for your child.</div>
+                                            </div>
+                                            <span className="profile-action-arrow">›</span>
+                                        </Link>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <Link href={`/users/${user.id}/activity`} className="profile-action-card">
+                                        <div>
+                                            <div className="profile-action-title">Review Activity Log</div>
+                                            <div className="profile-action-copy">See recent account events and history for this user.</div>
+                                        </div>
+                                        <span className="profile-action-arrow">›</span>
+                                    </Link>
 
-                            {studentCount > 0 && (
-                                <Link href={`/students/${assignedStudents[0].id}`} className="profile-action-card">
-                                    <div>
-                                        <div className="profile-action-title">Open Latest Student</div>
-                                        <div className="profile-action-copy">Jump into the most recently listed student on this profile.</div>
-                                    </div>
-                                    <span className="profile-action-arrow">›</span>
-                                </Link>
-                            )}
+                                    {studentCount > 0 && (
+                                        <Link href={`/students/${assignedStudents[0].id}`} className="profile-action-card">
+                                            <div>
+                                                <div className="profile-action-title">Open Latest Student</div>
+                                                <div className="profile-action-copy">Jump into the most recently listed student on this profile.</div>
+                                            </div>
+                                            <span className="profile-action-arrow">›</span>
+                                        </Link>
+                                    )}
 
-                            {user.email && (
-                                <a href={`mailto:${user.email}`} className="profile-action-card">
-                                    <div>
-                                        <div className="profile-action-title">Contact User</div>
-                                        <div className="profile-action-copy">Send an email directly from the profile page.</div>
-                                    </div>
-                                    <span className="profile-action-arrow">›</span>
-                                </a>
+                                    {user.email && (
+                                        <a href={`mailto:${user.email}`} className="profile-action-card">
+                                            <div>
+                                                <div className="profile-action-title">Contact User</div>
+                                                <div className="profile-action-copy">Send an email directly from the profile page.</div>
+                                            </div>
+                                            <span className="profile-action-arrow">›</span>
+                                        </a>
+                                    )}
+                                </>
                             )}
                         </div>
                     </section>
