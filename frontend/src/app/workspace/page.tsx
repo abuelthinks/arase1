@@ -70,7 +70,7 @@ function UnifiedWorkspaceContent() {
     const [formStatuses, setFormStatuses] = useState<any>(null);
     const requestedFormTab = searchParams.get("tab");
     const visibleFormTabs = user?.role === "PARENT"
-        ? TABS.filter(tab => ["parent_assessment", "parent_tracker"].includes(tab.id))
+        ? TABS.filter(tab => tab.id === "parent_tracker")
         : user?.role === "TEACHER"
             ? TABS.filter(tab => tab.id === "sped_tracker")
             : TABS;
@@ -109,7 +109,7 @@ function UnifiedWorkspaceContent() {
     const workspace = workspaceParam || (user?.role === "ADMIN" ? "overview" : "forms");
     const isStudentCurrentlyEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
     const defaultFormTab = user?.role === "PARENT"
-        ? "parent_assessment"
+        ? "parent_tracker"
         : user?.role === "TEACHER"
             ? "sped_tracker"
             : user?.role === "SPECIALIST"
@@ -705,11 +705,12 @@ function UnifiedWorkspaceContent() {
         const isAdminProgressLocked = user?.role === "ADMIN" && TABS.slice(2).some(tab => tab.id === activeFormTab) && !isStudentEnrolled;
         const isSpecialistProgressLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_tracker" && !isStudentEnrolled;
         const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && !isStudentEnrolled;
+        const isParentProgressLocked = user?.role === "PARENT" && activeFormTab === "parent_tracker" && !isStudentEnrolled;
         const canCreateCurrentForm =
-            !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !currentStatus?.submitted && (
+            !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !isParentProgressLocked && !currentStatus?.submitted && (
                 (user?.role === "SPECIALIST" && ["multi_assessment", "multi_tracker"].includes(activeFormTab)) ||
                 (user?.role === "TEACHER" && activeFormTab === "sped_tracker") ||
-                (user?.role === "PARENT" && ["parent_assessment", "parent_tracker"].includes(activeFormTab))
+                (user?.role === "PARENT" && ["parent_tracker"].includes(activeFormTab))
             );
 
         return (
@@ -727,7 +728,12 @@ function UnifiedWorkspaceContent() {
                                     background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
                                     color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
                                 }}>
-                                    {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                                    {user?.role === "PARENT"
+                                        ? (studentStatus?.toUpperCase().replace(/ /g, "_") === "PENDING_ASSESSMENT" ? (formStatuses?.parent_assessment?.submitted ? "Awaiting Review" : "Action Needed") :
+                                           studentStatus?.toUpperCase().replace(/ /g, "_") === "ASSESSMENT_SCHEDULED" ? "Under Evaluation" :
+                                           studentStatus?.toUpperCase().replace(/ /g, "_") === "ASSESSED" ? "Evaluation Complete" :
+                                           STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus)
+                                        : STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                                 </span>
                             )}
                         </div>
@@ -736,7 +742,7 @@ function UnifiedWorkspaceContent() {
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                         {assessmentTabs.length > 0 && (
                             <div className="px-4 mb-4">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Assessments</p>
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Your Input" : "Assessments"}</p>
                                 <div className="flex flex-col gap-1">
                                     {assessmentTabs.map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
@@ -745,7 +751,7 @@ function UnifiedWorkspaceContent() {
                                         return (
                                             <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{tab.label}</span>
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{user?.role === "PARENT" && tab.id === "parent_assessment" ? "About Your Child" : tab.label}</span>
                                                 {isLocked ? (
                                                     <svg className="w-4 h-4 text-slate-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                                 ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
@@ -757,16 +763,16 @@ function UnifiedWorkspaceContent() {
                         )}
 
                         <div className="px-4 pb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Progress Trackers</p>
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Monthly Updates" : "Progress Trackers"}</p>
                             <div className="flex flex-col gap-1">
                                 {progressTabs.map((tab) => {
                                     const isSub = formStatuses[tab.id]?.submitted;
                                     const isActive = activeFormTab === tab.id;
-                                    const isLocked = (user?.role === "ADMIN" && !isStudentEnrolled) || (["SPECIALIST", "TEACHER"].includes(user?.role || "") && !isStudentEnrolled);
+                                    const isLocked = (user?.role === "ADMIN" && !isStudentEnrolled) || (["SPECIALIST", "TEACHER", "PARENT"].includes(user?.role || "") && !isStudentEnrolled);
                                     return (
                                         <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{tab.label}</span>
+                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{user?.role === "PARENT" && tab.id === "parent_tracker" ? "Home Update" : tab.label}</span>
                                             {isLocked ? (
                                                 <svg className="w-4 h-4 text-slate-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                             ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
@@ -802,6 +808,14 @@ function UnifiedWorkspaceContent() {
                             </div>
                             <h3 className="text-lg font-bold text-slate-700 mb-1">Progress Locked</h3>
                             <p className="text-sm text-slate-500 max-w-sm">{user?.role === "TEACHER" ? "Teacher progress" : "Specialist progress"} can be submitted after the student is enrolled.</p>
+                        </div>
+                    ) : isParentProgressLocked ? (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">Nothing to do here yet</h3>
+                            <p className="text-sm text-slate-500 max-w-sm">Any progress tracking items will appear here once your child is fully enrolled. If you haven't yet, please fill out the parent assessment from the dashboard.</p>
                         </div>
                     ) : canCreateCurrentForm ? (
                         <div className="w-full">
@@ -864,7 +878,12 @@ function UnifiedWorkspaceContent() {
                                     background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
                                     color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
                                 }}>
-                                    {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                                    {user?.role === "PARENT"
+                                        ? (studentStatus?.toUpperCase().replace(/ /g, "_") === "PENDING_ASSESSMENT" ? (formStatuses?.parent_assessment?.submitted ? "Awaiting Review" : "Action Needed") :
+                                           studentStatus?.toUpperCase().replace(/ /g, "_") === "ASSESSMENT_SCHEDULED" ? "Under Evaluation" :
+                                           studentStatus?.toUpperCase().replace(/ /g, "_") === "ASSESSED" ? "Evaluation Complete" :
+                                           STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus)
+                                        : STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                                 </span>
                             )}
                         </div>
@@ -882,7 +901,7 @@ function UnifiedWorkspaceContent() {
                         )}
 
                         <div className="px-4 mb-8">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">IEP Documents</p>
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Learning Plans" : "IEP Documents"}</p>
                             {iepDocs.length === 0 ? (
                                 <p className="text-xs text-slate-400 italic px-2">No IEPs generated yet.</p>
                             ) : (
@@ -894,7 +913,7 @@ function UnifiedWorkspaceContent() {
                                             <button key={doc.id} onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
-                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>IEP Master</span>
+                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Current IEP" : "IEP Master"}</span>
                                                     {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Current</span>}
                                                 </div>
                                                 <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
@@ -906,7 +925,7 @@ function UnifiedWorkspaceContent() {
                         </div>
 
                         <div className="px-4 pb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Progress</p>
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Monthly Reports" : "Monthly Progress"}</p>
                             {monthlyDocs.length === 0 ? (
                                 <p className="text-xs text-slate-400 italic px-2">No monthly reports yet.</p>
                             ) : (
@@ -918,7 +937,7 @@ function UnifiedWorkspaceContent() {
                                             <button key={doc.id} onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
-                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Progress Report</span>
+                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Monthly Report" : "Progress Report"}</span>
                                                     {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
                                                 </div>
                                                 <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
@@ -948,6 +967,245 @@ function UnifiedWorkspaceContent() {
                             </div>
                             <h3 className="text-lg font-bold text-slate-700 mb-1">No Reports Yet</h3>
                             <p className="text-sm text-slate-500 max-w-sm">There are no reports or documents associated with this student yet.</p>
+                        </div>
+                    )}
+                </div>
+            </>
+        );
+    };
+
+    // 3. PARENT UNIFIED WORKSPACE RENDERER
+    const renderParentUnifiedWorkspace = () => {
+        const isStudentEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
+        const trackerStatus = formStatuses?.parent_tracker;
+        const assessmentStatus = formStatuses?.parent_assessment;
+        const iepDocs = docs.filter(d => d.type === "IEP");
+        const monthlyDocs = docs.filter(d => d.type === "MONTHLY");
+        
+        // Determine which panel is active from URL params
+        const viewParam = searchParams.get("view");
+        const docIdParam = searchParams.get("docId");
+        let parentActivePanel = viewParam === "iep" ? "iep" : viewParam === "monthly" ? "monthly" : viewParam === "tracker" ? "tracker" : viewParam === "assessment" ? "assessment" : null;
+        
+        if (!parentActivePanel) {
+            parentActivePanel = (!isStudentEnrolled && !assessmentStatus?.submitted) ? "assessment" : "tracker";
+        }
+
+        const handleParentPanelChange = (panel: string, docId?: string) => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("workspace");
+            url.searchParams.delete("tab");
+            url.searchParams.set("view", panel);
+            if (docId) {
+                url.searchParams.set("docId", docId);
+            } else {
+                url.searchParams.delete("docId");
+            }
+            router.push(url.pathname + url.search);
+        };
+
+        // Tracker form rendering logic
+        const trackerTabConf = TABS.find(t => t.id === "parent_tracker");
+        const isParentTrackerLocked = !isStudentEnrolled;
+        const canCreateTracker = isStudentEnrolled && !trackerStatus?.submitted;
+
+        const renderTrackerContent = () => {
+            if (isParentTrackerLocked) {
+                return (
+                    <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                        <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-700 mb-1">Nothing to do here yet</h3>
+                        <p className="text-sm text-slate-500 max-w-sm">Monthly updates will appear here once your child is fully enrolled. If you haven&apos;t yet, please fill out the parent assessment from the dashboard.</p>
+                    </div>
+                );
+            }
+            if (canCreateTracker) {
+                return (
+                    <div className="w-full">
+                        <FormEntryContent propType={trackerTabConf?.formType as string} propHideNavigation={true} propStudentId={studentId as string} propOnSubmitted={handleEmbeddedFormSubmitted} />
+                    </div>
+                );
+            }
+            if (trackerStatus?.submitted) {
+                return (
+                    <div className="w-full">
+                        <FormEntryContent propType={trackerTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={trackerStatus.id?.toString()} />
+                    </div>
+                );
+            }
+            return (
+                <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                    <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700 mb-1">No Update Submitted</h3>
+                    <p className="text-sm text-slate-500 max-w-sm">No monthly home update has been submitted for this cycle yet.</p>
+                </div>
+            );
+        };
+
+        // Assessment form rendering logic
+        const renderAssessmentContent = () => {
+            if (assessmentStatus?.submitted) {
+                return (
+                    <div className="w-full">
+                        <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={assessmentStatus.id?.toString()} />
+                    </div>
+                );
+            }
+            return (
+                <div className="w-full">
+                    <ParentFormContent propHideNavigation={true} propStudentId={studentId as string} propOnSubmitted={handleEmbeddedFormSubmitted} />
+                </div>
+            );
+        };
+
+        // Get parent-friendly status label
+        const getParentStatusLabel = () => {
+            const normalized = studentStatus?.toUpperCase().replace(/ /g, "_");
+            if (normalized === "PENDING_ASSESSMENT") return formStatuses?.parent_assessment?.submitted ? "Awaiting Review" : "Action Needed";
+            if (normalized === "ASSESSMENT_SCHEDULED") return "Under Evaluation";
+            if (normalized === "ASSESSED") return "Evaluation Complete";
+            return STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus;
+        };
+
+        return (
+            <>
+                {/* Unified Sidebar */}
+                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
+                        <div>
+                            <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {studentStatus && (
+                                <span style={{
+                                    fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                    padding: "2px 8px", borderRadius: "999px",
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                }}>
+                                    {getParentStatusLabel()}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
+                        {/* Your Input section */}
+                        <div className="px-4 mb-6">
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Your Input</p>
+                            <div className="flex flex-col gap-1">
+                                <button
+                                    onClick={() => handleParentPanelChange("assessment")}
+                                    className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
+                                >
+                                    {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                    <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-slate-700'}`}>About Your Child</span>
+                                    {assessmentStatus?.submitted && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Monthly Updates section */}
+                        <div className="px-4 mb-6">
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Updates</p>
+                            <div className="flex flex-col gap-1">
+                                <button
+                                    onClick={() => !isParentTrackerLocked && handleParentPanelChange("tracker")}
+                                    disabled={isParentTrackerLocked}
+                                    title={isParentTrackerLocked ? "Available after enrollment" : undefined}
+                                    className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isParentTrackerLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : parentActivePanel === "tracker" ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
+                                >
+                                    {parentActivePanel === "tracker" && !isParentTrackerLocked && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                    <span className={`text-sm font-bold truncate ${isParentTrackerLocked ? 'text-slate-400' : parentActivePanel === "tracker" ? 'text-emerald-800' : 'text-slate-700'}`}>Home Update</span>
+                                    {isParentTrackerLocked ? (
+                                        <svg className="w-4 h-4 text-slate-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                    ) : trackerStatus?.submitted && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Learning Plans section */}
+                        <div className="px-4 mb-6">
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Learning Plans</p>
+                            {iepDocs.length === 0 ? (
+                                <p className="text-xs text-slate-400 italic px-2">No learning plans generated yet.</p>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    {iepDocs.map((doc, idx) => {
+                                        const isActive = parentActivePanel === "iep" && docIdParam === doc.id.toString();
+                                        const isLatest = idx === 0;
+                                        return (
+                                            <button key={doc.id} onClick={() => handleParentPanelChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                                <div className="flex justify-between items-center w-full">
+                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>Current IEP</span>
+                                                    {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Current</span>}
+                                                </div>
+                                                <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Monthly Reports section */}
+                        <div className="px-4 pb-4">
+                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Reports</p>
+                            {monthlyDocs.length === 0 ? (
+                                <p className="text-xs text-slate-400 italic px-2">No monthly reports yet.</p>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    {monthlyDocs.map((doc, idx) => {
+                                        const isActive = parentActivePanel === "monthly" && docIdParam === doc.id.toString();
+                                        const isLatest = idx === 0;
+                                        return (
+                                            <button key={doc.id} onClick={() => handleParentPanelChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                                <div className="flex justify-between items-center w-full">
+                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Monthly Report</span>
+                                                    {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
+                                                </div>
+                                                <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="flex-1 bg-white relative overflow-y-auto">
+                    {parentActivePanel === "assessment" && renderAssessmentContent()}
+                    {parentActivePanel === "tracker" && renderTrackerContent()}
+                    {parentActivePanel === "iep" && docIdParam && (
+                        <IEPViewerContent propId={docIdParam} propHideNavigation={true} />
+                    )}
+                    {parentActivePanel === "monthly" && docIdParam && (
+                        <MonthlyReportContent propId={docIdParam} propHideNavigation={true} />
+                    )}
+                    {parentActivePanel === "iep" && !docIdParam && iepDocs.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">No Learning Plans Yet</h3>
+                            <p className="text-sm text-slate-500 max-w-sm">Your child&apos;s individualized learning plan will appear here once it&apos;s been created by the team.</p>
+                        </div>
+                    )}
+                    {parentActivePanel === "monthly" && !docIdParam && monthlyDocs.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">No Monthly Reports Yet</h3>
+                            <p className="text-sm text-slate-500 max-w-sm">Monthly progress reports will appear here as they are generated by the team.</p>
                         </div>
                     )}
                 </div>
@@ -1222,7 +1480,8 @@ function UnifiedWorkspaceContent() {
                 {/* Main Workspace Area */}
                 <div className="flex-1 flex flex-col min-w-0 h-full relative z-10 bg-slate-50 md:bg-white overflow-hidden">
                     <div className="px-4 md:px-8 pt-2 md:pt-3 flex-1 flex flex-col min-h-0">
-                        {/* Master Tab Bar */}
+                        {/* Master Tab Bar — hidden for parents (unified view) */}
+                        {user?.role !== "PARENT" && (
                         <div className="flex items-end gap-1 mb-2 border-b border-slate-300 px-2 shrink-0">
                             {user?.role === "ADMIN" && (
                                 <button onClick={() => setWorkspace("overview")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
@@ -1244,10 +1503,11 @@ function UnifiedWorkspaceContent() {
                                 </button>
                             )}
                         </div>
+                        )}
 
                         {/* Unified Card Container */}
                         <div className="bg-white rounded-xl border border-slate-300 shadow-sm flex-1 mb-2 flex flex-col md:flex-row overflow-hidden min-h-0">
-                            {workspace === "overview" && user?.role === "ADMIN" ? renderOverviewWorkspace() : workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}
+                            {user?.role === "PARENT" ? renderParentUnifiedWorkspace() : workspace === "overview" && user?.role === "ADMIN" ? renderOverviewWorkspace() : workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}
                         </div>
                     </div>
                 </div>

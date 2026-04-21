@@ -63,6 +63,10 @@ const toneStyles = {
 };
 
 function getWorkspaceHref(studentId: number, tab: string) {
+    // Parents use a unified workspace — no workspace/tab params needed
+    if (tab === "parent_tracker") {
+        return `/workspace?studentId=${studentId}`;
+    }
     const params = new URLSearchParams({
         studentId: studentId.toString(),
         workspace: "forms",

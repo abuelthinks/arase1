@@ -188,7 +188,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                             {student.first_name} is enrolled! Share how things are going at home to help the team prepare the monthly report.
                         </span>
                         <Link
-                            href={`/workspace?studentId=${student.id}&workspace=forms&tab=parent_tracker`}
+                            href={`/workspace?studentId=${student.id}`}
                             className="btn-primary px-5 py-2 text-sm text-center"
                             style={{ textDecoration: "none", display: "inline-block" }}
                         >

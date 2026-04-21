@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
@@ -19,36 +19,54 @@ const Cb = ({
     onChange: (v: boolean) => void;
     disabled?: boolean;
 }) => (
-    <label className={`flex items-center gap-2 text-base cursor-pointer select-none ${disabled ? "text-slate-400" : "text-slate-700"}`}>
+    <label 
+        className={`
+            flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer select-none transition-all duration-200
+            ${disabled ? "opacity-60 cursor-not-allowed" : "hover:-translate-y-0.5 hover:shadow-sm"}
+            ${checked 
+                ? "bg-indigo-50 border-indigo-400 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]" 
+                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}
+        `}
+    >
         <input
             type="checkbox"
             checked={checked}
             onChange={e => onChange(e.target.checked)}
             disabled={disabled}
-            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            className="hidden" // hide native checkbox to use beautiful pills instead
         />
-        {label}
+        {checked && (
+            <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+        )}
+        <span className={`text-sm tracking-tight ${checked ? 'font-bold' : 'font-medium'}`}>{label}</span>
     </label>
 );
 
 const toggle = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
 
-const SectionHeader = ({ title }: { title: string }) => (
-    <h2 className="text-xl font-bold text-slate-800 border-b-2 border-blue-100 pb-2 mb-5">{title}</h2>
+const SectionHeader = ({ title, description }: { title: string, description?: string }) => (
+    <div className="border-b border-indigo-100/60 pb-4 mb-7">
+        <h2 className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-transparent tracking-tight">
+            {title}
+        </h2>
+        {description && <p className="text-[0.9rem] font-medium text-slate-500 mt-1.5 leading-snug">{description}</p>}
+    </div>
 );
 
 const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
-    <div className="space-y-1.5">
-        <label className="block text-base font-semibold text-slate-700">
-            {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+    <div className="space-y-2">
+        <label className="block text-[0.95rem] font-bold text-slate-700 tracking-tight">
+            {label}{required && <span className="text-pink-500 ml-1 opacity-80">*</span>}
         </label>
         {children}
     </div>
 );
 
-const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-400 outline-none bg-white disabled:bg-slate-50 disabled:text-slate-500";
-const milestoneCls = "flex flex-wrap gap-3";
+const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-xl text-base focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-400 outline-none bg-slate-50/50 hover:bg-white transition-all disabled:bg-slate-50 disabled:text-slate-400 font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal";
+const milestoneCls = "flex flex-wrap gap-2.5";
 
 // ── initial state factory ─────────────────────────────────────────────────────
 
@@ -121,6 +139,10 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
+    const [currentStep, setCurrentStep] = useState(0);
+    const totalSteps = 5;
+    const isWizardMode = !isViewMode;
+    const topRef = useRef<HTMLDivElement>(null);
 
     // For Translation Toggle
     const [fullSubmission, setFullSubmission] = useState<any>(null);
@@ -244,6 +266,25 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
         router.push(studentIdParam ? `/students/${studentIdParam}` : "/dashboard");
     };
 
+    const handleNext = () => {
+        if (currentStep === 0) {
+            if (!form.first_name || !form.last_name || !form.date_of_birth || !form.grade) {
+                setErrorMsg("Please fill in the child's First Name, Last Name, Date of Birth, and Grade to continue.");
+                topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+        }
+        setErrorMsg("");
+        setCurrentStep(prev => Math.min(prev + 1, totalSteps - 1));
+        setTimeout(() => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    };
+
+    const handleBackStep = () => {
+        setErrorMsg("");
+        setCurrentStep(prev => Math.max(prev - 1, 0));
+        setTimeout(() => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    };
+
     const handleSubmit = async () => {
         if (!form.first_name || !form.last_name || !form.date_of_birth || !form.grade) {
             setErrorMsg("Please fill in the child's First Name, Last Name, Date of Birth, and Grade.");
@@ -281,76 +322,17 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
 
     return (
         <ProtectedRoute allowedRoles={isViewMode ? undefined : ["PARENT"]}>
-            <div className="max-w-5xl mx-auto px-4 pt-8 pb-12">
-                {/* Breadcrumb Nav */}
-                {isViewMode && !propHideNavigation && (
-                    <div className="hidden md:flex" style={{ 
-                        marginBottom: "2rem", 
-                        justifyContent: "space-between", 
-                        alignItems: "center", 
-                        background: "white", 
-                        padding: "12px 20px", 
-                        borderRadius: "12px", 
-                        border: "1px solid var(--border-light)", 
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.02)" 
-                    }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <button type="button" onClick={() => router.back()}
-                                style={{ 
-                                    background: "#f8fafc", 
-                                    border: "1px solid #e2e8f0", 
-                                    padding: "6px 12px", 
-                                    borderRadius: "6px", 
-                                    cursor: "pointer", 
-                                    display: "inline-flex", 
-                                    alignItems: "center", 
-                                    gap: "6px", 
-                                    color: "#475569", 
-                                    fontWeight: 600, 
-                                    fontSize: "0.85rem", 
-                                    transition: "all 0.2s" 
-                                }}
-                                className="hover:bg-slate-200"
-                            >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                </svg>
-                                Back
-                            </button>
-                            <span style={{ color: "#cbd5e1" }}>/</span>
-                            <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Student Profile</span>
-                            <span style={{ color: "#cbd5e1" }}>/</span>
-                            <span style={{ color: "var(--text-primary)", fontWeight: 700, fontSize: "0.95rem" }}>
-                                Parent Assessment
-                            </span>
-                        </div>
-                    </div>
-                )}
-                {!isViewMode && !propHideNavigation && (
-                    <div className="hidden md:flex mb-6 flex-wrap items-center gap-2">
-                        <button type="button" onClick={() => router.back()}
-                            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-blue-600 font-semibold text-sm transition-colors cursor-pointer"
-                        >
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Back to Student Profile
-                        </button>
-                        <span className="text-slate-300">›</span>
-                        <span className="text-slate-900 font-semibold text-sm">
-                            Parent Assessment
-                        </span>
-                    </div>
-                )}
-
+            <div className="max-w-5xl mx-auto px-4 pt-8 pb-12 relative">
+                <div ref={topRef} className="absolute -top-10 left-0 w-full" />
+                
                 {/* Top bar */}
                 <div className="flex flex-col items-start gap-4 mb-5 w-full">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900">
-                            {isViewMode ? "Parent Input Form — Read Only" : "Parent Assessment Form"}
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            Parent Assessment Form
                         </h1>
                         <p className="text-sm text-slate-500 mt-0.5">
-                            {isViewMode ? "Past submission — read only." : "THERUNI Unified Parent Assessment Checklist"}
+                            {isViewMode ? "Past submission — read only." : "Help us understand your child's unique needs, strengths, and background."}
                         </p>
                     </div>
                     {isViewMode && hasTranslation && (
@@ -391,17 +373,6 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </button>
                         </div>
                     )}
-                    {!isViewMode && (
-                        <button
-                            onClick={handleSaveAndBack}
-                            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 px-4 py-2 rounded-lg border border-slate-200 hover:border-blue-300 bg-white transition"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Save Draft & Back
-                        </button>
-                    )}
                 </div>
 
                 {successMsg && (
@@ -414,10 +385,23 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
 
                 <fieldset disabled={dis} className="space-y-10">
 
-                    {/* ── SECTION A ─────────────────────────────────────────── */}
-                    {!hideBackgroundSection && (
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section A — Background Information" />
+                    {isWizardMode && (
+                        <div className="mb-2">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-blue-600 tracking-wide uppercase">Step {currentStep + 1} of {totalSteps}</span>
+                                <span className="text-xs font-semibold text-slate-400">{Math.round(((currentStep + 1) / totalSteps) * 100)}% Completed</span>
+                            </div>
+                            <div className="w-full bg-slate-100/80 h-3 rounded-full overflow-hidden mb-8 shadow-inner border border-slate-200/50">
+                                <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 h-full transition-all duration-500 ease-out relative" style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}>
+                                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}                    {/* ── STEP 1 (Section A) ─────────────────────────────────────────── */}
+                    {(!isWizardMode || currentStep === 0) && !hideBackgroundSection && (
+                    <div className="space-y-10 animate-fadeIn">
+                        <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                            <SectionHeader title={isViewMode ? "Section A — Let's start with the basics" : "Let's start with the basics"} description="Help us understand your child's basic background details so we can set up their profile." />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <Field label="Child's First Name" required>
@@ -493,12 +477,15 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                                 )}
                             </div>
                         </Field>
-                    </section>
+                        </section>
+                    </div>
                     )}
 
-                    {/* ── SECTION B ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section B — Developmental History" />
+                    {/* ── STEP 2 (Section B) ─────────────────────────────────────────── */}
+                    {(!isWizardMode || currentStep === 1) && (
+                    <div className="space-y-10 animate-fadeIn">
+                        <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                            <SectionHeader title={isViewMode ? "Section B — Your child's milestones & history" : "Your child's milestones & history"} description="Share a snapshot of your child's developmental milestones and past services." />
 
                         <div className="space-y-3">
                             <p className="text-sm font-semibold text-slate-700">Developmental Milestones</p>
@@ -548,11 +535,15 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                                 <input className={`${inputCls} mt-2 w-full`} placeholder="Other concern…" value={form.areas_of_concern_other} onChange={e => set("areas_of_concern_other")(e.target.value)} disabled={dis} />
                             )}
                         </Field>
-                    </section>
+                        </section>
+                    </div>
+                    )}
 
-                    {/* ── SECTION C ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section C — Parent Input" />
+                    {/* ── STEP 5 (Section C, F, H) ─────────────────────────────────────────── */}
+                    {(!isWizardMode || currentStep === 4) && (
+                    <div className="space-y-10 animate-fadeIn">
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Section C — Your Goals & Concerns" : "Your Goals & Concerns"} description="Tell us what you want to focus on and your main worries." />
 
                         <Field label="Primary Concerns">
                             <div className="flex flex-wrap gap-3">
@@ -586,10 +577,14 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
                     </section>
+                    </div>
+                    )}
 
-                    {/* ── SECTION D ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section D — Behavior & Social Interaction" />
+                    {/* ── STEP 3 (Sections D & E) ─────────────────────────────────────────── */}
+                    {(!isWizardMode || currentStep === 2) && (
+                    <div className="space-y-10 animate-fadeIn">
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Section D — How does your child interact with the world?" : "How does your child interact with the world?"} description="Help us understand what triggers them and how they relate to others." />
 
                         <Field label="Difficulties">
                             <div className="flex flex-wrap gap-3">
@@ -640,9 +635,8 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                         </Field>
                     </section>
 
-                    {/* ── SECTION E ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section E — Sensory & Physical Needs" />
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Section E — Sensory & Physical Needs" : "Sensory & Physical Needs"} description="Let us know their physical needs and any sensory sensitivities we should accommodate." />
 
                         <Field label="Sensory Sensitivities">
                             <div className="flex flex-wrap gap-3">
@@ -670,10 +664,14 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             )}
                         </Field>
                     </section>
+                    </div>
+                    )}
 
                     {/* ── SECTION F ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section F — Goals & Expectations" />
+                    {(!isWizardMode || currentStep === 4) && (
+                    <div className="space-y-10 animate-fadeIn">
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Section F — Goals & Expectations" : "Goals & Expectations"} description="What are your short-term and long-term hopes for your child?" />
 
                         <Field label="Goals for This Year">
                             <div className="flex flex-wrap gap-3">
@@ -699,10 +697,14 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
                     </section>
+                    </div>
+                    )}
 
                     {/* ── SECTION G ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section G — Home Environment & Support" />
+                    {(!isWizardMode || currentStep === 3) && (
+                    <div className="space-y-10 animate-fadeIn">
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Section G — Routines & Support" : "Routines & Support"} description="Tell us about the structure, routines, and strategies that work for them at home." />
 
                         <Field label="Home Strategies">
                             <div className="flex flex-wrap gap-3">
@@ -724,10 +726,14 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
                     </section>
+                    </div>
+                    )}
 
                     {/* ── SECTION H ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section H — Child Strengths" />
+                    {(!isWizardMode || currentStep === 4) && (
+                    <div className="space-y-10 animate-fadeIn">
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Section H — What makes your child shine?" : "What makes your child shine?"} description="Every child has superpowers! Tell us what your child excels at." />
 
                         <Field label="My Child's Strengths">
                             <div className="flex flex-wrap gap-3">
@@ -741,10 +747,14 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
                     </section>
+                    </div>
+                    )}
 
                     {/* ── SECTION I ─────────────────────────────────────────── */}
-                    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-                        <SectionHeader title="Section I — Daily Living Skills" />
+                    {(!isWizardMode || currentStep === 3) && (
+                    <div className="space-y-10 animate-fadeIn">
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Section I — Daily Living Skills" : "Daily Living Skills"} description="Help us understand how independent they are with daily self-care tasks." />
 
                         {[
                             { label: "Eating",   key: "eating" as keyof FormState,   opts: ["Eats independently", "Needs some help", "Needs full help"] },
@@ -772,26 +782,50 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             />
                         </Field>
                     </section>
+                    </div>
+                    )}
 
                 </fieldset>
 
                 {/* ── Footer ──────────────────────────────────────────────── */}
                 {!isViewMode && (
-                    <div className="flex justify-between items-center mt-6 pb-8">
-                        <button
-                            onClick={handleSaveAndBack}
-                            className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 transition"
-                        >
-                            ← Save & back
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={loading}
-                            className="btn-primary"
-                            style={{ padding: "12px 32px", fontSize: "0.95rem" }}
-                        >
-                            {loading ? "Submitting…" : "Submit Assessment Form"}
-                        </button>
+                    <div className="flex justify-between items-center mt-8 pb-8 pt-4">
+                        {isWizardMode && currentStep > 0 ? (
+                            <button
+                                onClick={handleBackStep}
+                                className="text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-2 transition px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-white hover:border-blue-300"
+                            >
+                                ← Back
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSaveAndBack}
+                                className="text-sm font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1 transition"
+                            >
+                                Save draft & exit
+                            </button>
+                        )}
+                        
+                        <div className="flex gap-3">
+                            {isWizardMode && currentStep < totalSteps - 1 ? (
+                                <button
+                                    onClick={handleNext}
+                                    className="btn-primary"
+                                    style={{ padding: "12px 32px", fontSize: "0.95rem", borderRadius: "99px" }}
+                                >
+                                    Next Step →
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={loading}
+                                    className="btn-primary"
+                                    style={{ padding: "12px 32px", fontSize: "0.95rem", borderRadius: "99px", background: loading ? "#cbd5e1" : "#10b981", borderColor: "transparent", color: "white" }}
+                                >
+                                    {loading ? "Submitting…" : "Review & Submit"}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

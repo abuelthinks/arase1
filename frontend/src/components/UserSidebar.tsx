@@ -14,6 +14,7 @@ export default function UserSidebar() {
     const { user } = useAuth();
     const [lastParentStudentId, setLastParentStudentId] = useState<string | null>(null);
     const [fallbackParentStudentId, setFallbackParentStudentId] = useState<string | null>(null);
+    const [hasEnrolledChild, setHasEnrolledChild] = useState<boolean>(false);
 
     const isTeacher = user?.role === "TEACHER";
     const isSpecialist = user?.role === "SPECIALIST";
@@ -29,9 +30,7 @@ export default function UserSidebar() {
     const isWorkspace = pathname.startsWith("/workspace") || pathname.startsWith("/students");
     const isParentMonthlyProgress =
         isParent &&
-        pathname.startsWith("/workspace") &&
-        searchParams.get("workspace") === "forms" &&
-        searchParams.get("tab") === "parent_tracker";
+        pathname.startsWith("/workspace");
 
     useEffect(() => {
         if (!isParent || typeof window === "undefined") return;
@@ -59,7 +58,7 @@ export default function UserSidebar() {
             || fallbackParentStudentId
             || (typeof window !== "undefined" ? window.localStorage.getItem("arase:last-parent-student-id") : null);
         if (studentId) {
-            router.push(`/workspace?studentId=${studentId}&workspace=forms&tab=parent_tracker`);
+            router.push(`/workspace?studentId=${studentId}`);
             return;
         }
         router.push("/dashboard");
@@ -92,7 +91,7 @@ export default function UserSidebar() {
                             className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isParentMonthlyProgress ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}
                         >
                             <LayoutTemplate size={18} />
-                            <span className="truncate">Report</span>
+                            <span className="truncate">Progress</span>
                         </button>
                     )}
 
@@ -132,7 +131,7 @@ export default function UserSidebar() {
                         className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isParentMonthlyProgress ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}
                     >
                         <LayoutTemplate size={20} className={isParentMonthlyProgress ? "stroke-[2.5px]" : ""} />
-                        <span className="text-[0.65rem] font-medium">Report</span>
+                        <span className="text-[0.65rem] font-medium">Progress</span>
                     </button>
                 )}
                 {(isTeacher || isSpecialist) && (

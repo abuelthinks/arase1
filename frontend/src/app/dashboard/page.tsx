@@ -153,6 +153,9 @@ export default function DashboardPage() {
     };
 
     const getStudentWorkspaceHref = (studentId: number, tab?: string) => {
+        if (user?.role === "PARENT") {
+            return `/workspace?studentId=${studentId}`;
+        }
         const params = new URLSearchParams({
             studentId: studentId.toString(),
             workspace: "forms",
