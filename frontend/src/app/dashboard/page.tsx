@@ -400,7 +400,7 @@ export default function DashboardPage() {
                                                 </div>
 
                                                 {/* CTA section */}
-                                                <div style={{ padding: "1.25rem 1.5rem" }}>
+                                                <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "12px" }}>
                                                     <Link
                                                         href={cta.href}
                                                         onClick={() => rememberParentStudent(s.id)}
@@ -410,6 +410,19 @@ export default function DashboardPage() {
                                                         {cta.label}
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                                                     </Link>
+
+                                                    {s.status !== "ARCHIVED" && (
+                                                        <Link
+                                                            href={`/specialists?studentId=${s.id}`}
+                                                            className="btn-secondary"
+                                                            style={{ textDecoration: "none", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", fontWeight: 600, gap: "8px", width: "100%", boxSizing: "border-box", fontSize: "0.9rem", borderRadius: "8px", transition: "all 0.2s" }}
+                                                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.borderColor = "#cbd5e1" }}
+                                                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.borderColor = "#e2e8f0" }}
+                                                        >
+                                                            <span>Specialist Preferences</span>
+                                                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                        </Link>
+                                                    )}
                                                 </div>
                                             </div>
                                         );

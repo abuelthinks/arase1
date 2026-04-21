@@ -16,6 +16,7 @@ from .views import (
     SendVerificationSMSView, VerifySMSView,
     CreateCycleView, SendRemindersView, TaskStatusView,
     NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView,
+    SpecialistPreferenceViewSet, SpecialistListView,
 )
 
 router = DefaultRouter()
@@ -27,8 +28,10 @@ router.register(r'inputs/sped-assessment', SpedAssessmentViewSet, basename='sped
 router.register(r'inputs/parent-tracker', ParentProgressTrackerViewSet, basename='parent-tracker')
 router.register(r'inputs/multidisciplinary-tracker', MultidisciplinaryProgressTrackerViewSet, basename='multidisciplinary-tracker')
 router.register(r'inputs/sped-tracker', SpedProgressTrackerViewSet, basename='sped-tracker')
+router.register(r'specialist-preferences', SpecialistPreferenceViewSet, basename='specialist-preference')
 
 urlpatterns = [
+    path('specialists/', SpecialistListView.as_view(), name='specialists-list'),
     path('students/onboard/', ParentOnboardView.as_view(), name='parent-onboard'),
     path('students/<int:student_id>/profile/', StudentProfileView.as_view(), name='student-profile'),
     path('students/<int:student_id>/request-assessment/', RequestAssessmentView.as_view(), name='request-assessment'),

@@ -10,17 +10,18 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import (
-    Student, ReportCycle, GeneratedDocument, DocumentVersion,
+    Student, ReportCycle, GeneratedDocument, DocumentVersion, StudentAccess,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    User, Invitation, PhoneVerification, Notification
+    User, Invitation, PhoneVerification, Notification, SpecialistPreference
 )
 from .services.notification_service import notify_admins_in_app
 from .serializers import (
     StudentSerializer, GeneratedDocumentSerializer, CustomTokenObtainPairSerializer,
     ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer, SpedAssessmentSerializer,
     ParentProgressTrackerSerializer, MultidisciplinaryProgressTrackerSerializer, SpedProgressTrackerSerializer,
-    AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer
+    AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer,
+    SpecialistPreferenceSerializer
 )
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -103,7 +104,10 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'ADMIN':
             return User.objects.all().order_by('-date_joined')
-        return User.objects.filter(id=user.id)
+        from django.db.models import Q
+        return User.objects.filter(
+            Q(id=user.id) | Q(role__in=['SPECIALIST', 'TEACHER'])
+        ).distinct()
 
     def get_serializer_class(self):
         if self.request.user.role == 'ADMIN':
@@ -1570,3 +1574,48 @@ class NotificationMarkAllReadView(APIView):
     def post(self, request):
         Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         return Response({'status': 'ok'})
+
+class SpecialistPreferenceViewSet(viewsets.ModelViewSet):
+    queryset = SpecialistPreference.objects.all()
+    serializer_class = SpecialistPreferenceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = SpecialistPreference.objects.all()
+
+        if user.role == 'PARENT':
+            assigned_student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
+            queryset = queryset.filter(student_id__in=assigned_student_ids)
+
+        student_id = self.request.query_params.get('student_id')
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        student = serializer.validated_data['student']
+
+        if user.role == 'PARENT':
+            if not StudentAccess.objects.filter(user=user, student=student).exists():
+                raise PermissionDenied("You do not have permission to set preferences for this student.")
+        
+        serializer.save()
+
+class SpecialistListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        specialists = User.objects.filter(role='SPECIALIST', is_active=True)
+        data = [
+            {
+                "id": sp.id,
+                "first_name": sp.first_name,
+                "last_name": sp.last_name,
+                "specialty": sp.specialty or "Other"
+            }
+            for sp in specialists
+        ]
+        return Response(data)

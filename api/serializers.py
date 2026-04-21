@@ -7,7 +7,7 @@ from .models import (
     User, Student, StudentAccess, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    Invitation, Notification
+    Invitation, Notification, SpecialistPreference
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -255,3 +255,17 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'notification_type', 'title', 'message', 'link', 'is_read', 'created_at']
         read_only_fields = ['id', 'notification_type', 'title', 'message', 'link', 'created_at']
+
+class SpecialistPreferenceSerializer(serializers.ModelSerializer):
+    # Include basic details of the specialist for display purposes
+    specialist_name = serializers.SerializerMethodField()
+    specialist_first_name = serializers.CharField(source='specialist.first_name', read_only=True)
+    specialist_last_name = serializers.CharField(source='specialist.last_name', read_only=True)
+
+    class Meta:
+        model = SpecialistPreference
+        fields = ['id', 'student', 'specialty', 'specialist', 'specialist_name', 'specialist_first_name', 'specialist_last_name']
+        read_only_fields = ['id']
+
+    def get_specialist_name(self, obj):
+        return f"{obj.specialist.first_name} {obj.specialist.last_name}".strip() or obj.specialist.username

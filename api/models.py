@@ -239,3 +239,14 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} -> {self.recipient.username}"
+
+class SpecialistPreference(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='specialist_preferences')
+    specialty = models.CharField(max_length=100)
+    specialist = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('student', 'specialty')
+
+    def __str__(self):
+        return f"Preference for {self.student}: {self.specialty} -> {self.specialist.username}"
