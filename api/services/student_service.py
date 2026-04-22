@@ -8,7 +8,7 @@ from api.models import (
     Student, StudentAccess, ReportCycle,
     ParentAssessment, MultidisciplinaryAssessment, User, Invitation,
 )
-from api.specialties import normalize_specialty
+from api.specialties import normalize_specialty, validate_specialties
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
@@ -165,7 +165,10 @@ def get_student_profile_data(student, user=None):
             if user and user.role == 'PARENT' and key != 'parent_assessment':
                 form_statuses[key] = {"submitted": False, "id": None}
                 continue
-            obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
+            if key in ['parent_assessment', 'multi_assessment', 'sped_assessment']:
+                obj = model.objects.select_related('submitted_by').filter(student=student).order_by('-created_at').first()
+            else:
+                obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
             form_statuses[key] = {
                 "submitted": bool(obj),
                 "id": obj.id if obj else None,
@@ -205,6 +208,11 @@ def get_student_profile_data(student, user=None):
             parent_info = {
                 "gender": v2.get("gender", ""),
                 "primary_language": v2.get("primary_language", []),
+                "primary_language_other": v2.get("primary_language_other", ""),
+                "medical_alerts": v2.get("medical_alerts", ""),
+                "medical_alerts_detail": v2.get("medical_alerts_detail", ""),
+                "known_conditions": v2.get("known_conditions", []),
+                "known_conditions_other": v2.get("known_conditions_other", ""),
                 "parent_guardian_name": v2.get("parent_name", ""),
                 "parent_phone": v2.get("phone", ""),
                 "parent_email": v2.get("email", ""),
@@ -213,6 +221,11 @@ def get_student_profile_data(student, user=None):
             parent_info = {
                 "gender": fd.get("gender", ""),
                 "primary_language": fd.get("primary_language", ""),
+                "primary_language_other": fd.get("primary_language_other", ""),
+                "medical_alerts": fd.get("medical_alerts", ""),
+                "medical_alerts_detail": fd.get("medical_alerts_detail", ""),
+                "known_conditions": fd.get("known_conditions", []),
+                "known_conditions_other": fd.get("known_conditions_other", ""),
                 "parent_guardian_name": fd.get("parent_guardian_name", ""),
                 "parent_phone": fd.get("phone", ""),
                 "parent_email": fd.get("email", ""),
@@ -232,7 +245,10 @@ def get_student_profile_data(student, user=None):
             "role": sa.user.role,
             "first_name": sa.user.first_name,
             "last_name": sa.user.last_name,
-            "specialty": normalize_specialty(sa.user.specialty),
+            "specialty": normalize_specialty(sa.specialty_list()[0] if sa.specialty_list() else sa.user.specialty),
+            "specialties": [
+                normalize_specialty(s) for s in sa.specialty_list() if s
+            ],
         } for sa in assigned_users]
 
     # Cycle status summary and carry-forward recommendations
@@ -258,7 +274,7 @@ def get_student_profile_data(student, user=None):
     }
 
 
-def assign_staff_to_student(student_id, staff_id, expected_role):
+def assign_staff_to_student(student_id, staff_id, expected_role, specialties=None):
     """
     Assigns a user (specialist/teacher/parent) to a student.
 
@@ -275,13 +291,55 @@ def assign_staff_to_student(student_id, staff_id, expected_role):
         has_parent_input = ParentAssessment.objects.filter(student=student).exists()
         if not has_parent_input:
             raise ValidationError("Cannot assign a Specialist until the Parent Assessment is submitted.")
-            
+
+        staff_specialties = {
+            normalize_specialty(s) for s in staff.specialty_list() if s
+        }
+        try:
+            assigned_specialties = validate_specialties(
+                'SPECIALIST',
+                specialties if specialties is not None else list(staff_specialties),
+            )
+        except ValueError as exc:
+            raise ValidationError(str(exc))
+        new_specialties = {normalize_specialty(s) for s in assigned_specialties if s}
+        if not new_specialties:
+            raise ValidationError("Select at least one specialist discipline to assign.")
+
+        unsupported = new_specialties - staff_specialties
+        if unsupported:
+            raise ValidationError(
+                f"Specialist does not have: {', '.join(sorted(unsupported))}."
+            )
+
+        # Enforce: only one specialist per assigned specialty per student.
+        if new_specialties:
+            already = (
+                StudentAccess.objects
+                .filter(student=student, user__role='SPECIALIST')
+                .exclude(user_id=staff.id)
+                .select_related('user')
+            )
+            covered = set()
+            for sa in already:
+                for s in sa.specialty_list():
+                    if s:
+                        covered.add(normalize_specialty(s))
+            overlap = new_specialties & covered
+            if overlap:
+                raise ValidationError(
+                    f"A specialist is already assigned for: {', '.join(sorted(overlap))}."
+                )
+
     elif expected_role == 'TEACHER':
         # Teacher assignment is locked until the student is Enrolled
         if student.status != 'ENROLLED':
             raise ValidationError("Cannot assign a Teacher until the student is ENROLLED.")
             
-    StudentAccess.objects.get_or_create(user=staff, student=student)
+    access, _ = StudentAccess.objects.get_or_create(user=staff, student=student)
+    if expected_role == 'SPECIALIST':
+        access.assigned_specialties = assigned_specialties
+        access.save(update_fields=['assigned_specialties'])
 
     # Update student status based on assignment
     if expected_role == 'SPECIALIST' and student.status == 'PENDING_ASSESSMENT':

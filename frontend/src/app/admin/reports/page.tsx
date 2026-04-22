@@ -14,12 +14,20 @@ interface FormStatuses {
     parent_tracker: FormStatus;
     multi_tracker: FormStatus;
     sped_tracker: FormStatus;
+    parent_assessment: FormStatus;
+    multi_assessment: FormStatus;
+    sped_assessment: FormStatus;
 }
 
 const progressTrackerLabels: Record<string, string> = {
     parent_tracker: "Parent Progress",
     multi_tracker: "Specialist Progress",
     sped_tracker: "Teacher Progress",
+};
+
+const assessmentLabels: Record<string, string> = {
+    parent_assessment: "Parent Assessment",
+    multi_assessment: "Specialist Assessment",
 };
 
 interface AdminReportsContentProps {
@@ -57,6 +65,9 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         parent_tracker: fs.parent_tracker ?? { submitted: false, id: null },
                         multi_tracker:  fs.multi_tracker  ?? { submitted: false, id: null },
                         sped_tracker:   fs.sped_tracker   ?? { submitted: false, id: null },
+                        parent_assessment: fs.parent_assessment ?? { submitted: false, id: null },
+                        multi_assessment:  fs.multi_assessment  ?? { submitted: false, id: null },
+                        sped_assessment:   fs.sped_assessment   ?? { submitted: false, id: null },
                     });
                     if (res.data.cycle_status) {
                         setCycleStatus(res.data.cycle_status);
@@ -216,14 +227,41 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
 
             {/* IEP Card */}
             <div style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1.25rem", marginBottom: "1rem", background: "white" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                    <div style={{ flex: 1 }}>
                         <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
                             <span style={{ marginRight: "8px" }}>📋</span>Comprehensive AI-Generated IEP
                         </h3>
-                        <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>
+                        <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px", marginBottom: "14px" }}>
                             Compiles all assessment data and uses AI to generate goals, objectives, and recommendations.
                         </p>
+
+                        {/* Assessment Status Pills */}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                            {Object.entries(assessmentLabels).map(([key, label]) => {
+                                const submitted = formStatuses?.[key as keyof FormStatuses]?.submitted ?? false;
+                                return (
+                                    <span key={key} style={{
+                                        display: "inline-flex", alignItems: "center", gap: "5px",
+                                        padding: "4px 10px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700,
+                                        background: submitted ? "#dcfce7" : "#f1f5f9",
+                                        color: submitted ? "#166534" : "#94a3b8",
+                                        border: `1px solid ${submitted ? "#a7f3d0" : "#e2e8f0"}`,
+                                    }}>
+                                        {submitted ? (
+                                            <svg style={{ width: 12, height: 12 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        ) : (
+                                            <svg style={{ width: 12, height: 12 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        )}
+                                        {label}
+                                    </span>
+                                );
+                            })}
+                        </div>
                     </div>
                     <button
                         onClick={handleGenerateIEP}
@@ -234,7 +272,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             color: ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "white" : "#94a3b8",
                             fontWeight: 700, fontSize: "0.85rem",
                             cursor: loading || !["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
-                            whiteSpace: "nowrap",
+                            whiteSpace: "nowrap", flexShrink: 0, marginTop: "4px",
                         }}
                     >
                         {loading ? "⏳ Generating…" : ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "🤖 Generate" : "Requires Review"}

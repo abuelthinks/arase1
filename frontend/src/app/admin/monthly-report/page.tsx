@@ -62,6 +62,17 @@ interface MonthlyReportData {
     next_month_focus_areas: string[];
 }
 
+const formatDocumentDateTime = (value?: string | null) => {
+    if (!value) return "";
+    return new Date(value).toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+};
+
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 
 export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: string; propHideNavigation?: boolean }) {
@@ -176,7 +187,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                         </span>
                     </h1>
                     <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
-                        {meta.student_name} · {report.report_period || `Generated ${new Date(meta.created_at).toLocaleDateString()}`}
+                        {meta.student_name} · {report.report_period || "Progress Report"} · Generated {formatDocumentDateTime(meta.created_at)}
                     </p>
                 </div>
                 {user?.role === "ADMIN" && (
@@ -184,10 +195,6 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                         <button onClick={fetchAuditHistory}
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
                             ⏱️ Audit History
-                        </button>
-                        <button onClick={handleCopyLink}
-                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: copied ? "#059669" : "#475569" }}>
-                            {copied ? "✓ Copied!" : "🔗 Share Link"}
                         </button>
                         <button onClick={handleDownload}
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>

@@ -2,12 +2,12 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .specialties import validate_specialty
+from .specialties import validate_specialties
 from .models import (
     User, Student, StudentAccess, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    Invitation, Notification, SpecialistPreference
+    Invitation, Notification, SpecialistPreference, SectionContribution
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -33,6 +33,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class AdminUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
+    specialties = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+        allow_empty=True,
+    )
     assigned_students_count = serializers.SerializerMethodField()
     assigned_student_names = serializers.SerializerMethodField()
 
@@ -41,6 +46,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role', 'first_name', 'last_name', 'specialty',
+                  'specialties',
                   'phone_number', 'is_phone_verified',
                   'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students']
 
@@ -60,15 +66,36 @@ class AdminUserSerializer(serializers.ModelSerializer):
         accesses = obj.student_access.all().select_related('student')
         return [{"id": a.student.id, "first_name": a.student.first_name, "last_name": a.student.last_name, "grade": a.student.grade, "status": a.student.status} for a in accesses]
 
+    def _resolve_specialties(self, role: str, validated_data: dict, instance=None) -> list[str]:
+        """Reconcile single `specialty` and list `specialties` inputs.
+
+        Returns the canonical list. Mutates validated_data so both fields are written.
+        """
+        has_list = 'specialties' in validated_data
+        has_single = 'specialty' in validated_data
+
+        if has_list:
+            raw_list = validated_data.get('specialties') or []
+        elif has_single:
+            single = validated_data.get('specialty')
+            raw_list = [single] if single else []
+        elif instance is not None:
+            raw_list = instance.specialty_list()
+        else:
+            raw_list = []
+
+        try:
+            normalized = validate_specialties(role, raw_list)
+        except ValueError as exc:
+            raise serializers.ValidationError({"specialties": str(exc)})
+
+        validated_data['specialties'] = normalized
+        validated_data['specialty'] = normalized[0] if normalized else ''
+        return normalized
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        try:
-            validated_data['specialty'] = validate_specialty(
-                validated_data.get('role', ''),
-                validated_data.get('specialty'),
-            )
-        except ValueError as exc:
-            raise serializers.ValidationError({"specialty": str(exc)})
+        self._resolve_specialties(validated_data.get('role', ''), validated_data)
         # Title-case names
         if 'first_name' in validated_data:
             validated_data['first_name'] = validated_data['first_name'].strip().title()
@@ -83,13 +110,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
         next_role = validated_data.get('role', instance.role)
-        try:
-            validated_data['specialty'] = validate_specialty(
-                next_role,
-                validated_data.get('specialty', instance.specialty),
-            )
-        except ValueError as exc:
-            raise serializers.ValidationError({"specialty": str(exc)})
+        self._resolve_specialties(next_role, validated_data, instance=instance)
         if 'first_name' in validated_data:
             validated_data['first_name'] = validated_data['first_name'].strip().title()
         if 'last_name' in validated_data:
@@ -106,7 +127,7 @@ class SelfUserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'email', 'role', 'first_name', 'last_name',
-            'specialty', 'phone_number', 'is_phone_verified'
+            'specialty', 'specialties', 'phone_number', 'is_phone_verified'
         ]
         read_only_fields = fields
 
@@ -182,7 +203,7 @@ class StudentAccessSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)
     class Meta:
         model = StudentAccess
-        fields = ['id', 'user', 'student']
+        fields = ['id', 'user', 'student', 'assigned_specialties']
 
 class ReportCycleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -195,11 +216,31 @@ class ParentAssessmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['submitted_by']
 
+class SectionContributionSerializer(serializers.ModelSerializer):
+    specialist_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SectionContribution
+        fields = [
+            'id', 'form_type', 'section_key', 'specialist', 'specialist_name',
+            'specialty', 'status', 'updated_at', 'submitted_at',
+        ]
+        read_only_fields = fields
+
+    def get_specialist_name(self, obj):
+        if not obj.specialist:
+            return ''
+        name = f"{obj.specialist.first_name} {obj.specialist.last_name}".strip()
+        return name or obj.specialist.username
+
+
 class MultidisciplinaryAssessmentSerializer(serializers.ModelSerializer):
+    section_contributions = SectionContributionSerializer(many=True, read_only=True)
+
     class Meta:
         model = MultidisciplinaryAssessment
         fields = '__all__'
-        read_only_fields = ['submitted_by']
+        read_only_fields = ['submitted_by', 'finalized_at', 'finalized_by', 'section_contributions']
 
 class SpedAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -214,10 +255,12 @@ class ParentProgressTrackerSerializer(serializers.ModelSerializer):
         read_only_fields = ['submitted_by']
 
 class MultidisciplinaryProgressTrackerSerializer(serializers.ModelSerializer):
+    section_contributions = SectionContributionSerializer(many=True, read_only=True)
+
     class Meta:
         model = MultidisciplinaryProgressTracker
         fields = '__all__'
-        read_only_fields = ['submitted_by']
+        read_only_fields = ['submitted_by', 'finalized_at', 'finalized_by', 'section_contributions']
 
 class SpedProgressTrackerSerializer(serializers.ModelSerializer):
     class Meta:

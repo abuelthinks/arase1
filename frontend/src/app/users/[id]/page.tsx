@@ -23,6 +23,7 @@ interface UserData {
     first_name: string;
     last_name: string;
     specialty: SpecialistSpecialty | "";
+    specialties?: SpecialistSpecialty[];
     phone_number?: string;
     is_phone_verified?: boolean;
     assigned_students_count: number;
@@ -103,10 +104,17 @@ export default function UserProfile() {
     const [user, setUser] = useState<UserData | null>(cached);
     const [loading, setLoading] = useState(cached === null);
     const [error, setError] = useState("");
-    const [specialty, setSpecialty] = useState<SpecialistSpecialty | "">("");
+    const [specialties, setSpecialties] = useState<SpecialistSpecialty[]>([]);
     const [savingSpecialty, setSavingSpecialty] = useState(false);
     const [specialtyError, setSpecialtyError] = useState("");
     const [isEditingSpecialty, setIsEditingSpecialty] = useState(false);
+
+    const initialSpecialties = (raw: UserData): SpecialistSpecialty[] => {
+        if (Array.isArray(raw.specialties) && raw.specialties.length > 0) {
+            return raw.specialties as SpecialistSpecialty[];
+        }
+        return raw.specialty ? [raw.specialty as SpecialistSpecialty] : [];
+    };
 
     const isAdmin = authUser?.role === "ADMIN";
 
@@ -116,7 +124,7 @@ export default function UserProfile() {
                 const res = await api.get(`/api/users/${id}/`);
                 profileCache.set(cacheKey, res.data);
                 setUser(res.data);
-                setSpecialty(res.data.specialty || "");
+                setSpecialties(initialSpecialties(res.data));
                 setError("");
             } catch (err: any) {
                 if (!profileCache.has(cacheKey)) {
@@ -241,7 +249,9 @@ export default function UserProfile() {
                                 )}
                                 {!isParent && (
                                     <span className="profile-meta-pill">
-                                        {user.specialty || "Specialty not set"}
+                                        {(user.specialties && user.specialties.length > 0)
+                                            ? user.specialties.join(", ")
+                                            : (user.specialty || "Specialty not set")}
                                     </span>
                                 )}
                             </div>
@@ -323,9 +333,11 @@ export default function UserProfile() {
                                 </div>
 
                                 <div className="profile-context-card">
-                                    <div className="profile-context-label">Specialty / Responsibility</div>
+                                    <div className="profile-context-label">Specialties / Responsibility</div>
                                     <div className="profile-context-value">
-                                        {user.specialty || "Not configured yet"}
+                                        {(user.specialties && user.specialties.length > 0)
+                                            ? user.specialties.join(", ")
+                                            : (user.specialty || "Not configured yet")}
                                     </div>
                                 </div>
                             </div>
@@ -336,15 +348,15 @@ export default function UserProfile() {
                         <section className="profile-panel">
                             <div className="profile-panel-header split">
                                 <div>
-                                    <h2 className="profile-panel-title">Edit Specialty</h2>
-                                    <p className="profile-panel-copy">Keep staff skills and assignment context up to date.</p>
+                                    <h2 className="profile-panel-title">Edit Specialties</h2>
+                                    <p className="profile-panel-copy">A specialist may hold one or more disciplines. Each one unlocks the matching section in assessment and tracker forms.</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setSpecialtyError("");
                                         setIsEditingSpecialty(current => !current);
-                                        setSpecialty(user.specialty || "");
+                                        setSpecialties(initialSpecialties(user));
                                     }}
                                     className="btn-slate"
                                 >
@@ -355,16 +367,27 @@ export default function UserProfile() {
                             <div className="profile-panel-body">
                                 {isEditingSpecialty ? (
                                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                        <select
-                                            value={specialty}
-                                            onChange={event => setSpecialty(event.target.value as SpecialistSpecialty | "")}
-                                            className="form-input"
-                                        >
-                                            <option value="">Select specialist discipline</option>
-                                            {SPECIALIST_SPECIALTIES.map(option => (
-                                                <option key={option} value={option}>{option}</option>
-                                            ))}
-                                        </select>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                            {SPECIALIST_SPECIALTIES.map(option => {
+                                                const checked = specialties.includes(option);
+                                                return (
+                                                    <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", color: "#0f172a", cursor: "pointer" }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={() => {
+                                                                setSpecialties(prev => checked
+                                                                    ? prev.filter(s => s !== option)
+                                                                    : [...prev, option]
+                                                                );
+                                                            }}
+                                                            style={{ width: 16, height: 16, accentColor: "#4f46e5" }}
+                                                        />
+                                                        {option}
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
                                         {specialtyError && (
                                             <div style={{ fontSize: "0.8rem", color: "#dc2626" }}>
                                                 {specialtyError}
@@ -378,12 +401,16 @@ export default function UserProfile() {
                                                     setSavingSpecialty(true);
                                                     setSpecialtyError("");
                                                     try {
-                                                        await api.patch(`/api/users/${id}/`, { specialty });
+                                                        const res = await api.patch(`/api/users/${id}/`, { specialties });
                                                         profileCache.delete(cacheKey);
-                                                        setUser(prev => prev ? { ...prev, specialty } : prev);
+                                                        setUser(prev => prev ? {
+                                                            ...prev,
+                                                            specialty: res.data?.specialty ?? (specialties[0] || ""),
+                                                            specialties: res.data?.specialties ?? specialties,
+                                                        } : prev);
                                                         setIsEditingSpecialty(false);
                                                     } catch (err: any) {
-                                                        setSpecialtyError(err.response?.data?.detail || "Could not save specialty. Please try again.");
+                                                        setSpecialtyError(err.response?.data?.specialties || err.response?.data?.detail || "Could not save specialties. Please try again.");
                                                     } finally {
                                                         setSavingSpecialty(false);
                                                     }
@@ -391,13 +418,13 @@ export default function UserProfile() {
                                                 className="btn-primary"
                                                 style={{ flex: 1 }}
                                             >
-                                                {savingSpecialty ? "Saving..." : "Save Specialty"}
+                                                {savingSpecialty ? "Saving..." : "Save Specialties"}
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => {
                                                     setIsEditingSpecialty(false);
-                                                    setSpecialty(user.specialty || "");
+                                                    setSpecialties(initialSpecialties(user));
                                                     setSpecialtyError("");
                                                 }}
                                                 className="btn-slate"
@@ -409,15 +436,16 @@ export default function UserProfile() {
                                     </div>
                                 ) : (
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                                        {specialty
-                                            ? (
+                                        {specialties.length > 0
+                                            ? specialties.map(s => (
                                                 <span
+                                                    key={s}
                                                     className="profile-meta-pill"
                                                     style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
                                                 >
-                                                    {specialty}
+                                                    {s}
                                                 </span>
-                                            )
+                                            ))
                                             : (
                                                 <span style={{ fontSize: "0.84rem", color: "#94a3b8", fontStyle: "italic" }}>
                                                     No specialty configured yet.

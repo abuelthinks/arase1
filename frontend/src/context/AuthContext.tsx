@@ -14,6 +14,8 @@ interface UserPayload {
     email?: string;
     phone_number?: string;
     is_phone_verified?: boolean;
+    specialty?: string;
+    specialties?: string[];
 }
 
 interface AuthContextType {

@@ -13,7 +13,8 @@ from .models import (
     Student, ReportCycle, GeneratedDocument, DocumentVersion, StudentAccess,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    User, Invitation, PhoneVerification, Notification, SpecialistPreference
+    User, Invitation, PhoneVerification, Notification, SpecialistPreference,
+    SectionContribution,
 )
 from .services.notification_service import notify_admins_in_app
 from .serializers import (
@@ -228,6 +229,11 @@ class ParentAssessmentViewSet(BaseInputViewSet):
     serializer_class = ParentAssessmentSerializer
     allowed_submitter_roles = ('PARENT',)
 
+    def perform_create(self, serializer):
+        instance = serializer.save(submitted_by=self.request.user)
+        from .services.cycle_service import check_and_trigger_iep_generation
+        check_and_trigger_iep_generation(instance.student, instance.report_cycle)
+
 
 class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     queryset = MultidisciplinaryAssessment.objects.all()
@@ -241,6 +247,8 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
         if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
             student.status = 'ASSESSED'
             student.save()
+        from .services.cycle_service import check_and_trigger_iep_generation
+        check_and_trigger_iep_generation(student, instance.report_cycle)
 
 
 class SpedAssessmentViewSet(BaseInputViewSet):
@@ -292,6 +300,136 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
         instance = serializer.save(submitted_by=self.request.user)
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
+
+# ─── Section-scoped writes (multi-specialist forms) ──────────────────────────
+
+class SectionWriteView(APIView):
+    """PATCH-style draft save for a single form section."""
+    permission_classes = [permissions.IsAuthenticated]
+    form_type = ''  # 'assessment' or 'tracker'
+
+    def patch(self, request, section_key):
+        return self._handle(request, section_key, submit=False)
+
+    def post(self, request, section_key):
+        # Alias for PATCH so callers without PATCH support still work.
+        return self._handle(request, section_key, submit=False)
+
+    def _handle(self, request, section_key, *, submit):
+        from .services.section_service import (
+            save_section, submit_section,
+            SectionPermissionError, SectionLockedError, SectionValidationError,
+        )
+        from .serializers import (
+            MultidisciplinaryAssessmentSerializer,
+            MultidisciplinaryProgressTrackerSerializer,
+        )
+
+        student_id = request.data.get('student')
+        report_cycle_id = request.data.get('report_cycle')
+        section_data = request.data.get('section_data', {}) or {}
+
+        if not student_id or not report_cycle_id:
+            return Response(
+                {"error": "student and report_cycle are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            if submit:
+                instance, _ = submit_section(
+                    form_type=self.form_type,
+                    user=request.user,
+                    student_id=student_id,
+                    report_cycle_id=report_cycle_id,
+                    section_key=section_key,
+                )
+            else:
+                instance, _ = save_section(
+                    form_type=self.form_type,
+                    user=request.user,
+                    student_id=student_id,
+                    report_cycle_id=report_cycle_id,
+                    section_key=section_key,
+                    section_data=section_data,
+                )
+        except SectionPermissionError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except SectionLockedError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except SectionValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer_cls = (
+            MultidisciplinaryAssessmentSerializer
+            if self.form_type == 'assessment'
+            else MultidisciplinaryProgressTrackerSerializer
+        )
+        return Response(serializer_cls(instance).data, status=status.HTTP_200_OK)
+
+
+class SectionSubmitView(SectionWriteView):
+    def post(self, request, section_key):
+        return self._handle(request, section_key, submit=True)
+
+
+class AssessmentSectionWriteView(SectionWriteView):
+    form_type = 'assessment'
+
+
+class AssessmentSectionSubmitView(SectionSubmitView):
+    form_type = 'assessment'
+
+
+class TrackerSectionWriteView(SectionWriteView):
+    form_type = 'tracker'
+
+
+class TrackerSectionSubmitView(SectionSubmitView):
+    form_type = 'tracker'
+
+
+class SectionContributionsListView(APIView):
+    """Return all section contributions for a given student/report_cycle."""
+    permission_classes = [permissions.IsAuthenticated]
+    form_type = ''
+
+    def get(self, request):
+        from .serializers import SectionContributionSerializer
+        student_id = request.query_params.get('student')
+        report_cycle_id = request.query_params.get('report_cycle')
+
+        if not student_id or not report_cycle_id:
+            return Response(
+                {"error": "student and report_cycle query params required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if request.user.role not in ('ADMIN',):
+            if not StudentAccess.objects.filter(
+                user=request.user, student_id=student_id
+            ).exists():
+                return Response(
+                    {"error": "No access to this student."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        fk_field = 'assessment' if self.form_type == 'assessment' else 'tracker'
+        qs = SectionContribution.objects.filter(
+            form_type=self.form_type,
+            **{f"{fk_field}__student_id": student_id},
+            **{f"{fk_field}__report_cycle_id": report_cycle_id},
+        ).select_related('specialist').order_by('section_key')
+        return Response(SectionContributionSerializer(qs, many=True).data)
+
+
+class AssessmentContributionsView(SectionContributionsListView):
+    form_type = 'assessment'
+
+
+class TrackerContributionsView(SectionContributionsListView):
+    form_type = 'tracker'
+
 
 # ─── Parent Onboarding ───────────────────────────────────────────────────────
 
@@ -467,11 +605,18 @@ class AssignSpecialistView(APIView):
         specialist_id = request.data.get('specialist_id')
         if not specialist_id:
             return Response({"error": "specialist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        specialties = request.data.get('specialties')
 
         try:
             from .services.student_service import assign_staff_to_student
-            staff, student = assign_staff_to_student(student_id, specialist_id, 'SPECIALIST')
+            from rest_framework.exceptions import ValidationError
+            staff, student = assign_staff_to_student(student_id, specialist_id, 'SPECIALIST', specialties=specialties)
             return Response({"message": f"Specialist {staff.username} assigned."})
+        except ValidationError as ve:
+            detail = ve.detail
+            if isinstance(detail, list) and detail:
+                detail = detail[0]
+            return Response({"error": str(detail)}, status=status.HTTP_400_BAD_REQUEST)
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Specialist or Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -910,7 +1055,7 @@ class VerifySMSView(APIView):
 # ─── IEP Generation & Management ────────────────────────────────────────────
 
 class GenerateIEPView(APIView):
-    """POST: Generate a comprehensive IEP using OpenAI."""
+    """POST: Generate a comprehensive IEP using Gemini."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -924,17 +1069,30 @@ class GenerateIEPView(APIView):
             return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            Student.objects.get(id=student_id)
-            ReportCycle.objects.get(id=report_cycle_id)
+            student = Student.objects.get(id=student_id)
+            report_cycle = ReportCycle.objects.get(id=report_cycle_id)
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        from .tasks import generate_iep_task
-        task = generate_iep_task.delay(student_id, report_cycle_id, request.user.id)
+        existing_iep = GeneratedDocument.objects.filter(
+            student=student,
+            report_cycle=report_cycle,
+            document_type='IEP',
+        ).order_by('-created_at').first()
+        if existing_iep:
+            return Response({
+                "message": "IEP already exists for this cycle.",
+                "iep_id": existing_iep.id,
+            }, status=status.HTTP_200_OK)
+
+        from .services.iep_service import run_iep_generation
+        doc, _ = run_iep_generation(student_id, report_cycle_id)
+        from .services.document_service import record_document_version
+        record_document_version(doc, request.user, 'GENERATED')
         return Response({
-            "message": "IEP generation started.",
-            "task_id": task.id,
-        }, status=status.HTTP_202_ACCEPTED)
+            "message": "IEP generated.",
+            "iep_id": doc.id,
+        }, status=status.HTTP_201_CREATED)
 
 
 class IEPDetailView(APIView):
@@ -1156,7 +1314,7 @@ class IEPDownloadView(APIView):
 # ─── Monthly Report Generation & Management ───────────────────────────────────
 
 class GenerateMonthlyReportView(APIView):
-    """POST: Generate a Monthly Progress Report using OpenAI."""
+    """POST: Generate a Monthly Progress Report using Gemini."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -1170,17 +1328,33 @@ class GenerateMonthlyReportView(APIView):
             return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            Student.objects.get(id=student_id)
-            ReportCycle.objects.get(id=report_cycle_id)
+            student = Student.objects.get(id=student_id)
+            report_cycle = ReportCycle.objects.get(id=report_cycle_id)
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        from .tasks import generate_monthly_report_task
-        task = generate_monthly_report_task.delay(student_id, report_cycle_id, request.user.id)
+        existing_report = GeneratedDocument.objects.filter(
+            student=student,
+            report_cycle=report_cycle,
+            document_type='MONTHLY',
+        ).order_by('-created_at').first()
+        if existing_report:
+            if report_cycle.status == 'GENERATING':
+                report_cycle.status = 'COMPLETED'
+                report_cycle.save(update_fields=['status'])
+            return Response({
+                "message": "Monthly report already exists for this cycle.",
+                "report_id": existing_report.id,
+            }, status=status.HTTP_200_OK)
+
+        from .services.iep_service import run_monthly_report_generation
+        doc, _ = run_monthly_report_generation(student_id, report_cycle_id)
+        from .services.document_service import record_document_version
+        record_document_version(doc, request.user, 'GENERATED')
         return Response({
-            "message": "Monthly report generation started.",
-            "task_id": task.id,
-        }, status=status.HTTP_202_ACCEPTED)
+            "message": "Monthly report generated.",
+            "report_id": doc.id,
+        }, status=status.HTTP_201_CREATED)
 
 
 class MonthlyReportDetailView(APIView):
@@ -1614,7 +1788,8 @@ class SpecialistListView(APIView):
                 "id": sp.id,
                 "first_name": sp.first_name,
                 "last_name": sp.last_name,
-                "specialty": sp.specialty or "Other"
+                "specialty": sp.specialty or "Other",
+                "specialties": sp.specialty_list() or ([sp.specialty] if sp.specialty else []),
             }
             for sp in specialists
         ]

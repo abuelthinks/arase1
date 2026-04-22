@@ -8,16 +8,46 @@ and carry-forward of recommendations from previous reports.
 import logging
 from datetime import date, timedelta
 
+from django.db import transaction
 from dateutil.relativedelta import relativedelta
 
 from api.models import (
     Student, ReportCycle, GeneratedDocument,
+    ParentAssessment, MultidisciplinaryAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
 )
 
 logger = logging.getLogger(__name__)
 
 GRACE_PERIOD_DAYS = ReportCycle.GRACE_PERIOD_DAYS
+
+
+def check_and_trigger_iep_generation(student, cycle):
+    """
+    Generate the initial IEP once required assessment inputs are complete.
+    Runs synchronously so auto-generation works without a Celery worker.
+    """
+    existing_iep = GeneratedDocument.objects.filter(
+        student=student,
+        report_cycle=cycle,
+        document_type='IEP',
+    ).first()
+    if existing_iep:
+        return False, existing_iep
+
+    has_parent = ParentAssessment.objects.filter(student=student, report_cycle=cycle).exists()
+    has_multi = MultidisciplinaryAssessment.objects.filter(student=student, report_cycle=cycle).exists()
+    if not (has_parent and has_multi):
+        return False, None
+
+    try:
+        from api.services.iep_service import run_iep_generation
+        doc, _ = run_iep_generation(student.id, cycle.id)
+        logger.info("IEP auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
+        return True, doc
+    except Exception as exc:
+        logger.error("Failed to auto-generate IEP for student=%s cycle=%s: %s", student.id, cycle.id, exc)
+        return False, None
 
 
 # ─── Lazy Cycle Creation ─────────────────────────────────────────────────────
@@ -97,26 +127,36 @@ def check_and_trigger_auto_generation(student, cycle):
 
     Returns: (triggered: bool, doc_or_none)
     """
-    if cycle.status in ('GENERATING', 'COMPLETED'):
-        return False, None
+    with transaction.atomic():
+        cycle = ReportCycle.objects.select_for_update().get(id=cycle.id)
+        if cycle.status in ('GENERATING', 'COMPLETED'):
+            return False, None
 
-    p = ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-    m = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-    s = SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
+        existing_report = GeneratedDocument.objects.filter(
+            student=student,
+            report_cycle=cycle,
+            document_type='MONTHLY',
+        ).first()
+        if existing_report:
+            return False, existing_report
 
-    if not (p and m and s):
-        return False, None
+        p = ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
+        m = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
+        s = SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
 
-    cycle.status = 'GENERATING'
-    cycle.save(update_fields=['status'])
+        if not (p and m and s):
+            return False, None
+
+        cycle.status = 'GENERATING'
+        cycle.save(update_fields=['status'])
 
     try:
-        from api.tasks import generate_monthly_report_task
-        generate_monthly_report_task.delay(student.id, cycle.id)
-        logger.info("Auto-generation dispatched via Celery for student=%s cycle=%s", student.id, cycle.id)
-        return True, None
+        from api.services.iep_service import run_monthly_report_generation
+        doc, _ = run_monthly_report_generation(student.id, cycle.id)
+        logger.info("Monthly report auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
+        return True, doc
     except Exception as exc:
-        logger.error("Failed to dispatch Celery worker for student=%s: %s", student.id, exc)
+        logger.error("Failed to auto-generate monthly report for student=%s cycle=%s: %s", student.id, cycle.id, exc)
         cycle.status = 'OPEN'  # Reset so it can be retried
         cycle.save(update_fields=['status'])
         return False, None

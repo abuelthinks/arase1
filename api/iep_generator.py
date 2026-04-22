@@ -239,14 +239,14 @@ def _build_openai_prompt(student, pa, ma, sa):
 
 
 # ---------------------------------------------------------------------------
-# Call OpenAI
+# Call Gemini
 # ---------------------------------------------------------------------------
 
-def _call_openai(prompt):
-    """Call OpenAI and return parsed JSON."""
-    from api.services.openai_service import call_openai_json
+def _call_gemini(prompt):
+    """Call Gemini and return parsed JSON."""
+    from api.services.gemini_service import call_gemini_json
 
-    return call_openai_json(prompt, temperature=0.7)
+    return call_gemini_json(prompt, temperature=0.7)
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +255,7 @@ def _call_openai(prompt):
 
 def generate_iep(student, cycle, inputs):
     """
-    Generate a full IEP JSON structure from form inputs + OpenAI.
+    Generate a full IEP JSON structure from form inputs + Gemini.
     Returns a dict matching all 12 sections of the THERUNI IEP template.
     """
     forms = _collect_form_data(inputs)
@@ -265,12 +265,12 @@ def generate_iep(student, cycle, inputs):
 
     # Build and send prompt
     prompt = _build_openai_prompt(student, pa, ma, sa)
-    logger.info("Calling OpenAI for IEP generation (student=%s)", student.id)
+    logger.info("Calling Gemini for IEP generation (student=%s)", student.id)
 
     try:
-        ai_data = _call_openai(prompt)
+        ai_data = _call_gemini(prompt)
     except Exception as e:
-        logger.error("OpenAI call failed: %s", e)
+        logger.error("Gemini call failed: %s", e)
         raise
 
     # Build the complete IEP structure

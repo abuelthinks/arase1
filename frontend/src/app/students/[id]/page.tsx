@@ -46,7 +46,7 @@ interface ProfileData {
         status?: string;
         has_iep_data?: boolean;
     }[];
-    assigned_staff: { id: number; role: string; first_name?: string; last_name?: string; specialty?: string }[];
+    assigned_staff: { id: number; role: string; first_name?: string; last_name?: string; specialty?: string; specialties?: string[] }[];
     cycle_status: {
         cycle_id: number;
         label: string;
@@ -552,6 +552,9 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                                     : `Staff #${staff.id}`;
                                 const initials = `${(staff.first_name || "?")[0]}${(staff.last_name || "?")[0]}`;
                                 const isSpecialist = staff.role === "SPECIALIST";
+                                const staffSpecialties = staff.specialties && staff.specialties.length > 0
+                                    ? staff.specialties.join(", ")
+                                    : staff.specialty;
                                 return (
                                     <div key={staff.id} style={{
                                         display: "flex", alignItems: "center", gap: "12px",
@@ -570,7 +573,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{staffName}</div>
                                             <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
-                                                {staff.specialty || (isSpecialist ? "Specialist" : "Teacher")}
+                                                {staffSpecialties || (isSpecialist ? "Specialist" : "Teacher")}
                                             </div>
                                         </div>
                                         <span style={{

@@ -27,7 +27,13 @@
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 
   /* Typography */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --form-section-title-size: 1.0625rem;
+  --form-field-label-size: 0.9375rem;
+  --form-control-font-size: 0.9375rem;
+  --form-helper-font-size: 0.875rem;
+  --form-small-font-size: 0.8125rem;
+  --form-line-height: 1.5;
 }
 
 /* Global Reset */

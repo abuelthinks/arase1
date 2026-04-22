@@ -157,4 +157,8 @@ class MeView(APIView):
             'email': user.email,
             'phone_number': user.phone_number,
             'is_phone_verified': user.is_phone_verified,
+            'specialty': getattr(user, 'specialty', '') or '',
+            'specialties': user.specialty_list() if hasattr(user, 'specialty_list') else (
+                [user.specialty] if getattr(user, 'specialty', '') else []
+            ),
         })

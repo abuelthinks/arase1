@@ -13,6 +13,7 @@ interface Specialist {
     first_name: string;
     last_name: string;
     specialty: string;
+    specialties?: string[];
 }
 
 interface SpecialistPreference {
@@ -144,9 +145,14 @@ function SpecialistsContent() {
     }, [studentId, user]);
 
     const groupedSpecialists = specialists.reduce((acc, current) => {
-        const specialty = current.specialty || "Other";
-        if (!acc[specialty]) acc[specialty] = [];
-        acc[specialty].push(current);
+        const specs = (current.specialties && current.specialties.length > 0)
+            ? current.specialties
+            : [current.specialty || "Other"];
+        for (const specialty of specs) {
+            const key = specialty || "Other";
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(current);
+        }
         return acc;
     }, {} as Record<string, Specialist[]>);
 
