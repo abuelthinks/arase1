@@ -9,6 +9,11 @@
             "title": "SECTION A — BACKGROUND (Parent Input + Therapist Verification)",
             "fields": [
                 {
+                    "id": "parent_provided_information",
+                    "label": "A1. Parent-Provided Information",
+                    "type": "readonly_parent_summary"
+                },
+                {
                     "id": "therapist_verification",
                     "label": "A2. Therapist Verification",
                     "type": "checkbox_group",

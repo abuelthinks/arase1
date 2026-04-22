@@ -605,11 +605,12 @@ class AssignSpecialistView(APIView):
         specialist_id = request.data.get('specialist_id')
         if not specialist_id:
             return Response({"error": "specialist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        specialties = request.data.get('specialties')
 
         try:
             from .services.student_service import assign_staff_to_student
             from rest_framework.exceptions import ValidationError
-            staff, student = assign_staff_to_student(student_id, specialist_id, 'SPECIALIST')
+            staff, student = assign_staff_to_student(student_id, specialist_id, 'SPECIALIST', specialties=specialties)
             return Response({"message": f"Specialist {staff.username} assigned."})
         except ValidationError as ve:
             detail = ve.detail

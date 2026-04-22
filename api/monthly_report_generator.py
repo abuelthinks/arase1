@@ -47,6 +47,21 @@ def _score_label(score):
     }.get(score, "")
 
 
+def _goal_evidence_text(entry):
+    parts = []
+    if entry.get("support_level"):
+        parts.append(f"support: {entry['support_level']}")
+    if entry.get("observed_in"):
+        parts.append(f"observed in: {entry['observed_in']}")
+    if entry.get("next_step"):
+        parts.append(f"next step: {entry['next_step']}")
+    if entry.get("confidence"):
+        parts.append(f"confidence: {entry['confidence']}")
+    if entry.get("note"):
+        parts.append(f"evidence: {entry['note']}")
+    return "; ".join(parts)
+
+
 def _goal_meta(iep_goals, index):
     if index < len(iep_goals):
         goal = iep_goals[index] or {}
@@ -86,12 +101,20 @@ def _extract_gas_scores(fd, source="", iep_goals=None):
             goal_id = item.get('goal_id') or meta['goal_id']
             domain = item.get('domain') or meta['domain']
             note = item.get('note') or item.get('score_label') or _score_label(score)
+            support_level = item.get('support_level') or ''
+            observed_in = item.get('observed_in') or ''
+            next_step = item.get('next_step') or ''
+            confidence = item.get('confidence') or ''
             scores.append({
                 "goal_id": goal_id,
                 "domain": domain,
                 "score": score,
                 "score_label": item.get('score_label') or _score_label(score),
                 "note": note,
+                "support_level": support_level,
+                "observed_in": observed_in,
+                "next_step": next_step,
+                "confidence": confidence,
                 "source": source,
                 "goal_text": item.get('goal_text') or meta['goal_text'],
             })
@@ -112,6 +135,10 @@ def _extract_gas_scores(fd, source="", iep_goals=None):
             "score": score,
             "score_label": _score_label(score),
             "note": comments or _score_label(score),
+            "support_level": "",
+            "observed_in": "",
+            "next_step": "",
+            "confidence": "",
             "source": source,
             "goal_text": meta['goal_text'],
         })
@@ -143,14 +170,16 @@ def _combine_gas_scores(entries):
             source = entry.get("source") or "Submitted"
             label = entry.get("score_label") or _score_label(entry.get("score"))
             detail = f"{source}: {entry.get('score')} - {label}"
-            if entry.get("note") and entry.get("note") != label:
-                detail = f"{detail}; {entry.get('note')}"
+            evidence = _goal_evidence_text(entry)
+            if evidence and evidence != label:
+                detail = f"{detail}; {evidence}"
             notes.append(detail)
         combined.append({
             "goal_id": group["goal_id"],
             "domain": group["domain"],
             "score": score,
             "note": " | ".join(notes),
+            "evidence": group["entries"],
         })
     return combined
 
@@ -377,7 +406,8 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
         "next_month_focus_areas": ["list of 3-5 focus areas for the coming month"]
     }, indent=2))
     lines.append("")
-    lines.append("Use the provided GAS ratings for narrative context only; the application will preserve submitted goal_achievement_scores directly.")
+    lines.append("Use the provided GAS ratings, support level, observed setting, confidence, next step, and evidence notes when writing narrative summaries and recommendations.")
+    lines.append("The application will preserve submitted goal_achievement_scores directly, so do not alter or invent goal scores.")
     lines.append("If data for a section is missing, write 'No data submitted this month' instead of making things up.")
     lines.append("Make recommendations practical and specific to the child's current level.")
     lines.append("Return ONLY valid JSON. No markdown, no explanation, just the JSON object.")

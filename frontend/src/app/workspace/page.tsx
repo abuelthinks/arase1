@@ -107,6 +107,7 @@ function UnifiedWorkspaceContent() {
     const [assignedStaff, setAssignedStaff] = useState<any[]>([]);
     const [staffList, setStaffList] = useState<any[]>([]);
     const [assigning, setAssigning] = useState<number | null>(null);
+    const [selectedSpecialtiesByStaff, setSelectedSpecialtiesByStaff] = useState<Record<number, string[]>>({});
     const [sendingParentReminder, setSendingParentReminder] = useState(false);
     const [showEnrollConfirm, setShowEnrollConfirm] = useState(false);
     const [enrollingStudent, setEnrollingStudent] = useState(false);
@@ -285,14 +286,19 @@ function UnifiedWorkspaceContent() {
     }, [studentId, user?.role]);
 
     // -- Handlers --
-    const handleAssign = async (type: "specialist" | "teacher", staffId: number) => {
+    const handleAssign = async (type: "specialist" | "teacher", staffId: number, specialties: string[] = []) => {
         setAssigning(staffId);
         try {
             const endpoint = type === "specialist" ? "assign-specialist" : "assign-teacher";
-            const payload = type === "specialist" ? { specialist_id: staffId } : { teacher_id: staffId };
+            const payload = type === "specialist" ? { specialist_id: staffId, specialties } : { teacher_id: staffId };
             await api.post(`/api/students/${studentId}/${endpoint}/`, payload);
             const profileRes = await api.get(`/api/students/${studentId}/profile/`);
             setAssignedStaff(profileRes.data.assigned_staff || []);
+            setSelectedSpecialtiesByStaff(prev => {
+                const next = { ...prev };
+                delete next[staffId];
+                return next;
+            });
         } catch (err: any) {
             toast.error(err.response?.data?.error || "Assignment failed.");
         } finally {
@@ -579,6 +585,20 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                    <div className="px-5 py-4 border-b border-slate-200">
+                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                        {studentStatus && (
+                            <span style={{
+                                display: "inline-block", marginTop: 8,
+                                fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
+                                padding: "3px 9px", borderRadius: "999px",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                            }}>
+                                {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                            </span>
+                        )}
+                    </div>
 
                     <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar flex flex-col gap-3">
                         <button onClick={() => router.push(`/students/${studentId}`)} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center gap-2 shadow-sm">
@@ -605,7 +625,9 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto p-5 md:p-6">
+                <div className="flex-1 bg-white relative flex flex-col overflow-hidden">
+                    {tabBar}
+                    <div className="flex-1 overflow-y-auto p-5 md:p-6">
                     {/* Header: breadcrumb + name + status chip + horizontal stat strip */}
                     <div className="mb-5">
 
@@ -856,11 +878,12 @@ function UnifiedWorkspaceContent() {
                             </div>
                         </section>
                     </div>
+                    </div>
                 </div>
             </>
         );
     };
-    
+
     // 1. FORMS WORKSPACE RENDERER
     const renderFormsWorkspace = () => {
         const currentTabConf = visibleFormTabs.find(t => t.id === activeFormTab);
@@ -896,7 +919,20 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-
+                    <div className="px-5 py-4 border-b border-slate-200">
+                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                        {studentStatus && (
+                            <span style={{
+                                display: "inline-block", marginTop: 8,
+                                fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
+                                padding: "3px 9px", borderRadius: "999px",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                            }}>
+                                {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                            </span>
+                        )}
+                    </div>
 
                     <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
                         {assessmentTabs.length > 0 && (
@@ -944,7 +980,7 @@ function UnifiedWorkspaceContent() {
                 </div>
 
                 <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
-
+                    {tabBar}
                     <div className="flex-1 overflow-y-auto">
                     {isAdminAssessmentLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
@@ -1036,7 +1072,20 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-
+                    <div className="px-5 py-4 border-b border-slate-200">
+                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                        {studentStatus && (
+                            <span style={{
+                                display: "inline-block", marginTop: 8,
+                                fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
+                                padding: "3px 9px", borderRadius: "999px",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                            }}>
+                                {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                            </span>
+                        )}
+                    </div>
 
                     <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
                         {user?.role === "ADMIN" && (
@@ -1100,7 +1149,7 @@ function UnifiedWorkspaceContent() {
                 </div>
 
                 <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
-
+                    {tabBar}
                     <div className="flex-1 overflow-y-auto">
                         {isGenerator && (
                             <AdminReportsContent propStudentId={studentId as string} propHideNavigation={true} propWorkspacePath="/workspace" />
@@ -1228,7 +1277,18 @@ function UnifiedWorkspaceContent() {
                 {/* Unified Sidebar */}
                 <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
                     <div className="p-6 border-b border-slate-200">
-                        <h2 className="text-lg font-bold text-slate-900 m-0 leading-tight truncate">Parent Workspace</h2>
+                        <h2 className="text-2xl font-extrabold text-slate-900 m-0 leading-tight truncate tracking-tight" title={studentName}>{studentName}</h2>
+                        {studentStatus && (
+                            <span style={{
+                                display: "inline-block", marginTop: 10,
+                                fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                padding: "4px 10px", borderRadius: "999px",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                            }}>
+                                {getParentStatusLabel()}
+                            </span>
+                        )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
@@ -1401,7 +1461,20 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-
+                    <div className="px-5 py-4 border-b border-slate-200">
+                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                        {studentStatus && (
+                            <span style={{
+                                display: "inline-block", marginTop: 8,
+                                fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
+                                padding: "3px 9px", borderRadius: "999px",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                            }}>
+                                {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                            </span>
+                        )}
+                    </div>
 
                     <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
                         <div className="px-3">
@@ -1423,8 +1496,7 @@ function UnifiedWorkspaceContent() {
                 </div>
 
                 <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
-
-
+                    {tabBar}
                     <div className="flex-1 overflow-y-auto p-5 md:p-6">
                     <div className="mb-5">
                         <h2 className="text-lg font-bold text-slate-900 m-0">{isSpecialist ? "Available Specialists" : "Available Teachers"}</h2>
@@ -1503,15 +1575,27 @@ function UnifiedWorkspaceContent() {
                             </p>
                         ) : filteredList.map(s => {
                             const alreadyAssigned = assignedIds.includes(s.id);
+                            const assignedRecord = assignedRoleStaff.find(staff => staff.id === s.id);
                             const isLoading = assigning === s.id;
                             const staffSpecialties: string[] = (s.specialties && s.specialties.length > 0)
                                 ? s.specialties
                                 : (s.specialty ? [s.specialty] : []);
+                            const assignedSpecialtiesForStaff: string[] = assignedRecord
+                                ? ((assignedRecord.specialties && assignedRecord.specialties.length > 0) ? assignedRecord.specialties : (assignedRecord.specialty ? [assignedRecord.specialty] : []))
+                                : [];
+                            const availableStaffSpecialties = isSpecialist
+                                ? staffSpecialties.filter(sp => !coveredSpecialties.has(sp))
+                                : [];
+                            const selectedSpecialties = selectedSpecialtiesByStaff[s.id] || (
+                                availableStaffSpecialties.length === 1 ? availableStaffSpecialties : []
+                            );
                             const conflicts = isSpecialist && !alreadyAssigned
                                 ? staffSpecialties.filter(sp => coveredSpecialties.has(sp))
                                 : [];
                             const hasSpecialtyConflict = conflicts.length > 0;
-                            const isButtonDisabled = isLoading || (!alreadyAssigned && (isLocked || hasSpecialtyConflict));
+                            const hasAssignableSpecialty = !isSpecialist || availableStaffSpecialties.length > 0;
+                            const hasSelectedSpecialty = !isSpecialist || selectedSpecialties.length > 0;
+                            const isButtonDisabled = isLoading || (!alreadyAssigned && (isLocked || !hasAssignableSpecialty || !hasSelectedSpecialty));
                             const conflictTooltip = hasSpecialtyConflict
                                 ? `Already covered by another specialist: ${conflicts.join(", ")}`
                                 : undefined;
@@ -1536,7 +1620,40 @@ function UnifiedWorkspaceContent() {
                                                 </span>
                                             )}
                                         </div>
-                                        {s.specialty && (
+                                        {isSpecialist && staffSpecialties.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                                {staffSpecialties.map(sp => {
+                                                    const unavailable = !alreadyAssigned && coveredSpecialties.has(sp);
+                                                    const checked = alreadyAssigned ? assignedSpecialtiesForStaff.includes(sp) : selectedSpecialties.includes(sp);
+                                                    return (
+                                                        <button
+                                                            key={sp}
+                                                            type="button"
+                                                            disabled={alreadyAssigned || unavailable}
+                                                            onClick={() => {
+                                                                setSelectedSpecialtiesByStaff(prev => {
+                                                                    const current = prev[s.id] || [];
+                                                                    const next = current.includes(sp)
+                                                                        ? current.filter(item => item !== sp)
+                                                                        : [...current, sp];
+                                                                    return { ...prev, [s.id]: next };
+                                                                });
+                                                            }}
+                                                            className={`text-[0.68rem] font-bold px-2 py-1 rounded-full border transition-all ${
+                                                                checked
+                                                                    ? "bg-indigo-600 text-white border-indigo-600"
+                                                                    : unavailable
+                                                                        ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                                                        : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+                                                            }`}
+                                                        >
+                                                            {sp}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {!isSpecialist && s.specialty && (
                                             <p className="text-xs text-indigo-600 font-bold mb-1 truncate">{s.specialty}</p>
                                         )}
                                         <p className="text-[0.7rem] font-medium text-slate-500 uppercase tracking-widest">
@@ -1545,7 +1662,7 @@ function UnifiedWorkspaceContent() {
                                     </div>
                                     
                                     <button
-                                        onClick={() => !alreadyAssigned && !isLoading && !isLocked && !hasSpecialtyConflict && handleAssign(isSpecialist ? "specialist" : "teacher", s.id)}
+                                        onClick={() => !alreadyAssigned && !isLoading && !isLocked && hasAssignableSpecialty && hasSelectedSpecialty && handleAssign(isSpecialist ? "specialist" : "teacher", s.id, selectedSpecialties)}
                                         disabled={isButtonDisabled}
                                         className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-full transition-all ${
                                             alreadyAssigned ? 'bg-green-100 text-green-700' : 
@@ -1607,6 +1724,32 @@ function UnifiedWorkspaceContent() {
         if (aRecent !== bRecent) return bRecent - aRecent;
         return aName.localeCompare(bName);
     });
+
+    const tabBar = user?.role !== "PARENT" ? (
+        <div className="flex border-b border-slate-200 shrink-0 bg-white relative z-10">
+            <div className="flex-1 px-4 md:px-6 flex items-end gap-1 overflow-x-auto custom-scrollbar pt-1.5">
+                {user?.role === "ADMIN" && (
+                    <button onClick={() => setWorkspace("overview")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                        Overview
+                    </button>
+                )}
+                <button onClick={() => setWorkspace("forms")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                    <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    Forms
+                </button>
+                <button onClick={() => setWorkspace("reports")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                    <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                    Reports
+                </button>
+                {user?.role === "ADMIN" && (
+                    <button onClick={() => setWorkspace("team")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                        <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        Team
+                    </button>
+                )}
+            </div>
+        </div>
+    ) : null;
 
     return (
         <div className="flex h-full w-full overflow-hidden relative">
@@ -1714,58 +1857,10 @@ function UnifiedWorkspaceContent() {
 
                 {/* Main Workspace Area */}
                 <div className="flex-1 flex flex-col min-w-0 h-full relative z-10 bg-slate-50 md:bg-white overflow-hidden">
-                    <div className="px-4 md:px-8 pt-2 md:pt-3 pb-2 flex-1 flex flex-col min-h-0">
+                    <div className={`pt-2 md:pt-3 pb-2 pr-4 md:pr-8 flex-1 flex flex-col min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'pl-10 md:pl-14' : 'pl-4 md:pl-8'}`}>
                         {/* Unified Card Container */}
                         <div className="bg-white rounded-xl border border-slate-300 shadow-sm flex-1 flex flex-col overflow-hidden min-h-0">
                             
-                            {/* Global Tab Bar & Header */}
-                            <div className="flex flex-col md:flex-row border-b border-slate-200 shrink-0 bg-white relative z-10">
-                                {/* Header Left: Aligned with Sidebar */}
-                                <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 px-4 md:px-5 py-3 md:py-0 flex items-center gap-3 shrink-0">
-                                    <h1 className="text-lg font-extrabold text-slate-900 m-0 leading-tight truncate">{studentName}</h1>
-                                    {studentStatus && (
-                                        <span style={{
-                                            fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
-                                            padding: "2.5px 8px", borderRadius: "999px",
-                                            background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                            color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
-                                        }}>
-                                            {user?.role === "PARENT"
-                                                ? (studentStatus?.toUpperCase().replace(/ /g, "_") === "PENDING_ASSESSMENT" ? (formStatuses?.parent_assessment?.submitted ? "Awaiting Review" : "Action Needed") :
-                                                   studentStatus?.toUpperCase().replace(/ /g, "_") === "ASSESSMENT_SCHEDULED" ? "Under Evaluation" :
-                                                   studentStatus?.toUpperCase().replace(/ /g, "_") === "ASSESSED" ? "Evaluation Complete" :
-                                                   STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus)
-                                                : STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
-                                        </span>
-                                    )}
-                                </div>
-                                
-                                {/* Header Right: Aligned with Main Content */}
-                                {user?.role !== "PARENT" && (
-                                <div className="flex-1 px-4 md:px-6 flex items-end gap-1 overflow-x-auto custom-scrollbar pt-2 md:pt-3">
-                                {user?.role === "ADMIN" && (
-                                    <button onClick={() => setWorkspace("overview")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                                        Overview
-                                    </button>
-                                )}
-                                <button onClick={() => setWorkspace("forms")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                                    <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    Forms
-                                </button>
-                                <button onClick={() => setWorkspace("reports")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                                    <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                                    Reports
-                                </button>
-                                {user?.role === "ADMIN" && (
-                                    <button onClick={() => setWorkspace("team")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                                        <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                        Team
-                                    </button>
-                                )}
-                                </div>
-                                )}
-                            </div>
-
                             {/* Main Body */}
                             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 relative z-0">
                                 {user?.role === "PARENT" ? renderParentUnifiedWorkspace() : workspace === "overview" && user?.role === "ADMIN" ? renderOverviewWorkspace() : workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}

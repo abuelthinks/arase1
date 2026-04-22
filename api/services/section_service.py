@@ -71,11 +71,13 @@ def _get_or_create_form(form_type: str, user, student_id, report_cycle_id):
     return instance, True
 
 
-def _ensure_student_access(user, instance):
+def _get_student_access(user, instance):
     if user.role == "ADMIN":
-        return
-    if not StudentAccess.objects.filter(user=user, student_id=instance.student_id).exists():
+        return None
+    access = StudentAccess.objects.filter(user=user, student_id=instance.student_id).select_related("user").first()
+    if not access:
         raise SectionPermissionError("You do not have access to this student.")
+    return access
 
 
 def _check_section_edit(form_type: str, instance, user, section_key: str):
@@ -89,7 +91,8 @@ def _check_section_edit(form_type: str, instance, user, section_key: str):
     if section_key not in owners:
         raise SectionValidationError(f"Unknown section: {section_key}")
 
-    user_specialties = user.specialty_list()
+    access = _get_student_access(user, instance)
+    user_specialties = access.specialty_list() if access else user.specialty_list()
     if not can_edit_section(form_type, section_key, user_specialties):
         raise SectionPermissionError(
             f"Your specialty is not authorized to edit section {section_key}."
@@ -121,7 +124,7 @@ def save_section(
         instance, created = _get_or_create_form(
             form_type, user, student_id, report_cycle_id
         )
-        _ensure_student_access(user, instance)
+        _get_student_access(user, instance)
         _check_section_edit(form_type, instance, user, section_key)
 
         form_data = instance.form_data or {}
@@ -145,15 +148,17 @@ def save_section(
         instance.form_data = form_data
         instance.save(update_fields=["form_data"])
 
+        access = _get_student_access(user, instance)
         owners = get_section_owners(form_type)
         owner = owners[section_key]
         specialty = "" if owner == SHARED_SECTION else owner
+        fallback_specialties = access.specialty_list() if access else user.specialty_list()
 
         SectionContribution.objects.update_or_create(
             defaults={
                 "form_type": form_type,
                 "specialist": user,
-                "specialty": specialty or (user.specialty_list()[0] if user.specialty_list() else ""),
+                "specialty": specialty or (fallback_specialties[0] if fallback_specialties else ""),
                 "status": "draft",
             },
             **{_fk_field(form_type): instance},
@@ -171,18 +176,19 @@ def submit_section(
         instance, _ = _get_or_create_form(
             form_type, user, student_id, report_cycle_id
         )
-        _ensure_student_access(user, instance)
+        access = _get_student_access(user, instance)
         _check_section_edit(form_type, instance, user, section_key)
 
         owners = get_section_owners(form_type)
         owner = owners[section_key]
         specialty = "" if owner == SHARED_SECTION else owner
+        fallback_specialties = access.specialty_list() if access else user.specialty_list()
 
         contribution, _created = SectionContribution.objects.update_or_create(
             defaults={
                 "form_type": form_type,
                 "specialist": user,
-                "specialty": specialty or (user.specialty_list()[0] if user.specialty_list() else ""),
+                "specialty": specialty or (fallback_specialties[0] if fallback_specialties else ""),
                 "status": "submitted",
                 "submitted_at": timezone.now(),
             },

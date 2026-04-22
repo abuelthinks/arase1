@@ -203,7 +203,7 @@ class StudentAccessSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)
     class Meta:
         model = StudentAccess
-        fields = ['id', 'user', 'student']
+        fields = ['id', 'user', 'student', 'assigned_specialties']
 
 class ReportCycleSerializer(serializers.ModelSerializer):
     class Meta:

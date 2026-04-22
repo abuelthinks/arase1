@@ -135,6 +135,19 @@ function canEditOwner(owner: SectionOwner | null, userSpecialties: string[], isA
     return userSpecialties.includes(owner);
 }
 
+function getAssignedSpecialtiesForUser(profileData: any, currentUser: any, userSpecialties: string[]): string[] {
+    const currentUserId = currentUser?.user_id ?? currentUser?.id;
+    if (!profileData?.assigned_staff || !currentUserId) return [];
+
+    const assignedStaff = profileData.assigned_staff.find(
+        (staff: any) => String(staff.id) === String(currentUserId),
+    );
+    if (!assignedStaff) return [];
+
+    const assignedSpecialties = userSpecialtyList(assignedStaff.specialties, assignedStaff.specialty);
+    return assignedSpecialties.filter((specialty) => userSpecialties.includes(specialty));
+}
+
 const schemaMap: Record<string, any> = {
     "parent-assessment": parent_assessment,
     "multidisciplinary-assessment": multidisciplinary_assessment,
@@ -276,6 +289,54 @@ function RadioGroup({ options, value, onChange, readOnly }: { options: string[];
 
 /* ─── Main Component ───────────────────────────────────────────────────────── */
 
+const normalizeList = (value: any): string[] => {
+    if (Array.isArray(value)) return value.filter(Boolean).map(String);
+    return value ? [String(value)] : [];
+};
+
+const buildParentSummaryRows = (profileData: any) => {
+    const student = profileData?.student || {};
+    const primaryLanguage = [
+        ...normalizeList(student.primary_language),
+        student.primary_language_other,
+    ].filter(Boolean);
+    const medicalAlerts = [
+        student.medical_alerts,
+        student.medical_alerts_detail,
+    ].filter(Boolean);
+    const knownConditions = [
+        ...normalizeList(student.known_conditions),
+        student.known_conditions_other,
+    ].filter(Boolean);
+
+    return [
+        { label: "Child Name", value: `${student.first_name || ""} ${student.last_name || ""}`.trim() },
+        { label: "Date of Birth", value: student.date_of_birth || "" },
+        { label: "Gender", value: student.gender || "" },
+        { label: "Grade/Level", value: student.grade || "" },
+        { label: "Primary Language", value: primaryLanguage.join(", ") },
+        { label: "Medical Alerts", value: medicalAlerts.join(" - ") },
+        { label: "Known Diagnoses", value: knownConditions.join(", ") },
+    ];
+};
+
+function ReadOnlyParentSummary({ rows }: { rows: { label: string; value: string }[] }) {
+    return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px" }}>
+            {rows.map(row => (
+                <div key={row.label} style={{ padding: "9px 11px", background: "#f8fafc", borderRadius: "7px", border: "1px solid #e2e8f0" }}>
+                    <p style={{ fontSize: "0.68rem", fontWeight: 800, textTransform: "uppercase", color: "#64748b", margin: "0 0 3px", letterSpacing: "0.3px" }}>
+                        {row.label}
+                    </p>
+                    <p style={{ fontSize: "var(--form-control-font-size)", color: "#0f172a", margin: 0, fontWeight: 500, lineHeight: 1.35 }}>
+                        {row.value || "-"}
+                    </p>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 const GAS_OPTIONS = [
     { score: 1, label: "None", tone: "#fee2e2", color: "#991b1b" },
     { score: 2, label: "Minimal", tone: "#fef3c7", color: "#92400e" },
@@ -283,6 +344,11 @@ const GAS_OPTIONS = [
     { score: 4, label: "More", tone: "#d1fae5", color: "#065f46" },
     { score: 5, label: "Achieved", tone: "#dcfce7", color: "#166534" },
 ];
+
+const SUPPORT_OPTIONS = ["Independent", "Verbal prompt", "Visual prompt", "Physical support", "Full assistance"];
+const OBSERVED_IN_OPTIONS = ["Classroom", "Therapy", "Home", "Group activity", "Daily routine"];
+const NEXT_STEP_OPTIONS = ["Continue", "Increase support", "Reduce prompts", "Modify strategy", "Review goal"];
+const CONFIDENCE_OPTIONS = ["Confident", "Somewhat sure", "Not enough observation"];
 
 const scoreLabelFor = (score: number | string) => {
     const numeric = typeof score === "number" ? score : parseInt(String(score), 10);
@@ -296,7 +362,39 @@ const scoreNumberFrom = (value: any) => {
     return Number.isFinite(parsed) ? parsed : "";
 };
 
-function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly, notePlaceholderPrefix }: { goals: any[]; value: any; sectionData: any; onChange: (v: any[]) => void; readOnly?: boolean; notePlaceholderPrefix: string }) {
+function CompactSelect({ label, value, options, onChange, readOnly }: { label: string; value: string; options: string[]; onChange: (v: string) => void; readOnly?: boolean }) {
+    return (
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
+            <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+                {label}
+            </span>
+            <select
+                value={value || ""}
+                disabled={readOnly}
+                onChange={e => onChange(e.target.value)}
+                style={{
+                    width: "100%",
+                    borderRadius: "7px",
+                    border: "1px solid #cbd5e1",
+                    background: readOnly ? "#f1f5f9" : "white",
+                    color: value ? "#0f172a" : "#94a3b8",
+                    cursor: readOnly ? "not-allowed" : "pointer",
+                    fontSize: "0.78rem",
+                    lineHeight: 1.35,
+                    padding: "7px 8px",
+                    minHeight: "34px",
+                }}
+            >
+                <option value="">Select</option>
+                {options.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                ))}
+            </select>
+        </label>
+    );
+}
+
+function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }: { goals: any[]; value: any; sectionData: any; onChange: (v: any[]) => void; readOnly?: boolean }) {
     const currentList = Array.isArray(value) ? value : [];
     const normalized = goals.map((goal, index) => {
         const existing = currentList.find((item: any) => item?.goal_id === goal.goal_id) || currentList[index] || {};
@@ -308,6 +406,10 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly, n
             goal_text: goal.goal_text || "",
             score,
             score_label: score ? scoreLabelFor(score) : "",
+            support_level: existing.support_level || "",
+            observed_in: existing.observed_in || "",
+            next_step: existing.next_step || "",
+            confidence: existing.confidence || "",
             note: existing.note || "",
         };
     });
@@ -328,13 +430,31 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly, n
                     </span>
                 ))}
             </div>
-            {normalized.map(goal => (
+            {normalized.map(goal => {
+                const goalScore = typeof goal.score === "number" ? goal.score : scoreNumberFrom(goal.score);
+                const attention =
+                    goal.next_step === "Review goal"
+                        ? { label: "Review goal", bg: "#fef3c7", color: "#92400e" }
+                        : goalScore && goalScore <= 2
+                            ? { label: "Needs attention", bg: "#fee2e2", color: "#991b1b" }
+                            : goalScore === 5
+                                ? { label: "Achieved", bg: "#dcfce7", color: "#166534" }
+                                : null;
+
+                return (
                 <div key={goal.goal_id} style={{ border: "1px solid #e2e8f0", borderRadius: "8px", padding: "10px", background: "#f8fafc" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start", marginBottom: "8px" }}>
                         <div style={{ minWidth: 0 }}>
-                            <p style={{ margin: "0 0 3px", fontSize: "0.9rem", fontWeight: 800, color: "#172554" }}>
-                                {goal.goal_id}{goal.domain ? ` (${goal.domain})` : ""}
-                            </p>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "3px" }}>
+                                <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 800, color: "#172554" }}>
+                                    {goal.goal_id}{goal.domain ? ` (${goal.domain})` : ""}
+                                </p>
+                                {attention && (
+                                    <span style={{ padding: "2px 7px", borderRadius: "999px", background: attention.bg, color: attention.color, fontSize: "0.68rem", fontWeight: 800 }}>
+                                        {attention.label}
+                                    </span>
+                                )}
+                            </div>
                             <p style={{ margin: 0, fontSize: "var(--form-small-font-size)", color: "#475569", lineHeight: 1.45 }}>
                                 {goal.goal_text || "No IEP goal text available."}
                             </p>
@@ -371,16 +491,47 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly, n
                             );
                         })}
                     </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "8px" }}>
+                        <CompactSelect
+                            label="Support"
+                            value={goal.support_level}
+                            options={SUPPORT_OPTIONS}
+                            readOnly={readOnly}
+                            onChange={support_level => updateGoal(goal.goal_id, { support_level })}
+                        />
+                        <CompactSelect
+                            label="Observed In"
+                            value={goal.observed_in}
+                            options={OBSERVED_IN_OPTIONS}
+                            readOnly={readOnly}
+                            onChange={observed_in => updateGoal(goal.goal_id, { observed_in })}
+                        />
+                        <CompactSelect
+                            label="Next Step"
+                            value={goal.next_step}
+                            options={NEXT_STEP_OPTIONS}
+                            readOnly={readOnly}
+                            onChange={next_step => updateGoal(goal.goal_id, { next_step })}
+                        />
+                        <CompactSelect
+                            label="Confidence"
+                            value={goal.confidence}
+                            options={CONFIDENCE_OPTIONS}
+                            readOnly={readOnly}
+                            onChange={confidence => updateGoal(goal.goal_id, { confidence })}
+                        />
+                    </div>
                     <TextAreaInput
                         value={goal.note}
                         rows={1}
-                        placeholder={`${notePlaceholderPrefix} for ${goal.goal_id}`}
+                        placeholder="Additional notes"
                         readOnly={readOnly}
                         autoGrow
                         onChange={note => updateGoal(goal.goal_id, { note })}
                     />
                 </div>
-            ))}
+            );
+            })}
         </div>
     );
 }
@@ -393,6 +544,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
     const formType = propType || (params?.type as string) || "unknown";
     const studentId = propStudentId || searchParams.get("studentId");
+    const isTeamScopedForm = formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker";
 
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
@@ -415,16 +567,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         () => userSpecialtyList(user?.specialties, user?.specialty),
         [user?.specialties, user?.specialty],
     );
-    const goalNotePlaceholderPrefix = useMemo(() => {
-        if (user?.role === "TEACHER") return "Describe classroom progress observed";
-        if (user?.role === "SPECIALIST") {
-            return userSpecialties.length === 1
-                ? `Describe ${specialtyShortLabel(userSpecialties[0])} progress observed`
-                : "Describe specialist progress observed";
-        }
-        return "Describe progress observed";
-    }, [user?.role, userSpecialties]);
-
+    const assignedSpecialties = useMemo(
+        () => getAssignedSpecialtiesForUser(studentProfile, user, userSpecialties),
+        [studentProfile, user, userSpecialties],
+    );
+    const editableSpecialties = isTeamScopedForm ? assignedSpecialties : userSpecialties;
     const isFieldEditable = (sectionId: string, fieldId: string): boolean => {
         // For the assessment form, callers may pass the underlying data
         // section_id (section_f) — translate into the virtual ABA/Dev-Psych
@@ -434,7 +581,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             resolvedSectionId = ASSESSMENT_F1_FIELDS.has(fieldId) ? "section_f1" : "section_f2";
         }
         const owner = getFieldOwner(formType, resolvedSectionId, fieldId);
-        return canEditOwner(owner, userSpecialties, isAdmin);
+        return canEditOwner(owner, editableSpecialties, isAdmin);
     };
 
     // Resolve a (possibly virtual) section_id back to the underlying data
@@ -520,22 +667,6 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             type: 'goal_rating_group',
                             goals,
                         }];
-                        
-                        // Preserve the comments/statement fields at the end if they exist
-                        const commentsField = sec.fields?.find((f: any) => f.id === 'gas_comments' || f.id === 'parent_goal_statement');
-                        // Always provide a comments generic field if none exists, else preserve the schema's with a simplified label
-                        if (commentsField) {
-                            dynamicFields.push({
-                                ...commentsField,
-                                label: "Comments"
-                            });
-                        } else {
-                            dynamicFields.push({
-                                id: 'goal_comments',
-                                label: 'Comments',
-                                type: 'textarea'
-                            });
-                        }
                         
                         // Modify section title to indicate these are IEP goals, preserving "SECTION X"
                         const prefixMatch = sec.title?.match(/^(SECTION [A-Z])\s*—/i);
@@ -635,6 +766,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 if ('class_level' in newSectionA && profileData.student.grade) {
                     newSectionA.class_level = profileData.student.grade;
                 }
+                if ('parent_provided_information' in newSectionA) {
+                    newSectionA.parent_provided_information = buildParentSummaryRows(profileData);
+                }
                 if ('sped_teacher' in newSectionA && user) {
                     const teacherName = [user.first_name, user.last_name].filter(Boolean).join(" ");
                     newSectionA.sped_teacher = teacherName || user.username || "";
@@ -650,8 +784,16 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     } else if (!Array.isArray(existing)) {
                         newSectionA.discipline = [];
                     }
-                    if (newSectionA.discipline.length === 0 && userSpecialties.length > 0) {
-                        newSectionA.discipline = [...userSpecialties];
+                    const disciplineSpecialties = isTeamScopedForm && !isAdmin
+                        ? getAssignedSpecialtiesForUser(profileData, user, userSpecialties)
+                        : userSpecialties;
+                    if (isTeamScopedForm && !isAdmin) {
+                        newSectionA.discipline = userSpecialtyList(newSectionA.discipline).filter((specialty) =>
+                            disciplineSpecialties.includes(specialty),
+                        );
+                    }
+                    if (newSectionA.discipline.length === 0 && disciplineSpecialties.length > 0) {
+                        newSectionA.discipline = [...disciplineSpecialties];
                     }
                 }
                 if ('date_of_assessment' in newSectionA) {
@@ -702,7 +844,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         loadForm();
         
         return () => { isMounted = false; };
-    }, [draftKey, formIdStr, formType, isViewMode, studentId, user, userSpecialties]);
+    }, [draftKey, formIdStr, formType, isAdmin, isTeamScopedForm, isViewMode, studentId, user, userSpecialties]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission && schema) {
@@ -936,62 +1078,13 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     </div>
                 )}
 
-                {/* Previous Recommendations Banner (for Trackers) */}
-                {formType.includes('tracker') && studentProfile?.previous_recommendations && (
-                    <div style={{ 
-                        background: "#fffbeb", 
-                        borderRadius: "14px", 
-                        padding: "1.5rem", 
-                        border: "1px solid #fde68a", 
-                        marginBottom: "2rem",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
-                    }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-                            <div style={{ background: "#fef3c7", padding: "8px", borderRadius: "8px", color: "#92400e" }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-                            </div>
-                            <div>
-                                <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#92400e", margin: 0 }}>
-                                    Context: Carried Forward from {studentProfile.previous_recommendations.report_period}
-                                </h3>
-                                <p style={{ fontSize: "0.8rem", color: "#b45309", margin: "2px 0 0" }}>
-                                    Use these previous focus areas to guide your monthly progress evaluation.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {studentProfile.previous_recommendations.focus_areas?.length > 0 && (
-                                <div>
-                                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>
-                                        🎯 Last Month's Focus Areas
-                                    </h4>
-                                    <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.875rem", color: "#b45309", display: "flex", flexDirection: "column", gap: "4px" }}>
-                                        {studentProfile.previous_recommendations.focus_areas.map((f: string, i: number) => <li key={i}>{f}</li>)}
-                                    </ul>
-                                </div>
-                            )}
-                            {studentProfile.previous_recommendations.recommendations?.length > 0 && (
-                                <div>
-                                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>
-                                        📋 Active Recommendations
-                                    </h4>
-                                    <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.875rem", color: "#b45309", display: "flex", flexDirection: "column", gap: "4px" }}>
-                                        {studentProfile.previous_recommendations.recommendations.map((r: string, i: number) => <li key={i}>{r}</li>)}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
                 {/* Section-gating banner */}
                 {!isViewMode && !isAdmin && (formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker") && (
                     <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#eef2ff", color: "#3730a3", border: "1px solid #c7d2fe", marginBottom: "1rem", fontSize: "0.875rem" }}>
-                        {userSpecialties.length > 0 ? (
-                            <>You can edit shared sections and your assigned discipline area{userSpecialties.length > 1 ? "s" : ""}: <strong>{userSpecialties.map(s => specialtyShortLabel(s)).join(", ")}</strong>. Other sections are read-only.</>
+                        {editableSpecialties.length > 0 ? (
+                            <>You can edit shared sections and your assigned discipline area{editableSpecialties.length > 1 ? "s" : ""}: <strong>{editableSpecialties.map(s => specialtyShortLabel(s as SectionOwner)).join(", ")}</strong>. Other sections are read-only.</>
                         ) : (
-                            <>No specialty assigned to your account — you can only edit shared sections.</>
+                            <>No assigned discipline found for this student — you can only edit shared sections.</>
                         )}
                     </div>
                 )}
@@ -1005,7 +1098,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             const sectionFullyEditable = isAdmin
                                 || sectionOwner === null
                                 || sectionOwner === SHARED
-                                || (sectionOwner !== "MIXED" && userSpecialties.includes(sectionOwner));
+                                || (sectionOwner !== "MIXED" && editableSpecialties.includes(sectionOwner));
                             const ownerLabel: string | null =
                                 !sectionOwner ? null
                                 : sectionOwner === SHARED ? "Shared"
@@ -1028,7 +1121,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 {section.fields?.map((field: any) => {
                                     const currentValue = formData[dataKey]?.[field.id];
                                     const currentSectionData = formData[dataKey] || {};
-                                    const fieldReadOnly = !isViewMode && !isFieldEditable(section.id, field.id);
+                                    const fieldReadOnly = field.type === "readonly_parent_summary" || (!isViewMode && !isFieldEditable(section.id, field.id));
 
                                     return (
                                         <div key={field.id}>
@@ -1056,13 +1149,20 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                                 </p>
                                             )}
 
+                                            {field.type === "readonly_parent_summary" && (
+                                                <ReadOnlyParentSummary
+                                                    rows={Array.isArray(currentValue) && currentValue.length > 0
+                                                        ? currentValue
+                                                        : buildParentSummaryRows(studentProfile)}
+                                                />
+                                            )}
+
                                             {field.type === "goal_rating_group" && (
                                                 <GoalAchievementInput
                                                     goals={field.goals || []}
                                                     value={currentValue || []}
                                                     sectionData={currentSectionData}
                                                     readOnly={fieldReadOnly}
-                                                    notePlaceholderPrefix={goalNotePlaceholderPrefix}
                                                     onChange={v => handleChange(dataKey, field.id, v)}
                                                 />
                                             )}

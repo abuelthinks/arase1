@@ -79,9 +79,19 @@ class Student(models.Model):
 class StudentAccess(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='student_access')
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='assigned_users')
+    assigned_specialties = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Specialist disciplines assigned for this student. Empty falls back to the user's specialties.",
+    )
     
     class Meta:
         unique_together = ('user', 'student')
+
+    def specialty_list(self) -> list[str]:
+        if self.user.role == 'SPECIALIST' and isinstance(self.assigned_specialties, list) and self.assigned_specialties:
+            return list(self.assigned_specialties)
+        return self.user.specialty_list() if hasattr(self.user, 'specialty_list') else []
 
     def __str__(self):
         return f"{self.user.username} -> {self.student.first_name}"
