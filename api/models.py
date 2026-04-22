@@ -17,10 +17,21 @@ class User(AbstractUser):
         max_length=100,
         blank=True,
         default='',
-        help_text="Specialist discipline, e.g. Speech-Language Pathology or Occupational Therapy",
+        help_text="Primary specialist discipline (mirrors specialties[0] for legacy reads).",
+    )
+    specialties = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="All specialist disciplines this user holds. Source of truth for section ownership.",
     )
     phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Contact number for the user")
     is_phone_verified = models.BooleanField(default=False)
+
+    def specialty_list(self) -> list[str]:
+        """Always return a list — falls back to [specialty] if legacy data only."""
+        if isinstance(self.specialties, list) and self.specialties:
+            return list(self.specialties)
+        return [self.specialty] if self.specialty else []
 
 class PhoneVerification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phone_verifications')
@@ -114,6 +125,11 @@ class MultidisciplinaryAssessment(models.Model):
     translated_data = models.JSONField(default=dict, blank=True)
     original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    finalized_at = models.DateTimeField(null=True, blank=True)
+    finalized_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='finalized_multidisciplinary_assessments',
+    )
 
 class SpedAssessment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
@@ -143,6 +159,11 @@ class MultidisciplinaryProgressTracker(models.Model):
     translated_data = models.JSONField(default=dict, blank=True)
     original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    finalized_at = models.DateTimeField(null=True, blank=True)
+    finalized_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='finalized_multidisciplinary_trackers',
+    )
 
 class SpedProgressTracker(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
@@ -250,3 +271,40 @@ class SpecialistPreference(models.Model):
 
     def __str__(self):
         return f"Preference for {self.student}: {self.specialty} -> {self.specialist.username}"
+
+
+class SectionContribution(models.Model):
+    """Tracks per-section authorship and submission state for multi-specialist forms."""
+    FORM_TYPES = (
+        ('assessment', 'Multidisciplinary Assessment'),
+        ('tracker', 'Multidisciplinary Progress Tracker'),
+    )
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+    )
+    form_type = models.CharField(max_length=20, choices=FORM_TYPES)
+    assessment = models.ForeignKey(
+        MultidisciplinaryAssessment, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='section_contributions',
+    )
+    tracker = models.ForeignKey(
+        MultidisciplinaryProgressTracker, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='section_contributions',
+    )
+    section_key = models.CharField(max_length=50)
+    specialist = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    specialty = models.CharField(max_length=100, blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    updated_at = models.DateTimeField(auto_now=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = (
+            ('assessment', 'section_key'),
+            ('tracker', 'section_key'),
+        )
+
+    def __str__(self):
+        target = self.assessment or self.tracker
+        return f"{self.form_type} §{self.section_key} by {self.specialist} ({self.status}) → {target}"

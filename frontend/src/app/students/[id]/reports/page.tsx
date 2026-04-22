@@ -9,6 +9,17 @@ import { IEPViewerContent } from "@/app/admin/iep/page";
 import { MonthlyReportContent } from "@/app/admin/monthly-report/page";
 import { AdminReportsContent } from "@/app/admin/reports/page";
 
+const formatDocumentDateTime = (value?: string | null) => {
+    if (!value) return "";
+    return new Date(value).toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+};
+
 function UnifiedReportsViewer() {
     const params = useParams();
     const router = useRouter();
@@ -129,7 +140,7 @@ function UnifiedReportsViewer() {
                                                         <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>IEP Master</span>
                                                         {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Current</span>}
                                                     </div>
-                                                    <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                    <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                                 </button>
                                             );
                                         })}
@@ -158,7 +169,7 @@ function UnifiedReportsViewer() {
                                                         <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Progress Report</span>
                                                         {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
                                                     </div>
-                                                    <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                    <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                                 </button>
                                             );
                                         })}

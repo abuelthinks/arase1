@@ -28,6 +28,7 @@ interface UserData {
     first_name: string;
     last_name: string;
     specialty?: SpecialistSpecialty | "";
+    specialties?: SpecialistSpecialty[];
     assigned_students_count: number;
     assigned_student_names: string[];
 }
@@ -155,6 +156,7 @@ export default function AdminDashboard() {
         email: '',
         role: 'TEACHER',
         specialty: '' as SpecialistSpecialty | "",
+        specialties: [] as SpecialistSpecialty[],
         first_name: '',
         last_name: ''
     });
@@ -412,18 +414,19 @@ export default function AdminDashboard() {
                 password: newUser.password,
                 email: newUser.email,
                 role: newUser.role,
-                specialty: newUser.role === "SPECIALIST" ? newUser.specialty : "",
+                specialties: newUser.role === "SPECIALIST" ? newUser.specialties : [],
                 first_name: toTitleCase(newUser.first_name),
                 last_name: toTitleCase(newUser.last_name),
             };
             await api.post("/api/users/", payload);
             setShowUserModal(false);
-            setNewUser({ username: '', password: '', confirm_password: '', email: '', role: 'TEACHER', specialty: '', first_name: '', last_name: '' });
+            setNewUser({ username: '', password: '', confirm_password: '', email: '', role: 'TEACHER', specialty: '', specialties: [], first_name: '', last_name: '' });
             fetchData();
             toast.success("User created successfully");
         } catch (err: any) {
             toast.error(
-                err.response?.data?.specialty?.[0]
+                err.response?.data?.specialties
+                || err.response?.data?.specialty?.[0]
                 || err.response?.data?.username
                 || err.response?.data?.detail
                 || "Failed to create user"
@@ -534,7 +537,7 @@ export default function AdminDashboard() {
     const instructionalStaff = users.filter(u => u.role === 'TEACHER' || u.role === 'SPECIALIST');
     const staffSortedByCaseload = [...instructionalStaff].sort((a, b) => (b.assigned_students_count || 0) - (a.assigned_students_count || 0));
     const unassignedStaff = instructionalStaff.filter(u => (u.assigned_students_count || 0) === 0);
-    const specialistsWithoutSpecialty = specialistUsers.filter(u => !u.specialty);
+    const specialistsWithoutSpecialty = specialistUsers.filter(u => !((u.specialties && u.specialties.length > 0) || u.specialty));
     const averageCaseload = instructionalStaff.length
         ? instructionalStaff.reduce((sum, user) => sum + (user.assigned_students_count || 0), 0) / instructionalStaff.length
         : 0;
@@ -837,7 +840,9 @@ export default function AdminDashboard() {
                                                     <div>
                                                         <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>{staff.first_name} {staff.last_name}</p>
                                                         <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
-                                                            {toTitleCase(staff.role)}{staff.specialty ? ` • ${staff.specialty}` : ""}
+                                                            {toTitleCase(staff.role)}{(staff.specialties && staff.specialties.length > 0)
+                                                                ? ` • ${staff.specialties.join(", ")}`
+                                                                : (staff.specialty ? ` • ${staff.specialty}` : "")}
                                                         </p>
                                                     </div>
                                                     <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 10px", borderRadius: "999px" }}>
@@ -1579,25 +1584,44 @@ export default function AdminDashboard() {
                             {newUser.confirm_password && newUser.password !== newUser.confirm_password && (
                                 <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: "-6px 0 0 0" }}>Passwords do not match</p>
                             )}
-                            <select required value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value, specialty: e.target.value === "SPECIALIST" ? newUser.specialty : "" })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}>
+                            <select required value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value, specialties: e.target.value === "SPECIALIST" ? newUser.specialties : [] })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}>
                                 <option value="ADMIN">Admin</option>
                                 <option value="TEACHER">Teacher</option>
                                 <option value="SPECIALIST">Specialist</option>
                                 <option value="PARENT">Parent</option>
                             </select>
                             {newUser.role === "SPECIALIST" && (
-                                <select
-                                    required
-                                    value={newUser.specialty}
-                                    onChange={e => setNewUser({ ...newUser, specialty: e.target.value as SpecialistSpecialty })}
-                                    className="form-input"
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                                >
-                                    <option value="">Select specialist discipline</option>
-                                    {SPECIALIST_SPECIALTIES.map(option => (
-                                        <option key={option} value={option}>{option}</option>
-                                    ))}
-                                </select>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "10px", border: "1px solid #ccc", borderRadius: "4px" }}>
+                                    <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#475569", margin: "0 0 4px 0", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                                        Specialties (select one or more)
+                                    </p>
+                                    {SPECIALIST_SPECIALTIES.map(option => {
+                                        const checked = newUser.specialties.includes(option);
+                                        return (
+                                            <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#0f172a", cursor: "pointer" }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => {
+                                                        setNewUser(prev => ({
+                                                            ...prev,
+                                                            specialties: checked
+                                                                ? prev.specialties.filter(s => s !== option)
+                                                                : [...prev.specialties, option],
+                                                        }));
+                                                    }}
+                                                    style={{ width: 16, height: 16, accentColor: "#4f46e5" }}
+                                                />
+                                                {option}
+                                            </label>
+                                        );
+                                    })}
+                                    {newUser.specialties.length === 0 && (
+                                        <p style={{ fontSize: "0.78rem", color: "#dc2626", margin: "4px 0 0 0" }}>
+                                            Select at least one specialty.
+                                        </p>
+                                    )}
+                                </div>
                             )}
                             <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
                                 <button type="submit" className="btn-primary" style={{ flex: 1, padding: "10px", opacity: creatingUser ? 0.6 : 1 }} disabled={creatingUser}>

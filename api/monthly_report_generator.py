@@ -28,28 +28,131 @@ def _list_join(lst):
     return str(lst) if lst else ""
 
 
-def _extract_gas_scores(fd):
+def _score_int(value):
+    if value in (None, ""):
+        return None
+    try:
+        return int(str(value).split(" ", 1)[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def _score_label(score):
+    return {
+        1: "None",
+        2: "Minimal",
+        3: "Expected",
+        4: "More",
+        5: "Achieved",
+    }.get(score, "")
+
+
+def _goal_meta(iep_goals, index):
+    if index < len(iep_goals):
+        goal = iep_goals[index] or {}
+        return {
+            "goal_id": goal.get("id") or f"Goal {index + 1}",
+            "domain": goal.get("domain", ""),
+            "goal_text": goal.get("goal", ""),
+        }
+    return {
+        "goal_id": f"Goal {index + 1}",
+        "domain": "",
+        "goal_text": "",
+    }
+
+
+def _extract_gas_scores(fd, source="", iep_goals=None):
     """
     Collect all GAS scores from a flattened form dict.
     Handles both:
+      - goal_achievement array (IEP-linked, stable goal ids)
       - dynamic_goal_N  (IEP-linked, set by frontend)
       - gas_goal_N      (legacy static keys)
-    Returns a list of "Goal N: <score>" strings.
+    Returns normalized score dicts.
     """
+    iep_goals = iep_goals or []
     scores = []
-    i = 1
-    while True:
-        val = fd.get(f'dynamic_goal_{i}') or fd.get(f'gas_goal_{i}')
-        if val:
-            scores.append(f"Goal {i}: {val}")
-            i += 1
-        else:
-            break
-    # Also pick up goal_comments / gas_comments
+
+    structured = fd.get('goal_achievement')
+    if isinstance(structured, list):
+        for index, item in enumerate(structured):
+            if not isinstance(item, dict):
+                continue
+            score = _score_int(item.get('score'))
+            if not score:
+                continue
+            meta = _goal_meta(iep_goals, index)
+            goal_id = item.get('goal_id') or meta['goal_id']
+            domain = item.get('domain') or meta['domain']
+            note = item.get('note') or item.get('score_label') or _score_label(score)
+            scores.append({
+                "goal_id": goal_id,
+                "domain": domain,
+                "score": score,
+                "score_label": item.get('score_label') or _score_label(score),
+                "note": note,
+                "source": source,
+                "goal_text": item.get('goal_text') or meta['goal_text'],
+            })
+        return scores
+
     comments = fd.get('gas_comments') or fd.get('goal_comments', '')
-    if comments:
-        scores.append(f"Comments: {comments}")
+    max_goals = max(len(iep_goals), 10)
+    for index in range(max_goals):
+        i = index + 1
+        val = fd.get(f'dynamic_goal_{i}') or fd.get(f'gas_goal_{i}')
+        score = _score_int(val)
+        if not score:
+            continue
+        meta = _goal_meta(iep_goals, index)
+        scores.append({
+            "goal_id": meta['goal_id'],
+            "domain": meta['domain'],
+            "score": score,
+            "score_label": _score_label(score),
+            "note": comments or _score_label(score),
+            "source": source,
+            "goal_text": meta['goal_text'],
+        })
     return scores
+
+
+def _combine_gas_scores(entries):
+    grouped = {}
+    for entry in entries:
+        key = entry.get("goal_id") or "Goal"
+        grouped.setdefault(key, {
+            "goal_id": key,
+            "domain": entry.get("domain", ""),
+            "goal_text": entry.get("goal_text", ""),
+            "entries": [],
+        })
+        grouped[key]["entries"].append(entry)
+        if not grouped[key]["domain"] and entry.get("domain"):
+            grouped[key]["domain"] = entry.get("domain", "")
+
+    combined = []
+    for group in grouped.values():
+        valid_scores = [e["score"] for e in group["entries"] if e.get("score")]
+        if not valid_scores:
+            continue
+        score = int((sum(valid_scores) / len(valid_scores)) + 0.5)
+        notes = []
+        for entry in group["entries"]:
+            source = entry.get("source") or "Submitted"
+            label = entry.get("score_label") or _score_label(entry.get("score"))
+            detail = f"{source}: {entry.get('score')} - {label}"
+            if entry.get("note") and entry.get("note") != label:
+                detail = f"{detail}; {entry.get('note')}"
+            notes.append(detail)
+        combined.append({
+            "goal_id": group["goal_id"],
+            "domain": group["domain"],
+            "score": score,
+            "note": " | ".join(notes),
+        })
+    return combined
 
 
 def _flatten_form_data(fd):
@@ -150,8 +253,9 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
 
     # Specialist (Multidisciplinary) Tracker data
     if mt:
+        specialist_gas = _extract_gas_scores(mt, "Specialist", iep_goals)
         lines.append("=== SPECIALIST MULTIDISCIPLINARY TRACKER DATA ===")
-        lines.append(f"Discipline: {_safe(mt, 'discipline')}")
+        lines.append(f"Discipline: {_list_join(_safe(mt, 'discipline', default=[]))}")
         lines.append(f"Session Type: {_safe(mt, 'session_type')}")
         lines.append(f"Sessions Completed: {_safe(mt, 'sessions_completed')}")
         lines.append(f"Attendance: {_safe(mt, 'attendance')}")
@@ -178,10 +282,7 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
         lines.append(f"Sensory/Motor Regulation: {_safe(mt, 'sensory_motor_regulation')}")
         lines.append(f"Communication With Adults: {_safe(mt, 'communication_with_adults')}")
         lines.append(f"Functional Notes: {_safe(mt, 'functional_notes')}")
-        lines.append(f"GAS Goal 1: {_safe(mt, 'gas_goal_1') or _safe(mt, 'dynamic_goal_1')}")
-        lines.append(f"GAS Goal 2: {_safe(mt, 'gas_goal_2') or _safe(mt, 'dynamic_goal_2')}")
-        lines.append(f"GAS Goal 3: {_safe(mt, 'gas_goal_3') or _safe(mt, 'dynamic_goal_3')}")
-        lines.append(f"GAS Goal 4: {_safe(mt, 'gas_goal_4') or _safe(mt, 'dynamic_goal_4')}")
+        lines.append(f"GAS Ratings: {json.dumps(specialist_gas, ensure_ascii=False)}")
         lines.append(f"GAS Comments: {_safe(mt, 'gas_comments') or _safe(mt, 'goal_comments')}")
         lines.append(f"Therapy Recommendations: {_list_join(_safe(mt, 'therapy_recommendations', default=[]))}")
         lines.append(f"Home Strategies: {_list_join(_safe(mt, 'home_strategies', default=[]))}")
@@ -190,6 +291,7 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
 
     # Teacher (SPED) Tracker data
     if st:
+        teacher_gas = _extract_gas_scores(st, "SPED Teacher", iep_goals)
         lines.append("=== SPED TEACHER TRACKER DATA ===")
         lines.append(f"Shadow Teacher: {_safe(st, 'shadow_teacher')}")
         lines.append(f"Week/Month: {_safe(st, 'week_month_of_tracking')}")
@@ -215,10 +317,7 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
         lines.append(f"Independence Routines: {_list_join(_safe(st, 'independence_routines', default=[]))}")
         lines.append(f"Life Skills: {_list_join(_safe(st, 'life_skills', default=[]))}")
         lines.append(f"Adaptive Skills Notes: {_safe(st, 'adaptive_skills_notes')}")
-        lines.append(f"GAS Goal 1: {_safe(st, 'gas_goal_1') or _safe(st, 'dynamic_goal_1')}")
-        lines.append(f"GAS Goal 2: {_safe(st, 'gas_goal_2') or _safe(st, 'dynamic_goal_2')}")
-        lines.append(f"GAS Goal 3: {_safe(st, 'gas_goal_3') or _safe(st, 'dynamic_goal_3')}")
-        lines.append(f"GAS Goal 4: {_safe(st, 'gas_goal_4') or _safe(st, 'dynamic_goal_4')}")
+        lines.append(f"GAS Ratings: {json.dumps(teacher_gas, ensure_ascii=False)}")
         lines.append(f"GAS Comments: {_safe(st, 'gas_comments') or _safe(st, 'goal_comments')}")
         lines.append(f"Classroom Recommendations: {_list_join(_safe(st, 'classroom_recommendations', default=[]))}")
         lines.append(f"Home Support Recommendations: {_list_join(_safe(st, 'home_support_recommendations', default=[]))}")
@@ -278,7 +377,7 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
         "next_month_focus_areas": ["list of 3-5 focus areas for the coming month"]
     }, indent=2))
     lines.append("")
-    lines.append("Base the goal_achievement_scores on the GAS scores provided by therapist and teacher (1-5 scale).")
+    lines.append("Use the provided GAS ratings for narrative context only; the application will preserve submitted goal_achievement_scores directly.")
     lines.append("If data for a section is missing, write 'No data submitted this month' instead of making things up.")
     lines.append("Make recommendations practical and specific to the child's current level.")
     lines.append("Return ONLY valid JSON. No markdown, no explanation, just the JSON object.")
@@ -287,14 +386,14 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
 
 
 # ---------------------------------------------------------------------------
-# Call OpenAI
+# Call Gemini
 # ---------------------------------------------------------------------------
 
-def _call_openai(prompt):
-    """Call OpenAI and return parsed JSON."""
-    from api.services.openai_service import call_openai_json
+def _call_gemini(prompt):
+    """Call Gemini and return parsed JSON."""
+    from api.services.gemini_service import call_gemini_json
 
-    return call_openai_json(prompt, temperature=0.7)
+    return call_gemini_json(prompt, temperature=0.7)
 
 
 # ---------------------------------------------------------------------------
@@ -303,7 +402,7 @@ def _call_openai(prompt):
 
 def generate_monthly_report(student, cycle, inputs):
     """
-    Generate a Monthly Progress Report JSON from progress tracker inputs + OpenAI.
+    Generate a Monthly Progress Report JSON from progress tracker inputs + Gemini.
     """
     forms = _collect_form_data(inputs)
     pt = forms.get('parent_tracker', {})
@@ -313,20 +412,26 @@ def generate_monthly_report(student, cycle, inputs):
     # Try to fetch current IEP goals for context
     iep_goals = []
     from .models import GeneratedDocument
-    latest_iep = GeneratedDocument.objects.filter(
+    iep_qs = GeneratedDocument.objects.filter(
         student=student, document_type='IEP'
-    ).exclude(iep_data={}).order_by('-created_at').first()
+    ).exclude(iep_data={}).order_by('-created_at')
+    latest_iep = iep_qs.filter(status='FINAL').first() or iep_qs.first()
     if latest_iep and latest_iep.iep_data:
         iep_goals = latest_iep.iep_data.get('section5_ltg', [])
 
+    submitted_gas_scores = _combine_gas_scores(
+        _extract_gas_scores(mt, "Specialist", iep_goals)
+        + _extract_gas_scores(st, "SPED Teacher", iep_goals)
+    )
+
     # Build and send prompt
     prompt = _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals)
-    logger.info("Calling OpenAI for Monthly Report generation (student=%s)", student.id)
+    logger.info("Calling Gemini for Monthly Report generation (student=%s)", student.id)
 
     try:
-        ai_data = _call_openai(prompt)
+        ai_data = _call_gemini(prompt)
     except Exception as e:
-        logger.error("OpenAI call failed: %s", e)
+        logger.error("Gemini call failed: %s", e)
         raise
 
     # Build the complete report structure
@@ -344,7 +449,7 @@ def generate_monthly_report(student, cycle, inputs):
         "academic_progress": ai_data.get("academic_progress", {}),
         "motor_sensory_progress": ai_data.get("motor_sensory_progress", {}),
         "daily_living_independence": ai_data.get("daily_living_independence", {}),
-        "goal_achievement_scores": ai_data.get("goal_achievement_scores", []),
+        "goal_achievement_scores": submitted_gas_scores or ai_data.get("goal_achievement_scores", []),
         "therapy_session_summary": ai_data.get("therapy_session_summary", {}),
         "parent_observations": ai_data.get("parent_observations", {}),
         "recommendations": ai_data.get("recommendations", {}),

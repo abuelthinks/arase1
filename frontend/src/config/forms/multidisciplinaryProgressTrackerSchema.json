@@ -21,7 +21,7 @@
                 {
                     "id": "discipline",
                     "label": "Discipline",
-                    "type": "radio",
+                    "type": "checkbox_group",
                     "options": [
                         "Speech-Language Pathology",
                         "Occupational Therapy",

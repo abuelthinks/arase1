@@ -37,6 +37,17 @@ const TABS = [
     { id: "sped_tracker", label: "Teacher Progress", formType: "sped-tracker" }
 ];
 
+const formatDocumentDateTime = (value?: string | null) => {
+    if (!value) return "";
+    return new Date(value).toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+};
+
 function UnifiedWorkspaceContent() {
     const params = useParams();
     const router = useRouter();
@@ -496,7 +507,7 @@ function UnifiedWorkspaceContent() {
                                 </div>
                                 <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
                                     <span className="text-sm font-semibold text-slate-500">Latest document</span>
-                                    <span className="text-sm font-bold text-slate-800 text-right">{latestDoc ? `${latestDoc.type} ${new Date(latestDoc.created_at).toLocaleDateString()}` : "None"}</span>
+                                    <span className="text-sm font-bold text-slate-800 text-right">{latestDoc ? `${latestDoc.type} ${formatDocumentDateTime(latestDoc.created_at)}` : "None"}</span>
                                 </div>
                             </div>
                         </section>
@@ -719,7 +730,7 @@ function UnifiedWorkspaceContent() {
                                                     <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>IEP Master</span>
                                                     {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Current</span>}
                                                 </div>
-                                                <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                             </button>
                                         );
                                     })}
@@ -743,7 +754,7 @@ function UnifiedWorkspaceContent() {
                                                     <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Progress Report</span>
                                                     {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
                                                 </div>
-                                                <span className="text-xs text-slate-500 truncate mt-0.5">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                             </button>
                                         );
                                     })}

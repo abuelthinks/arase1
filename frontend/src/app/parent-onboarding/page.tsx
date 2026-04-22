@@ -40,7 +40,7 @@ const Cb = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
         )}
-        <span className={`text-sm tracking-tight ${checked ? 'font-bold' : 'font-medium'}`}>{label}</span>
+        <span className={`${checked ? 'font-bold' : 'font-medium'}`} style={{ fontSize: "var(--form-control-font-size)", lineHeight: "var(--form-line-height)" }}>{label}</span>
     </label>
 );
 
@@ -49,23 +49,23 @@ const toggle = (arr: string[], val: string) =>
 
 const SectionHeader = ({ title, description }: { title: string, description?: string }) => (
     <div className="border-b border-indigo-100/60 pb-4 mb-7">
-        <h2 className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-transparent tracking-tight">
+        <h2 className="font-bold bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-transparent" style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }}>
             {title}
         </h2>
-        {description && <p className="text-[0.9rem] font-medium text-slate-500 mt-1.5 leading-snug">{description}</p>}
+        {description && <p className="font-medium text-slate-500 mt-1.5" style={{ fontSize: "var(--form-helper-font-size)", lineHeight: "var(--form-line-height)" }}>{description}</p>}
     </div>
 );
 
 const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
     <div className="space-y-2">
-        <label className="block text-[0.95rem] font-bold text-slate-700 tracking-tight">
+        <label className="block text-slate-700" style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)", fontWeight: 650 }}>
             {label}{required && <span className="text-pink-500 ml-1 opacity-80">*</span>}
         </label>
         {children}
     </div>
 );
 
-const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-xl text-base focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-400 outline-none bg-slate-50/50 hover:bg-white transition-all disabled:bg-slate-50 disabled:text-slate-400 font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal";
+const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-xl text-[var(--form-control-font-size)] leading-[var(--form-line-height)] focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-400 outline-none bg-slate-50/50 hover:bg-white transition-all disabled:bg-slate-50 disabled:text-slate-400 font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal";
 const milestoneCls = "flex flex-wrap gap-2.5";
 
 // ── initial state factory ─────────────────────────────────────────────────────

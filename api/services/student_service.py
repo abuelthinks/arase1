@@ -165,7 +165,10 @@ def get_student_profile_data(student, user=None):
             if user and user.role == 'PARENT' and key != 'parent_assessment':
                 form_statuses[key] = {"submitted": False, "id": None}
                 continue
-            obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
+            if key in ['parent_assessment', 'multi_assessment', 'sped_assessment']:
+                obj = model.objects.select_related('submitted_by').filter(student=student).order_by('-created_at').first()
+            else:
+                obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
             form_statuses[key] = {
                 "submitted": bool(obj),
                 "id": obj.id if obj else None,
@@ -233,6 +236,9 @@ def get_student_profile_data(student, user=None):
             "first_name": sa.user.first_name,
             "last_name": sa.user.last_name,
             "specialty": normalize_specialty(sa.user.specialty),
+            "specialties": [
+                normalize_specialty(s) for s in sa.user.specialty_list() if s
+            ],
         } for sa in assigned_users]
 
     # Cycle status summary and carry-forward recommendations
@@ -275,7 +281,27 @@ def assign_staff_to_student(student_id, staff_id, expected_role):
         has_parent_input = ParentAssessment.objects.filter(student=student).exists()
         if not has_parent_input:
             raise ValidationError("Cannot assign a Specialist until the Parent Assessment is submitted.")
-            
+
+        # Enforce: only one specialist per specialty per student.
+        new_specialties = {normalize_specialty(s) for s in staff.specialty_list() if s}
+        if new_specialties:
+            already = (
+                StudentAccess.objects
+                .filter(student=student, user__role='SPECIALIST')
+                .exclude(user_id=staff.id)
+                .select_related('user')
+            )
+            covered = set()
+            for sa in already:
+                for s in sa.user.specialty_list():
+                    if s:
+                        covered.add(normalize_specialty(s))
+            overlap = new_specialties & covered
+            if overlap:
+                raise ValidationError(
+                    f"A specialist is already assigned for: {', '.join(sorted(overlap))}."
+                )
+
     elif expected_role == 'TEACHER':
         # Teacher assignment is locked until the student is Enrolled
         if student.status != 'ENROLLED':

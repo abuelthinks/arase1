@@ -17,6 +17,9 @@ from .views import (
     CreateCycleView, SendRemindersView, TaskStatusView,
     NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView,
     SpecialistPreferenceViewSet, SpecialistListView,
+    AssessmentSectionWriteView, AssessmentSectionSubmitView,
+    TrackerSectionWriteView, TrackerSectionSubmitView,
+    AssessmentContributionsView, TrackerContributionsView,
 )
 
 router = DefaultRouter()
@@ -77,4 +80,18 @@ urlpatterns = [
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
     path('notifications/read-all/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
+
+    # Section-scoped multi-specialist forms
+    path('inputs/multidisciplinary-assessment/sections/<str:section_key>/',
+         AssessmentSectionWriteView.as_view(), name='assessment-section-write'),
+    path('inputs/multidisciplinary-assessment/sections/<str:section_key>/submit/',
+         AssessmentSectionSubmitView.as_view(), name='assessment-section-submit'),
+    path('inputs/multidisciplinary-assessment/contributions/',
+         AssessmentContributionsView.as_view(), name='assessment-contributions'),
+    path('inputs/multidisciplinary-tracker/sections/<str:section_key>/',
+         TrackerSectionWriteView.as_view(), name='tracker-section-write'),
+    path('inputs/multidisciplinary-tracker/sections/<str:section_key>/submit/',
+         TrackerSectionSubmitView.as_view(), name='tracker-section-submit'),
+    path('inputs/multidisciplinary-tracker/contributions/',
+         TrackerContributionsView.as_view(), name='tracker-contributions'),
 ]

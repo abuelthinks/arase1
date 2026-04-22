@@ -179,30 +179,37 @@ def score_staff_for_student(student_id=None):
         caseload=Count('student_access', distinct=True)
     ).order_by('role', 'first_name')
 
-    def _score(specialty, concerns_list):
-        normalized_specialty = normalize_specialty(specialty)
-        if not normalized_specialty:
+    def _score(specialties_list, concerns_list):
+        normalized = [
+            normalize_specialty(s) for s in (specialties_list or []) if s
+        ]
+        normalized = [s for s in normalized if s]
+        if not normalized:
             return 0
         score = 0
         for concern in concerns_list:
-            if normalized_specialty in CONCERN_SPECIALTY.get(concern.lower(), set()):
+            matches = CONCERN_SPECIALTY.get(concern.lower(), set())
+            if any(s in matches for s in normalized):
                 score += 2
         return score
 
     scored = []
     for u in staff_qs:
-        specialty_score = _score(u.specialty, concerns) if concerns else 0
+        user_specialties = u.specialty_list()
+        specialty_score = _score(user_specialties, concerns) if concerns else 0
         combined = (specialty_score * 3) - u.caseload
-        scored.append((combined, u))
+        scored.append((combined, u, user_specialties))
 
     best_by_role = {}
-    for combined, u in scored:
+    for combined, u, _ in scored:
         if u.role not in best_by_role or combined > best_by_role[u.role][0]:
             best_by_role[u.role] = (combined, u.id)
 
     result = []
-    for combined, u in scored:
+    for combined, u, user_specialties in scored:
         is_recommended = best_by_role.get(u.role, (None, None))[1] == u.id
+        normalized_list = [normalize_specialty(s) for s in user_specialties if s]
+        normalized_list = [s for s in normalized_list if s]
         result.append({
             "id": u.id,
             "first_name": u.first_name,
@@ -210,7 +217,8 @@ def score_staff_for_student(student_id=None):
             "email": u.email,
             "username": u.username,
             "role": u.role,
-            "specialty": normalize_specialty(u.specialty),
+            "specialty": normalized_list[0] if normalized_list else "",
+            "specialties": normalized_list,
             "caseload": u.caseload,
             "recommended": is_recommended,
         })

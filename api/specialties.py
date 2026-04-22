@@ -94,3 +94,103 @@ def validate_specialty(role: str, value: str | None) -> str:
         valid = ", ".join(SPECIALIST_SPECIALTIES)
         raise ValueError(f"Specialty must be one of: {valid}.")
     return normalized
+
+
+def validate_specialties(role: str, values) -> list[str]:
+    """Normalize and validate a list of specialties. Empty/non-specialist roles return []."""
+    if role != "SPECIALIST":
+        return []
+    if values is None:
+        return []
+    if isinstance(values, str):
+        values = [values]
+    if not isinstance(values, (list, tuple)):
+        raise ValueError("Specialties must be a list of strings.")
+    out: list[str] = []
+    for v in values:
+        if not v:
+            continue
+        normalized = normalize_specialty(v)
+        if not normalized:
+            continue
+        if normalized not in SPECIALIST_SPECIALTY_SET:
+            valid = ", ".join(SPECIALIST_SPECIALTIES)
+            raise ValueError(f"Specialty must be one of: {valid}.")
+        if normalized not in out:
+            out.append(normalized)
+    return out
+
+
+# ─── Section ownership for multi-specialist forms ────────────────────────────
+# "shared" sections can be edited by any assigned specialist until locked.
+SHARED_SECTION = "shared"
+
+ASSESSMENT_SECTION_OWNERS = {
+    "A": SHARED_SECTION,
+    "B": SHARED_SECTION,
+    "C": SPEECH_LANGUAGE_PATHOLOGY,
+    "D": OCCUPATIONAL_THERAPY,
+    "E": PHYSICAL_THERAPY,
+    "F1": APPLIED_BEHAVIOR_ANALYSIS,
+    "F2": DEVELOPMENTAL_PSYCHOLOGY,
+    "G": SHARED_SECTION,
+}
+
+ASSESSMENT_DISCIPLINE_SECTIONS = {
+    SPEECH_LANGUAGE_PATHOLOGY: "C",
+    OCCUPATIONAL_THERAPY: "D",
+    PHYSICAL_THERAPY: "E",
+    APPLIED_BEHAVIOR_ANALYSIS: "F1",
+    DEVELOPMENTAL_PSYCHOLOGY: "F2",
+}
+
+TRACKER_SECTION_OWNERS = {
+    "section_a": SHARED_SECTION,
+    "section_b": SHARED_SECTION,
+    "section_c_slp": SPEECH_LANGUAGE_PATHOLOGY,
+    "section_c_ot": OCCUPATIONAL_THERAPY,
+    "section_c_pt": PHYSICAL_THERAPY,
+    "section_c_aba": APPLIED_BEHAVIOR_ANALYSIS,
+    "section_c_developmental_psychology": DEVELOPMENTAL_PSYCHOLOGY,
+    "section_d": SHARED_SECTION,
+    "section_e": SHARED_SECTION,
+    "section_f": SHARED_SECTION,
+}
+
+TRACKER_DISCIPLINE_SECTIONS = {
+    SPEECH_LANGUAGE_PATHOLOGY: "section_c_slp",
+    OCCUPATIONAL_THERAPY: "section_c_ot",
+    PHYSICAL_THERAPY: "section_c_pt",
+    APPLIED_BEHAVIOR_ANALYSIS: "section_c_aba",
+    DEVELOPMENTAL_PSYCHOLOGY: "section_c_developmental_psychology",
+}
+
+
+def get_section_owners(form_type: str) -> dict:
+    if form_type == "assessment":
+        return ASSESSMENT_SECTION_OWNERS
+    if form_type == "tracker":
+        return TRACKER_SECTION_OWNERS
+    raise ValueError(f"Unknown form_type: {form_type}")
+
+
+def can_edit_section(form_type: str, section_key: str, user_specialty) -> bool:
+    """Return True if any of user's specialties may edit section_key.
+
+    user_specialty accepts a single string or a list of strings for multi-discipline users.
+    """
+    owners = get_section_owners(form_type)
+    owner = owners.get(section_key)
+    if owner is None:
+        return False
+    if owner == SHARED_SECTION:
+        return True
+    if isinstance(user_specialty, (list, tuple)):
+        return any(normalize_specialty(s) == owner for s in user_specialty if s)
+    return normalize_specialty(user_specialty) == owner
+
+
+def required_owner_sections(form_type: str) -> list[str]:
+    """Return the list of section keys that must be submitted for finalization."""
+    owners = get_section_owners(form_type)
+    return [key for key, owner in owners.items() if owner != SHARED_SECTION]

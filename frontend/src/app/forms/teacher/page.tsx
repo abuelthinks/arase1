@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; checked: boolean; onChange: () => void; readOnly?: boolean }) {
     return (
-        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "1rem", cursor: readOnly ? "default" : "pointer", color: "var(--text-primary)", userSelect: "none" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "var(--form-control-font-size)", lineHeight: "var(--form-line-height)", cursor: readOnly ? "default" : "pointer", color: "var(--text-primary)", userSelect: "none" }}>
             <input type="checkbox" checked={checked} onChange={readOnly ? undefined : onChange} readOnly={readOnly}
                 style={{ width: 18, height: 18, accentColor: "#4f46e5", cursor: readOnly ? "default" : "pointer" }} />
             {label}
@@ -22,8 +22,8 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
     return (
         <div style={{ background: "white", borderRadius: "14px", border: "1px solid var(--border-light)", overflow: "hidden", marginBottom: "1.25rem" }}>
             <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-light)", background: "#f8fafc" }}>
-                <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h2>
-                {subtitle && <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: "2px 0 0" }}>{subtitle}</p>}
+                <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h2>
+                {subtitle && <p style={{ fontSize: "var(--form-helper-font-size)", lineHeight: "var(--form-line-height)", color: "var(--text-secondary)", margin: "2px 0 0" }}>{subtitle}</p>}
             </div>
             <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {children}
@@ -35,7 +35,7 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div>
-            <p style={{ fontSize: "0.9rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#4f46e5", marginBottom: "8px" }}>{label}</p>
+            <p style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)", fontWeight: 650, color: "#334155", marginBottom: "8px" }}>{label}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>{children}</div>
         </div>
     );
@@ -51,7 +51,7 @@ function TextArea({ value, onChange, placeholder, readOnly, rows = 3 }: { value:
             rows={rows}
             style={{
                 width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0",
-                padding: "12px 14px", fontSize: "1rem", resize: "vertical",
+                padding: "10px 13px", fontSize: "var(--form-control-font-size)", lineHeight: "var(--form-line-height)", resize: "vertical",
                 color: "var(--text-primary)", background: readOnly ? "#f8fafc" : "white",
                 boxSizing: "border-box"
             }}
@@ -69,7 +69,7 @@ function TextInput({ value, onChange, placeholder, readOnly, type = "text" }: { 
             placeholder={placeholder}
             style={{
                 width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0",
-                padding: "11px 14px", fontSize: "1rem",
+                padding: "10px 13px", fontSize: "var(--form-control-font-size)", lineHeight: "var(--form-line-height)",
                 color: "var(--text-primary)", background: readOnly ? "#f8fafc" : "white",
                 boxSizing: "border-box"
             }}

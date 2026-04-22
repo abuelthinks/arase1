@@ -3,6 +3,8 @@ IEP generation business logic extracted from views.py.
 """
 import logging
 
+from django.db import transaction
+
 from api.models import (
     Student, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
@@ -31,6 +33,21 @@ def run_iep_generation(student_id, cycle_id):
 
     student = Student.objects.get(id=student_id)
     cycle = ReportCycle.objects.get(id=cycle_id)
+
+    existing_doc = GeneratedDocument.objects.filter(
+        student=student,
+        report_cycle=cycle,
+        document_type='IEP',
+    ).order_by('-created_at').first()
+    if existing_doc:
+        logger.info(
+            "IEP already exists for student=%s cycle=%s (doc_id=%s); skipping duplicate generation.",
+            student.id,
+            cycle.id,
+            existing_doc.id,
+        )
+        return existing_doc, existing_doc.iep_data or {}
+
     inputs = collect_iep_inputs(student, cycle)
 
     iep_data = generate_iep(student, cycle, inputs)
@@ -81,9 +98,10 @@ def _extract_attendance(report_data):
 
 def _update_iep_section10(student, cycle, report_data):
     """Find the student's latest IEP and update Section 10 with progress data."""
-    latest_iep = GeneratedDocument.objects.filter(
+    iep_qs = GeneratedDocument.objects.filter(
         student=student, document_type='IEP'
-    ).order_by('-created_at').first()
+    ).order_by('-created_at')
+    latest_iep = iep_qs.filter(status='FINAL').first() or iep_qs.first()
 
     if not latest_iep or not latest_iep.iep_data:
         logger.info("No IEP found for student=%s — skipping Section 10 update.", student.id)
@@ -112,8 +130,25 @@ def run_monthly_report_generation(student_id, cycle_id):
     from api.monthly_report_generator import generate_monthly_report
     from api.models import ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker
 
-    student = Student.objects.get(id=student_id)
-    cycle = ReportCycle.objects.get(id=cycle_id)
+    with transaction.atomic():
+        cycle = ReportCycle.objects.select_for_update().get(id=cycle_id)
+        student = Student.objects.get(id=student_id)
+        existing_doc = GeneratedDocument.objects.filter(
+            student=student,
+            report_cycle=cycle,
+            document_type='MONTHLY',
+        ).order_by('-created_at').first()
+        if existing_doc:
+            if cycle.status == 'GENERATING':
+                cycle.status = 'COMPLETED'
+                cycle.save(update_fields=['status'])
+            logger.info(
+                "Monthly report already exists for student=%s cycle=%s (doc_id=%s); skipping duplicate generation.",
+                student.id,
+                cycle.id,
+                existing_doc.id,
+            )
+            return existing_doc, existing_doc.iep_data or {}
 
     inputs = {
         'parent_tracker': ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).order_by('-created_at').first(),
@@ -145,5 +180,9 @@ def run_monthly_report_generation(student_id, cycle_id):
         _update_iep_section10(student, cycle, report_data)
     except Exception as e:
         logger.warning("Could not update IEP Section 10: %s", e)
+
+    if cycle.status == 'GENERATING':
+        cycle.status = 'COMPLETED'
+        cycle.save(update_fields=['status'])
 
     return doc, report_data

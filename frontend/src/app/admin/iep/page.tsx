@@ -63,6 +63,17 @@ interface IEPData {
     section12_signatures: Record<string, string>;
 }
 
+const formatDocumentDateTime = (value?: string | null) => {
+    if (!value) return "";
+    return new Date(value).toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+};
+
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 
 export function IEPViewerContent({ propId, propHideNavigation }: { propId?: string; propHideNavigation?: boolean }) {
@@ -191,15 +202,12 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         </span>
                     </h1>
                     <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
-                        {meta.student_name} · Generated {new Date(meta.created_at).toLocaleDateString()}
+                        {meta.student_name} · Generated {formatDocumentDateTime(meta.created_at)}
                     </p>
                 </div>
                 {user?.role === "ADMIN" && (
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         <button onClick={fetchAuditHistory} className="btn-slate" style={{ fontSize: "0.82rem" }}>⏱️ Audit History</button>
-                        <button onClick={handleCopyLink} className="btn-slate" style={{ fontSize: "0.82rem", color: copied ? "#059669" : undefined }}>
-                            {copied ? "✓ Copied!" : "🔗 Share Link"}
-                        </button>
                         <button onClick={handleDownload} className="btn-slate" style={{ fontSize: "0.82rem" }}>📥 Download PDF</button>
                         {editing ? (
                             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>

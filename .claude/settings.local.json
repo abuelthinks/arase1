@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep *)",
+      "Bash(git checkout *)",
+      "Bash(python manage.py makemigrations api)",
+      "Bash(python manage.py migrate api)",
+      "Bash(python manage.py check)",
+      "Bash(npx tsc *)",
+      "Bash(venv/Scripts/python.exe manage.py migrate)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('api/services/student_service.py'\\).read\\(\\)\\); ast.parse\\(open\\('api/views.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
+    ]
+  }
+}
