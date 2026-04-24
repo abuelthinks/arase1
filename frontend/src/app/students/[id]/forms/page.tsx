@@ -12,6 +12,7 @@ import { FormEntryContent } from "@/app/forms/[type]/page";
 const TABS = [
     { id: "parent_assessment", label: "Parent Assessment", formType: null },
     { id: "multi_assessment", label: "Specialist Assessment", formType: "multidisciplinary-assessment" },
+    { id: "sped_assessment", label: "Teacher Assessment", formType: "sped-assessment" },
     { id: "parent_tracker", label: "Parent Progress", formType: "parent-tracker" },
     { id: "multi_tracker", label: "Specialist Progress", formType: "multidisciplinary-tracker" },
     { id: "sped_tracker", label: "Teacher Progress", formType: "sped-tracker" }
@@ -116,7 +117,7 @@ export default function UnifiedFormsViewer() {
                             <div className="px-4 mb-4">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Assessments</p>
                                 <div className="flex flex-col gap-1">
-                                    {TABS.slice(0, 2).map((tab) => {
+                                    {TABS.filter(tab => ["parent_assessment", "multi_assessment", "sped_assessment"].includes(tab.id)).map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
                                         const isActive = activeTab === tab.id;
                                         return (
@@ -137,7 +138,7 @@ export default function UnifiedFormsViewer() {
                             <div className="px-4 pb-4">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Progress Trackers</p>
                                 <div className="flex flex-col gap-1">
-                                    {TABS.slice(2).map((tab) => {
+                                    {TABS.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id)).map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
                                         const isActive = activeTab === tab.id;
                                         return (

@@ -39,6 +39,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
 const TABS = [
     { id: "parent_assessment", label: "Parent Assessment", formType: null },
     { id: "multi_assessment", label: "Specialist Assessment", formType: "multidisciplinary-assessment" },
+    { id: "sped_assessment", label: "Teacher Assessment", formType: "sped-assessment" },
     { id: "parent_tracker", label: "Parent Progress", formType: "parent-tracker" },
     { id: "multi_tracker", label: "Specialist Progress", formType: "multidisciplinary-tracker" },
     { id: "sped_tracker", label: "Teacher Progress", formType: "sped-tracker" }
@@ -360,7 +361,7 @@ function UnifiedWorkspaceContent() {
     const visibleFormTabs = user?.role === "PARENT"
         ? TABS.filter(tab => tab.id === "parent_tracker")
         : user?.role === "TEACHER"
-            ? TABS.filter(tab => tab.id === "sped_tracker")
+            ? TABS.filter(tab => ["sped_assessment", "sped_tracker"].includes(tab.id))
             : TABS;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const showStudentSidebar = user?.role !== "PARENT";
@@ -402,7 +403,9 @@ function UnifiedWorkspaceContent() {
     const defaultFormTab = user?.role === "PARENT"
         ? "parent_tracker"
         : user?.role === "TEACHER"
-            ? "sped_tracker"
+            ? formStatuses?.sped_assessment?.submitted && isStudentCurrentlyEnrolled
+                ? "sped_tracker"
+                : "sped_assessment"
             : user?.role === "SPECIALIST"
                 ? formStatuses?.multi_assessment?.submitted && isStudentCurrentlyEnrolled
                     ? "multi_tracker"
@@ -410,7 +413,8 @@ function UnifiedWorkspaceContent() {
                 : "parent_assessment";
     const canUseRequestedFormTab = requestedFormTab &&
         visibleFormTabs.some(tab => tab.id === requestedFormTab) &&
-        !(user?.role === "SPECIALIST" && requestedFormTab === "multi_tracker" && !isStudentCurrentlyEnrolled);
+        !(user?.role === "SPECIALIST" && requestedFormTab === "multi_tracker" && !isStudentCurrentlyEnrolled) &&
+        !(user?.role === "TEACHER" && requestedFormTab === "sped_tracker" && !isStudentCurrentlyEnrolled);
     const activeFormTab = canUseRequestedFormTab
         ? requestedFormTab
         : defaultFormTab;
@@ -1190,17 +1194,17 @@ function UnifiedWorkspaceContent() {
         const assessmentTabs = user?.role === "PARENT"
             ? visibleFormTabs.filter(tab => tab.id === "parent_assessment")
             : user?.role === "TEACHER"
-                ? []
-                : visibleFormTabs.slice(0, 2);
+                ? visibleFormTabs.filter(tab => tab.id === "sped_assessment")
+                : visibleFormTabs.filter(tab => ["parent_assessment", "multi_assessment", "sped_assessment"].includes(tab.id));
         const progressTabs = user?.role === "PARENT"
             ? visibleFormTabs.filter(tab => tab.id === "parent_tracker")
             : user?.role === "SPECIALIST"
                 ? visibleFormTabs.filter(tab => tab.id === "multi_tracker")
                 : user?.role === "TEACHER"
                     ? visibleFormTabs.filter(tab => tab.id === "sped_tracker")
-                    : visibleFormTabs.slice(2);
-        const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
-        const isAdminProgressLocked = user?.role === "ADMIN" && TABS.slice(2).some(tab => tab.id === activeFormTab) && !isStudentEnrolled;
+                    : visibleFormTabs.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id));
+        const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment", "sped_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
+        const isAdminProgressLocked = user?.role === "ADMIN" && ["parent_tracker", "multi_tracker", "sped_tracker"].includes(activeFormTab) && !isStudentEnrolled;
         const completedAssessmentAppointment = assessmentAppointments.find(appointment => appointment.status === "COMPLETED");
         const scheduledAssessmentAppointment = assessmentAppointments.find(appointment => appointment.status === "SCHEDULED");
         const isSpecialistAssessmentLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_assessment" && !completedAssessmentAppointment;
@@ -1211,7 +1215,7 @@ function UnifiedWorkspaceContent() {
         const canCreateCurrentForm =
             !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistAssessmentLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !isParentProgressLocked && !isSpecialistOnboardingLocked && !currentStatus?.submitted && (
                 (user?.role === "SPECIALIST" && ["multi_assessment", "multi_tracker"].includes(activeFormTab)) ||
-                (user?.role === "TEACHER" && activeFormTab === "sped_tracker") ||
+                (user?.role === "TEACHER" && ["sped_assessment", "sped_tracker"].includes(activeFormTab)) ||
                 (user?.role === "PARENT" && ["parent_tracker"].includes(activeFormTab))
             );
 

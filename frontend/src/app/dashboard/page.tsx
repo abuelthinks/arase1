@@ -176,7 +176,7 @@ export default function DashboardPage() {
 
     const getPrimaryInputTab = () => {
         if (user?.role === "SPECIALIST") return "multi_assessment";
-        if (user?.role === "TEACHER") return "sped_tracker";
+        if (user?.role === "TEACHER") return "sped_assessment";
         return undefined;
     };
 

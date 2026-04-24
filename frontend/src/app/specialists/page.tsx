@@ -1060,7 +1060,7 @@ function SpecialistCard({
 
 export default function SpecialistsPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["ADMIN", "PARENT"]}>
       <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading...</div>}>
         <SpecialistsContent />
       </Suspense>

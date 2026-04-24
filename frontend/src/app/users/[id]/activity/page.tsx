@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/context/AuthContext";
 
 interface UserData {
     id: number;
@@ -28,11 +29,20 @@ const mockFullActivities = [
 export default function UserActivityPage() {
     const { id } = useParams();
     const router = useRouter();
+    const { user: authUser, loading: authLoading } = useAuth();
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const targetUserId = Number(id);
+    const canViewActivity = authUser?.role === "ADMIN" || authUser?.user_id === targetUserId;
     
     useEffect(() => {
+        if (authLoading || !id) return;
+        if (!canViewActivity) {
+            router.replace("/dashboard");
+            return;
+        }
+
         const fetchUser = async () => {
             try {
                 const res = await api.get(`/api/users/${id}/`);
@@ -43,9 +53,11 @@ export default function UserActivityPage() {
                 setLoading(false);
             }
         };
-        if (id) fetchUser();
-    }, [id]);
+        fetchUser();
+    }, [authLoading, canViewActivity, id, router]);
 
+    if (authLoading || (loading && canViewActivity)) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading activity...</div>;
+    if (!canViewActivity) return null;
     if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading activity...</div>;
     if (error)   return <div style={{ padding: "3rem", textAlign: "center", color: "#dc2626" }}>{error}</div>;
     if (!user)   return <div style={{ padding: "3rem", textAlign: "center" }}>User not found.</div>;

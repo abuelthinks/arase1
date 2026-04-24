@@ -118,6 +118,23 @@ class UserViewSet(viewsets.ModelViewSet):
             return AdminUserSerializer
         return SelfUserSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if request.user.role == 'ADMIN':
+            serializer = AdminUserSerializer(instance, context={'request': request})
+            return Response(serializer.data)
+
+        serializer = SelfUserSerializer(instance, context={'request': request})
+        data = serializer.data
+
+        if instance.id != request.user.id:
+            data['email'] = ''
+            data['phone_number'] = ''
+            data['is_phone_verified'] = False
+
+        return Response(data)
+
     def _require_admin(self, request):
         if request.user.role != 'ADMIN':
             raise PermissionDenied("Only admins can manage users.")

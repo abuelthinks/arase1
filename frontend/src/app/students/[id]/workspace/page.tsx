@@ -32,6 +32,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
 const TABS = [
     { id: "parent_assessment", label: "Parent Assessment", formType: null },
     { id: "multi_assessment", label: "Specialist Assessment", formType: "multidisciplinary-assessment" },
+    { id: "sped_assessment", label: "Teacher Assessment", formType: "sped-assessment" },
     { id: "parent_tracker", label: "Parent Progress", formType: "parent-tracker" },
     { id: "multi_tracker", label: "Specialist Progress", formType: "multidisciplinary-tracker" },
     { id: "sped_tracker", label: "Teacher Progress", formType: "sped-tracker" }
@@ -71,12 +72,17 @@ function UnifiedWorkspaceContent() {
     const visibleFormTabs = user?.role === "PARENT"
         ? TABS.filter(tab => ["parent_assessment", "parent_tracker"].includes(tab.id))
         : user?.role === "TEACHER"
-            ? TABS.filter(tab => tab.id === "sped_tracker")
+            ? TABS.filter(tab => ["sped_assessment", "sped_tracker"].includes(tab.id))
             : TABS;
+    const isStudentCurrentlyEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
     const activeFormTab = user?.role === "PARENT"
         ? (["parent_assessment", "parent_tracker"].includes(requestedFormTab || "") ? requestedFormTab! : "parent_assessment")
         : user?.role === "TEACHER"
-            ? "sped_tracker"
+            ? (["sped_assessment", "sped_tracker"].includes(requestedFormTab || "")
+                ? requestedFormTab!
+                : formStatuses?.sped_assessment?.submitted && isStudentCurrentlyEnrolled
+                    ? "sped_tracker"
+                    : "sped_assessment")
             : requestedFormTab || "parent_assessment";
     
     // -- Reports State --
@@ -531,23 +537,23 @@ function UnifiedWorkspaceContent() {
         const assessmentTabs = user?.role === "PARENT"
             ? visibleFormTabs.filter(tab => tab.id === "parent_assessment")
             : user?.role === "TEACHER"
-                ? []
-                : visibleFormTabs.slice(0, 2);
+                ? visibleFormTabs.filter(tab => tab.id === "sped_assessment")
+                : visibleFormTabs.filter(tab => ["parent_assessment", "multi_assessment", "sped_assessment"].includes(tab.id));
         const progressTabs = user?.role === "PARENT"
             ? visibleFormTabs.filter(tab => tab.id === "parent_tracker")
             : user?.role === "SPECIALIST"
                 ? visibleFormTabs.filter(tab => tab.id === "multi_tracker")
                 : user?.role === "TEACHER"
                     ? visibleFormTabs.filter(tab => tab.id === "sped_tracker")
-                    : visibleFormTabs.slice(2);
-        const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
-        const isAdminProgressLocked = user?.role === "ADMIN" && TABS.slice(2).some(tab => tab.id === activeFormTab) && !isStudentEnrolled;
+                    : visibleFormTabs.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id));
+        const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment", "sped_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
+        const isAdminProgressLocked = user?.role === "ADMIN" && ["parent_tracker", "multi_tracker", "sped_tracker"].includes(activeFormTab) && !isStudentEnrolled;
         const isSpecialistProgressLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_tracker" && !isStudentEnrolled;
         const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && !isStudentEnrolled;
         const canCreateCurrentForm =
             !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !currentStatus?.submitted && (
                 (user?.role === "SPECIALIST" && ["multi_assessment", "multi_tracker"].includes(activeFormTab)) ||
-                (user?.role === "TEACHER" && activeFormTab === "sped_tracker") ||
+                (user?.role === "TEACHER" && ["sped_assessment", "sped_tracker"].includes(activeFormTab)) ||
                 (user?.role === "PARENT" && ["parent_assessment", "parent_tracker"].includes(activeFormTab))
             );
 

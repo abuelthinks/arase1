@@ -215,20 +215,16 @@ export default function UserProfile() {
         (viewerIsParent && role === "SPECIALIST") ||
         (viewerIsSpecialist && role === "PARENT")
     );
+    const canViewPrivateContact = isAdmin || viewingOwnProfile;
+    const canViewOperationalDetails = isAdmin || viewingOwnProfile;
     const canEditLanguages = role === "SPECIALIST" && (isAdmin || authUser?.user_id === user.id);
     const knownLanguageSet = new Set(LANGUAGE_OPTIONS.map(l => l.toLowerCase()));
 
-    const profileInfo = isCrossRoleParentSpecialist
+    const profileInfo = !canViewPrivateContact
         ? [
             { label: "Role", value: user.role, icon: Briefcase },
         ]
-        : isParentViewingOther
-            ? [
-                { label: "Email", value: user.email, href: `mailto:${user.email}`, icon: Mail },
-                { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
-                { label: "Role", value: user.role, icon: Briefcase },
-            ]
-            : isParent
+        : isParent
                 ? [
                     { label: "Email", value: user.email, href: `mailto:${user.email}`, icon: Mail },
                     { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
@@ -243,7 +239,7 @@ export default function UserProfile() {
                     { label: "Account Status", value: "Active", icon: ShieldCheck },
                 ];
 
-    const statCards = !isParent && !isParentViewingOther
+    const statCards = canViewOperationalDetails && !isParent
         ? [
             { label: "Caseload", value: studentCount, note: "total assigned students", accent: "from-indigo-500 to-blue-600" },
             { label: "Active", value: activeCount, note: "enrolled students", accent: "from-emerald-500 to-teal-600" },
@@ -265,7 +261,7 @@ export default function UserProfile() {
                         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                         Back
                     </button>
-                    {!isParent && !isParentViewingOther && (
+                    {canViewOperationalDetails && !isParent && (
                         <div className="flex flex-wrap gap-2">
                             <Link
                                 href={`/users/${user.id}/activity`}
@@ -274,7 +270,7 @@ export default function UserProfile() {
                                 <ActivityIcon className="h-3.5 w-3.5" aria-hidden="true" />
                                 View Activity
                             </Link>
-                            {user.email && (
+                            {canViewPrivateContact && user.email && (
                                 <a
                                     href={`mailto:${user.email}`}
                                     className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 no-underline transition-colors hover:bg-slate-50"
@@ -304,13 +300,13 @@ export default function UserProfile() {
                             {getRoleSummary(role)}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                            {!isCrossRoleParentSpecialist && (
+                            {canViewPrivateContact && user.email && (
                                 <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
                                     <Mail className="h-3 w-3" aria-hidden="true" />
                                     {user.email}
                                 </span>
                             )}
-                            {!isCrossRoleParentSpecialist && user.phone_number && (
+                            {canViewPrivateContact && user.phone_number && (
                                 <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
                                     <PhoneCall className="h-3 w-3" aria-hidden="true" />
                                     {user.phone_number}
@@ -345,7 +341,7 @@ export default function UserProfile() {
             )}
 
             {/* Onboarding callout */}
-            {role === "SPECIALIST" && onboardingIncomplete && (
+            {role === "SPECIALIST" && onboardingIncomplete && canViewOperationalDetails && (
                 <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p className="m-0 text-sm font-extrabold text-amber-900">Complete your profile setup</p>
@@ -398,7 +394,7 @@ export default function UserProfile() {
                                 description={isParentViewingOther ? "Who this specialist is and how they can support your child." : "Important account context at a glance."}
                             />
                             <div className="flex flex-col gap-3">
-                                {!isParentViewingOther && (
+                                {canViewPrivateContact && (
                                     <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
                                         <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
                                             <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" />
@@ -727,7 +723,7 @@ export default function UserProfile() {
                 </div>
 
                 <div className="flex flex-col gap-6">
-                    {!isParentViewingOther && (
+                    {(isParent || canViewOperationalDetails) && (
                         <SectionCard>
                             <SectionHeader
                                 title={isParent ? "Children" : "Assigned Students"}
@@ -819,7 +815,7 @@ export default function UserProfile() {
                                             />
                                         )}
                                     </>
-                                ) : (
+                                ) : canViewOperationalDetails ? (
                                     <>
                                         <ActionRow
                                             href={`/users/${user.id}/activity`}
@@ -835,7 +831,7 @@ export default function UserProfile() {
                                                 icon={Users}
                                             />
                                         )}
-                                        {user.email && (
+                                        {canViewPrivateContact && user.email && (
                                             <ActionRow
                                                 href={`mailto:${user.email}`}
                                                 title="Contact User"
@@ -845,6 +841,10 @@ export default function UserProfile() {
                                             />
                                         )}
                                     </>
+                                ) : (
+                                    <p className="m-0 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                                        This profile is limited to public information.
+                                    </p>
                                 )}
                             </div>
                         </SectionCard>
