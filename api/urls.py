@@ -9,6 +9,7 @@ from .views import (
     AIRecommendSpecialtyView, EnrollStudentView, ArchiveStudentView,
     UserViewSet, CreateInvitationView, AcceptInvitationView, ManageInvitationView, ResendInvitationView,
     StaffListView,
+    RequestSpecialtyChangeView,
     GenerateIEPView, IEPDetailView, IEPDownloadView,
     GenerateMonthlyReportView, MonthlyReportDetailView, MonthlyReportDownloadView,
     AdminDashboardActionsView,
@@ -20,6 +21,8 @@ from .views import (
     AssessmentSectionWriteView, AssessmentSectionSubmitView,
     TrackerSectionWriteView, TrackerSectionSubmitView,
     AssessmentContributionsView, TrackerContributionsView,
+    AssessmentAvailabilityView, AssessmentAvailabilityDetailView,
+    AssessmentAppointmentView, AssessmentAppointmentDetailView,
 )
 
 router = DefaultRouter()
@@ -46,6 +49,7 @@ urlpatterns = [
     path('students/<int:student_id>/enroll/', EnrollStudentView.as_view(), name='enroll-student'),
     path('users/send-verification-sms/', SendVerificationSMSView.as_view(), name='send-verification-sms'),
     path('users/verify-sms/', VerifySMSView.as_view(), name='verify-sms'),
+    path('users/request-specialty-change/', RequestSpecialtyChangeView.as_view(), name='request-specialty-change'),
     path('', include(router.urls)),
     path('staff/', StaffListView.as_view(), name='staff-list'),
     path('ai/generate-goals/', AIGenerateGoalsView.as_view(), name='ai-generate-goals'),
@@ -80,6 +84,12 @@ urlpatterns = [
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
     path('notifications/read-all/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
+
+    # Assessment scheduling
+    path('assessment/availability/', AssessmentAvailabilityView.as_view(), name='assessment-availability'),
+    path('assessment/availability/<int:pk>/', AssessmentAvailabilityDetailView.as_view(), name='assessment-availability-detail'),
+    path('assessment/appointments/', AssessmentAppointmentView.as_view(), name='assessment-appointments'),
+    path('assessment/appointments/<int:pk>/', AssessmentAppointmentDetailView.as_view(), name='assessment-appointment-detail'),
 
     # Section-scoped multi-specialist forms
     path('inputs/multidisciplinary-assessment/sections/<str:section_key>/',

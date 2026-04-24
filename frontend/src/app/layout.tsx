@@ -19,7 +19,16 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased" suppressHydrationWarning>
         <AuthProvider>
-          <Toaster position="top-right" richColors closeButton />
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            toastOptions={{
+              style: {
+                marginTop: "56px",
+              },
+            }}
+          />
           <div className="flex flex-col h-screen overflow-hidden w-full">
             <div className="shrink-0">
               <Navbar />

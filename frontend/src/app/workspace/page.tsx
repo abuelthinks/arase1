@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
+import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -65,10 +66,279 @@ const formatDocumentDateTime = (value?: string | null) => {
     });
 };
 
+const toDateTimeLocalValue = (value: Date) => {
+    const offsetMs = value.getTimezoneOffset() * 60000;
+    return new Date(value.getTime() - offsetMs).toISOString().slice(0, 16);
+};
+
+const defaultSlotStart = () => {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    next.setHours(9, 0, 0, 0);
+    return toDateTimeLocalValue(next);
+};
+
+const defaultSlotEnd = () => {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    next.setHours(10, 0, 0, 0);
+    return toDateTimeLocalValue(next);
+};
+
+function AssessmentSchedulingPanel({
+    user,
+    studentId,
+    compact = false,
+    onChanged,
+}: {
+    user: any;
+    studentId?: string | null;
+    compact?: boolean;
+    onChanged?: () => void;
+}) {
+    const [slots, setSlots] = useState<any[]>([]);
+    const [appointments, setAppointments] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [startAt, setStartAt] = useState(defaultSlotStart);
+    const [endAt, setEndAt] = useState(defaultSlotEnd);
+    const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
+
+    const canManageAvailability = user?.role === "SPECIALIST" && !studentId;
+    const canBook = user?.role === "PARENT" && studentId;
+    const canManageAppointments = user?.role === "ADMIN";
+    const canViewAppointments = user?.role === "SPECIALIST" && studentId;
+    const scheduledAppointment = appointments.find(a => a.status === "SCHEDULED");
+
+    const loadSchedule = async () => {
+        setLoading(true);
+        try {
+            const params = studentId ? `?student_id=${encodeURIComponent(studentId)}` : "";
+            const [slotRes, apptRes] = await Promise.all([
+                api.get(`/api/assessment/availability/${params}`),
+                api.get(`/api/assessment/appointments/${params}`),
+            ]);
+            setSlots(slotRes.data || []);
+            setAppointments(apptRes.data || []);
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Could not load assessment schedule.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!user || (user.role !== "SPECIALIST" && !studentId)) return;
+        loadSchedule();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.role, studentId]);
+
+    const createSlot = async () => {
+        setSaving(true);
+        try {
+            await api.post("/api/assessment/availability/", {
+                start_at: new Date(startAt).toISOString(),
+                end_at: new Date(endAt).toISOString(),
+                mode: "ONLINE",
+                is_active: true,
+            });
+            toast.success("Availability added.");
+            await loadSchedule();
+            onChanged?.();
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Could not add availability.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const deleteSlot = async (slotId: number) => {
+        try {
+            await api.delete(`/api/assessment/availability/${slotId}/`);
+            toast.success("Availability removed.");
+            await loadSchedule();
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Could not remove availability.");
+        }
+    };
+
+    const bookSlot = async (slotId: number) => {
+        if (!studentId) return;
+        setSaving(true);
+        try {
+            await api.post("/api/assessment/appointments/", {
+                student: studentId,
+                availability_slot: slotId,
+            });
+            toast.success("Assessment scheduled.");
+            await loadSchedule();
+            onChanged?.();
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Could not book this slot.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const updateAppointmentStatus = async (appointmentId: number, status: string) => {
+        try {
+            await api.patch(`/api/assessment/appointments/${appointmentId}/`, { status });
+            toast.success("Assessment schedule updated.");
+            await loadSchedule();
+            onChanged?.();
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Could not update appointment.");
+        }
+    };
+
+    if (!canManageAvailability && !canBook && !canManageAppointments && !canViewAppointments) return null;
+
+    return (
+        <section className={`border border-slate-200 bg-white ${compact ? "rounded-lg p-4" : "rounded-xl p-5"} shadow-sm`}>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between mb-4">
+                <div>
+                    <h2 className="text-base font-extrabold text-slate-900 m-0">Assessment Schedule</h2>
+                    <p className="text-sm text-slate-500 m-0">
+                        {user?.role === "SPECIALIST"
+                            ? "Add online slots parents can book."
+                            : user?.role === "PARENT"
+                                ? "Choose an online assessment slot from assigned specialists."
+                                : "Review and manage scheduled assessments."}
+                    </p>
+                </div>
+                {loading && <span className="text-xs font-semibold text-slate-400">Loading...</span>}
+            </div>
+
+            {specialistOnboardingIncomplete && (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="m-0 text-sm font-semibold text-amber-900">
+                        {specialistOnboardingMessage(user?.specialist_onboarding_missing)}
+                    </p>
+                </div>
+            )}
+
+            {canManageAvailability && (
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 mb-4">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        Start
+                        <input
+                            type="datetime-local"
+                            value={startAt}
+                            onChange={e => setStartAt(e.target.value)}
+                            disabled={specialistOnboardingIncomplete}
+                            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
+                        />
+                    </label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        End
+                        <input
+                            type="datetime-local"
+                            value={endAt}
+                            onChange={e => setEndAt(e.target.value)}
+                            disabled={specialistOnboardingIncomplete}
+                            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        onClick={createSlot}
+                        disabled={saving || specialistOnboardingIncomplete}
+                        className="self-end rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                    >
+                        Add Slot
+                    </button>
+                </div>
+            )}
+
+            {scheduledAppointment && (
+                <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                    <p className="text-sm font-bold text-emerald-900 m-0">
+                        Scheduled: {formatDocumentDateTime(scheduledAppointment.start_at)}
+                    </p>
+                    <p className="text-xs text-emerald-700 m-0">
+                        {scheduledAppointment.student_name} with {scheduledAppointment.specialist_name} · Online
+                    </p>
+                </div>
+            )}
+
+            {canBook && !scheduledAppointment && (
+                <div className="space-y-2">
+                    {slots.length === 0 ? (
+                        <p className="text-sm text-slate-500 m-0">No available online slots yet.</p>
+                    ) : slots.slice(0, 8).map(slot => (
+                        <div key={slot.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-bold text-slate-900 m-0">{formatDocumentDateTime(slot.start_at)}</p>
+                                <p className="text-xs text-slate-500 m-0">{slot.specialist_name} · Online</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => bookSlot(slot.id)}
+                                disabled={saving}
+                                className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                            >
+                                Book
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {canManageAvailability && (
+                <div className="space-y-2">
+                    {slots.length === 0 ? (
+                        <p className="text-sm text-slate-500 m-0">No open availability slots.</p>
+                    ) : slots.slice(0, 8).map(slot => (
+                        <div key={slot.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-bold text-slate-900 m-0">{formatDocumentDateTime(slot.start_at)}</p>
+                                <p className="text-xs text-slate-500 m-0">{slot.specialist_name} · Online</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => deleteSlot(slot.id)}
+                                disabled={specialistOnboardingIncomplete}
+                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 disabled:opacity-60"
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {user?.role === "ADMIN" && appointments.length === 0 && (
+                <p className="text-sm text-slate-500 m-0">No scheduled assessments for this student yet.</p>
+            )}
+
+            {(user?.role === "ADMIN" || user?.role === "SPECIALIST") && appointments.length > 0 && (
+                <div className="mt-4 border-t border-slate-100 pt-4 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400 m-0">Appointments</p>
+                    {appointments.slice(0, 8).map(appointment => (
+                        <div key={appointment.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-bold text-slate-900 m-0">{formatDocumentDateTime(appointment.start_at)}</p>
+                                <p className="text-xs text-slate-500 m-0">{appointment.student_name} with {appointment.specialist_name} · {appointment.status}</p>
+                            </div>
+                            {canManageAppointments && appointment.status === "SCHEDULED" && (
+                                <div className="flex gap-2">
+                                    <button type="button" onClick={() => updateAppointmentStatus(appointment.id, "COMPLETED")} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Complete</button>
+                                    <button type="button" onClick={() => updateAppointmentStatus(appointment.id, "CANCELLED")} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600">Cancel</button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+}
+
 function UnifiedWorkspaceContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user } = useAuth();
+    const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
     
     // -- Global State --
     const studentId = searchParams.get("studentId");
@@ -82,6 +352,7 @@ function UnifiedWorkspaceContent() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+    const [assessmentAppointments, setAssessmentAppointments] = useState<any[]>([]);
 
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
@@ -174,11 +445,19 @@ function UnifiedWorkspaceContent() {
                 if (rememberedStudentId && students.some((s: any) => s.id.toString() === rememberedStudentId)) {
                     const url = new URL(window.location.href);
                     url.searchParams.set("studentId", rememberedStudentId);
-                    if (remembered?.workspace) url.searchParams.set("workspace", remembered.workspace);
-                    if (remembered?.tab) url.searchParams.set("tab", remembered.tab);
-                    if (remembered?.view) url.searchParams.set("view", remembered.view);
-                    if (remembered?.docId) url.searchParams.set("docId", remembered.docId);
-                    if (remembered?.teamRole) url.searchParams.set("teamRole", remembered.teamRole);
+                    if (user?.role === "ADMIN") {
+                        url.searchParams.set("workspace", "overview");
+                        url.searchParams.delete("tab");
+                        url.searchParams.delete("view");
+                        url.searchParams.delete("docId");
+                        url.searchParams.delete("teamRole");
+                    } else {
+                        if (remembered?.workspace) url.searchParams.set("workspace", remembered.workspace);
+                        if (remembered?.tab) url.searchParams.set("tab", remembered.tab);
+                        if (remembered?.view) url.searchParams.set("view", remembered.view);
+                        if (remembered?.docId) url.searchParams.set("docId", remembered.docId);
+                        if (remembered?.teamRole) url.searchParams.set("teamRole", remembered.teamRole);
+                    }
                     router.replace(url.pathname + url.search);
                     return;
                 }
@@ -232,6 +511,25 @@ function UnifiedWorkspaceContent() {
             isActive = false;
         };
     }, [studentId, isAuthorized, profileRefreshKey]);
+
+    useEffect(() => {
+        if (!isAuthorized || !studentId || !["ADMIN", "SPECIALIST", "PARENT"].includes(user?.role || "")) {
+            setAssessmentAppointments([]);
+            return;
+        }
+
+        let isActive = true;
+        api.get(`/api/assessment/appointments/?student_id=${studentId}`)
+            .then(res => {
+                if (isActive) setAssessmentAppointments(res.data || []);
+            })
+            .catch(() => {
+                if (isActive) setAssessmentAppointments([]);
+            });
+        return () => {
+            isActive = false;
+        };
+    }, [isAuthorized, studentId, user?.role, profileRefreshKey]);
 
     useEffect(() => {
         if (!isAuthorized || !studentId || !formStatuses || workspace !== "forms" || requestedFormTab || typeof window === "undefined") {
@@ -903,11 +1201,15 @@ function UnifiedWorkspaceContent() {
                     : visibleFormTabs.slice(2);
         const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
         const isAdminProgressLocked = user?.role === "ADMIN" && TABS.slice(2).some(tab => tab.id === activeFormTab) && !isStudentEnrolled;
+        const completedAssessmentAppointment = assessmentAppointments.find(appointment => appointment.status === "COMPLETED");
+        const scheduledAssessmentAppointment = assessmentAppointments.find(appointment => appointment.status === "SCHEDULED");
+        const isSpecialistAssessmentLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_assessment" && !completedAssessmentAppointment;
         const isSpecialistProgressLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_tracker" && !isStudentEnrolled;
         const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && !isStudentEnrolled;
         const isParentProgressLocked = user?.role === "PARENT" && activeFormTab === "parent_tracker" && !isStudentEnrolled;
+        const isSpecialistOnboardingLocked = user?.role === "SPECIALIST" && specialistOnboardingIncomplete && ["multi_assessment", "multi_tracker"].includes(activeFormTab);
         const canCreateCurrentForm =
-            !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !isParentProgressLocked && !currentStatus?.submitted && (
+            !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistAssessmentLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !isParentProgressLocked && !isSpecialistOnboardingLocked && !currentStatus?.submitted && (
                 (user?.role === "SPECIALIST" && ["multi_assessment", "multi_tracker"].includes(activeFormTab)) ||
                 (user?.role === "TEACHER" && activeFormTab === "sped_tracker") ||
                 (user?.role === "PARENT" && ["parent_tracker"].includes(activeFormTab))
@@ -942,9 +1244,9 @@ function UnifiedWorkspaceContent() {
                                     {assessmentTabs.map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
                                         const isActive = activeFormTab === tab.id;
-                                        const isLocked = user?.role === "ADMIN" && !isSub;
+                                        const isLocked = (user?.role === "ADMIN" && !isSub) || (user?.role === "SPECIALIST" && tab.id === "multi_assessment" && isSpecialistAssessmentLocked);
                                         return (
-                                            <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                            <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? user?.role === "SPECIALIST" ? "Available after completed assessment session" : "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                                 <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{user?.role === "PARENT" && tab.id === "parent_assessment" ? "About Your Child" : tab.label}</span>
                                                 {isLocked ? (
@@ -982,6 +1284,33 @@ function UnifiedWorkspaceContent() {
                 <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
                     {tabBar}
                     <div className="flex-1 overflow-y-auto">
+                    {specialistOnboardingIncomplete && (
+                        <div className="px-5 pt-5 md:px-6 md:pt-6">
+                            <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="m-0 text-sm font-bold text-amber-950">Complete your profile setup</p>
+                                    <p className="m-0 text-sm text-amber-800">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => router.push("/specialist-onboarding")}
+                                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
+                                >
+                                    Finish setup
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {(user?.role === "SPECIALIST" || user?.role === "ADMIN") && (
+                        <div className="p-5 md:p-6 pb-0">
+                            <AssessmentSchedulingPanel
+                                user={user}
+                                studentId={studentId}
+                                compact
+                                onChanged={() => setProfileRefreshKey(key => key + 1)}
+                            />
+                        </div>
+                    )}
                     {isAdminAssessmentLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
                             <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
@@ -989,6 +1318,42 @@ function UnifiedWorkspaceContent() {
                             </div>
                             <h3 className="text-lg font-bold text-slate-700 mb-1">Assessment Locked</h3>
                             <p className="text-sm text-slate-500 max-w-sm">This assessment will be available for admin review after it is submitted.</p>
+                        </div>
+                    ) : isSpecialistAssessmentLocked ? (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center mb-4 text-indigo-500">
+                                <Calendar className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">Assessment Not Ready Yet</h3>
+                            <p className="text-sm text-slate-500 max-w-md">
+                                {scheduledAssessmentAppointment
+                                    ? `This form unlocks after the scheduled session on ${formatDocumentDateTime(scheduledAssessmentAppointment.start_at)} is marked complete by admin.`
+                                    : "This form unlocks after a parent books an assessment slot and admin marks the session complete."}
+                            </p>
+                            {!scheduledAssessmentAppointment && (
+                                <button
+                                    type="button"
+                                    onClick={() => router.push("/schedule")}
+                                    className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+                                >
+                                    Open My Schedule
+                                </button>
+                            )}
+                        </div>
+                    ) : isSpecialistOnboardingLocked ? (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                            <div className="w-16 h-16 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center mb-4 text-amber-500">
+                                <Calendar className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">Finish profile setup first</h3>
+                            <p className="text-sm text-slate-500 max-w-md">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
+                            <button
+                                type="button"
+                                onClick={() => router.push("/specialist-onboarding")}
+                                className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
+                            >
+                                Open setup
+                            </button>
                         </div>
                     ) : isAdminProgressLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
@@ -1380,6 +1745,16 @@ function UnifiedWorkspaceContent() {
 
                 {/* Main Content Area */}
                 <div className="flex-1 bg-white relative overflow-y-auto">
+                    {studentId && (
+                        <div className="p-5 md:p-6 pb-0">
+                            <AssessmentSchedulingPanel
+                                user={user}
+                                studentId={studentId}
+                                compact
+                                onChanged={() => setProfileRefreshKey(key => key + 1)}
+                            />
+                        </div>
+                    )}
                     {parentActivePanel === "assessment" && renderAssessmentContent()}
                     {parentActivePanel === "tracker" && renderTrackerContent()}
                     {parentActivePanel === "iep" && docIdParam && (

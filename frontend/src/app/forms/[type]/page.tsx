@@ -16,6 +16,7 @@ import {
     specialtyShortLabel,
     userSpecialtyList,
 } from "@/lib/sectionOwners";
+import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 
 // Import all JSON schemas
 import parent_assessment from "@/config/forms/parentAssessmentSchema.json";
@@ -563,6 +564,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const formIdStr = propSubmissionId || searchParams.get("submissionId") || searchParams.get("formId");
 
     const isAdmin = user?.role === "ADMIN";
+    const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
+    const specialistOnboardingLocked = specialistOnboardingIncomplete && ["multidisciplinary-assessment", "multidisciplinary-tracker"].includes(formType);
     const userSpecialties = useMemo(
         () => userSpecialtyList(user?.specialties, user?.specialty),
         [user?.specialties, user?.specialty],
@@ -573,6 +576,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     );
     const editableSpecialties = isTeamScopedForm ? assignedSpecialties : userSpecialties;
     const isFieldEditable = (sectionId: string, fieldId: string): boolean => {
+        if (specialistOnboardingLocked) return false;
         // For the assessment form, callers may pass the underlying data
         // section_id (section_f) — translate into the virtual ABA/Dev-Psych
         // section so ownership resolves correctly.
@@ -947,6 +951,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }
 
         try {
+            if (specialistOnboardingLocked) {
+                setErrorMsg(specialistOnboardingMessage(user?.specialist_onboarding_missing));
+                setLoading(false);
+                return;
+            }
             await api.post(`/api/inputs/${formType}/`, {
                 student: parseInt(studentId || "0"),
                 report_cycle: parseInt(reportCycleId),
@@ -1089,8 +1098,21 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     </div>
                 )}
 
+                {specialistOnboardingLocked && (
+                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a", marginBottom: "1rem", fontSize: "0.875rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                        <span>{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</span>
+                        <button
+                            type="button"
+                            onClick={() => router.push("/specialist-onboarding")}
+                            style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "#d97706", color: "white", fontWeight: 700, cursor: "pointer" }}
+                        >
+                            Finish setup
+                        </button>
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit}>
-                    <fieldset disabled={isViewMode} style={{ border: "none", padding: 0, margin: 0 }}>
+                    <fieldset disabled={isViewMode || specialistOnboardingLocked} style={{ border: "none", padding: 0, margin: 0 }}>
                         {/* Dynamic sections from schema */}
                         {schema.sections?.map((section: any) => {
                             const dataKey = dataKeyFor(section);
@@ -1238,7 +1260,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" }}>
                                 Cancel
                             </button>
-                            <button type="submit" disabled={loading}
+                            <button type="submit" disabled={loading || specialistOnboardingLocked}
                                 style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
                                 {loading ? "Submitting…" : "Submit Form"}
                             </button>

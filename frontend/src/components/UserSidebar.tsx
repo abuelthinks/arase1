@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
-import { User, BookOpen, LayoutTemplate } from "lucide-react";
+import { User, BookOpen, Calendar, LayoutTemplate } from "lucide-react";
 
 export default function UserSidebar() {
     const pathname = usePathname();
@@ -28,6 +28,7 @@ export default function UserSidebar() {
         pathname.startsWith("/parent-onboarding");
     const isProfile = pathname.startsWith("/profile") || pathname.startsWith("/users");
     const isWorkspace = pathname.startsWith("/workspace") || pathname.startsWith("/students");
+    const isSchedule = pathname.startsWith("/schedule");
     const isParentMonthlyProgress =
         isParent &&
         pathname.startsWith("/workspace");
@@ -102,6 +103,13 @@ export default function UserSidebar() {
                         </Link>
                     )}
 
+                    {isSpecialist && (
+                        <Link href="/schedule" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isSchedule ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`} aria-current={isSchedule ? "page" : undefined}>
+                            <Calendar size={18} />
+                            <span className="truncate">My Schedule</span>
+                        </Link>
+                    )}
+
                     <Link href="/dashboard" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isMyChildren ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`} aria-current={isMyChildren ? "page" : undefined}>
                         <BookOpen size={18} />
                         <span className="truncate">{isTeacher || isSpecialist ? "My Students" : "My Children"}</span>
@@ -138,6 +146,12 @@ export default function UserSidebar() {
                     <Link href="/workspace" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isWorkspace ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
                         <LayoutTemplate size={20} className={isWorkspace ? "stroke-[2.5px]" : ""} />
                         <span className="text-[0.65rem] font-medium">Workspace</span>
+                    </Link>
+                )}
+                {isSpecialist && (
+                    <Link href="/schedule" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isSchedule ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                        <Calendar size={20} className={isSchedule ? "stroke-[2.5px]" : ""} />
+                        <span className="text-[0.65rem] font-medium">Schedule</span>
                     </Link>
                 )}
                 <Link href="/dashboard" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isMyChildren ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>

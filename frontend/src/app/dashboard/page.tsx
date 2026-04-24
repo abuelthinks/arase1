@@ -5,10 +5,11 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Calendar, Search } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
+import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 
 interface Student {
     id: number;
@@ -36,6 +37,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [showSMSModal, setShowSMSModal] = useState(false);
     const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
+    const [specialistAvailabilityCount, setSpecialistAvailabilityCount] = useState<number | null>(null);
 
     // Advanced Table States
     const [searchQuery, setSearchQuery] = useState("");
@@ -43,6 +45,7 @@ export default function DashboardPage() {
     const [sortConfig, setSortConfig] = useState<{ key: keyof Student | 'name', direction: 'asc' | 'desc' } | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+    const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
 
     useEffect(() => {
         const fetchStudents = async () => {
@@ -64,6 +67,13 @@ export default function DashboardPage() {
             setLoading(false);
         }
     }, [user]);
+
+    useEffect(() => {
+        if (user?.role !== "SPECIALIST") return;
+        api.get("/api/assessment/availability/")
+            .then(res => setSpecialistAvailabilityCount((res.data || []).length))
+            .catch(() => setSpecialistAvailabilityCount(null));
+    }, [user?.role]);
 
     // Reset page to 1 on search or filter match count resize
     useEffect(() => {
@@ -218,6 +228,36 @@ export default function DashboardPage() {
                 )}
 
                 <WelcomeBanner students={students} />
+
+                {specialistOnboardingIncomplete && (
+                    <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <Calendar className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                            <div>
+                                <p className="m-0 text-sm font-bold text-amber-950">Complete your profile setup</p>
+                                <p className="m-0 text-sm text-amber-800">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
+                            </div>
+                        </div>
+                        <Link href="/specialist-onboarding" className="rounded-lg bg-amber-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-amber-700">
+                            Finish setup
+                        </Link>
+                    </div>
+                )}
+
+                {user?.role === "SPECIALIST" && !specialistOnboardingIncomplete && specialistAvailabilityCount === 0 && (
+                    <div className="mb-6 flex flex-col gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <Calendar className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
+                            <div>
+                                <p className="m-0 text-sm font-bold text-indigo-950">Set your assessment availability</p>
+                                <p className="m-0 text-sm text-indigo-800">Parents can choose a time only after you add open online slots.</p>
+                            </div>
+                        </div>
+                        <Link href="/schedule" className="rounded-lg bg-indigo-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-indigo-700">
+                            Open My Schedule
+                        </Link>
+                    </div>
+                )}
 
                 {/* Page header */}
                 <div className="mb-5 md:mb-8">

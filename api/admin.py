@@ -3,7 +3,8 @@ from django.contrib.auth.admin import UserAdmin
 from .models import (
     User, Student, StudentAccess, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
-    ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker
+    ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
+    SpecialistAvailabilitySlot, AssessmentAppointment
 )
 
 # Register custom User model
@@ -20,3 +21,5 @@ admin.site.register(ParentProgressTracker)
 admin.site.register(MultidisciplinaryProgressTracker)
 admin.site.register(SpedProgressTracker)
 admin.site.register(GeneratedDocument)
+admin.site.register(SpecialistAvailabilitySlot)
+admin.site.register(AssessmentAppointment)

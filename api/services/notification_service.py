@@ -168,6 +168,51 @@ def send_tracker_reminders_for_all_students():
     return sent_count
 
 
+def send_assessment_appointment_reminders():
+    """
+    Send in-app reminders for scheduled online assessments happening in the next 24 hours.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from api.models import AssessmentAppointment, Notification
+
+    now = timezone.now()
+    upcoming = now + timedelta(hours=24)
+    appointments = (
+        AssessmentAppointment.objects
+        .filter(
+            status='SCHEDULED',
+            reminder_24h_sent_at__isnull=True,
+            start_at__gt=now,
+            start_at__lte=upcoming,
+        )
+        .select_related('student', 'parent', 'specialist')
+    )
+
+    sent_count = 0
+    for appointment in appointments:
+        student_name = f"{appointment.student.first_name} {appointment.student.last_name}"
+        when = timezone.localtime(appointment.start_at).strftime("%b %d, %Y %I:%M %p")
+        link = f"/workspace?studentId={appointment.student_id}&workspace=forms&tab=multi_assessment"
+        recipients = [appointment.specialist]
+        if appointment.parent:
+            recipients.append(appointment.parent)
+        for recipient in recipients:
+            Notification.objects.create(
+                recipient=recipient,
+                notification_type='REMINDER',
+                title=f"Assessment reminder: {student_name}",
+                message=f"Online assessment is scheduled for {when}.",
+                link=link,
+            )
+            sent_count += 1
+        appointment.reminder_24h_sent_at = now
+        appointment.save(update_fields=['reminder_24h_sent_at'])
+
+    logger.info("Sent %d assessment appointment reminder(s)", sent_count)
+    return sent_count
+
+
 # ─── Internal Helpers ─────────────────────────────────────────────────────────
 
 def _send_email(to_email, subject, text_body):

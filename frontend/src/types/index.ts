@@ -16,6 +16,11 @@ export interface UserPayload {
     first_name?: string;
     last_name?: string;
     email?: string;
+    specialty?: SpecialistSpecialty | "";
+    specialties?: SpecialistSpecialty[];
+    languages?: string[];
+    specialist_onboarding_complete?: boolean;
+    specialist_onboarding_missing?: string[];
 }
 
 export interface UserProfile {
@@ -26,6 +31,9 @@ export interface UserProfile {
     first_name: string;
     last_name: string;
     specialty: SpecialistSpecialty | "";
+    languages?: string[];
+    specialist_onboarding_complete?: boolean;
+    specialist_onboarding_missing?: string[];
     assigned_students_count: number;
     assigned_student_names: string[];
     assigned_students: StudentSummary[];
@@ -107,6 +115,7 @@ export interface StaffMember {
     username: string;
     role: Role;
     specialty: SpecialistSpecialty | "";
+    languages?: string[];
     caseload: number;
     recommended: boolean;
 }

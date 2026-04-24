@@ -3,7 +3,9 @@ API Views — thin orchestrators.
 Business logic lives in api/services/*.
 """
 
-from django.db.models import Case, When, Value, IntegerField
+from django.db import transaction
+from django.db.models import Case, When, Value, IntegerField, Q
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.views import APIView
@@ -14,7 +16,7 @@ from .models import (
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     User, Invitation, PhoneVerification, Notification, SpecialistPreference,
-    SectionContribution,
+    SectionContribution, SpecialistAvailabilitySlot, AssessmentAppointment,
 )
 from .services.notification_service import notify_admins_in_app
 from .serializers import (
@@ -22,7 +24,8 @@ from .serializers import (
     ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer, SpedAssessmentSerializer,
     ParentProgressTrackerSerializer, MultidisciplinaryProgressTrackerSerializer, SpedProgressTrackerSerializer,
     AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer,
-    SpecialistPreferenceSerializer
+    SpecialistPreferenceSerializer, SpecialistAvailabilitySlotSerializer,
+    AssessmentAppointmentSerializer
 )
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -128,11 +131,19 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
-        self._require_admin(request)
+        if request.user.role != 'ADMIN':
+            instance = self.get_object()
+            requested_fields = set(request.data.keys())
+            if instance.id != request.user.id or requested_fields - {'first_name', 'last_name', 'languages'}:
+                raise PermissionDenied("Only admins can manage users.")
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
-        self._require_admin(request)
+        if request.user.role != 'ADMIN':
+            instance = self.get_object()
+            requested_fields = set(request.data.keys())
+            if instance.id != request.user.id or requested_fields - {'first_name', 'last_name', 'languages'}:
+                raise PermissionDenied("Only admins can manage users.")
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -142,6 +153,42 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"error": "Cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST)
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RequestSpecialtyChangeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if user.role != 'SPECIALIST':
+            return Response({"error": "Only specialists can request a specialty change."}, status=status.HTTP_403_FORBIDDEN)
+
+        requested_specialty = (request.data.get('specialty') or '').strip()
+        note = (request.data.get('note') or '').strip()
+
+        from .specialties import normalize_specialty, SPECIALIST_SPECIALTIES
+
+        normalized_specialty = normalize_specialty(requested_specialty)
+        if not normalized_specialty or normalized_specialty not in SPECIALIST_SPECIALTIES:
+            return Response({"error": "Select a valid specialty."}, status=status.HTTP_400_BAD_REQUEST)
+
+        current_specialties = user.specialty_list()
+        if normalized_specialty in current_specialties:
+            return Response({"error": "That specialty is already assigned to your account."}, status=status.HTTP_400_BAD_REQUEST)
+
+        specialist_name = f"{user.first_name} {user.last_name}".strip() or user.username
+        current_label = ', '.join(current_specialties) if current_specialties else 'Not assigned'
+        message = f"{specialist_name} requested a specialty change from {current_label} to {normalized_specialty}."
+        if note:
+            message = f"{message} Note: {note}"
+
+        notify_admins_in_app(
+            'SYSTEM',
+            f"Specialty change request: {specialist_name}",
+            message,
+            link=f"/users/{user.id}",
+        )
+        return Response({"message": "Your specialty change request was sent to admin."}, status=status.HTTP_201_CREATED)
 
 # ─── Form Input ViewSets ─────────────────────────────────────────────────────
 
@@ -240,6 +287,19 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     serializer_class = MultidisciplinaryAssessmentSerializer
     allowed_submitter_roles = ('SPECIALIST',)
 
+    def _validate_submission(self, validated_data):
+        super()._validate_submission(validated_data)
+        user = self.request.user
+        student = validated_data.get('student')
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
+            raise PermissionDenied("Complete your profile setup before editing specialist work.")
+        if user.role == 'SPECIALIST' and not AssessmentAppointment.objects.filter(
+            student=student,
+            specialist=user,
+            status='COMPLETED',
+        ).exists():
+            raise PermissionDenied("The specialist assessment unlocks after the scheduled assessment is marked complete.")
+
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         student = instance.student
@@ -287,6 +347,11 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
         instance = serializer.save(submitted_by=self.request.user)
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
+
+    def _validate_submission(self, validated_data):
+        super()._validate_submission(validated_data)
+        if self.request.user.role == 'SPECIALIST' and not self.request.user.is_specialist_onboarding_complete():
+            raise PermissionDenied("Complete your profile setup before editing specialist work.")
 
 
 class SpedProgressTrackerViewSet(BaseInputViewSet):
@@ -1680,8 +1745,12 @@ class SendRemindersView(APIView):
         if request.user.role != 'ADMIN':
             return Response({"error": "Admin only."}, status=status.HTTP_403_FORBIDDEN)
 
-        from .services.notification_service import send_tracker_reminders_for_all_students
+        from .services.notification_service import (
+            send_tracker_reminders_for_all_students,
+            send_assessment_appointment_reminders,
+        )
         sent_count = send_tracker_reminders_for_all_students()
+        sent_count += send_assessment_appointment_reminders()
         return Response({"message": f"Sent {sent_count} reminder(s).", "count": sent_count})
 
 
@@ -1749,6 +1818,268 @@ class NotificationMarkAllReadView(APIView):
         Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         return Response({'status': 'ok'})
 
+
+def _user_can_access_student(user, student_id):
+    return user.role == 'ADMIN' or StudentAccess.objects.filter(user=user, student_id=student_id).exists()
+
+
+def _parent_for_student(student):
+    access = (
+        StudentAccess.objects
+        .filter(student=student, user__role='PARENT')
+        .select_related('user')
+        .first()
+    )
+    return access.user if access else None
+
+
+def _notify_assessment_scheduled(appointment):
+    student_name = f"{appointment.student.first_name} {appointment.student.last_name}"
+    when = timezone.localtime(appointment.start_at).strftime("%b %d, %Y %I:%M %p")
+    link = f"/workspace?studentId={appointment.student_id}&workspace=forms&tab=multi_assessment"
+    recipients = [r for r in [appointment.specialist, appointment.parent] if r]
+    for recipient in recipients:
+        Notification.objects.create(
+            recipient=recipient,
+            notification_type='SYSTEM',
+            title=f"Assessment scheduled for {student_name}",
+            message=f"The online assessment is scheduled for {when}.",
+            link=link,
+        )
+    specialist_name = appointment.specialist.first_name or appointment.specialist.username if appointment.specialist else "Specialist"
+    notify_admins_in_app(
+        'SYSTEM',
+        f"Assessment scheduled for {student_name}",
+        f"{specialist_name} is scheduled for {when}.",
+        link=link,
+    )
+
+
+def _notify_assessment_cancelled(appointment, cancelled_by):
+    student_name = f"{appointment.student.first_name} {appointment.student.last_name}"
+    when = timezone.localtime(appointment.start_at).strftime("%b %d, %Y %I:%M %p")
+    link = f"/workspace?studentId={appointment.student_id}&workspace=forms&tab=multi_assessment"
+    cancelled_by_name = cancelled_by.get_full_name() or cancelled_by.username
+    recipients = [r for r in [appointment.specialist, appointment.parent] if r and r != cancelled_by]
+    for recipient in recipients:
+        Notification.objects.create(
+            recipient=recipient,
+            notification_type='SYSTEM',
+            title=f"Assessment cancelled for {student_name}",
+            message=f"The assessment scheduled for {when} was cancelled by {cancelled_by_name}.",
+            link=link,
+        )
+    notify_admins_in_app(
+        'SYSTEM',
+        f"Assessment cancelled for {student_name}",
+        f"The assessment scheduled for {when} was cancelled by {cancelled_by_name}.",
+        link=link,
+    )
+
+
+class AssessmentAvailabilityView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        student_id = request.query_params.get('student_id')
+        now = timezone.now()
+        qs = (
+            SpecialistAvailabilitySlot.objects
+            .select_related('specialist')
+            .filter(start_at__gte=now)
+            .order_by('start_at')
+        )
+
+        preference_scope = request.query_params.get('scope') == 'preferences'
+
+        if user.role == 'SPECIALIST':
+            qs = qs.filter(specialist=user)
+        elif user.role == 'PARENT':
+            if not student_id or not _user_can_access_student(user, student_id):
+                return Response({"error": "student_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if not preference_scope:
+                assigned_specialist_ids = StudentAccess.objects.filter(
+                    student_id=student_id,
+                    user__role='SPECIALIST',
+                ).values_list('user_id', flat=True)
+                qs = qs.filter(specialist_id__in=assigned_specialist_ids)
+            qs = qs.filter(is_active=True)
+        elif user.role != 'ADMIN':
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        elif student_id:
+            assigned_specialist_ids = StudentAccess.objects.filter(
+                student_id=student_id,
+                user__role='SPECIALIST',
+            ).values_list('user_id', flat=True)
+            qs = qs.filter(specialist_id__in=assigned_specialist_ids)
+
+        qs = qs.filter(appointment__isnull=True)
+        serializer = SpecialistAvailabilitySlotSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        user = request.user
+        if user.role not in ['SPECIALIST', 'ADMIN']:
+            return Response({"error": "Only specialists or admins can create availability."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
+            return Response({"error": "Complete your profile setup before editing specialist work."}, status=status.HTTP_403_FORBIDDEN)
+
+        specialist_id = request.data.get('specialist') if user.role == 'ADMIN' else user.id
+        try:
+            specialist = User.objects.get(id=specialist_id, role='SPECIALIST', is_active=True)
+        except User.DoesNotExist:
+            return Response({"error": "Specialist not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['specialist'] = specialist.id
+        serializer = SpecialistAvailabilitySlotSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        start_at = serializer.validated_data['start_at']
+        end_at = serializer.validated_data['end_at']
+        if end_at <= start_at:
+            return Response({"error": "End time must be after start time."}, status=status.HTTP_400_BAD_REQUEST)
+        if start_at < timezone.now():
+            return Response({"error": "Availability cannot start in the past."}, status=status.HTTP_400_BAD_REQUEST)
+
+        overlap = SpecialistAvailabilitySlot.objects.filter(
+            specialist=specialist,
+            is_active=True,
+            start_at__lt=end_at,
+            end_at__gt=start_at,
+        ).exists()
+        if overlap:
+            return Response({"error": "This overlaps an existing availability slot."}, status=status.HTTP_400_BAD_REQUEST)
+
+        slot = serializer.save(specialist=specialist)
+        return Response(SpecialistAvailabilitySlotSerializer(slot).data, status=status.HTTP_201_CREATED)
+
+
+class AssessmentAvailabilityDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        user = request.user
+        try:
+            slot = SpecialistAvailabilitySlot.objects.select_related('specialist').get(pk=pk)
+        except SpecialistAvailabilitySlot.DoesNotExist:
+            return Response({"error": "Availability slot not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.role != 'ADMIN' and slot.specialist_id != user.id:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
+            return Response({"error": "Complete your profile setup before editing specialist work."}, status=status.HTTP_403_FORBIDDEN)
+        if hasattr(slot, 'appointment') and slot.appointment.status == 'SCHEDULED':
+            return Response({"error": "Booked slots cannot be deleted. Cancel the appointment first."}, status=status.HTTP_400_BAD_REQUEST)
+
+        slot.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AssessmentAppointmentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        student_id = request.query_params.get('student_id')
+        qs = AssessmentAppointment.objects.select_related('student', 'parent', 'specialist')
+
+        if user.role == 'ADMIN':
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+        elif user.role == 'PARENT':
+            qs = qs.filter(parent=user)
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+        elif user.role == 'SPECIALIST':
+            qs = qs.filter(specialist=user)
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+        else:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = AssessmentAppointmentSerializer(qs.order_by('start_at'), many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        user = request.user
+        student_id = request.data.get('student')
+        slot_id = request.data.get('availability_slot')
+        if not student_id or not slot_id:
+            return Response({"error": "student and availability_slot are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if user.role not in ['PARENT', 'ADMIN']:
+            return Response({"error": "Only parents or admins can book assessments."}, status=status.HTTP_403_FORBIDDEN)
+        if not _user_can_access_student(user, student_id):
+            return Response({"error": "You do not have access to this student."}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            try:
+                student = Student.objects.select_for_update().get(id=student_id)
+                slot = SpecialistAvailabilitySlot.objects.select_for_update().select_related('specialist').get(id=slot_id)
+            except (Student.DoesNotExist, SpecialistAvailabilitySlot.DoesNotExist):
+                return Response({"error": "Student or slot not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            if not slot.is_active or slot.start_at < timezone.now():
+                return Response({"error": "This slot is no longer available."}, status=status.HTTP_400_BAD_REQUEST)
+            if AssessmentAppointment.objects.filter(availability_slot=slot, status='SCHEDULED').exists():
+                return Response({"error": "This slot is already booked."}, status=status.HTTP_400_BAD_REQUEST)
+            if not StudentAccess.objects.filter(student=student, user=slot.specialist).exists():
+                return Response({"error": "This specialist is not assigned to the student."}, status=status.HTTP_400_BAD_REQUEST)
+            if AssessmentAppointment.objects.filter(student=student, status='SCHEDULED').exists():
+                return Response({"error": "This student already has a scheduled assessment."}, status=status.HTTP_400_BAD_REQUEST)
+
+            parent = user if user.role == 'PARENT' else _parent_for_student(student)
+            appointment = AssessmentAppointment.objects.create(
+                student=student,
+                parent=parent,
+                specialist=slot.specialist,
+                availability_slot=slot,
+                start_at=slot.start_at,
+                end_at=slot.end_at,
+                mode=slot.mode,
+                booked_by=user,
+            )
+            if student.status == 'PENDING_ASSESSMENT':
+                student.status = 'ASSESSMENT_SCHEDULED'
+                student.save(update_fields=['status'])
+
+        _notify_assessment_scheduled(appointment)
+        return Response(AssessmentAppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
+
+
+class AssessmentAppointmentDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        user = request.user
+        try:
+            appointment = AssessmentAppointment.objects.select_related('student', 'parent', 'specialist').get(pk=pk)
+        except AssessmentAppointment.DoesNotExist:
+            return Response({"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.role == 'SPECIALIST' and appointment.specialist_id != user.id:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role == 'PARENT' and appointment.parent_id != user.id:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role not in ['ADMIN', 'SPECIALIST', 'PARENT']:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+        next_status = request.data.get('status')
+        if next_status not in ['CANCELLED', 'COMPLETED', 'NO_SHOW']:
+            return Response({"error": "status must be CANCELLED, COMPLETED, or NO_SHOW."}, status=status.HTTP_400_BAD_REQUEST)
+        if appointment.status != 'SCHEDULED':
+            return Response({"error": f"Cannot update an appointment that is already {appointment.get_status_display().lower()}."}, status=status.HTTP_400_BAD_REQUEST)
+        if user.role != 'ADMIN' and next_status in ['COMPLETED', 'NO_SHOW']:
+            return Response({"error": "Only admins can mark completion or no-show."}, status=status.HTTP_403_FORBIDDEN)
+
+        appointment.status = next_status
+        appointment.save(update_fields=['status', 'updated_at'])
+
+        if next_status == 'CANCELLED':
+            _notify_assessment_cancelled(appointment, cancelled_by=user)
+
+        return Response(AssessmentAppointmentSerializer(appointment).data)
+
 class SpecialistPreferenceViewSet(viewsets.ModelViewSet):
     queryset = SpecialistPreference.objects.all()
     serializer_class = SpecialistPreferenceSerializer
@@ -1771,10 +2102,17 @@ class SpecialistPreferenceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         student = serializer.validated_data['student']
+        specialist = serializer.validated_data['specialist']
+        slot = serializer.validated_data.get('preferred_slot')
 
         if user.role == 'PARENT':
             if not StudentAccess.objects.filter(user=user, student=student).exists():
                 raise PermissionDenied("You do not have permission to set preferences for this student.")
+        elif user.role != 'ADMIN':
+            raise PermissionDenied("Only parents or admins can set specialist preferences.")
+
+        if slot and slot.specialist_id != specialist.id:
+            raise ValidationError("Selected slot does not belong to this specialist.")
         
         serializer.save()
 
@@ -1790,6 +2128,7 @@ class SpecialistListView(APIView):
                 "last_name": sp.last_name,
                 "specialty": sp.specialty or "Other",
                 "specialties": sp.specialty_list() or ([sp.specialty] if sp.specialty else []),
+                "languages": sp.language_list() if hasattr(sp, 'language_list') else [],
             }
             for sp in specialists
         ]

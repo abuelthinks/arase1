@@ -309,7 +309,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                 setLoading(false);
                 return;
             }
-            setTimeout(() => router.push(studentIdParam ? `/students/${studentIdParam}` : "/dashboard"), 1500);
+            setTimeout(() => router.push(studentIdParam ? `/specialists?studentId=${studentIdParam}` : "/dashboard"), 1500);
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Submission failed. Please try again.");
             setLoading(false);

@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import AdminSidebar from "./AdminSidebar";
 import UserSidebar from "./UserSidebar";
 import React from "react";
@@ -12,11 +13,25 @@ const NO_SIDEBAR_PATHS = ["/login", "/invite"];
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const pathname = usePathname();
+    const router = useRouter();
 
-    const hideSidebar = !user || pathname === "/" || NO_SIDEBAR_PATHS.some(p => pathname.startsWith(p));
+    const specialistOnboardingIncomplete =
+        user?.role === "SPECIALIST" && user.specialist_onboarding_complete === false;
+
+    useEffect(() => {
+        if (specialistOnboardingIncomplete && pathname !== "/specialist-onboarding") {
+            router.replace("/specialist-onboarding");
+        }
+    }, [specialistOnboardingIncomplete, pathname]);
+
+    const hideSidebar =
+        !user ||
+        pathname === "/" ||
+        NO_SIDEBAR_PATHS.some(p => pathname.startsWith(p)) ||
+        specialistOnboardingIncomplete;
 
     if (hideSidebar) {
-        return <>{children}</>;
+        return <div className="h-full w-full overflow-y-auto">{children}</div>;
     }
 
     const isAdmin = user.role === "ADMIN";

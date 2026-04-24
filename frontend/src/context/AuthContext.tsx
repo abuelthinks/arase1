@@ -16,6 +16,9 @@ interface UserPayload {
     is_phone_verified?: boolean;
     specialty?: string;
     specialties?: string[];
+    languages?: string[];
+    specialist_onboarding_complete?: boolean;
+    specialist_onboarding_missing?: string[];
 }
 
 interface AuthContextType {
@@ -23,7 +26,7 @@ interface AuthContextType {
     loading: boolean;
     login: (username: string, password: string) => Promise<UserPayload>;
     logout: () => Promise<void>;
-    refreshUser: () => Promise<void>;
+    refreshUser: () => Promise<UserPayload | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,12 +35,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserPayload | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const checkAuth = async () => {
+    const checkAuth = async (): Promise<UserPayload | null> => {
         try {
             const response = await api.get("/api/auth/me/");
             setUser(response.data);
+            return response.data;
         } catch {
             setUser(null);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -67,8 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(basicUser);
         // We'll also invoke checkAuth to fetch the full rich payload including phone verification
-        await checkAuth();
-        return basicUser;
+        const fullUser = await checkAuth();
+        return fullUser || basicUser;
     };
 
     const logout = async () => {

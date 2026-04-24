@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from ..models import (
+    AssessmentAppointment,
     MultidisciplinaryAssessment,
     MultidisciplinaryProgressTracker,
     SectionContribution,
@@ -86,6 +87,17 @@ def _check_section_edit(form_type: str, instance, user, section_key: str):
         return
     if user.role != "SPECIALIST":
         raise SectionPermissionError("Only specialists may edit section inputs.")
+    if not user.is_specialist_onboarding_complete():
+        raise SectionPermissionError("Complete your profile setup before editing specialist work.")
+
+    if form_type == "assessment" and not AssessmentAppointment.objects.filter(
+        student_id=instance.student_id,
+        specialist=user,
+        status="COMPLETED",
+    ).exists():
+        raise SectionPermissionError(
+            "The specialist assessment unlocks after the scheduled assessment is marked complete."
+        )
 
     owners = get_section_owners(form_type)
     if section_key not in owners:

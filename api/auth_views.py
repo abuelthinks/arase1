@@ -161,4 +161,7 @@ class MeView(APIView):
             'specialties': user.specialty_list() if hasattr(user, 'specialty_list') else (
                 [user.specialty] if getattr(user, 'specialty', '') else []
             ),
+            'languages': user.language_list() if hasattr(user, 'language_list') else [],
+            'specialist_onboarding_complete': user.is_specialist_onboarding_complete() if hasattr(user, 'is_specialist_onboarding_complete') else True,
+            'specialist_onboarding_missing': user.specialist_onboarding_missing() if hasattr(user, 'specialist_onboarding_missing') else [],
         })

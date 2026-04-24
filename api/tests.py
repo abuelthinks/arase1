@@ -7,6 +7,7 @@ from rest_framework.test import APIClient, APITestCase
 from api.models import (
     ParentProgressTracker,
     MultidisciplinaryProgressTracker,
+    Notification,
     ReportCycle,
     SpedProgressTracker,
     Student,
@@ -142,6 +143,42 @@ class SecurityHardeningTests(APITestCase):
         self.parent.refresh_from_db()
         self.assertEqual(self.parent.role, 'PARENT')
 
+    def test_specialist_can_update_own_profile_setup_fields(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.patch(f'/api/users/{self.specialist.id}/', {
+            'first_name': 'sam',
+            'last_name': 'rivera',
+            'languages': ['English', 'Tagalog'],
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.specialist.refresh_from_db()
+        self.assertEqual(self.specialist.first_name, 'Sam')
+        self.assertEqual(self.specialist.last_name, 'Rivera')
+        self.assertEqual(self.specialist.language_list(), ['English', 'Tagalog'])
+
+    def test_specialist_cannot_patch_another_user_profile_setup_fields(self):
+        other_specialist = User.objects.create_user(
+            username='otherspec',
+            email='otherspec@example.com',
+            password='SpecPass123!',
+            role='SPECIALIST',
+        )
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.patch(f'/api/users/{other_specialist.id}/', {
+            'languages': ['English'],
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_auth_me_includes_specialist_onboarding_status(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.get('/api/auth/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['specialist_onboarding_complete'])
+        self.assertIn('first_name', response.data['specialist_onboarding_missing'])
+        self.assertIn('last_name', response.data['specialist_onboarding_missing'])
+        self.assertIn('specialty', response.data['specialist_onboarding_missing'])
+        self.assertIn('languages', response.data['specialist_onboarding_missing'])
+
     def test_parent_onboarding_rejects_unassigned_student_update(self):
         self.client.force_authenticate(user=self.parent)
         response = self.client.post('/api/students/onboard/', {
@@ -199,6 +236,41 @@ class SecurityHardeningTests(APITestCase):
             'form_data': {'notes': 'not assigned'},
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_specialist_onboarding_blocks_availability_creation(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.post('/api/assessment/availability/', {
+            'start_at': '2026-04-30T01:00:00Z',
+            'end_at': '2026-04-30T02:00:00Z',
+            'mode': 'ONLINE',
+            'is_active': True,
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_specialist_onboarding_blocks_progress_tracker_submission(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.post('/api/inputs/multidisciplinary-tracker/', {
+            'student': self.student.id,
+            'report_cycle': self.active_cycle.id,
+            'form_data': {'progress': 'blocked'},
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_specialist_can_request_specialty_change(self):
+        self.specialist.specialty = 'Speech-Language Pathology'
+        self.specialist.specialties = ['Speech-Language Pathology']
+        self.specialist.save(update_fields=['specialty', 'specialties'])
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.post('/api/users/request-specialty-change/', {
+            'specialty': 'Occupational Therapy',
+            'note': 'My caseload and credentials are OT-focused.',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Notification.objects.filter(
+            notification_type='SYSTEM',
+            title__icontains='Specialty change request',
+            message__icontains='Occupational Therapy',
+        ).exists())
 
     def test_student_cycle_mismatch_is_rejected(self):
         self.client.force_authenticate(user=self.parent)
