@@ -8,7 +8,6 @@ type Role = "ADMIN" | "TEACHER" | "SPECIALIST" | "PARENT";
 interface UserPayload {
     user_id: number;
     role: Role;
-    username?: string;
     first_name?: string;
     last_name?: string;
     email?: string;
@@ -24,7 +23,7 @@ interface UserPayload {
 interface AuthContextType {
     user: UserPayload | null;
     loading: boolean;
-    login: (username: string, password: string) => Promise<UserPayload>;
+    login: (email: string, password: string) => Promise<UserPayload>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<UserPayload | null>;
 }
@@ -61,14 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initializeAuth();
     }, []);
 
-    const login = async (username: string, password: string) => {
+    const login = async (email: string, password: string) => {
         await fetchCsrfCookie();
         // POST credentials — server sets HttpOnly cookies in the response
-        const res = await api.post("/api/auth/token/", { username, password });
+        const res = await api.post("/api/auth/token/", { email, password });
         const basicUser = {
             user_id: res.data.user_id,
             role: res.data.role,
-            username: res.data.username,
+            email: res.data.email,
         };
         setUser(basicUser);
         // We'll also invoke checkAuth to fetch the full rich payload including phone verification

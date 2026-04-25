@@ -5,7 +5,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
-import { Calendar, Search } from "lucide-react";
+import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
@@ -23,14 +23,6 @@ interface Student {
     latest_final_monthly_report_id?: number | null;
 }
 
-const statusColors: Record<string, { bg: string; color: string }> = {
-    PENDING_ASSESSMENT:    { bg: "#fce7f3", color: "#9d174d" },
-    ASSESSMENT_SCHEDULED: { bg: "#fef3c7", color: "#92400e" },
-    ASSESSED:     { bg: "#dbeafe", color: "#1e40af" },
-    ENROLLED:     { bg: "#dcfce7", color: "#14532d" },
-    ARCHIVED:   { bg: "#f1f5f9", color: "#64748b" },
-};
-
 export default function DashboardPage() {
     const { user, refreshUser } = useAuth();
     const [students, setStudents] = useState<Student[]>([]);
@@ -39,10 +31,9 @@ export default function DashboardPage() {
     const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
     const [specialistAvailabilityCount, setSpecialistAvailabilityCount] = useState<number | null>(null);
 
-    // Advanced Table States
+    // Search / filter / pagination state
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilters, setStatusFilters] = useState<string[]>([]);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Student | 'name', direction: 'asc' | 'desc' } | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
@@ -88,14 +79,6 @@ export default function DashboardPage() {
         setCurrentPage(1);
     };
 
-    const handleSort = (key: keyof Student | 'name') => {
-        setSortConfig(current => {
-            if (!current || current.key !== key) return { key, direction: 'asc' };
-            if (current.direction === 'asc') return { key, direction: 'desc' };
-            return null;
-        });
-    };
-
     const processedStudents = useMemo(() => {
         let result = [...students];
 
@@ -112,24 +95,8 @@ export default function DashboardPage() {
             result = result.filter(s => statusFilters.includes(s.status));
         }
 
-        if (sortConfig) {
-            result.sort((a, b) => {
-                let aValue: any = a[sortConfig.key as keyof Student];
-                let bValue: any = b[sortConfig.key as keyof Student];
-
-                if (sortConfig.key === 'name') {
-                    aValue = `${a.first_name || ''} ${a.last_name || ''}`.toLowerCase();
-                    bValue = `${b.first_name || ''} ${b.last_name || ''}`.toLowerCase();
-                }
-
-                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
-
         return result;
-    }, [students, searchQuery, statusFilters, sortConfig]);
+    }, [students, searchQuery, statusFilters]);
 
     const totalPages = Math.ceil(processedStudents.length / itemsPerPage);
     const safePage = Math.min(currentPage, Math.max(1, totalPages));
@@ -137,8 +104,24 @@ export default function DashboardPage() {
 
     const getSubtitle = () => {
         switch (user?.role) {
-            case "TEACHER": return "Select a student to provide academic and behavioral inputs.";
-            case "SPECIALIST": return "Select a student to log therapy metrics and checklists.";
+            case "TEACHER": {
+                const enrolled = students.filter(s => s.status === "ENROLLED").length;
+                if (enrolled === 0) {
+                    return "Your students will appear here once they're enrolled.";
+                }
+                return `You have ${enrolled} enrolled student${enrolled !== 1 ? "s" : ""} to track this cycle.`;
+            }
+            case "SPECIALIST": {
+                const pending = students.filter(s => s.status === "PENDING_ASSESSMENT").length;
+                const enrolled = students.filter(s => s.status === "ENROLLED").length;
+                const parts: string[] = [];
+                if (pending > 0) parts.push(`${pending} awaiting assessment`);
+                if (enrolled > 0) parts.push(`${enrolled} enrolled`);
+                if (parts.length === 0) {
+                    return "No active students yet — your caseload will appear here.";
+                }
+                return `You have ${parts.join(" and ")}.`;
+            }
             case "PARENT": {
                 const needsAssessment = students.filter(s => s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment).length;
                 const needsTracker = students.filter(s => s.status === "ENROLLED" && !s.parent_current_tracker_submitted).length;
@@ -172,12 +155,6 @@ export default function DashboardPage() {
         });
         if (tab) params.set("tab", tab);
         return `/workspace?${params.toString()}`;
-    };
-
-    const getPrimaryInputTab = () => {
-        if (user?.role === "SPECIALIST") return "multi_assessment";
-        if (user?.role === "TEACHER") return "sped_assessment";
-        return undefined;
     };
 
     const rememberParentStudent = (studentId: number) => {
@@ -271,29 +248,41 @@ export default function DashboardPage() {
                         </>
                     ) : (
                         <>
-                            <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-baseline gap-2">
-                                My Students
-                                {students.length > 0 && <span className="text-base md:text-xl text-slate-400 font-normal">({processedStudents.length})</span>}
+                            <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
+                                <span>{getTimeGreeting().text}, {user?.first_name || 'there'}</span>
+                                <span>{getTimeGreeting().emoji}</span>
                             </h2>
                             <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
+                            {students.length > 0 && (
+                                <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500">
+                                    <UsersIcon className="h-3.5 w-3.5 text-indigo-500" aria-hidden="true" />
+                                    {processedStudents.length} of {students.length} student{students.length !== 1 ? "s" : ""}
+                                </p>
+                            )}
                         </>
                     )}
                 </div>
 
                 {/* Content panel */}
-                <div className="glass-panel p-4 sm:p-6 md:p-8" style={{ background: "white", borderRadius: "12px", border: "1px solid var(--border-light)", minHeight: "60vh" }}>
+                <div className={user?.role === "PARENT" ? "" : "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"}>
                     {loading ? (
-                        <p>Loading...</p>
+                        <div className="flex items-center gap-2 p-8 text-sm text-slate-500">
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-500" aria-hidden="true" />
+                            Loading...
+                        </div>
                     ) : students.length === 0 ? (
-                        <div style={{ textAlign: "center", padding: "4rem 2rem" }}>
-                            <p style={{ color: "var(--text-muted)", fontSize: "1.1rem" }}>
+                        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-12 text-center">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                                <UsersIcon className="h-6 w-6" aria-hidden="true" />
+                            </div>
+                            <p className="m-0 text-sm font-medium text-slate-500">
                                 {user?.role === "PARENT" ? "No children assigned yet. Please contact the administrator." : "No students assigned at this time."}
                             </p>
                         </div>
                     ) : (
                         <div>
                             {/* Action Bar (Search, Filters) */}
-                            {!(user?.role === "PARENT" && students.length < 3) && (
+                            {!(user?.role === "PARENT" && students.length < 5) && (
                                 <>
                                     <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
                                         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
@@ -352,22 +341,24 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
 
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
-                                        <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} entries</span>
-                                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                            <span>Show:</span>
-                                            <select 
-                                                value={itemsPerPage} 
-                                                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                                                style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
-                                            >
-                                                <option value={10}>10</option>
-                                                <option value={25}>25</option>
-                                                <option value={50}>50</option>
-                                                <option value={100}>100</option>
-                                            </select>
+                                    {students.length > 10 && (
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                                            <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} entries</span>
+                                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                                <span>Show:</span>
+                                                <select
+                                                    value={itemsPerPage}
+                                                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                                                    style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                                >
+                                                    <option value={10}>10</option>
+                                                    <option value={25}>25</option>
+                                                    <option value={50}>50</option>
+                                                    <option value={100}>100</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </>
                             )}
 
@@ -376,91 +367,94 @@ export default function DashboardPage() {
                                     No records found matching your filters.
                                 </p>
                             ) : user?.role === "PARENT" ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
                                     {paginatedStudents.map(s => {
-                                        // Plain-English status mapping
-                                        const statusMap: Record<string, { text: string; color: string; bg: string; icon: string }> = {
+                                        type StatusTone = "action" | "waiting" | "ready" | "neutral";
+                                        const statusMap: Record<string, { text: string; tone: StatusTone; Icon: any }> = {
                                             PENDING_ASSESSMENT: {
                                                 text: s.has_parent_assessment ? "Assessment submitted — awaiting review" : "Waiting for your assessment",
-                                                color: s.has_parent_assessment ? "#92400e" : "#c2410c",
-                                                bg: s.has_parent_assessment ? "#fef3c7" : "#fff7ed",
-                                                icon: s.has_parent_assessment ? "⏳" : "📋",
+                                                tone: s.has_parent_assessment ? "waiting" : "action",
+                                                Icon: s.has_parent_assessment ? Clock : ClipboardList,
                                             },
-                                            ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", color: "#1e40af", bg: "#dbeafe", icon: "🔍" },
-                                            ASSESSED: { text: "Assessment complete — enrollment pending", color: "#1e40af", bg: "#eff6ff", icon: "✅" },
+                                            ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", tone: "waiting", Icon: Clock },
+                                            ASSESSED: { text: "Assessment complete — enrollment pending", tone: "waiting", Icon: CheckCircle2 },
                                             ENROLLED: {
                                                 text: s.parent_current_tracker_submitted ? "Enrolled & up to date" : "Monthly progress update needed",
-                                                color: s.parent_current_tracker_submitted ? "#166534" : "#c2410c",
-                                                bg: s.parent_current_tracker_submitted ? "#f0fdf4" : "#fff7ed",
-                                                icon: s.parent_current_tracker_submitted ? "🌟" : "📝",
+                                                tone: s.parent_current_tracker_submitted ? "ready" : "action",
+                                                Icon: s.parent_current_tracker_submitted ? Sparkles : FileText,
                                             },
-                                            ARCHIVED: { text: "Record archived", color: "#64748b", bg: "#f1f5f9", icon: "📁" },
+                                            ARCHIVED: { text: "Record archived", tone: "neutral", Icon: Archive },
+                                        };
+                                        const toneStyles: Record<StatusTone, { bg: string; text: string; iconBg: string; iconColor: string }> = {
+                                            action: { bg: "bg-amber-50 border-amber-100", text: "text-amber-800", iconBg: "bg-amber-100", iconColor: "text-amber-600" },
+                                            waiting: { bg: "bg-blue-50 border-blue-100", text: "text-blue-800", iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+                                            ready: { bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-800", iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+                                            neutral: { bg: "bg-slate-50 border-slate-200", text: "text-slate-600", iconBg: "bg-slate-100", iconColor: "text-slate-500" },
                                         };
                                         const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
-                                        const statusInfo = statusMap[statusKey] ?? { text: s.status?.replace(/_/g, " "), color: "#475569", bg: "#f1f5f9", icon: "📄" };
+                                        const statusInfo = statusMap[statusKey] ?? { text: s.status?.replace(/_/g, " "), tone: "neutral" as StatusTone, Icon: FileText };
+                                        const statusTone = toneStyles[statusInfo.tone];
 
-                                        // Determine the single primary CTA
                                         const getPrimaryCTA = () => {
                                             if (s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) {
-                                                return { label: "Start Assessment", href: `/parent-onboarding?studentId=${s.id}`, style: "primary" as const };
+                                                return { label: "Start Assessment", href: `/parent-onboarding?studentId=${s.id}` };
                                             }
                                             if (s.status === "ENROLLED" && !s.parent_current_tracker_submitted) {
-                                                return { label: "Submit Monthly Update", href: getStudentWorkspaceHref(s.id, "parent_tracker"), style: "primary" as const };
+                                                return { label: "Submit Monthly Update", href: getStudentWorkspaceHref(s.id, "parent_tracker") };
                                             }
-                                            return { label: "View Progress", href: `/students/${s.id}`, style: "secondary" as const };
+                                            return { label: "View Progress", href: getStudentWorkspaceHref(s.id) };
                                         };
                                         const cta = getPrimaryCTA();
 
                                         return (
-                                            <div key={s.id} className="bg-white rounded-2xl border border-slate-200 p-0 flex flex-col shadow-sm hover:shadow-md transition-all relative overflow-hidden group hover:border-blue-200">
-                                                {/* Child header with gradient */}
-                                                <div style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #dbeafe 100%)", padding: "1.5rem 1.5rem 1.25rem", position: "relative", overflow: "hidden" }}>
-                                                    <div style={{ position: "absolute", top: "-20px", right: "-20px", width: "80px", height: "80px", borderRadius: "50%", background: "rgba(99,102,241,0.06)" }}></div>
-                                                    <div className="flex items-center gap-4 relative z-[1]">
-                                                        <div className="w-14 h-14 rounded-full bg-white text-indigo-600 flex items-center justify-center text-2xl font-black border-2 border-white shadow-sm transition-transform group-hover:scale-105 shrink-0">
-                                                            {s.first_name.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div style={{ minWidth: 0 }}>
-                                                            <h3 className="font-extrabold text-xl text-slate-900 leading-tight truncate">{s.first_name} {s.last_name}</h3>
-                                                            {s.grade && s.grade !== "TBD" && (
-                                                                <p className="text-slate-500 text-sm font-medium mt-0.5">Grade {s.grade}</p>
-                                                            )}
-                                                        </div>
+                                            <div
+                                                key={s.id}
+                                                className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                                            >
+                                                {/* Child header */}
+                                                <div className="flex items-center gap-4 border-b border-indigo-100/60 p-5">
+                                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-xl font-extrabold text-white shadow-md shadow-indigo-200">
+                                                        {s.first_name.charAt(0).toUpperCase()}
+                                                        {s.last_name?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <h3 className="m-0 truncate bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-xl font-extrabold leading-tight text-transparent">
+                                                            {s.first_name} {s.last_name}
+                                                        </h3>
+                                                        {s.grade && s.grade !== "TBD" && (
+                                                            <p className="m-0 mt-0.5 text-sm font-medium text-slate-500">Grade {s.grade}</p>
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                {/* Status section */}
-                                                <div style={{ padding: "1rem 1.5rem", background: statusInfo.bg, borderBottom: "1px solid #e2e8f0" }}>
-                                                    <div className="flex items-center gap-2">
-                                                        <span style={{ fontSize: "1.1rem" }}>{statusInfo.icon}</span>
-                                                        <span style={{ fontSize: "0.85rem", fontWeight: 600, color: statusInfo.color, lineHeight: 1.4 }}>
-                                                            {statusInfo.text}
-                                                        </span>
+                                                {/* Status */}
+                                                <div className={`flex items-start gap-3 border-b px-5 py-3 ${statusTone.bg}`}>
+                                                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${statusTone.iconBg}`}>
+                                                        <statusInfo.Icon className={`h-4 w-4 ${statusTone.iconColor}`} aria-hidden="true" />
                                                     </div>
+                                                    <p className={`m-0 text-sm font-semibold leading-snug ${statusTone.text}`}>
+                                                        {statusInfo.text}
+                                                    </p>
                                                 </div>
 
-                                                {/* CTA section */}
-                                                <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "12px" }}>
+                                                {/* Actions */}
+                                                <div className="flex flex-col gap-2 p-5">
                                                     <Link
                                                         href={cta.href}
                                                         onClick={() => rememberParentStudent(s.id)}
-                                                        className={cta.style === "primary" ? "btn-primary" : "btn-indigo"}
-                                                        style={{ textDecoration: "none", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", boxSizing: "border-box" }}
+                                                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white no-underline shadow-sm transition-colors hover:bg-indigo-700"
                                                     >
                                                         {cta.label}
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
                                                     </Link>
 
                                                     {s.status !== "ARCHIVED" && (
                                                         <Link
                                                             href={`/specialists?studentId=${s.id}`}
-                                                            className="btn-secondary"
-                                                            style={{ textDecoration: "none", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", fontWeight: 600, gap: "8px", width: "100%", boxSizing: "border-box", fontSize: "0.9rem", borderRadius: "8px", transition: "all 0.2s" }}
-                                                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.borderColor = "#cbd5e1" }}
-                                                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.borderColor = "#e2e8f0" }}
+                                                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
                                                         >
-                                                            <span>Specialist Preferences</span>
-                                                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                                            <UsersIcon className="h-4 w-4" aria-hidden="true" />
+                                                            Specialist Preferences
                                                         </Link>
                                                     )}
                                                 </div>
@@ -469,119 +463,87 @@ export default function DashboardPage() {
                                     })}
                                 </div>
                             ) : (
-                                <>
-                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                                        <table style={{ width: "100%", minWidth: "500px", borderCollapse: "collapse", textAlign: "left" }}>
-                                            <thead>
-                                                <tr>
-                                                    <th onClick={() => handleSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                            NAME
-                                                            <span style={{ opacity: sortConfig?.key === 'name' ? 1 : 0.3 }}>
-                                                                {sortConfig?.key === 'name' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                            </span>
-                                                        </div>
-                                                    </th>
-                                                    <th onClick={() => handleSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                            GRADE
-                                                            <span style={{ opacity: sortConfig?.key === 'grade' ? 1 : 0.3 }}>
-                                                                {sortConfig?.key === 'grade' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                            </span>
-                                                        </div>
-                                                    </th>
-                                                    <th onClick={() => handleSort('status')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                            STATUS
-                                                            <span style={{ opacity: sortConfig?.key === 'status' ? 1 : 0.3 }}>
-                                                                {sortConfig?.key === 'status' ? (sortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                            </span>
-                                                        </div>
-                                                    </th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {paginatedStudents.map(s => {
-                                                    const badge = statusColors[s.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
-                                                    return (
-                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
-                                                            <td style={{ padding: "12px" }}>
-                                                                <Link href={getStudentWorkspaceHref(s.id)} style={{ fontWeight: "bold", color: "var(--text-primary)", textDecoration: "none" }} className="hover:text-blue-600 transition-colors">
-                                                                    {s.first_name} {s.last_name}
-                                                                </Link>
-                                                            </td>
-                                                            <td style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                                                                {s.grade && s.grade !== "TBD" ? s.grade : <span className="text-slate-400 italic">Not yet assigned</span>}
-                                                            </td>
-                                                            <td style={{ padding: "12px" }}>
-                                                                <span style={{
-                                                                    fontSize: "0.72rem",
-                                                                    fontWeight: "bold",
-                                                                    padding: "4px 10px",
-                                                                    borderRadius: "12px",
-                                                                    textTransform: "uppercase",
-                                                                    letterSpacing: "0.3px",
-                                                                    background: badge.bg,
-                                                                    color: badge.color,
-                                                                }}>
-                                                                    {s.status?.replace(/_/g, " ")}
-                                                                </span>
-                                                            </td>
-                                                            <td style={{ padding: "12px", textAlign: "right" }}>
-                                                                <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                                                                    {s.status === "PENDING_ASSESSMENT" && (
-                                                                        <Link 
-                                                                            href={getStudentWorkspaceHref(s.id, getPrimaryInputTab())}
-                                                                            className="btn-indigo"
-                                                                            style={{ textDecoration: "none" }}
-                                                                        >
-                                                                            Start Assessment
-                                                                        </Link>
-                                                                    )}
-                                                                    <Link 
-                                                                        href={getStudentWorkspaceHref(s.id)} 
-                                                                        className="hover:bg-blue-50 transition-colors duration-200 block"
-                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", color: "#3b82f6" }}
-                                                                        title="Open Workspace"
-                                                                    >
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                                                                    </Link>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="md:hidden flex flex-col gap-4 w-full">
-                                        {paginatedStudents.map(s => {
-                                            const badge = statusColors[s.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
-                                            return (
-                                                <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
-                                                    <div className="flex justify-between items-start gap-2">
-                                                        <div className="flex flex-col">
-                                                            <Link href={getStudentWorkspaceHref(s.id)} className="font-bold text-[var(--text-primary)] no-underline text-lg hover:text-blue-600 transition-colors">
-                                                                {s.first_name} {s.last_name}
-                                                            </Link>
-                                                            <span className="text-sm text-slate-500 mt-0.5">{s.grade && s.grade !== "TBD" ? `Grade: ${s.grade}` : "Grade: Unassigned"}</span>
-                                                        </div>
-                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: badge.bg, color: badge.color, textAlign: "center", whiteSpace: "nowrap" }}>
-                                                            {s.status?.replace(/_/g, " ")}
-                                                        </span>
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                    {paginatedStudents.map(s => {
+                                        const statusToneMap: Record<string, { bg: string; text: string; iconBg: string; iconColor: string; Icon: any; label: string }> = {
+                                            PENDING_ASSESSMENT: { bg: "bg-pink-50 border-pink-100", text: "text-pink-800", iconBg: "bg-pink-100", iconColor: "text-pink-600", Icon: ClipboardList, label: "Pending Assessment" },
+                                            ASSESSMENT_SCHEDULED: { bg: "bg-amber-50 border-amber-100", text: "text-amber-800", iconBg: "bg-amber-100", iconColor: "text-amber-600", Icon: Clock, label: "Assessment Scheduled" },
+                                            ASSESSED: { bg: "bg-blue-50 border-blue-100", text: "text-blue-800", iconBg: "bg-blue-100", iconColor: "text-blue-600", Icon: CheckCircle2, label: "Assessed" },
+                                            ENROLLED: { bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-800", iconBg: "bg-emerald-100", iconColor: "text-emerald-600", Icon: Sparkles, label: "Enrolled" },
+                                            ARCHIVED: { bg: "bg-slate-50 border-slate-200", text: "text-slate-600", iconBg: "bg-slate-100", iconColor: "text-slate-500", Icon: Archive, label: "Archived" },
+                                        };
+                                        const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
+                                        const tone = statusToneMap[statusKey] ?? { bg: "bg-slate-50 border-slate-200", text: "text-slate-600", iconBg: "bg-slate-100", iconColor: "text-slate-500", Icon: FileText, label: s.status?.replace(/_/g, " ") };
+                                        const initials = `${s.first_name?.[0] || ""}${s.last_name?.[0] || ""}`.toUpperCase();
+
+                                        return (
+                                            <div
+                                                key={s.id}
+                                                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                                            >
+                                                <div className="flex items-center gap-3 border-b border-indigo-100/60 p-4">
+                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-sm font-extrabold text-white shadow-sm">
+                                                        {initials || "?"}
                                                     </div>
-                                                    <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-slate-100">
-                                                        {s.status === "PENDING_ASSESSMENT" && (
-                                                            <Link href={getStudentWorkspaceHref(s.id, getPrimaryInputTab())} className="btn-indigo flex-1 text-center justify-center text-sm py-2">Start Assessment</Link>
+                                                    <div className="min-w-0 flex-1">
+                                                        <Link
+                                                            href={getStudentWorkspaceHref(s.id)}
+                                                            className="m-0 block truncate text-base font-extrabold text-slate-900 no-underline transition-colors hover:text-indigo-700"
+                                                        >
+                                                            {s.first_name} {s.last_name}
+                                                        </Link>
+                                                        <p className="m-0 mt-0.5 text-xs font-medium text-slate-500">
+                                                            {s.grade && s.grade !== "TBD" ? `Grade ${s.grade}` : "Grade unassigned"}
+                                                        </p>
+                                                        {user?.role === "SPECIALIST" && Array.isArray((user as any)?.specialties) && (user as any).specialties.length > 0 && (
+                                                            <div className="mt-1.5 flex flex-wrap gap-1">
+                                                                {(user as any).specialties.slice(0, 2).map((sp: string) => (
+                                                                    <span key={sp} className="inline-flex rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[0.6rem] font-bold text-indigo-700">
+                                                                        {sp}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
                                                         )}
-                                                        <Link href={getStudentWorkspaceHref(s.id)} className="btn-secondary flex-1 text-center justify-center text-sm py-2">Workspace</Link>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                </>
+                                                <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${tone.bg}`}>
+                                                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone.iconBg}`}>
+                                                        <tone.Icon className={`h-3.5 w-3.5 ${tone.iconColor}`} aria-hidden="true" />
+                                                    </div>
+                                                    <span className={`text-xs font-bold ${tone.text}`}>{tone.label}</span>
+                                                </div>
+                                                <div className="flex flex-col gap-2 p-4">
+                                                    {user?.role === "SPECIALIST" && s.status === "PENDING_ASSESSMENT" ? (
+                                                        <>
+                                                            <Link
+                                                                href="/schedule"
+                                                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white no-underline shadow-sm transition-colors hover:bg-indigo-700"
+                                                            >
+                                                                <Calendar className="h-4 w-4" aria-hidden="true" />
+                                                                Manage Schedule
+                                                            </Link>
+                                                            <Link
+                                                                href={getStudentWorkspaceHref(s.id)}
+                                                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
+                                                            >
+                                                                Open Workspace
+                                                                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                                                            </Link>
+                                                        </>
+                                                    ) : (
+                                                        <Link
+                                                            href={getStudentWorkspaceHref(s.id)}
+                                                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white no-underline shadow-sm transition-colors hover:bg-indigo-700"
+                                                        >
+                                                            Open Workspace
+                                                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             )}
 
                             {/* Pagination Controls */}

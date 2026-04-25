@@ -20,10 +20,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if identifier and password:
             user_model = get_user_model()
             matched_user = user_model.objects.filter(
-                Q(username__iexact=identifier) | Q(email__iexact=identifier)
+                Q(email__iexact=identifier)
             ).first()
-            if matched_user and matched_user.username != identifier:
-                attrs[self.username_field] = matched_user.username
+            if matched_user and matched_user.email != identifier:
+                attrs[self.username_field] = matched_user.email
 
         return super().validate(attrs)
 
@@ -54,7 +54,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'first_name', 'last_name', 'specialty',
+        fields = ['id', 'email', 'role', 'first_name', 'last_name', 'specialty',
                   'specialties', 'languages',
                   'phone_number', 'is_phone_verified',
                   'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students',
@@ -156,12 +156,12 @@ class SelfUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'role', 'first_name', 'last_name',
+            'id', 'email', 'role', 'first_name', 'last_name',
             'specialty', 'specialties', 'languages', 'phone_number', 'is_phone_verified',
             'specialist_onboarding_complete', 'specialist_onboarding_missing'
         ]
         read_only_fields = [
-            'id', 'username', 'email', 'role',
+            'id', 'email', 'role',
             'specialty', 'specialties', 'phone_number', 'is_phone_verified',
             'specialist_onboarding_complete', 'specialist_onboarding_missing'
         ]
@@ -350,8 +350,8 @@ class AcceptInvitationSerializer(serializers.Serializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ['id', 'notification_type', 'title', 'message', 'link', 'is_read', 'created_at']
-        read_only_fields = ['id', 'notification_type', 'title', 'message', 'link', 'created_at']
+        fields = ['id', 'notification_type', 'title', 'message', 'link', 'actor_name', 'is_read', 'created_at']
+        read_only_fields = ['id', 'notification_type', 'title', 'message', 'link', 'actor_name', 'created_at']
 
 class SpecialistPreferenceSerializer(serializers.ModelSerializer):
     # Include basic details of the specialist for display purposes
@@ -387,7 +387,7 @@ class SpecialistPreferenceSerializer(serializers.ModelSerializer):
         return hasattr(slot, 'appointment') and slot.appointment.status == 'SCHEDULED'
 
     def get_specialist_name(self, obj):
-        return f"{obj.specialist.first_name} {obj.specialist.last_name}".strip() or obj.specialist.username
+        return f"{obj.specialist.first_name} {obj.specialist.last_name}".strip() or obj.specialist.email
 
 
 class SpecialistAvailabilitySlotSerializer(serializers.ModelSerializer):
@@ -404,7 +404,7 @@ class SpecialistAvailabilitySlotSerializer(serializers.ModelSerializer):
 
     def get_specialist_name(self, obj):
         name = f"{obj.specialist.first_name} {obj.specialist.last_name}".strip()
-        return name or obj.specialist.username
+        return name or obj.specialist.email
 
     def get_is_booked(self, obj):
         return hasattr(obj, 'appointment') and obj.appointment.status == 'SCHEDULED'
@@ -434,10 +434,10 @@ class AssessmentAppointmentSerializer(serializers.ModelSerializer):
 
     def get_specialist_name(self, obj):
         name = f"{obj.specialist.first_name} {obj.specialist.last_name}".strip()
-        return name or obj.specialist.username
+        return name or obj.specialist.email
 
     def get_parent_name(self, obj):
         if not obj.parent:
             return ''
         name = f"{obj.parent.first_name} {obj.parent.last_name}".strip()
-        return name or obj.parent.username
+        return name or obj.parent.email

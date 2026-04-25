@@ -25,28 +25,24 @@ class SecurityHardeningTests(APITestCase):
         self.teacher_password = 'TeachPass123!'
 
         self.admin = User.objects.create_user(
-            username='adminuser',
-            email='admin@example.com',
+            email='adminuser@example.com',
             password=self.admin_password,
             role='ADMIN',
             is_staff=True,
             is_superuser=True,
         )
         self.parent = User.objects.create_user(
-            username='parentuser',
-            email='parent@example.com',
+            email='parentuser@example.com',
             password=self.parent_password,
             role='PARENT',
         )
         self.specialist = User.objects.create_user(
-            username='specialistuser',
-            email='specialist@example.com',
+            email='specialistuser@example.com',
             password=self.specialist_password,
             role='SPECIALIST',
         )
         self.teacher = User.objects.create_user(
-            username='teacheruser',
-            email='teacher@example.com',
+            email='teacheruser@example.com',
             password=self.teacher_password,
             role='TEACHER',
         )
@@ -86,15 +82,15 @@ class SecurityHardeningTests(APITestCase):
         StudentAccess.objects.create(user=self.specialist, student=self.student)
         StudentAccess.objects.create(user=self.teacher, student=self.student)
 
-    def login_cookie_client(self, username, password):
+    def login_cookie_client(self, email, password):
         client = APIClient(enforce_csrf_checks=True)
         csrf_response = client.get('/api/auth/csrf/')
         self.assertEqual(csrf_response.status_code, status.HTTP_200_OK)
         response = client.post('/api/auth/token/', {
-            'username': username,
+            'email': email,
             'password': password,
         })
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         return client
 
     def test_login_accepts_slashless_token_url(self):
@@ -103,16 +99,16 @@ class SecurityHardeningTests(APITestCase):
         self.assertEqual(csrf_response.status_code, status.HTTP_200_OK)
 
         response = client.post('/api/auth/token', {
-            'username': 'adminuser',
+            'email': 'adminuser@example.com',
             'password': self.admin_password,
         }, format='json')
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access_token', response.cookies)
         self.assertIn('refresh_token', response.cookies)
 
     def test_refresh_accepts_slashless_refresh_url(self):
-        client = self.login_cookie_client('adminuser', self.admin_password)
+        client = self.login_cookie_client('adminuser@example.com', self.admin_password)
 
         response = client.post(
             '/api/auth/token/refresh',
@@ -121,13 +117,13 @@ class SecurityHardeningTests(APITestCase):
             HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value,
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access_token', response.cookies)
 
     def test_non_admin_cannot_create_users(self):
         self.client.force_authenticate(user=self.parent)
         response = self.client.post('/api/users/', {
-            'username': 'intruder',
+            'email': 'intruder@example.com',
             'password': 'Password123!',
             'email': 'intruder@example.com',
             'role': 'ADMIN',
@@ -150,7 +146,7 @@ class SecurityHardeningTests(APITestCase):
             'last_name': 'rivera',
             'languages': ['English', 'Tagalog'],
         }, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.specialist.refresh_from_db()
         self.assertEqual(self.specialist.first_name, 'Sam')
         self.assertEqual(self.specialist.last_name, 'Rivera')
@@ -158,7 +154,6 @@ class SecurityHardeningTests(APITestCase):
 
     def test_specialist_cannot_patch_another_user_profile_setup_fields(self):
         other_specialist = User.objects.create_user(
-            username='otherspec',
             email='otherspec@example.com',
             password='SpecPass123!',
             role='SPECIALIST',
@@ -172,7 +167,7 @@ class SecurityHardeningTests(APITestCase):
     def test_auth_me_includes_specialist_onboarding_status(self):
         self.client.force_authenticate(user=self.specialist)
         response = self.client.get('/api/auth/me/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data['specialist_onboarding_complete'])
         self.assertIn('first_name', response.data['specialist_onboarding_missing'])
         self.assertIn('last_name', response.data['specialist_onboarding_missing'])
@@ -208,7 +203,7 @@ class SecurityHardeningTests(APITestCase):
             },
             'form_data': {'notes': 'updated'},
         }, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.student.refresh_from_db()
         self.assertEqual(self.student.grade, 'Kinder 2')
         self.assertEqual(self.student.first_name, 'Jamie')
@@ -224,7 +219,6 @@ class SecurityHardeningTests(APITestCase):
 
     def test_missing_student_access_blocks_form_submission(self):
         other_specialist = User.objects.create_user(
-            username='outsider',
             email='outsider@example.com',
             password='SpecPass123!',
             role='SPECIALIST',
@@ -315,7 +309,7 @@ class SecurityHardeningTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get('/api/dashboard/actions/')
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         actions = response.data['actions']
         monthly_action = next(
             action for action in actions
@@ -329,9 +323,9 @@ class SecurityHardeningTests(APITestCase):
         self.assertEqual(monthly_action['type'], 'positive')
 
     def test_cookie_authenticated_mutation_requires_csrf(self):
-        client = self.login_cookie_client('adminuser', self.admin_password)
+        client = self.login_cookie_client('adminuser@example.com', self.admin_password)
         response = client.post('/api/users/', {
-            'username': 'newstaff',
+            'email': 'newstaff@example.com',
             'password': 'StrongPass123!',
             'email': 'newstaff@example.com',
             'role': 'TEACHER',
@@ -339,7 +333,7 @@ class SecurityHardeningTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         response = client.post('/api/users/', {
-            'username': 'newstaff',
+            'email': 'newstaff@example.com',
             'password': 'StrongPass123!',
             'email': 'newstaff@example.com',
             'role': 'TEACHER',
@@ -347,7 +341,7 @@ class SecurityHardeningTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_refresh_rotation_replaces_refresh_cookie_and_invalidates_old_one(self):
-        client = self.login_cookie_client('adminuser', self.admin_password)
+        client = self.login_cookie_client('adminuser@example.com', self.admin_password)
         old_refresh = client.cookies['refresh_token'].value
 
         response = client.post(
@@ -356,7 +350,7 @@ class SecurityHardeningTests(APITestCase):
             format='json',
             HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value,
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        if response.status_code != 200: print(response.data); self.assertEqual(response.status_code, status.HTTP_200_OK)
         new_refresh = response.cookies['refresh_token'].value
         self.assertNotEqual(old_refresh, new_refresh)
 

@@ -258,13 +258,17 @@ function SpecialistScheduleContent() {
               ) : (
                 <div className="space-y-2">
                   {scheduledAppointments.map(appointment => (
-                    <div key={appointment.id} className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-white p-3">
+                    <Link
+                      key={appointment.id}
+                      href={appointment.student_id ? `/workspace?studentId=${appointment.student_id}` : "#"}
+                      className="group flex items-start gap-3 rounded-xl border border-emerald-100 bg-white p-3 no-underline transition-colors hover:border-emerald-300 hover:bg-emerald-50/40"
+                    >
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
-                      <div>
-                        <p className="m-0 text-sm font-bold text-slate-900">{formatDateTime(appointment.start_at)}</p>
-                        <p className="m-0 text-xs text-slate-500">{appointment.student_name} · Online</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="m-0 text-sm font-bold text-slate-900 group-hover:text-emerald-800">{formatDateTime(appointment.start_at)}</p>
+                        <p className="m-0 truncate text-xs text-slate-500">{appointment.student_name} · Online</p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

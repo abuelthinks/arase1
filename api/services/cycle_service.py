@@ -44,6 +44,11 @@ def check_and_trigger_iep_generation(student, cycle):
         from api.services.iep_service import run_iep_generation
         doc, _ = run_iep_generation(student.id, cycle.id)
         logger.info("IEP auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
+        try:
+            from api.services.notification_service import notify_auto_iep_ready
+            notify_auto_iep_ready(student, doc)
+        except Exception:
+            pass  # Don't block IEP generation if notification fails
         return True, doc
     except Exception as exc:
         logger.error("Failed to auto-generate IEP for student=%s cycle=%s: %s", student.id, cycle.id, exc)
@@ -154,6 +159,11 @@ def check_and_trigger_auto_generation(student, cycle):
         from api.services.iep_service import run_monthly_report_generation
         doc, _ = run_monthly_report_generation(student.id, cycle.id)
         logger.info("Monthly report auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
+        try:
+            from api.services.notification_service import notify_auto_report_ready
+            notify_auto_report_ready(student, doc)
+        except Exception:
+            pass  # Don't block report generation if notification fails
         return True, doc
     except Exception as exc:
         logger.error("Failed to auto-generate monthly report for student=%s cycle=%s: %s", student.id, cycle.id, exc)

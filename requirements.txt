@@ -59,6 +59,9 @@ tzdata==2025.3
 uritemplate==4.2.0
 urllib3==2.6.3
 websockets==16.0
+channels==4.3.2
+channels-redis==4.3.0
+daphne==4.2.1
 whitenoise==6.12.0
 celery==5.4.0
 redis==5.2.1

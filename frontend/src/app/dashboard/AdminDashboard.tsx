@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
+import { roleColorHex, statusColorHex } from "@/lib/role-colors";
 import { toast } from "sonner";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
@@ -22,7 +24,7 @@ function toTitleCase(str: string): string {
 
 interface UserData {
     id: number;
-    username: string;
+    
     email: string;
     role: string;
     first_name: string;
@@ -41,6 +43,13 @@ interface InvitationData {
     is_used: boolean;
     created_at: string;
     expires_at: string;
+}
+
+const ALLOWED_ACTION_PREFIXES = ["/dashboard", "/workspace", "/students", "/users", "/admin", "/specialists"];
+function isSafeActionLink(link?: string): boolean {
+    if (!link || typeof link !== "string") return false;
+    if (!link.startsWith("/")) return false;
+    return ALLOWED_ACTION_PREFIXES.some(p => link === p || link.startsWith(`${p}?`) || link.startsWith(`${p}/`));
 }
 
 function getExpiryDisplay(expiresAt: string): { label: string; color: string; bg: string; isExpired: boolean } {
@@ -74,25 +83,8 @@ interface DashboardAction {
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
-const getRoleStyle = (role: string) => {
-    switch (role?.toUpperCase()) {
-        case 'ADMIN': return { bg: '#ede9fe', color: '#5b21b6' };
-        case 'TEACHER': return { bg: '#dbeafe', color: '#1e40af' };
-        case 'SPECIALIST': return { bg: '#dcfce7', color: '#166534' };
-        case 'PARENT': return { bg: '#fef3c7', color: '#92400e' };
-        default: return { bg: '#f1f5f9', color: '#475569' };
-    }
-};
-
-const getStatusStyle = (status: string) => {
-    const s = status?.toUpperCase() || '';
-    if (s === 'ENROLLED')     return { bg: '#dcfce7', color: '#166534' };   // Green
-    if (s === 'ASSESSED')     return { bg: '#dbeafe', color: '#1e40af' };   // Blue
-    if (s === 'ASSESSMENT_SCHEDULED') return { bg: '#fef3c7', color: '#92400e' };   // Amber
-    if (s === 'PENDING_ASSESSMENT')    return { bg: '#fce7f3', color: '#9d174d' };   // Pink
-    if (s === 'ARCHIVED')   return { bg: '#f1f5f9', color: '#64748b' };   // Grey
-    return { bg: '#f1f5f9', color: '#475569' };
-};
+const getRoleStyle = roleColorHex;
+const getStatusStyle = statusColorHex;
 
 const getActionTypeStyle = (type: DashboardAction["type"]) => {
     if (type === 'positive') return { bg: '#f0fdf4', border: '#bbf7d0', title: '#166534', body: '#15803d' };
@@ -104,6 +96,13 @@ const getActionTypeStyle = (type: DashboardAction["type"]) => {
 
 export default function AdminDashboard() {
     const searchParams = useSearchParams();
+    const { user: authUser } = useAuth();
+    const getTimeGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
+        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
+        return { text: "Good evening", emoji: "🌙" };
+    };
 
     // Check URL for explicit tab, default to students
     const initialTab = (searchParams.get('tab') as "analytics" | "students" | "users" | "invitations") || "analytics";
@@ -150,7 +149,7 @@ export default function AdminDashboard() {
     // Modal state for User
     const [showUserModal, setShowUserModal] = useState(false);
     const [newUser, setNewUser] = useState({
-        username: '',
+        
         password: '',
         confirm_password: '',
         email: '',
@@ -177,6 +176,14 @@ export default function AdminDashboard() {
     const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
     const [deleteError, setDeleteError] = useState("");
+
+    // Modal state for Invite Confirmations
+    const [inviteToRevoke, setInviteToRevoke] = useState<InvitationData | null>(null);
+    const [inviteToResend, setInviteToResend] = useState<InvitationData | null>(null);
+    const [inviteActionLoading, setInviteActionLoading] = useState(false);
+
+    // Modal state for showing newly issued invite token
+    const [createdInvite, setCreatedInvite] = useState<{ email: string; token: string } | null>(null);
 
 
     const fetchData = async () => {
@@ -256,7 +263,7 @@ export default function AdminDashboard() {
     const processedUsers = users.filter(u => {
         // Fuzzy search logic (matches all words)
         const searchTerms = userSearch.toLowerCase().trim().split(/\s+/);
-        const searchableString = `${u.first_name} ${u.last_name} ${u.email} ${u.username}`.toLowerCase();
+        const searchableString = `${u.first_name} ${u.last_name} ${u.email} `.toLowerCase();
         const matchesSearch = searchTerms.every(term => searchableString.includes(term));
         
         // Multi-select role filter
@@ -272,8 +279,8 @@ export default function AdminDashboard() {
             let bVal: any = '';
             
             if (userSortConfig.key === 'name') {
-                aVal = `${a.first_name} ${a.last_name}`.trim() || a.username;
-                bVal = `${b.first_name} ${b.last_name}`.trim() || b.username;
+                aVal = `${a.first_name} ${a.last_name}`.trim() || a.email;
+                bVal = `${b.first_name} ${b.last_name}`.trim() || b.email;
             } else if (userSortConfig.key === 'role') {
                 aVal = a.role;
                 bVal = b.role;
@@ -410,7 +417,7 @@ export default function AdminDashboard() {
         setCreatingUser(true);
         try {
             const payload = {
-                username: newUser.username,
+                
                 password: newUser.password,
                 email: newUser.email,
                 role: newUser.role,
@@ -420,14 +427,14 @@ export default function AdminDashboard() {
             };
             await api.post("/api/users/", payload);
             setShowUserModal(false);
-            setNewUser({ username: '', password: '', confirm_password: '', email: '', role: 'TEACHER', specialty: '', specialties: [], first_name: '', last_name: '' });
+            setNewUser({  password: '', confirm_password: '', email: '', role: 'TEACHER', specialty: '', specialties: [], first_name: '', last_name: '' });
             fetchData();
             toast.success("User created successfully");
         } catch (err: any) {
             toast.error(
                 err.response?.data?.specialties
                 || err.response?.data?.specialty?.[0]
-                || err.response?.data?.username
+                || err.response?.data?.email
                 || err.response?.data?.detail
                 || "Failed to create user"
             );
@@ -440,11 +447,15 @@ export default function AdminDashboard() {
         e.preventDefault();
         try {
             const response = await api.post("/api/invitations/", { email: inviteEmail, role: inviteRole });
+            const issuedEmail = inviteEmail;
             setShowInviteModal(false);
             setInviteEmail('');
             setInviteRole('PARENT');
             fetchData();
-            toast.success(`Invite sent to ${inviteEmail}. Token: ${response.data.token}`);
+            toast.success(`Invitation sent to ${issuedEmail}.`);
+            if (response.data?.token) {
+                setCreatedInvite({ email: issuedEmail, token: response.data.token });
+            }
         } catch (err: any) {
             toast.error(err.response?.data?.email?.[0] || err.response?.data?.error || "Failed to send invite");
         }
@@ -492,24 +503,38 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleDeleteInvite = async (inviteId: number, email: string) => {
-        if (!confirm(`Are you sure you want to revoke the invitation for ${email}?`)) return;
+    const handleConfirmRevokeInvite = async () => {
+        if (!inviteToRevoke) return;
+        setInviteActionLoading(true);
         try {
-            await api.delete(`/api/invitations/${inviteId}/`);
+            await api.delete(`/api/invitations/${inviteToRevoke.id}/`);
+            toast.success(`Invitation for ${inviteToRevoke.email} revoked.`);
+            setInviteToRevoke(null);
             fetchData();
         } catch (err: any) {
             toast.error(err.response?.data?.error || "Failed to delete invitation.");
+        } finally {
+            setInviteActionLoading(false);
         }
     };
 
-    const handleResendInvite = async (inviteId: number, email: string) => {
-        if (!confirm(`Resend invitation to ${email}? This will revoke the old link and send a fresh 72-hour one.`)) return;
+    const handleConfirmResendInvite = async () => {
+        if (!inviteToResend) return;
+        setInviteActionLoading(true);
         try {
-            await api.post(`/api/invitations/${inviteId}/resend/`);
-            toast.success(`Invitation resent to ${email}.`);
+            const res = await api.post(`/api/invitations/${inviteToResend.id}/resend/`);
+            toast.success(`Invitation resent to ${inviteToResend.email}.`);
+            const refreshedToken = res.data?.token;
+            const email = inviteToResend.email;
+            setInviteToResend(null);
+            if (refreshedToken) {
+                setCreatedInvite({ email, token: refreshedToken });
+            }
             fetchData();
         } catch (err: any) {
             toast.error(err.response?.data?.error || "Failed to resend invitation.");
+        } finally {
+            setInviteActionLoading(false);
         }
     };
 
@@ -524,6 +549,7 @@ export default function AdminDashboard() {
 
     const pendingInvitations = invitations.filter(i => !i.is_used);
     const expiredInvitations = pendingInvitations.filter(i => getExpiryDisplay(i.expires_at).isExpired);
+    const validPendingInvitations = pendingInvitations.filter(i => !getExpiryDisplay(i.expires_at).isExpired);
     const expiringSoonInvitations = pendingInvitations.filter(i => {
         const expiryTime = new Date(i.expires_at).getTime();
         const nowTime = Date.now();
@@ -580,24 +606,29 @@ export default function AdminDashboard() {
         }] : []),
     ].slice(0, 5);
 
+    const adminActionSummary = (() => {
+        const parts: string[] = [];
+        if (expiringSoonInvitations.length > 0) parts.push(`${expiringSoonInvitations.length} invite${expiringSoonInvitations.length === 1 ? "" : "s"} expiring soon`);
+        if (reviewStudents > 0) parts.push(`${reviewStudents} awaiting enrollment review`);
+        if (actionCounts.warning > 0) parts.push(`${actionCounts.warning} urgent action${actionCounts.warning === 1 ? "" : "s"}`);
+        if (parts.length === 0) return "Everything is on track.";
+        return `You have ${parts.slice(0, 2).join(" and ")}.`;
+    })();
+
     return (
         <>
-            {/* Desktop heading — unchanged */}
-            <div className="hidden md:flex mb-8 justify-between items-center">
-                <div>
-                    <h2 style={{ margin: 0, fontSize: "2rem", color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: "8px" }}>
-                        {activeTab === "analytics" && <>Analytics Dashboard</>}
-                        {activeTab === "students" && <>Student Roster <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedStudents.length})</span></>}
-                        {activeTab === "users" && <>System Users <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedUsers.length})</span></>}
-                        {activeTab === "invitations" && <>Pending Invitations <span style={{ fontSize: "1.25rem", color: "#94a3b8", fontWeight: "normal" }}>({processedInvitations.length})</span></>}
-                    </h2>
-                    <p style={{ margin: "5px 0 0 0", color: "var(--text-secondary)" }}>
-                        {activeTab === "analytics" && "Live pipeline health, admin actions, staffing coverage, and invitation risk."}
-                        {activeTab === "students" && "Manage all registered students in the system."}
-                        {activeTab === "users" && "Manage active system users and clinical roles."}
-                        {activeTab === "invitations" && "Track and revoke pending access invitations."}
-                    </p>
-                </div>
+            {/* Desktop heading */}
+            <div className="hidden md:block mb-6">
+                <h2 className="m-0 text-3xl font-bold text-slate-800 flex items-center gap-2">
+                    <span>{getTimeGreeting().text}, {authUser?.first_name || "Admin"}</span>
+                    <span>{getTimeGreeting().emoji}</span>
+                </h2>
+                <p className="mt-2 text-base text-slate-500">
+                    {activeTab === "analytics" && adminActionSummary}
+                    {activeTab === "students" && `Manage all registered students. Showing ${processedStudents.length} of ${students.length}.`}
+                    {activeTab === "users" && `Manage active system users. Showing ${processedUsers.length} of ${users.length}.`}
+                    {activeTab === "invitations" && `Track and revoke pending invitations. Showing ${processedInvitations.length} of ${pendingInvitations.length}.`}
+                </p>
             </div>
 
                 {/* Desktop only: card wrapper. Mobile: px-4 content padding */}
@@ -623,46 +654,112 @@ export default function AdminDashboard() {
                         <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeIn 0.4s ease-out" }}>
                             
                             {/* KPI Row */}
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.5rem" }}>
-                                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b", display: "flex", alignItems: "center", gap: "6px" }}>
-                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                                        Active Students
-                                    </span>
-                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>{totalStudents}</span>
-                                    <span style={{ fontSize: "0.8rem", color: "#475569", fontWeight: 600 }}>
-                                        {activeStudents} enrolled, {archivedStudents} archived
-                                    </span>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200">
+                                        <UsersIcon className="h-5 w-5" aria-hidden="true" />
+                                    </div>
+                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-slate-500">Active Students</p>
+                                    <p className="mt-1 text-3xl font-extrabold text-slate-900">{totalStudents}</p>
+                                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                                        {activeStudents} enrolled · {archivedStudents} archived
+                                    </p>
                                 </div>
-                                <div style={{ background: "#fefce8", border: "1px solid #fde68a", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#a16207", display: "flex", alignItems: "center", gap: "6px" }}>
-                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Awaiting Assessment Start
-                                    </span>
-                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#854d0e", lineHeight: 1 }}>{pendingStudents}</span>
-                                    <span style={{ fontSize: "0.8rem", color: "#a16207", fontWeight: 600 }}>
-                                        Students still waiting on intake completion or scheduling
-                                    </span>
+                                <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-5 shadow-sm">
+                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200">
+                                        <Clock className="h-5 w-5" aria-hidden="true" />
+                                    </div>
+                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-amber-700">Awaiting Assessment</p>
+                                    <p className="mt-1 text-3xl font-extrabold text-amber-900">{pendingStudents}</p>
+                                    <p className="mt-1 text-xs font-semibold text-amber-700">
+                                        Still waiting on intake or scheduling
+                                    </p>
                                 </div>
-                                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#1d4ed8", display: "flex", alignItems: "center", gap: "6px" }}>
-                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        Awaiting Enrollment Review
-                                    </span>
-                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#1e3a8a", lineHeight: 1 }}>{reviewStudents}</span>
-                                    <span style={{ fontSize: "0.8rem", color: "#2563eb", fontWeight: 600 }}>
-                                        Students already assessed and waiting on an admin decision
-                                    </span>
+                                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 shadow-sm">
+                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200">
+                                        <ClipboardList className="h-5 w-5" aria-hidden="true" />
+                                    </div>
+                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-blue-700">Awaiting Enrollment</p>
+                                    <p className="mt-1 text-3xl font-extrabold text-blue-900">{reviewStudents}</p>
+                                    <p className="mt-1 text-xs font-semibold text-blue-700">
+                                        Assessed and ready for your decision
+                                    </p>
                                 </div>
-                                <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", padding: "1.5rem", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                                    <span style={{ fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#be123c", display: "flex", alignItems: "center", gap: "6px" }}>
-                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Pending Invitations
-                                    </span>
-                                    <span style={{ fontSize: "2.5rem", fontWeight: 800, color: "#9f1239", lineHeight: 1 }}>{pendingInvitations.length}</span>
-                                    <span style={{ fontSize: "0.8rem", color: "#e11d48", fontWeight: 600 }}>
-                                        {expiringSoonInvitations.length} expiring in 24h, {expiredInvitations.length} already expired
-                                    </span>
+                                <div className="rounded-2xl border border-pink-100 bg-pink-50/50 p-5 shadow-sm">
+                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-md shadow-pink-200">
+                                        <Mail className="h-5 w-5" aria-hidden="true" />
+                                    </div>
+                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-pink-700">Pending Invitations</p>
+                                    <p className="mt-1 text-3xl font-extrabold text-pink-900">{validPendingInvitations.length}</p>
+                                    <p className="mt-1 text-xs font-semibold text-pink-700">
+                                        {expiringSoonInvitations.length} expiring in 24h
+                                        {expiredInvitations.length > 0 && ` · ${expiredInvitations.length} expired`}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Quick Actions */}
+                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+                                <div className="mb-4 flex items-center gap-3">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-sm">
+                                        <Zap className="h-4 w-4" aria-hidden="true" />
+                                    </div>
+                                    <div>
+                                        <h3 className="m-0 text-base font-extrabold text-slate-900">Quick actions</h3>
+                                        <p className="m-0 text-xs text-slate-500">Jump straight into the most-used admin tasks.</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowStudentModal(true)}
+                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                                                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">Register student</span>
+                                        </div>
+                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowInviteModal(true)}
+                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-600">
+                                                <Mail className="h-4 w-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">Invite a user</span>
+                                        </div>
+                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                    </button>
+                                    <Link
+                                        href="/admin/iep"
+                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                                                <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">IEP generator</span>
+                                        </div>
+                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                    </Link>
+                                    <Link
+                                        href="/admin/reports"
+                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                                                <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">Monthly reports</span>
+                                        </div>
+                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                    </Link>
                                 </div>
                             </div>
 
@@ -744,9 +841,15 @@ export default function AdminDashboard() {
                                                             <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: actionStyle.title }}>{action.title}</p>
                                                             <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: actionStyle.body }}>{action.description}</p>
                                                         </div>
-                                                        <Link href={action.link} className="hover:scale-105 transition-transform" style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${actionStyle.border}`, color: actionStyle.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "90px" }}>
-                                                            {action.action_text}
-                                                        </Link>
+                                                        {isSafeActionLink(action.link) ? (
+                                                            <Link href={action.link} className="hover:scale-105 transition-transform" style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${actionStyle.border}`, color: actionStyle.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "90px" }}>
+                                                                {action.action_text}
+                                                            </Link>
+                                                        ) : (
+                                                            <span style={{ fontSize: "0.78rem", padding: "4px 10px", color: "#94a3b8", borderRadius: "4px", fontStyle: "italic", minWidth: "90px", textAlign: "center" }} title="Action link unavailable">
+                                                                Unavailable
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -771,14 +874,17 @@ export default function AdminDashboard() {
 
                                                 return (
                                                 <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", padding: "12px 14px", borderRadius: "10px", background: tone.bg, border: `1px solid ${tone.border}` }}>
-                                                    <div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
                                                         <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: tone.title }}>{item.title}</p>
-                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#e11d48" }}>Missing Teacher Input • Pending &gt; 14d</p>
+                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: tone.body }}>{item.description}</p>
                                                     </div>
-                                                    <p style={{ margin: 0, fontSize: "0.78rem", color: tone.body }}>{item.description}</p>
-                                                    <Link href={item.link} style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${tone.border}`, color: tone.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "96px" }}>
-                                                        Resolve →
-                                                    </Link>
+                                                    {isSafeActionLink(item.link) ? (
+                                                        <Link href={item.link} style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${tone.border}`, color: tone.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "96px" }}>
+                                                            {item.cta} →
+                                                        </Link>
+                                                    ) : (
+                                                        <span style={{ fontSize: "0.78rem", padding: "4px 10px", color: "#94a3b8", fontStyle: "italic", minWidth: "96px", textAlign: "center" }}>Unavailable</span>
+                                                    )}
                                                 </div>
                                                 );
                                             })}
@@ -922,10 +1028,11 @@ export default function AdminDashboard() {
                             
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
                                 <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} students</span>
+                                {students.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                         <span>Show:</span>
-                                        <select 
-                                            value={studentItemsPerPage} 
+                                        <select
+                                            value={studentItemsPerPage}
                                             onChange={(e) => setStudentItemsPerPage(Number(e.target.value))}
                                             style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
                                         >
@@ -935,13 +1042,20 @@ export default function AdminDashboard() {
                                             <option value={100}>100</option>
                                         </select>
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
                             {processedStudents.length === 0 ? (
                                 <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-                                    {students.length === 0 
-                                        ? "No students successfully found in the system." 
-                                        : `No students found matching '${studentSearch}'. Try a different search term or relaxing your filters?`}
+                                    {students.length === 0
+                                        ? "No students in the system yet."
+                                        : studentSearch && statusFilters.length > 0
+                                            ? `No students match "${studentSearch}" with the selected status filters. Try clearing one.`
+                                            : studentSearch
+                                                ? `No students match "${studentSearch}". Try a different search term.`
+                                                : statusFilters.length > 0
+                                                    ? `No students match the selected status filters.`
+                                                    : "No students to show."}
                                 </p>
                             ) : (
                                 <>
@@ -991,7 +1105,7 @@ export default function AdminDashboard() {
                                                         <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
                                                             <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <Link href={`/workspace?studentId=${s.id}&tab=parent_assessment`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                <Link href={`/students/${s.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                     {s.first_name} {s.last_name}
                                                                 </Link>
                                                             </td>
@@ -1029,7 +1143,7 @@ export default function AdminDashboard() {
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
                                                             <span className="text-xs font-mono text-slate-400 mb-1">#{s.id}</span>
-                                                            <Link href={`/workspace?studentId=${s.id}&tab=parent_assessment`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
+                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                             <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>
@@ -1078,7 +1192,7 @@ export default function AdminDashboard() {
                                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
                                             type="text"
-                                            placeholder="Search by name, email, or username..."
+                                            placeholder="Search by name or email..."
                                             value={userSearch}
                                             onChange={e => setUserSearch(e.target.value)}
                                             style={{
@@ -1128,18 +1242,20 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                                 <div className="w-full md:w-auto flex items-center shrink-0">
-                                    <button onClick={() => setShowUserModal(true)} className="btn-primary w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
-                                        + Create New User
+                                    <button onClick={() => setShowUserModal(true)} className="btn-primary inline-flex items-center justify-center gap-2 w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
+                                        <UserPlus className="h-4 w-4" aria-hidden="true" />
+                                        Create New User
                                     </button>
                                 </div>
                             </div>
                             
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
                                 <span>Showing {Math.min(processedUsers.length, paginatedUsers.length)} of {processedUsers.length} users</span>
+                                {users.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                         <span>Show:</span>
-                                        <select 
-                                            value={userItemsPerPage} 
+                                        <select
+                                            value={userItemsPerPage}
                                             onChange={(e) => setUserItemsPerPage(Number(e.target.value))}
                                             style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
                                         >
@@ -1149,13 +1265,20 @@ export default function AdminDashboard() {
                                             <option value={100}>100</option>
                                         </select>
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
                             {processedUsers.length === 0 ? (
                                 <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-                                    {users.length === 0 
-                                        ? "No users successfully found in the system." 
-                                        : `No users found matching '${userSearch}'. Try a different search term or relaxing your filters?`}
+                                    {users.length === 0
+                                        ? "No users in the system yet."
+                                        : userSearch && userRoleFilters.length > 0
+                                            ? `No users match "${userSearch}" with the selected role filters. Try clearing one.`
+                                            : userSearch
+                                                ? `No users match "${userSearch}". Try a different search term.`
+                                                : userRoleFilters.length > 0
+                                                    ? `No users match the selected role filters.`
+                                                    : "No users to show."}
                                 </p>
                             ) : (
                                 <>
@@ -1193,7 +1316,7 @@ export default function AdminDashboard() {
                                             <tbody>
                                                 {paginatedUsers.map(u => {
                                                     const hasName = u.first_name || u.last_name;
-                                                    const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@${u.username}` : u.email);
+                                                    const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@` : u.email);
                                                     return (
                                                         <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
                                                             <td style={{ padding: "12px" }}>
@@ -1215,8 +1338,11 @@ export default function AdminDashboard() {
                                                                         {u.assigned_students_count}
                                                                     </div>
                                                                 ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
-                                                                    <div style={{ color: "var(--text-primary)", fontSize: "0.85rem", maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={u.assigned_student_names.join(', ')}>
-                                                                        {u.assigned_student_names.join(', ')}
+                                                                    <div
+                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "#fef3c7", color: "#92400e", fontWeight: "bold", fontSize: "0.8rem", padding: "0 8px" }}
+                                                                        title={u.assigned_student_names.join(', ')}
+                                                                    >
+                                                                        {u.assigned_student_names.length} {u.assigned_student_names.length === 1 ? "child" : "children"}
                                                                     </div>
                                                                 ) : (
                                                                     <span style={{ color: "#cbd5e1" }}>-</span>
@@ -1245,7 +1371,7 @@ export default function AdminDashboard() {
                                     <div className="md:hidden flex flex-col gap-3">
                                         {paginatedUsers.map(u => {
                                             const hasName = u.first_name || u.last_name;
-                                            const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@${u.username}` : u.email);
+                                            const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@` : u.email);
                                             return (
                                                 <div key={u.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
@@ -1264,7 +1390,9 @@ export default function AdminDashboard() {
                                                         {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
                                                             <span>{u.assigned_students_count}</span>
                                                         ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
-                                                            <span>{u.assigned_student_names.join(', ')}</span>
+                                                            <span title={u.assigned_student_names.join(', ')}>
+                                                                {u.assigned_student_names.length} {u.assigned_student_names.length === 1 ? "child" : "children"}
+                                                            </span>
                                                         ) : (
                                                             <span className="text-slate-400">None</span>
                                                         )}
@@ -1374,10 +1502,11 @@ export default function AdminDashboard() {
                             
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
                                 <span>Showing {Math.min(processedInvitations.length, paginatedInvitations.length)} of {processedInvitations.length} invitations</span>
+                                {pendingInvitations.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                         <span>Show:</span>
-                                        <select 
-                                            value={invitationItemsPerPage} 
+                                        <select
+                                            value={invitationItemsPerPage}
                                             onChange={(e) => setInvitationItemsPerPage(Number(e.target.value))}
                                             style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
                                         >
@@ -1387,13 +1516,20 @@ export default function AdminDashboard() {
                                             <option value={100}>100</option>
                                         </select>
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
                             {processedInvitations.length === 0 ? (
                                 <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-                                    {invitations.filter(i => !i.is_used).length === 0 
-                                        ? "No pending invitations in system." 
-                                        : `No invitations found matching '${invitationSearch}'.`}
+                                    {pendingInvitations.length === 0
+                                        ? "No pending invitations in the system."
+                                        : invitationSearch && invitationRoleFilters.length > 0
+                                            ? `No invitations match "${invitationSearch}" with the selected role filters.`
+                                            : invitationSearch
+                                                ? `No invitations match "${invitationSearch}".`
+                                                : invitationRoleFilters.length > 0
+                                                    ? "No invitations match the selected role filters."
+                                                    : "No invitations to show."}
                                 </p>
                             ) : (
                                 <>
@@ -1450,16 +1586,7 @@ export default function AdminDashboard() {
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
                                                             <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                                                                {expiry?.isExpired ? (
-                                                                    <button
-                                                                        onClick={() => handleResendInvite(inv.id, inv.email)}
-                                                                        className="hover:bg-green-50 transition-colors duration-200"
-                                                                        style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", height: "32px", borderRadius: "6px", background: "none", border: "1px solid #16a34a", color: "#16a34a", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
-                                                                        title="Resend Invitation"
-                                                                    >
-                                                                        🔄 Resend
-                                                                    </button>
-                                                                ) : (
+                                                                {!expiry?.isExpired && (
                                                                     <button
                                                                         onClick={() => {
                                                                             navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
@@ -1472,7 +1599,15 @@ export default function AdminDashboard() {
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                                                                     </button>
                                                                 )}
-                                                                <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
+                                                                <button
+                                                                    onClick={() => setInviteToResend(inv)}
+                                                                    className="hover:bg-emerald-50 transition-colors duration-200"
+                                                                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#16a34a", cursor: "pointer", padding: 0 }}
+                                                                    title="Resend Invitation"
+                                                                >
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.49 2.74l1.51 1.51"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.49-2.74L3.5 16.75"/><polyline points="20 4 20 9 15 9"/><polyline points="4 20 4 15 9 15"/></svg>
+                                                                </button>
+                                                                <button onClick={() => setInviteToRevoke(inv)} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                                 </button>
                                                             </div>
@@ -1507,20 +1642,19 @@ export default function AdminDashboard() {
                                                             </span>
                                                         ) : <span className="text-slate-400">—</span>}
                                                     </div>
-                                                    <div className="border-t border-slate-100 pt-3 flex justify-end gap-2">
-                                                        {expiry?.isExpired ? (
-                                                            <button onClick={() => handleResendInvite(inv.id, inv.email)} className="btn-secondary text-sm flex-1 text-center py-2" title="Resend Invitation">
-                                                                Resend
-                                                            </button>
-                                                        ) : (
+                                                    <div className="border-t border-slate-100 pt-3 flex justify-end gap-2 flex-wrap">
+                                                        {!expiry?.isExpired && (
                                                             <button onClick={() => {
                                                                 navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
                                                                 toast.success('Invite link copied to clipboard!');
-                                                            }} className="btn-secondary text-sm flex-1 text-center py-2" title="Copy Invite Link">
+                                                            }} className="btn-secondary text-xs flex-1 text-center py-2" title="Copy Invite Link">
                                                                 Copy Link
                                                             </button>
                                                         )}
-                                                        <button onClick={() => handleDeleteInvite(inv.id, inv.email)} className="btn-red text-sm flex-1 py-2" title="Revoke Invite">
+                                                        <button onClick={() => setInviteToResend(inv)} className="btn-secondary text-xs flex-1 text-center py-2" title="Resend Invitation">
+                                                            Resend
+                                                        </button>
+                                                        <button onClick={() => setInviteToRevoke(inv)} className="btn-red text-xs flex-1 py-2" title="Revoke Invite">
                                                             Revoke
                                                         </button>
                                                     </div>
@@ -1569,7 +1703,7 @@ export default function AdminDashboard() {
                                 <input required placeholder="Last Name" value={newUser.last_name} onChange={e => setNewUser({ ...newUser, last_name: e.target.value })} className="form-input" style={{ width: "50%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
                             </div>
                             <input required type="email" placeholder="Email Address" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <input required placeholder="Username" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
+                            <input required    className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
                             <div style={{ display: "flex", gap: "1rem" }}>
                                 <input required type="password" placeholder="Password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="form-input" style={{ width: "50%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
                                 <input required type="password" placeholder="Confirm Password" value={newUser.confirm_password}
@@ -1723,6 +1857,102 @@ export default function AdminDashboard() {
                                 </button>
                                 <button type="button" onClick={() => { setUserToDelete(null); setDeleteConfirmText(""); setDeleteError(""); }} style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Revoke Invite Confirmation ──────────────────────────────── */}
+            {inviteToRevoke && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <h2 className="m-0 text-lg font-extrabold text-red-700">Revoke invitation</h2>
+                        <p className="mt-2 text-sm text-slate-600">
+                            Revoking will invalidate the existing invite link for <strong>{inviteToRevoke.email}</strong>. They will not be able to register with the current link.
+                        </p>
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleConfirmRevokeInvite}
+                                disabled={inviteActionLoading}
+                                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60"
+                            >
+                                {inviteActionLoading ? "Revoking..." : "Revoke"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setInviteToRevoke(null)}
+                                disabled={inviteActionLoading}
+                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Resend Invite Confirmation ──────────────────────────────── */}
+            {inviteToResend && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <h2 className="m-0 text-lg font-extrabold text-emerald-700">Resend invitation</h2>
+                        <p className="mt-2 text-sm text-slate-600">
+                            This will revoke the previous link for <strong>{inviteToResend.email}</strong> and issue a fresh 72-hour invitation. You'll get a new copyable link after the resend.
+                        </p>
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleConfirmResendInvite}
+                                disabled={inviteActionLoading}
+                                className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-60"
+                            >
+                                {inviteActionLoading ? "Sending..." : "Resend"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setInviteToResend(null)}
+                                disabled={inviteActionLoading}
+                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Created/Resent Invite Token (copyable) ──────────────────── */}
+            {createdInvite && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <h2 className="m-0 text-lg font-extrabold text-slate-900">Invite link ready</h2>
+                        <p className="mt-2 text-sm text-slate-600">
+                            Send this link to <strong>{createdInvite.email}</strong>. It's valid for 72 hours.
+                        </p>
+                        <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2">
+                            <code className="flex-1 break-all text-xs font-medium text-slate-700">
+                                {`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${createdInvite.token}`}
+                            </code>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/invite/${createdInvite.token}`);
+                                    toast.success("Invite link copied.");
+                                }}
+                                className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-indigo-700"
+                            >
+                                Copy
+                            </button>
+                        </div>
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setCreatedInvite(null)}
+                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                            >
+                                Done
+                            </button>
                         </div>
                     </div>
                 </div>

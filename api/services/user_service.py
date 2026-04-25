@@ -100,7 +100,7 @@ def create_invited_user(invitation, password, first_name="", last_name="", phone
     Returns: User instance
     """
     user = User.objects.create_user(
-        username=invitation.email,
+        
         email=invitation.email,
         password=password,
         first_name=(first_name or "").strip().title(),
@@ -215,7 +215,7 @@ def score_staff_for_student(student_id=None):
             "first_name": u.first_name,
             "last_name": u.last_name,
             "email": u.email,
-            "username": u.username,
+            "email": u.email,
             "role": u.role,
             "specialty": normalized_list[0] if normalized_list else "",
             "specialties": normalized_list,

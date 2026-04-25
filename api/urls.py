@@ -16,7 +16,7 @@ from .views import (
     DocumentHistoryView,
     SendVerificationSMSView, VerifySMSView,
     CreateCycleView, SendRemindersView, TaskStatusView,
-    NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView,
+    NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView, NotificationDeleteView,
     SpecialistPreferenceViewSet, SpecialistListView,
     AssessmentSectionWriteView, AssessmentSectionSubmitView,
     TrackerSectionWriteView, TrackerSectionSubmitView,
@@ -83,6 +83,7 @@ urlpatterns = [
     # Notifications
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
+    path('notifications/<int:pk>/delete/', NotificationDeleteView.as_view(), name='notification-delete'),
     path('notifications/read-all/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
 
     # Assessment scheduling

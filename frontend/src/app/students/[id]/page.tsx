@@ -6,6 +6,7 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
 import { toast } from "sonner";
 
 interface FormStatus {
@@ -85,10 +86,10 @@ const statusConfig: Record<string, { label: string; bg: string; color: string }>
 };
 
 const STATUS_STEPS = [
-    { key: "Pending Assessment", label: "Pending", shortLabel: "Pending" },
-    { key: "Assessment Scheduled", label: "Scheduled", shortLabel: "Scheduled" },
-    { key: "Assessed", label: "Assessed", shortLabel: "Assessed" },
-    { key: "Enrolled", label: "Enrolled", shortLabel: "Enrolled" },
+    { key: "Pending Assessment", label: "Awaiting evaluation", shortLabel: "Pending" },
+    { key: "Assessment Scheduled", label: "Under evaluation", shortLabel: "Scheduled" },
+    { key: "Assessed", label: "Evaluation complete", shortLabel: "Assessed" },
+    { key: "Enrolled", label: "Active", shortLabel: "Enrolled" },
 ];
 
 export function StudentProfileContent({ propStudentId, propHideNavigation, propEmbedded }: { propStudentId?: string, propHideNavigation?: boolean, propEmbedded?: boolean } = {}) {
@@ -497,8 +498,8 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     </div>
                 </div>
 
-                {/* Parent / Guardian Contact — hidden for parent users (they know their own info) */}
-                {!isParent && (
+                {/* Parent / Guardian Contact — admin only; staff sees redacted contact info to enforce in-system communication */}
+                {!isParent && user?.role === "ADMIN" && (
                     <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
                         <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
                             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#10b981" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
@@ -529,6 +530,22 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                         </div>
                     </div>
                 )}
+                {!isParent && (user?.role === "SPECIALIST" || user?.role === "TEACHER") && (
+                    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
+                        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6366f1" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                            <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Parent / Guardian</h3>
+                        </div>
+                        <div style={{ padding: "1.25rem" }}>
+                            <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#1e1b4b" }}>
+                                {student.parent_guardian_name || "Parent on file"}
+                            </p>
+                            <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
+                                Direct contact info is private. All parent communication is coordinated through admin or scheduled sessions.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ═══════════════════════════════════════════ */}
@@ -545,40 +562,69 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                             <p style={{ fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic", margin: 0 }}>No team members assigned yet.</p>
                         </div>
                     ) : (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0" }}>
-                            {assigned_staff.map((staff) => {
+                        <div>
+                            {assigned_staff.map((staff, index) => {
                                 const staffName = (staff.first_name || staff.last_name)
                                     ? `${staff.first_name || ""} ${staff.last_name || ""}`.trim()
                                     : `Staff #${staff.id}`;
                                 const initials = `${(staff.first_name || "?")[0]}${(staff.last_name || "?")[0]}`;
                                 const isSpecialist = staff.role === "SPECIALIST";
-                                const staffSpecialties = staff.specialties && staff.specialties.length > 0
-                                    ? staff.specialties.join(", ")
-                                    : staff.specialty;
+                                const assignedSpecialties = isSpecialist
+                                    ? userSpecialtyList(staff.specialties, staff.specialty)
+                                    : [];
                                 return (
                                     <div key={staff.id} style={{
-                                        display: "flex", alignItems: "center", gap: "12px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "12px",
+                                        flexWrap: "wrap",
                                         padding: "14px 1.25rem",
-                                        borderBottom: "1px solid #f8fafc",
+                                        borderBottom: index === assigned_staff.length - 1 ? "none" : "1px solid #f8fafc",
                                     }}>
-                                        <div style={{
-                                            width: "36px", height: "36px", borderRadius: "50%",
-                                            background: isSpecialist ? "#eef2ff" : "#ecfdf5",
-                                            color: isSpecialist ? "#4f46e5" : "#059669",
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                            fontSize: "0.75rem", fontWeight: 700, flexShrink: 0,
-                                        }}>
-                                            {initials}
-                                        </div>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{staffName}</div>
-                                            <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
-                                                {staffSpecialties || (isSpecialist ? "Specialist" : "Teacher")}
+                                        <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: "1 1 240px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px", height: "36px", borderRadius: "50%",
+                                                background: isSpecialist ? "#eef2ff" : "#ecfdf5",
+                                                color: isSpecialist ? "#4f46e5" : "#059669",
+                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                fontSize: "0.75rem", fontWeight: 700, flexShrink: 0,
+                                            }}>
+                                                {initials}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{staffName}</div>
+                                                {assignedSpecialties.length > 0 && (
+                                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "5px" }}>
+                                                        {assignedSpecialties.map((specialty) => (
+                                                            <span
+                                                                key={specialty}
+                                                                title={specialty}
+                                                                style={{
+                                                                    fontSize: "0.62rem",
+                                                                    fontWeight: 700,
+                                                                    color: "#4338ca",
+                                                                    background: "#eef2ff",
+                                                                    border: "1px solid #c7d2fe",
+                                                                    borderRadius: "999px",
+                                                                    padding: "2px 7px",
+                                                                    whiteSpace: "nowrap",
+                                                                    lineHeight: 1.4,
+                                                                }}
+                                                            >
+                                                                {specialtyShortLabel(specialty)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <span style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
                                             fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase",
-                                            padding: "2px 8px", borderRadius: "999px", flexShrink: 0,
+                                            letterSpacing: "0.4px",
+                                            padding: "3px 8px", borderRadius: "999px", flexShrink: 0,
+                                            marginLeft: "auto",
                                             background: isSpecialist ? "#eef2ff" : "#ecfdf5",
                                             color: isSpecialist ? "#4338ca" : "#047857",
                                         }}>
@@ -785,11 +831,32 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
     );
 }
 
+function StudentProfileRouter({ id }: { id: string }) {
+    const { user } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (user?.role === "PARENT" && id) {
+            router.replace(`/workspace?studentId=${id}`);
+        }
+    }, [user?.role, id, router]);
+
+    if (user?.role === "PARENT") {
+        return (
+            <div className="flex items-center justify-center p-12 text-sm text-slate-500">
+                Loading your workspace...
+            </div>
+        );
+    }
+
+    return <StudentProfileContent propStudentId={id} />;
+}
+
 export default function StudentProfilePage() {
     const { id } = useParams();
     return (
         <ProtectedRoute>
-            <StudentProfileContent propStudentId={id as string} />
+            <StudentProfileRouter id={id as string} />
         </ProtectedRoute>
     );
 }

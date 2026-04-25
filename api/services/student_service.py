@@ -177,7 +177,7 @@ def get_student_profile_data(student, user=None):
                     "id": obj.submitted_by.id,
                     "name": (
                         f"{obj.submitted_by.first_name} {obj.submitted_by.last_name}".strip()
-                        or obj.submitted_by.username
+                        or obj.submitted_by.email
                     ),
                     "role": obj.submitted_by.role,
                 } if obj and obj.submitted_by else None,

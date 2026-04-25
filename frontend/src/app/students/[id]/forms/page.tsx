@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 
 // Import components
@@ -22,6 +23,7 @@ export default function UnifiedFormsViewer() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { user } = useAuth();
     
     const studentId = params?.id as string;
     
@@ -31,6 +33,11 @@ export default function UnifiedFormsViewer() {
     const [studentName, setStudentName] = useState("");
     const [formStatuses, setFormStatuses] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const visibleTabs = user?.role === "PARENT"
+        ? TABS.filter(tab => ["parent_assessment", "parent_tracker"].includes(tab.id))
+        : user?.role === "TEACHER"
+            ? TABS.filter(tab => tab.id === "sped_tracker")
+            : TABS;
 
     useEffect(() => {
         if (!studentId) return;
@@ -64,8 +71,11 @@ export default function UnifiedFormsViewer() {
         return <div className="p-8 text-center text-red-500">Failed to load student data.</div>;
     }
 
-    const currentTabConf = TABS.find(t => t.id === activeTab);
-    const currentStatus = formStatuses[activeTab];
+    const resolvedActiveTab = visibleTabs.some(tab => tab.id === activeTab)
+        ? activeTab
+        : visibleTabs[0]?.id || "parent_assessment";
+    const currentTabConf = visibleTabs.find(t => t.id === resolvedActiveTab);
+    const currentStatus = formStatuses[resolvedActiveTab];
 
     return (
         <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
@@ -117,9 +127,9 @@ export default function UnifiedFormsViewer() {
                             <div className="px-4 mb-4">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Assessments</p>
                                 <div className="flex flex-col gap-1">
-                                    {TABS.filter(tab => ["parent_assessment", "multi_assessment", "sped_assessment"].includes(tab.id)).map((tab) => {
+                                    {visibleTabs.filter(tab => ["parent_assessment", "multi_assessment", "sped_assessment"].includes(tab.id)).map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
-                                        const isActive = activeTab === tab.id;
+                                        const isActive = resolvedActiveTab === tab.id;
                                         return (
                                             <button 
                                                 key={tab.id}
@@ -138,9 +148,9 @@ export default function UnifiedFormsViewer() {
                             <div className="px-4 pb-4">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Progress Trackers</p>
                                 <div className="flex flex-col gap-1">
-                                    {TABS.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id)).map((tab) => {
+                                    {visibleTabs.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id)).map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
-                                        const isActive = activeTab === tab.id;
+                                        const isActive = resolvedActiveTab === tab.id;
                                         return (
                                             <button 
                                                 key={tab.id}
@@ -171,7 +181,7 @@ export default function UnifiedFormsViewer() {
                             </div>
                         ) : (
                             <div className="w-full">
-                                {activeTab === "parent_assessment" ? (
+                                {resolvedActiveTab === "parent_assessment" ? (
                                     <ParentFormContent 
                                         propMode="view" 
                                         propHideNavigation={true}

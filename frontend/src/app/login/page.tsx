@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
-    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ export default function LoginPage() {
 
         try {
             // login() calls the API and sets HttpOnly cookies server-side
-            const authenticatedUser = await login(username, password);
+            const authenticatedUser = await login(email, password);
             const landingRoute = authenticatedUser.role === "SPECIALIST" && authenticatedUser.specialist_onboarding_complete === false
                 ? "/specialist-onboarding"
                 : ["ADMIN", "TEACHER", "SPECIALIST"].includes(authenticatedUser.role)
@@ -59,14 +59,15 @@ export default function LoginPage() {
 
                 <form onSubmit={handleLogin}>
                     <div className="form-group">
-                        <label className="form-label" htmlFor="username">Username or Email</label>
+                        <label className="form-label" htmlFor="email">Email</label>
                         <input
-                            id="username"
-                            type="text"
+                            id="email"
+                            type="email"
                             className="form-input"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Enter your username or email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="Enter your email address"
+                            autoComplete="email"
                             required
                         />
                     </div>
@@ -80,6 +81,7 @@ export default function LoginPage() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
+                            autoComplete="current-password"
                             required
                         />
                     </div>

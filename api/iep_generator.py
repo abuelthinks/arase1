@@ -280,7 +280,7 @@ def generate_iep(student, cycle, inputs):
     accesses = StudentAccess.objects.filter(student=student).select_related('user')
     for access in accesses:
         team_members.append({
-            "name": f"{access.user.first_name} {access.user.last_name}".strip() or access.user.username,
+            "name": f"{access.user.first_name} {access.user.last_name}".strip() or access.user.email,
             "role": access.user.role,
         })
 

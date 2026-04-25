@@ -18,7 +18,11 @@ from .models import (
     User, Invitation, PhoneVerification, Notification, SpecialistPreference,
     SectionContribution, SpecialistAvailabilitySlot, AssessmentAppointment,
 )
-from .services.notification_service import notify_admins_in_app
+from .services.notification_service import (
+    notify_admins_in_app, notify_form_submitted, notify_tracker_progress,
+    notify_student_status_change, notify_staff_assigned, notify_new_user_registered,
+    notify_assessment_scheduled, notify_assessment_cancelled,
+)
 from .serializers import (
     StudentSerializer, GeneratedDocumentSerializer, CustomTokenObtainPairSerializer,
     ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer, SpedAssessmentSerializer,
@@ -193,7 +197,7 @@ class RequestSpecialtyChangeView(APIView):
         if normalized_specialty in current_specialties:
             return Response({"error": "That specialty is already assigned to your account."}, status=status.HTTP_400_BAD_REQUEST)
 
-        specialist_name = f"{user.first_name} {user.last_name}".strip() or user.username
+        specialist_name = f"{user.first_name} {user.last_name}".strip() or user.email
         current_label = ', '.join(current_specialties) if current_specialties else 'Not assigned'
         message = f"{specialist_name} requested a specialty change from {current_label} to {normalized_specialty}."
         if note:
@@ -295,6 +299,7 @@ class ParentAssessmentViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
+        notify_form_submitted(self.request.user, instance.student, 'Parent Assessment')
         from .services.cycle_service import check_and_trigger_iep_generation
         check_and_trigger_iep_generation(instance.student, instance.report_cycle)
 
@@ -320,10 +325,12 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         student = instance.student
+        notify_form_submitted(self.request.user, instance.student, 'Specialist Assessment')
         # Auto-advance to ASSESSED when a specialist submits an assessment (new workflow)
         if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
             student.status = 'ASSESSED'
             student.save()
+            notify_student_status_change(student, 'ASSESSED', changed_by=self.request.user)
         from .services.cycle_service import check_and_trigger_iep_generation
         check_and_trigger_iep_generation(student, instance.report_cycle)
 
@@ -336,6 +343,7 @@ class SpedAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         student = instance.student
+        notify_form_submitted(self.request.user, instance.student, 'SPED Assessment')
         # In the new workflow, Sped Assessment is done post-enrollment.
         # No status auto-advance is required here.
 
@@ -349,6 +357,11 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
+        notify_form_submitted(self.request.user, instance.student, 'Parent Progress Tracker')
+        p = True  # just submitted
+        m = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        s = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -362,6 +375,11 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
+        notify_form_submitted(self.request.user, instance.student, 'Specialist Progress Tracker')
+        p = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        m = True  # just submitted
+        s = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -380,6 +398,11 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
+        notify_form_submitted(self.request.user, instance.student, 'Teacher Progress Tracker')
+        p = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        m = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        s = True  # just submitted
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -693,7 +716,7 @@ class AssignSpecialistView(APIView):
             from .services.student_service import assign_staff_to_student
             from rest_framework.exceptions import ValidationError
             staff, student = assign_staff_to_student(student_id, specialist_id, 'SPECIALIST', specialties=specialties)
-            return Response({"message": f"Specialist {staff.username} assigned."})
+            return Response({"message": f"Specialist {staff.email} assigned."})
         except ValidationError as ve:
             detail = ve.detail
             if isinstance(detail, list) and detail:
@@ -717,7 +740,7 @@ class AssignTeacherView(APIView):
         try:
             from .services.student_service import assign_staff_to_student
             staff, student = assign_staff_to_student(student_id, teacher_id, 'TEACHER')
-            return Response({"message": f"Teacher {staff.username} assigned to {student.first_name}."})
+            return Response({"message": f"Teacher {staff.email} assigned to {student.first_name}."})
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Teacher or Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -736,7 +759,7 @@ class AssignParentView(APIView):
         try:
             from .services.student_service import assign_staff_to_student
             staff, student = assign_staff_to_student(student_id, parent_id, 'PARENT')
-            return Response({"message": f"Parent {staff.username} assigned to {student.first_name}."})
+            return Response({"message": f"Parent {staff.email} assigned to {student.first_name}."})
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Parent or Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -832,13 +855,8 @@ class EnrollStudentView(APIView):
             student.status = 'ENROLLED'
             student.save()
             
-            # Notify admins of enrollment
-            notify_admins_in_app(
-                notification_type='STUDENT_ENROLLED',
-                title=f"Student Enrolled: {student.first_name} {student.last_name}",
-                message=f"{request.user.first_name} {request.user.last_name} has formally enrolled the student.",
-                link=f"/dashboard?student={student.id}"
-            )
+            # Notify admins and assigned users of enrollment
+            notify_student_status_change(student, 'ENROLLED', changed_by=request.user)
             
             return Response({"message": "Student successfully enrolled and set to Active."})
         except Student.DoesNotExist:
@@ -1065,6 +1083,9 @@ class AcceptInvitationView(APIView):
                 serializer.validated_data.get('last_name', ''),
                 serializer.validated_data.get('phone_number', ''),
             )
+
+            # Notify admins of new user registration
+            notify_new_user_registered(user)
 
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1836,6 +1857,19 @@ class NotificationMarkAllReadView(APIView):
         return Response({'status': 'ok'})
 
 
+class NotificationDeleteView(APIView):
+    """DELETE: Delete a single notification for the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            notif = Notification.objects.get(pk=pk, recipient=request.user)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        notif.delete()
+        return Response({'status': 'ok'}, status=status.HTTP_204_NO_CONTENT)
+
+
 def _user_can_access_student(user, student_id):
     return user.role == 'ADMIN' or StudentAccess.objects.filter(user=user, student_id=student_id).exists()
 
@@ -1848,50 +1882,6 @@ def _parent_for_student(student):
         .first()
     )
     return access.user if access else None
-
-
-def _notify_assessment_scheduled(appointment):
-    student_name = f"{appointment.student.first_name} {appointment.student.last_name}"
-    when = timezone.localtime(appointment.start_at).strftime("%b %d, %Y %I:%M %p")
-    link = f"/workspace?studentId={appointment.student_id}&workspace=forms&tab=multi_assessment"
-    recipients = [r for r in [appointment.specialist, appointment.parent] if r]
-    for recipient in recipients:
-        Notification.objects.create(
-            recipient=recipient,
-            notification_type='SYSTEM',
-            title=f"Assessment scheduled for {student_name}",
-            message=f"The online assessment is scheduled for {when}.",
-            link=link,
-        )
-    specialist_name = appointment.specialist.first_name or appointment.specialist.username if appointment.specialist else "Specialist"
-    notify_admins_in_app(
-        'SYSTEM',
-        f"Assessment scheduled for {student_name}",
-        f"{specialist_name} is scheduled for {when}.",
-        link=link,
-    )
-
-
-def _notify_assessment_cancelled(appointment, cancelled_by):
-    student_name = f"{appointment.student.first_name} {appointment.student.last_name}"
-    when = timezone.localtime(appointment.start_at).strftime("%b %d, %Y %I:%M %p")
-    link = f"/workspace?studentId={appointment.student_id}&workspace=forms&tab=multi_assessment"
-    cancelled_by_name = cancelled_by.get_full_name() or cancelled_by.username
-    recipients = [r for r in [appointment.specialist, appointment.parent] if r and r != cancelled_by]
-    for recipient in recipients:
-        Notification.objects.create(
-            recipient=recipient,
-            notification_type='SYSTEM',
-            title=f"Assessment cancelled for {student_name}",
-            message=f"The assessment scheduled for {when} was cancelled by {cancelled_by_name}.",
-            link=link,
-        )
-    notify_admins_in_app(
-        'SYSTEM',
-        f"Assessment cancelled for {student_name}",
-        f"The assessment scheduled for {when} was cancelled by {cancelled_by_name}.",
-        link=link,
-    )
 
 
 class AssessmentAvailabilityView(APIView):
@@ -2060,7 +2050,7 @@ class AssessmentAppointmentView(APIView):
                 student.status = 'ASSESSMENT_SCHEDULED'
                 student.save(update_fields=['status'])
 
-        _notify_assessment_scheduled(appointment)
+        notify_assessment_scheduled(appointment, booked_by=user)
         return Response(AssessmentAppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
 
 
@@ -2093,7 +2083,7 @@ class AssessmentAppointmentDetailView(APIView):
         appointment.save(update_fields=['status', 'updated_at'])
 
         if next_status == 'CANCELLED':
-            _notify_assessment_cancelled(appointment, cancelled_by=user)
+            notify_assessment_cancelled(appointment, cancelled_by=user)
 
         return Response(AssessmentAppointmentSerializer(appointment).data)
 

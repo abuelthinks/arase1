@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 
 interface UserData {
     id: number;
-    username: string;
+    
     first_name: string;
     last_name: string;
     role: string;
@@ -64,10 +64,10 @@ export default function UserActivityPage() {
 
     const displayName = (user.first_name || user.last_name)
         ? `${user.first_name} ${user.last_name}`.trim()
-        : user.username;
+        : user.email;
 
     return (
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "SPECIALIST"]}>
             <div className="max-w-3xl mx-auto pb-16 px-4">
                 
                 {/* Site Header / Breadcrumbs */}

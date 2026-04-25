@@ -775,11 +775,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 }
                 if ('sped_teacher' in newSectionA && user) {
                     const teacherName = [user.first_name, user.last_name].filter(Boolean).join(" ");
-                    newSectionA.sped_teacher = teacherName || user.username || "";
+                    newSectionA.sped_teacher = teacherName || user.email || "";
                 }
                 if ('therapist_name' in newSectionA && user) {
                     const therapistName = [user.first_name, user.last_name].filter(Boolean).join(" ");
-                    newSectionA.therapist_name = therapistName || user.username || "";
+                    newSectionA.therapist_name = therapistName || user.email || "";
                 }
                 if ('discipline' in newSectionA) {
                     const existing = newSectionA.discipline;

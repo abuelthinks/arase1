@@ -706,7 +706,7 @@ function SpecialistsContent() {
 
       {/* Sticky footer */}
       {totalSpecialties > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:pl-[180px]">
+        <div className="fixed bottom-[56px] left-0 right-0 z-[1001] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:bottom-0 md:pl-[180px]">
           <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               <p className="m-0 text-xs font-semibold text-slate-500">

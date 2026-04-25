@@ -236,7 +236,7 @@ function SpecialistBFormContent() {
                             ...prev,
                             section_a: {
                                 ...prev.section_a,
-                                therapist_name: prev.section_a.therapist_name || name || user.username || "",
+                                therapist_name: prev.section_a.therapist_name || name || user.email || "",
                                 discipline: userSpecialty || prev.section_a.discipline,
                             },
                         }));

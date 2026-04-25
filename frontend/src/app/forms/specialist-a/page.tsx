@@ -281,7 +281,7 @@ function SpecialistAFormContent() {
                     }
                     if (!isViewMode && user && !form.therapist_name) {
                         const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
-                        set("therapist_name", name || user.username || "");
+                        set("therapist_name", name || user.email || "");
                     }
                 })
                 .catch(console.error);

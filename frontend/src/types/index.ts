@@ -12,7 +12,7 @@ export type Role = "ADMIN" | "TEACHER" | "SPECIALIST" | "PARENT";
 export interface UserPayload {
     user_id: number;
     role: Role;
-    username?: string;
+    
     first_name?: string;
     last_name?: string;
     email?: string;
@@ -25,7 +25,7 @@ export interface UserPayload {
 
 export interface UserProfile {
     id: number;
-    username: string;
+    
     email: string;
     role: Role;
     first_name: string;
@@ -112,7 +112,7 @@ export interface StaffMember {
     first_name: string;
     last_name: string;
     email: string;
-    username: string;
+    
     role: Role;
     specialty: SpecialistSpecialty | "";
     languages?: string[];

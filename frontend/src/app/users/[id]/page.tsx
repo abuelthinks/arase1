@@ -38,7 +38,7 @@ interface AssignedStudent {
 
 interface UserData {
     id: number;
-    username: string;
+    
     email: string;
     role: string;
     first_name: string;
@@ -197,7 +197,7 @@ export default function UserProfile() {
 
     const displayName = user.first_name || user.last_name
         ? `${user.first_name} ${user.last_name}`.trim()
-        : user.username;
+        : user.email;
     const initials = displayName.split(" ").map(word => word[0]).join("").toUpperCase().slice(0, 2);
     const role = user.role?.toUpperCase() || "UNKNOWN";
 
@@ -232,7 +232,7 @@ export default function UserProfile() {
                 ]
                 : [
                     { label: "Email", value: user.email, href: `mailto:${user.email}`, icon: Mail },
-                    { label: "Username", value: user.username !== user.email ? `@${user.username}` : "Same as email" },
+                    
                     { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
                     { label: "Role", value: user.role, icon: Briefcase },
                     { label: "Last Active", value: formatLastSeen(user.last_login), icon: ActivityIcon },
