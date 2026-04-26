@@ -29,7 +29,6 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [showSMSModal, setShowSMSModal] = useState(false);
     const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
-    const [specialistAvailabilityCount, setSpecialistAvailabilityCount] = useState<number | null>(null);
 
     // Search / filter / pagination state
     const [searchQuery, setSearchQuery] = useState("");
@@ -58,13 +57,6 @@ export default function DashboardPage() {
             setLoading(false);
         }
     }, [user]);
-
-    useEffect(() => {
-        if (user?.role !== "SPECIALIST") return;
-        api.get("/api/assessment/availability/")
-            .then(res => setSpecialistAvailabilityCount((res.data || []).length))
-            .catch(() => setSpecialistAvailabilityCount(null));
-    }, [user?.role]);
 
     // Reset page to 1 on search or filter match count resize
     useEffect(() => {
@@ -217,21 +209,6 @@ export default function DashboardPage() {
                         </div>
                         <Link href="/specialist-onboarding" className="rounded-lg bg-amber-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-amber-700">
                             Finish setup
-                        </Link>
-                    </div>
-                )}
-
-                {user?.role === "SPECIALIST" && !specialistOnboardingIncomplete && specialistAvailabilityCount === 0 && (
-                    <div className="mb-6 flex flex-col gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-start gap-3">
-                            <Calendar className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
-                            <div>
-                                <p className="m-0 text-sm font-bold text-indigo-950">Set your assessment availability</p>
-                                <p className="m-0 text-sm text-indigo-800">Parents can choose a time only after you add open online slots.</p>
-                            </div>
-                        </div>
-                        <Link href="/schedule" className="rounded-lg bg-indigo-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-indigo-700">
-                            Open My Schedule
                         </Link>
                     </div>
                 )}
@@ -516,18 +493,11 @@ export default function DashboardPage() {
                                                     {user?.role === "SPECIALIST" && s.status === "PENDING_ASSESSMENT" ? (
                                                         <>
                                                             <Link
-                                                                href="/schedule"
+                                                                href={getStudentWorkspaceHref(s.id)}
                                                                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white no-underline shadow-sm transition-colors hover:bg-indigo-700"
                                                             >
-                                                                <Calendar className="h-4 w-4" aria-hidden="true" />
-                                                                Manage Schedule
-                                                            </Link>
-                                                            <Link
-                                                                href={getStudentWorkspaceHref(s.id)}
-                                                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
-                                                            >
                                                                 Open Workspace
-                                                                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                                                                <ArrowRight className="h-4 w-4" aria-hidden="true" />
                                                             </Link>
                                                         </>
                                                     ) : (

@@ -89,7 +89,7 @@ export default function SpecialistOnboardingPage() {
       return;
     }
     if (user?.role === 'SPECIALIST' && user.specialist_onboarding_complete) {
-      router.replace('/schedule?onboarded=1');
+      router.replace('/workspace');
     }
   }, [router, user?.role, user?.specialist_onboarding_complete]);
 
@@ -104,7 +104,7 @@ export default function SpecialistOnboardingPage() {
         languages: nextLanguages,
       });
       await refreshUser();
-      router.replace('/schedule?onboarded=1');
+      router.replace('/workspace');
     } catch (err: any) {
       setError(
         err.response?.data?.first_name?.[0]

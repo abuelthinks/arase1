@@ -10,7 +10,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from ..models import (
-    AssessmentAppointment,
     MultidisciplinaryAssessment,
     MultidisciplinaryProgressTracker,
     SectionContribution,
@@ -89,15 +88,6 @@ def _check_section_edit(form_type: str, instance, user, section_key: str):
         raise SectionPermissionError("Only specialists may edit section inputs.")
     if not user.is_specialist_onboarding_complete():
         raise SectionPermissionError("Complete your profile setup before editing specialist work.")
-
-    if form_type == "assessment" and not AssessmentAppointment.objects.filter(
-        student_id=instance.student_id,
-        specialist=user,
-        status="COMPLETED",
-    ).exists():
-        raise SectionPermissionError(
-            "The specialist assessment unlocks after the scheduled assessment is marked complete."
-        )
 
     owners = get_section_owners(form_type)
     if section_key not in owners:
@@ -231,12 +221,12 @@ def _maybe_finalize(form_type: str, instance, user):
         instance.save(update_fields=["finalized_at", "finalized_by", "submitted_by"])
 
         if form_type == "assessment":
-            from .cycle_service import check_and_trigger_assessment_generation
+            from .cycle_service import check_and_trigger_iep_generation
             student = instance.student
-            if student.status in ["AWAITING_PARENT_INPUT", "PENDING_ASSESSMENT"]:
+            if student.status in ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"]:
                 student.status = "ASSESSED"
                 student.save()
-            check_and_trigger_assessment_generation(student, instance.report_cycle)
+            check_and_trigger_iep_generation(student, instance.report_cycle)
         else:
             from .cycle_service import check_and_trigger_auto_generation
             check_and_trigger_auto_generation(instance.student, instance.report_cycle)
