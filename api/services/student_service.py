@@ -92,7 +92,7 @@ def onboard_parent_student(user, student_data, form_data, student_id=None):
             last_name=last_name,
             date_of_birth=dob,
             grade=grade,
-            status='PENDING_ASSESSMENT',
+            status='AWAITING_PARENT_INPUT',
         )
         StudentAccess.objects.create(user=user, student=student)
 
@@ -123,7 +123,7 @@ def get_student_profile_data(student, user=None):
     from api.models import (
         MultidisciplinaryAssessment, SpedAssessment,
         ParentProgressTracker, MultidisciplinaryProgressTracker,
-        SpedProgressTracker, GeneratedDocument,
+        SpedProgressTracker, GeneratedDocument, DiagnosticReport,
     )
     from api.services.cycle_service import (
         ensure_current_cycle, get_cycle_status_summary, get_previous_recommendations,
@@ -138,7 +138,8 @@ def get_student_profile_data(student, user=None):
     form_statuses = {
         "parent_assessment": {"submitted": False, "id": None},
         "multi_assessment": {"submitted": False, "id": None},
-        "sped_assessment": {"submitted": False, "id": None},
+        "sped_assessment": {"submitted": False, "id": None},  # Deprecated but kept for historical
+        "diagnostic_report": {"submitted": False, "id": None},
         "parent_tracker": {"submitted": False, "id": None},
         "multi_tracker": {"submitted": False, "id": None},
         "sped_tracker": {"submitted": False, "id": None},
@@ -181,6 +182,28 @@ def get_student_profile_data(student, user=None):
                     ),
                     "role": obj.submitted_by.role,
                 } if obj and obj.submitted_by else None,
+            }
+
+        # Diagnostic report (separate from form_map — different model structure)
+        diag = DiagnosticReport.objects.filter(student=student).order_by('-created_at').first()
+        if user and user.role == 'PARENT':
+            form_statuses["diagnostic_report"] = {
+                "submitted": bool(diag),
+                "id": diag.id if diag else None,
+                "submitted_at": diag.created_at if diag else None,
+                "original_filename": diag.original_filename if diag else None,
+            }
+        elif diag:
+            form_statuses["diagnostic_report"] = {
+                "submitted": True,
+                "id": diag.id,
+                "submitted_at": diag.created_at,
+                "original_filename": diag.original_filename,
+                "uploaded_by": {
+                    "id": diag.uploaded_by.id,
+                    "name": f"{diag.uploaded_by.first_name} {diag.uploaded_by.last_name}".strip() or diag.uploaded_by.email,
+                    "role": diag.uploaded_by.role,
+                } if diag.uploaded_by else None,
             }
 
     # Generated documents
@@ -342,9 +365,37 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
         access.save(update_fields=['assigned_specialties'])
 
     # Update student status based on assignment
-    if expected_role == 'SPECIALIST' and student.status == 'PENDING_ASSESSMENT':
-        student.status = 'ASSESSMENT_SCHEDULED'
+    if expected_role == 'SPECIALIST' and student.status == 'AWAITING_PARENT_INPUT':
+        student.status = 'PENDING_ASSESSMENT'
         student.save()
     # Removed observation status update because teacher is assigned post-enrollment
 
     return staff, student
+
+
+def unassign_staff_from_student(student_id, staff_id, specialty=None):
+    """
+    Unassigns a staff member from a student.
+    If specialty is provided (for SPECIALIST), it removes only that specialty.
+    If the specialist has no more specialties, or if it's a TEACHER, it removes the access entirely.
+    """
+    try:
+        access = StudentAccess.objects.get(student_id=student_id, user_id=staff_id)
+    except StudentAccess.DoesNotExist:
+        return False
+        
+    if specialty and access.user.role == 'SPECIALIST':
+        normalized_specialty = normalize_specialty(specialty)
+        if normalized_specialty in access.assigned_specialties:
+            access.assigned_specialties.remove(normalized_specialty)
+            if not access.assigned_specialties:
+                access.delete()
+            else:
+                access.save(update_fields=['assigned_specialties'])
+            return True
+        return False
+        
+    # If no specialty specified or it's a teacher, just delete the access
+    access.delete()
+    return True
+

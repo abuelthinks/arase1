@@ -231,12 +231,12 @@ def _maybe_finalize(form_type: str, instance, user):
         instance.save(update_fields=["finalized_at", "finalized_by", "submitted_by"])
 
         if form_type == "assessment":
-            from .cycle_service import check_and_trigger_iep_generation
+            from .cycle_service import check_and_trigger_assessment_generation
             student = instance.student
-            if student.status in ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"]:
+            if student.status in ["AWAITING_PARENT_INPUT", "PENDING_ASSESSMENT"]:
                 student.status = "ASSESSED"
                 student.save()
-            check_and_trigger_iep_generation(student, instance.report_cycle)
+            check_and_trigger_assessment_generation(student, instance.report_cycle)
         else:
             from .cycle_service import check_and_trigger_auto_generation
             check_and_trigger_auto_generation(instance.student, instance.report_cycle)

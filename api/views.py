@@ -17,6 +17,7 @@ from .models import (
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     User, Invitation, PhoneVerification, Notification, SpecialistPreference,
     SectionContribution, SpecialistAvailabilitySlot, AssessmentAppointment,
+    DiagnosticReport,
 )
 from .services.notification_service import (
     notify_admins_in_app, notify_form_submitted, notify_tracker_progress,
@@ -46,12 +47,12 @@ class StudentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        # 1. PENDING_ASSESSMENT / ASSESSMENT_SCHEDULED -> 1
+        # 1. AWAITING_PARENT_INPUT / PENDING_ASSESSMENT -> 1
         # 2. ASSESSED -> 2
         # 3. ENROLLED -> 3
         # 4. ARCHIVED -> 4
         urgency_case = Case(
-            When(status__in=['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED'], then=Value(1)),
+            When(status__in=['AWAITING_PARENT_INPUT', 'PENDING_ASSESSMENT'], then=Value(1)),
             When(status='ASSESSED', then=Value(2)),
             When(status='ENROLLED', then=Value(3)),
             When(status='ARCHIVED', then=Value(4)),
@@ -300,8 +301,8 @@ class ParentAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         notify_form_submitted(self.request.user, instance.student, 'Parent Assessment')
-        from .services.cycle_service import check_and_trigger_iep_generation
-        check_and_trigger_iep_generation(instance.student, instance.report_cycle)
+        from .services.cycle_service import check_and_trigger_assessment_generation
+        check_and_trigger_assessment_generation(instance.student, instance.report_cycle)
 
 
 class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
@@ -327,25 +328,88 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
         student = instance.student
         notify_form_submitted(self.request.user, instance.student, 'Specialist Assessment')
         # Auto-advance to ASSESSED when a specialist submits an assessment (new workflow)
-        if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
+        if student.status in ['AWAITING_PARENT_INPUT', 'PENDING_ASSESSMENT']:
             student.status = 'ASSESSED'
             student.save()
             notify_student_status_change(student, 'ASSESSED', changed_by=self.request.user)
-        from .services.cycle_service import check_and_trigger_iep_generation
-        check_and_trigger_iep_generation(student, instance.report_cycle)
+        from .services.cycle_service import check_and_trigger_assessment_generation
+        check_and_trigger_assessment_generation(student, instance.report_cycle)
 
 
 class SpedAssessmentViewSet(BaseInputViewSet):
+    """DEPRECATED: SPED Assessment is soft-deprecated. Kept for historical data access."""
     queryset = SpedAssessment.objects.all()
     serializer_class = SpedAssessmentSerializer
-    allowed_submitter_roles = ('TEACHER',)
+    allowed_submitter_roles = ()  # No new submissions allowed
 
-    def perform_create(self, serializer):
-        instance = serializer.save(submitted_by=self.request.user)
-        student = instance.student
-        notify_form_submitted(self.request.user, instance.student, 'SPED Assessment')
-        # In the new workflow, Sped Assessment is done post-enrollment.
-        # No status auto-advance is required here.
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {"error": "SPED Assessment submissions are no longer accepted in the current workflow."},
+            status=status.HTTP_410_GONE,
+        )
+
+
+class DiagnosticReportViewSet(viewsets.ModelViewSet):
+    """Upload and manage diagnostic reports (PDF/DOCX) from parents."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = None  # Set below after import
+
+    def get_serializer_class(self):
+        from .serializers import DiagnosticReportSerializer
+        return DiagnosticReportSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'ADMIN':
+            return DiagnosticReport.objects.all().order_by('-created_at')
+        if user.role == 'PARENT':
+            from .models import StudentAccess
+            student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
+            return DiagnosticReport.objects.filter(student_id__in=student_ids).order_by('-created_at')
+        # Specialists and teachers can see diagnostic reports for assigned students
+        from .models import StudentAccess
+        student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
+        return DiagnosticReport.objects.filter(student_id__in=student_ids).order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        if request.user.role not in ('PARENT', 'ADMIN'):
+            return Response(
+                {"error": "Only parents or admins can upload diagnostic reports."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        from .serializers import DiagnosticReportSerializer
+        serializer = DiagnosticReportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Save original filename
+        uploaded_file = request.FILES.get('file')
+        original_filename = uploaded_file.name if uploaded_file else ''
+
+        instance = serializer.save(
+            uploaded_by=request.user,
+            original_filename=original_filename,
+        )
+
+        # Trigger async text extraction
+        try:
+            from .services.diagnostic_service import process_diagnostic_upload
+            process_diagnostic_upload(instance)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Diagnostic extraction failed: %s", e)
+
+        return Response(
+            DiagnosticReportSerializer(instance).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            return Response(
+                {"error": "Only admins can delete diagnostic reports."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class ParentProgressTrackerViewSet(BaseInputViewSet):
@@ -671,7 +735,7 @@ class AdminDashboardActionsView(APIView):
 
 
         # 3. Parent Onboarding Submitted (in INQUIRY, parent input received)
-        inquiry = Student.objects.filter(status='PENDING_ASSESSMENT')
+        inquiry = Student.objects.filter(status='AWAITING_PARENT_INPUT')
         for s in inquiry:
             if ParentAssessment.objects.filter(student=s).exists():
                 actions.append({
@@ -693,7 +757,7 @@ class RequestAssessmentView(APIView):
     def post(self, request, student_id):
         try:
             student = Student.objects.get(id=student_id, assigned_users__user=request.user)
-            student.status = 'ASSESSMENT_SCHEDULED'
+            student.status = 'PENDING_ASSESSMENT'
             student.save()
             return Response({"message": "Evaluation requested successfully."})
         except Student.DoesNotExist:
@@ -743,6 +807,28 @@ class AssignTeacherView(APIView):
             return Response({"message": f"Teacher {staff.email} assigned to {student.first_name}."})
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Teacher or Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UnassignStaffView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only Admins can unassign staff."}, status=status.HTTP_403_FORBIDDEN)
+
+        staff_id = request.data.get('staff_id')
+        specialty = request.data.get('specialty')  # Optional, for partial unassignment
+        
+        if not staff_id:
+            return Response({"error": "staff_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .services.student_service import unassign_staff_from_student
+        success = unassign_staff_from_student(student_id, staff_id, specialty)
+        
+        if success:
+            return Response({"message": "Staff member successfully unassigned."})
+        else:
+            return Response({"error": "Staff member is not assigned to this student or specialty."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AssignParentView(APIView):
@@ -857,6 +943,16 @@ class EnrollStudentView(APIView):
             
             # Notify admins and assigned users of enrollment
             notify_student_status_change(student, 'ENROLLED', changed_by=request.user)
+
+            # Auto-generate IEP on enrollment
+            try:
+                cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
+                if cycle:
+                    from .services.iep_service import run_iep_generation
+                    run_iep_generation(student.id, cycle.id)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"IEP auto-generation failed on enrollment: {e}")
             
             return Response({"message": "Student successfully enrolled and set to Active."})
         except Student.DoesNotExist:
@@ -2046,8 +2142,8 @@ class AssessmentAppointmentView(APIView):
                 mode=slot.mode,
                 booked_by=user,
             )
-            if student.status == 'PENDING_ASSESSMENT':
-                student.status = 'ASSESSMENT_SCHEDULED'
+            if student.status == 'AWAITING_PARENT_INPUT':
+                student.status = 'PENDING_ASSESSMENT'
                 student.save(update_fields=['status'])
 
         notify_assessment_scheduled(appointment, booked_by=user)

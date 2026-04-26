@@ -132,7 +132,7 @@ def score_staff_for_student(student_id=None):
     Returns: list of scored staff dicts
     """
     from django.db.models import Count
-    from api.models import ParentAssessment
+    from api.models import ParentAssessment, SpecialistPreference
 
     CONCERN_SPECIALTY = {
         "communication": {SPEECH_LANGUAGE_PATHOLOGY},
@@ -155,6 +155,7 @@ def score_staff_for_student(student_id=None):
     }
 
     concerns = []
+    primary_langs = []
     if student_id:
         try:
             student = Student.objects.get(id=student_id)
@@ -168,9 +169,27 @@ def score_staff_for_student(student_id=None):
                         v2.get('primary_concerns', []) +
                         v2.get('known_conditions', [])
                     )
+                    pl = v2.get('primary_language', [])
+                    primary_langs = pl if isinstance(pl, list) else [pl]
                 else:
                     concerns = fd.get('areas_of_concern', [])
+                    pl = fd.get('primary_language', "")
+                    primary_langs = [pl] if pl else []
+            primary_langs = [str(l).upper().strip() for l in primary_langs if l]
         except Student.DoesNotExist:
+            pass
+
+    preferences = {}
+    if student_id:
+        try:
+            prefs = SpecialistPreference.objects.filter(student_id=student_id)
+            for p in prefs:
+                normalized = normalize_specialty(p.specialty)
+                if normalized:
+                    if p.specialist_id not in preferences:
+                        preferences[p.specialist_id] = []
+                    preferences[p.specialist_id].append(normalized)
+        except Exception:
             pass
 
     staff_qs = User.objects.filter(
@@ -197,30 +216,60 @@ def score_staff_for_student(student_id=None):
     for u in staff_qs:
         user_specialties = u.specialty_list()
         specialty_score = _score(user_specialties, concerns) if concerns else 0
-        combined = (specialty_score * 3) - u.caseload
+        
+        user_langs = [str(l).upper().strip() for l in u.language_list() if l]
+        language_bonus = 0
+        if primary_langs and any(l in user_langs for l in primary_langs):
+            language_bonus = 4  # +4 points for matching a language
+            
+        combined = (specialty_score * 3) + language_bonus - u.caseload
         scored.append((combined, u, user_specialties))
 
-    best_by_role = {}
-    for combined, u, _ in scored:
-        if u.role not in best_by_role or combined > best_by_role[u.role][0]:
-            best_by_role[u.role] = (combined, u.id)
+    best_teacher = None
+    best_teacher_score = -float('inf')
+    best_by_specialty = {}
+
+    for combined, u, user_specialties in scored:
+        if u.role == 'TEACHER':
+            if combined > best_teacher_score:
+                best_teacher_score = combined
+                best_teacher = u.id
+        elif u.role == 'SPECIALIST':
+            normalized_list = [normalize_specialty(s) for s in user_specialties if s]
+            for specialty in normalized_list:
+                if not specialty: continue
+                if specialty not in best_by_specialty or combined > best_by_specialty[specialty][0]:
+                    best_by_specialty[specialty] = (combined, u.id)
 
     result = []
     for combined, u, user_specialties in scored:
-        is_recommended = best_by_role.get(u.role, (None, None))[1] == u.id
         normalized_list = [normalize_specialty(s) for s in user_specialties if s]
         normalized_list = [s for s in normalized_list if s]
+
+        recommended_for = []
+        is_recommended = False
+
+        if u.role == 'TEACHER':
+            is_recommended = (u.id == best_teacher)
+        elif u.role == 'SPECIALIST':
+            for specialty in normalized_list:
+                if best_by_specialty.get(specialty, (None, None))[1] == u.id:
+                    recommended_for.append(specialty)
+            is_recommended = len(recommended_for) > 0
+
         result.append({
             "id": u.id,
             "first_name": u.first_name,
             "last_name": u.last_name,
             "email": u.email,
-            "email": u.email,
             "role": u.role,
             "specialty": normalized_list[0] if normalized_list else "",
             "specialties": normalized_list,
+            "languages": u.language_list(),
             "caseload": u.caseload,
             "recommended": is_recommended,
+            "recommended_for": recommended_for,
+            "preferred_for": preferences.get(u.id, []),
         })
 
     return result

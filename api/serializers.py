@@ -9,7 +9,7 @@ from .models import (
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     Invitation, Notification, SpecialistPreference, SectionContribution,
-    SpecialistAvailabilitySlot, AssessmentAppointment
+    SpecialistAvailabilitySlot, AssessmentAppointment, DiagnosticReport
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -301,6 +301,12 @@ class SpedAssessmentSerializer(serializers.ModelSerializer):
         model = SpedAssessment
         fields = '__all__'
         read_only_fields = ['submitted_by']
+
+class DiagnosticReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiagnosticReport
+        fields = ['id', 'student', 'uploaded_by', 'file', 'original_filename', 'extracted_text', 'created_at']
+        read_only_fields = ['id', 'uploaded_by', 'extracted_text', 'created_at']
 
 class ParentProgressTrackerSerializer(serializers.ModelSerializer):
     class Meta:

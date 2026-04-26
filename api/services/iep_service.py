@@ -7,7 +7,8 @@ from django.db import transaction
 
 from api.models import (
     Student, ReportCycle, GeneratedDocument,
-    ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
+    ParentAssessment, MultidisciplinaryAssessment,
+    DiagnosticReport,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ def collect_iep_inputs(student, cycle):
     return {
         'parent_assessment': ParentAssessment.objects.filter(student=student, report_cycle=cycle).first(),
         'multi_assessment': MultidisciplinaryAssessment.objects.filter(student=student, report_cycle=cycle).first(),
+        'diagnostic_report': DiagnosticReport.objects.filter(student=student).order_by('-created_at').first(),
     }
 
 

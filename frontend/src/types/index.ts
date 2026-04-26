@@ -118,6 +118,7 @@ export interface StaffMember {
     languages?: string[];
     caseload: number;
     recommended: boolean;
+    recommended_for?: string[];
 }
 
 // ─── Invitation ─────────────────────────────────────────────────────────────

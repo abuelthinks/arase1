@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Search } from "lucide-react";
+import { Search, Check, Plus, AlertCircle, X } from "lucide-react";
 import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { toast } from "sonner";
@@ -98,6 +98,8 @@ function UnifiedWorkspaceContent() {
     const [assignedStaff, setAssignedStaff] = useState<any[]>([]);
     const [staffList, setStaffList] = useState<any[]>([]);
     const [assigning, setAssigning] = useState<number | null>(null);
+    const [unassigningStaff, setUnassigningStaff] = useState<{ id: number, specialty?: string, name?: string, role: string } | null>(null);
+    const [isUnassigning, setIsUnassigning] = useState(false);
     const [specialistSearch, setSpecialistSearch] = useState("");
     const [sendingParentReminder, setSendingParentReminder] = useState(false);
     const [showEnrollConfirm, setShowEnrollConfirm] = useState(false);
@@ -144,6 +146,27 @@ function UnifiedWorkspaceContent() {
     }, [studentId, user?.role]);
 
     // -- Handlers --
+    const confirmUnassign = async () => {
+        if (!unassigningStaff || !studentDetails) return;
+        setIsUnassigning(true);
+        try {
+            const res = await api.post(`/api/students/${studentDetails.id}/unassign-staff/`, {
+                staff_id: unassigningStaff.id,
+                specialty: unassigningStaff.specialty
+            });
+            if (res.status === 200) {
+                toast.success("Staff member removed successfully.");
+                setProfileRefreshKey(prev => prev + 1);
+            }
+        } catch (error: any) {
+            console.error("Error unassigning staff:", error);
+            toast.error(error.response?.data?.error || "Failed to remove staff member");
+        } finally {
+            setIsUnassigning(false);
+            setUnassigningStaff(null);
+        }
+    };
+
     const handleAssign = async (type: "specialist" | "teacher", staffId: number, specialties: string[] = []) => {
         setAssigning(staffId);
         try {
@@ -808,6 +831,37 @@ function UnifiedWorkspaceContent() {
         const assignedIds = assignedRoleStaff.map(s => s.id);
         const normalizedSpecialistSearch = specialistSearch.trim().toLowerCase();
         const assignedSpecialistBySpecialty: Record<string, any> = {};
+
+        const studentLangs = Array.isArray(studentDetails?.primary_language) 
+            ? studentDetails.primary_language.map((l: string) => l.toUpperCase()) 
+            : (studentDetails?.primary_language ? [studentDetails.primary_language.toUpperCase()] : []);
+
+        const renderStaffLanguages = (langs: string[]) => {
+            if (!langs || langs.length === 0) return null;
+            const visibleLangs = langs.slice(0, 2);
+            const hiddenCount = langs.length - 2;
+
+            return (
+                <>
+                    <span className="text-[0.5rem] text-slate-300">●</span>
+                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-slate-500 flex flex-wrap items-center gap-1" title={langs.join(", ")}>
+                        {visibleLangs.map((lang, idx) => {
+                            const isMatch = studentLangs.includes(lang.toUpperCase());
+                            return (
+                                <span key={idx} className="flex items-center">
+                                    <span className={isMatch ? "bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold" : ""}>
+                                        {lang}
+                                    </span>
+                                    {idx < visibleLangs.length - 1 && <span>,</span>}
+                                </span>
+                            );
+                        })}
+                        {hiddenCount > 0 && <span>+{hiddenCount}</span>}
+                    </p>
+                </>
+            );
+        };
+
         if (isSpecialist) {
             assignedRoleStaff.forEach(staff => {
                 getStaffSpecialties(staff).forEach((specialty) => {
@@ -840,8 +894,8 @@ function UnifiedWorkspaceContent() {
                         const bAssigned = assignedForSpecialty?.id === b.id ? 0 : 1;
                         if (aAssigned !== bAssigned) return aAssigned - bAssigned;
 
-                        const aRecommended = a.recommended ? 0 : 1;
-                        const bRecommended = b.recommended ? 0 : 1;
+                        const aRecommended = a.recommended_for?.includes(specialty) ? 0 : 1;
+                        const bRecommended = b.recommended_for?.includes(specialty) ? 0 : 1;
                         if (aRecommended !== bRecommended) return aRecommended - bRecommended;
 
                         const aCaseload = typeof a.caseload === "number" ? a.caseload : Number.MAX_SAFE_INTEGER;
@@ -979,7 +1033,7 @@ function UnifiedWorkspaceContent() {
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="m-0 text-base font-bold text-slate-900">{specialty}</h3>
+                                                        <h3 className="m-0 text-lg font-bold text-slate-900">{specialty}</h3>
                                                         <span className={`rounded-full px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wider ${
                                                             assignedForSpecialty
                                                                 ? "bg-indigo-100 text-indigo-700"
@@ -1032,9 +1086,14 @@ function UnifiedWorkspaceContent() {
                                                                     <p className={`m-0 truncate text-sm font-bold ${isAssignedForThisSpecialty ? "text-indigo-800" : "text-slate-900"}`}>
                                                                         {staffName}
                                                                     </p>
-                                                                    {staff.recommended && (
+                                                                    {staff.recommended_for?.includes(specialty) && (
                                                                         <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-amber-800">
                                                                             Match
+                                                                        </span>
+                                                                    )}
+                                                                    {staff.preferred_for?.includes(specialty) && (
+                                                                        <span className="rounded-full bg-pink-100 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-pink-800">
+                                                                            Parent Pick
                                                                         </span>
                                                                     )}
                                                                     {alreadyAssigned && !isAssignedForThisSpecialty && (
@@ -1064,25 +1123,36 @@ function UnifiedWorkspaceContent() {
                                                                         ))}
                                                                 </div>
 
-                                                                <p className="mt-3 text-[0.7rem] font-medium uppercase tracking-widest text-slate-500">
-                                                                    {staff.caseload} student{staff.caseload !== 1 ? "s" : ""}
-                                                                </p>
+                                                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-slate-500">
+                                                                        {staff.caseload} student{staff.caseload !== 1 ? "s" : ""}
+                                                                    </p>
+                                                                    {renderStaffLanguages(staff.languages)}
+                                                                </div>
                                                             </div>
 
                                                             <button
                                                                 type="button"
-                                                                onClick={() => !isDisabled && !isAssignedForThisSpecialty && handleAssign("specialist", staff.id, nextSpecialties)}
-                                                                disabled={isDisabled || isAssignedForThisSpecialty}
+                                                                onClick={() => {
+                                                                    if (isAssignedForThisSpecialty) {
+                                                                        setUnassigningStaff({ id: staff.id, specialty, name: getStaffName(staff), role: "Specialist" });
+                                                                    } else if (!isDisabled && !alreadyAssigned) {
+                                                                        handleAssign("specialist", staff.id, nextSpecialties);
+                                                                    } else if (alreadyAssigned && !isAssignedForThisSpecialty) {
+                                                                        handleAssign("specialist", staff.id, nextSpecialties);
+                                                                    }
+                                                                }}
+                                                                disabled={isDisabled && !isAssignedForThisSpecialty}
                                                                 title={
                                                                     isAssignedForThisSpecialty
-                                                                        ? `${staffName} is assigned for ${specialty}`
+                                                                        ? `Remove ${staffName} from ${specialty}`
                                                                         : assignedForSpecialty
                                                                             ? `${specialty} is already covered`
                                                                             : `Assign ${staffName} to ${specialty}`
                                                                 }
                                                                 className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all ${
                                                                     isAssignedForThisSpecialty
-                                                                        ? "bg-indigo-100 text-indigo-700"
+                                                                        ? "bg-indigo-600 text-white shadow-sm hover:bg-red-600 hover:text-white"
                                                                         : isDisabled
                                                                             ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                                                                             : "bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white"
@@ -1091,9 +1161,9 @@ function UnifiedWorkspaceContent() {
                                                                 {isLoading ? (
                                                                     <svg className="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                                                 ) : isAssignedForThisSpecialty ? (
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                                                    <X className="w-5 h-5" />
                                                                 ) : (
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                                                                    <Plus className="w-5 h-5" />
                                                                 )}
                                                             </button>
                                                         </div>
@@ -1130,9 +1200,12 @@ function UnifiedWorkspaceContent() {
                                         {!isSpecialist && s.specialty && (
                                             <p className="text-xs text-indigo-600 font-bold mb-1 truncate">{s.specialty}</p>
                                         )}
-                                        <p className="text-[0.7rem] font-medium text-slate-500 uppercase tracking-widest">
-                                            {s.caseload} student{s.caseload !== 1 ? "s" : ""}
-                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="m-0 text-[0.7rem] font-medium text-slate-500 uppercase tracking-widest">
+                                                {s.caseload} student{s.caseload !== 1 ? "s" : ""}
+                                            </p>
+                                            {renderStaffLanguages(s.languages)}
+                                        </div>
                                     </div>
                                     
                                     <button 
@@ -1317,6 +1390,50 @@ function UnifiedWorkspaceContent() {
                         border-radius: 20px;
                     }
                 `}} />
+                {/* Unassign Confirmation Modal */}
+                {unassigningStaff && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                            <div className="p-6">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                        <AlertCircle className="h-6 w-6 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900">Remove {unassigningStaff.role}?</h3>
+                                        <p className="text-sm text-slate-500 mt-1">
+                                            Are you sure you want to remove <strong>{unassigningStaff.name}</strong> from this team?
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-3 justify-end mt-8">
+                                    <button
+                                        onClick={() => setUnassigningStaff(null)}
+                                        disabled={isUnassigning}
+                                        className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmUnassign}
+                                        disabled={isUnassigning}
+                                        className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isUnassigning ? (
+                                            <>
+                                                <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                Removing...
+                                            </>
+                                        ) : (
+                                            "Remove Specialist"
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </ProtectedRoute>
     );

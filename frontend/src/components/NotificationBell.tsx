@@ -79,6 +79,7 @@ function getTypeStyle(type: string): TypeStyle {
 export default function NotificationBell() {
     const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
     const [isOpen, setIsOpen] = useState(false);
+    const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Close on outside click
@@ -139,6 +140,20 @@ export default function NotificationBell() {
                             <div className="divide-y divide-slate-100">
                                 {notifications.map((notif) => {
                                     const style = getTypeStyle(notif.notification_type);
+                                    const isExpanded = expandedIds.has(notif.id);
+                                    
+                                    const handleToggleExpand = (e: React.MouseEvent) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const next = new Set(expandedIds);
+                                        if (next.has(notif.id)) {
+                                            next.delete(notif.id);
+                                        } else {
+                                            next.add(notif.id);
+                                        }
+                                        setExpandedIds(next);
+                                    };
+
                                     return (
                                         <div
                                             key={notif.id}
@@ -163,11 +178,6 @@ export default function NotificationBell() {
                                                             <p className={`text-sm m-0 leading-snug ${!notif.is_read ? 'font-semibold' : 'font-medium'}`}>
                                                                 {notif.title}
                                                             </p>
-                                                            {notif.message && (
-                                                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 m-0 bg-transparent">
-                                                                    {notif.message}
-                                                                </p>
-                                                            )}
                                                         </Link>
                                                     ) : (
                                                         <div 
@@ -177,14 +187,27 @@ export default function NotificationBell() {
                                                             <p className={`text-sm m-0 leading-snug ${!notif.is_read ? 'font-semibold' : 'font-medium text-slate-800'}`}>
                                                                 {notif.title}
                                                             </p>
-                                                            {notif.message && (
-                                                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 m-0">
-                                                                    {notif.message}
-                                                                </p>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {notif.message && (
+                                                        <div 
+                                                            className="mt-1 cursor-pointer"
+                                                            onClick={handleToggleExpand}
+                                                            title={isExpanded ? "Click to collapse" : "Click to expand"}
+                                                        >
+                                                            <p className={`text-xs text-slate-500 m-0 whitespace-pre-wrap ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                                                                {notif.message}
+                                                            </p>
+                                                            {notif.message.length > 60 && (
+                                                                <span className="text-[10px] text-blue-500 font-medium inline-block mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    {isExpanded ? 'Show less' : 'Show more'}
+                                                                </span>
                                                             )}
                                                         </div>
                                                     )}
-                                                    <div className="flex items-center gap-2 mt-1">
+
+                                                    <div className="flex items-center gap-2 mt-1.5">
                                                         {notif.actor_name && (
                                                             <span className="text-[10px] text-slate-400 font-medium">
                                                                 by {notif.actor_name}

@@ -67,8 +67,8 @@ def _collect_form_data(inputs):
 # Build prompt for OpenAI
 # ---------------------------------------------------------------------------
 
-def _build_openai_prompt(student, pa, ma, sa):
-    """Build a structured prompt from the three assessment form datasets."""
+def _build_openai_prompt(student, pa, ma, diagnostic_text=""):
+    """Build a structured prompt from the assessment form datasets and optional diagnostic report."""
 
     lines = [
         "You are an expert special education coordinator generating a comprehensive IEP.",
@@ -152,29 +152,12 @@ def _build_openai_prompt(student, pa, ma, sa):
         lines.append(f"Follow-Up Plan: {_list_join(_safe(ma, 'follow_up_plan', default=[]))}")
         lines.append("")
 
-    # Teacher (SPED) Assessment data
-    if sa:
-        lines.append("=== SPED TEACHER ASSESSMENT ===")
-        lines.append(f"Observation Context: {_list_join(_safe(sa, 'observation_context', default=[]))}")
-        lines.append(f"General Behavior: {_list_join(_safe(sa, 'general_behavior', default=[]))}")
-        lines.append(f"Behavior Notes: {_safe(sa, 'observation_notes')}")
-        lines.append(f"Literacy: {_list_join(_safe(sa, 'literacy', default=[]))}")
-        lines.append(f"Numeracy: {_list_join(_safe(sa, 'numeracy', default=[]))}")
-        lines.append(f"Pre-Academic: {_list_join(_safe(sa, 'pre_academic', default=[]))}")
-        lines.append(f"Attention: {_list_join(_safe(sa, 'attention_focus', default=[]))}")
-        lines.append(f"Task Completion: {_list_join(_safe(sa, 'task_completion', default=[]))}")
-        lines.append(f"Social Skills: {_list_join(_safe(sa, 'social_skills', default=[]))}")
-        lines.append(f"Play Skills: {_list_join(_safe(sa, 'play_skills', default=[]))}")
-        lines.append(f"Behavior Patterns: {_list_join(_safe(sa, 'behavior_patterns', default=[]))}")
-        lines.append(f"Emotional Regulation: {_list_join(_safe(sa, 'emotional_regulation', default=[]))}")
-        lines.append(f"Learning Style: {_list_join(_safe(sa, 'learning_style', default=[]))}")
-        lines.append(f"Classroom Supports: {_list_join(_safe(sa, 'classroom_supports', default=[]))}")
-        lines.append(f"Modifications: {_list_join(_safe(sa, 'modifications_accommodations', default=[]))}")
-        lines.append(f"Summary: {_safe(sa, 'summary_findings')}")
-        lines.append(f"Strengths: {_list_join(_safe(sa, 'strengths', default=[]))}")
-        lines.append(f"Priority Needs: {_list_join(_safe(sa, 'priority_needs', default=[]))}")
-        lines.append(f"Frequency: {_list_join(_safe(sa, 'intervention_frequency', default=[]))}")
-        lines.append(f"Next Steps: {_list_join(_safe(sa, 'next_steps', default=[]))}")
+    # External Diagnostic Report (uploaded by parent)
+    if diagnostic_text:
+        lines.append("=== EXTERNAL DIAGNOSTIC REPORT ===")
+        lines.append("The following is extracted from a diagnostic report uploaded by the parent.")
+        lines.append("Use this to inform your IEP recommendations where clinically relevant.")
+        lines.append(diagnostic_text[:6000])  # Cap for token limits
         lines.append("")
 
     # Output instructions
@@ -261,10 +244,15 @@ def generate_iep(student, cycle, inputs):
     forms = _collect_form_data(inputs)
     pa = forms.get('parent_assessment', {})
     ma = forms.get('multi_assessment', {})
-    sa = forms.get('sped_assessment', {})
+
+    # Get diagnostic report text if available
+    diag_obj = inputs.get('diagnostic_report')
+    diagnostic_text = ""
+    if diag_obj and hasattr(diag_obj, 'extracted_text'):
+        diagnostic_text = diag_obj.extracted_text or ""
 
     # Build and send prompt
-    prompt = _build_openai_prompt(student, pa, ma, sa)
+    prompt = _build_openai_prompt(student, pa, ma, diagnostic_text)
     logger.info("Calling Gemini for IEP generation (student=%s)", student.id)
 
     try:

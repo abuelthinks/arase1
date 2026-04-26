@@ -1703,7 +1703,6 @@ export default function AdminDashboard() {
                                 <input required placeholder="Last Name" value={newUser.last_name} onChange={e => setNewUser({ ...newUser, last_name: e.target.value })} className="form-input" style={{ width: "50%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
                             </div>
                             <input required type="email" placeholder="Email Address" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <input required    className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
                             <div style={{ display: "flex", gap: "1rem" }}>
                                 <input required type="password" placeholder="Password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="form-input" style={{ width: "50%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
                                 <input required type="password" placeholder="Confirm Password" value={newUser.confirm_password}

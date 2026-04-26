@@ -22,18 +22,20 @@ logger = logging.getLogger(__name__)
 GRACE_PERIOD_DAYS = ReportCycle.GRACE_PERIOD_DAYS
 
 
-def check_and_trigger_iep_generation(student, cycle):
+def check_and_trigger_assessment_generation(student, cycle):
     """
-    Generate the initial IEP once required assessment inputs are complete.
+    Generate the Assessment document once required assessment inputs are complete.
+    Triggers when specialist (multidisciplinary) assessment is finalized.
+    Diagnostic report is optional context.
     Runs synchronously so auto-generation works without a Celery worker.
     """
-    existing_iep = GeneratedDocument.objects.filter(
+    existing_assessment = GeneratedDocument.objects.filter(
         student=student,
         report_cycle=cycle,
-        document_type='IEP',
+        document_type='ASSESSMENT',
     ).first()
-    if existing_iep:
-        return False, existing_iep
+    if existing_assessment:
+        return False, existing_assessment
 
     has_parent = ParentAssessment.objects.filter(student=student, report_cycle=cycle).exists()
     has_multi = MultidisciplinaryAssessment.objects.filter(student=student, report_cycle=cycle).exists()
@@ -41,18 +43,24 @@ def check_and_trigger_iep_generation(student, cycle):
         return False, None
 
     try:
-        from api.services.iep_service import run_iep_generation
-        doc, _ = run_iep_generation(student.id, cycle.id)
-        logger.info("IEP auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
+        from api.services.report_service import generate_assessment_document
+        doc = generate_assessment_document(student.id, cycle.id)
+        logger.info("Assessment doc auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
         try:
-            from api.services.notification_service import notify_auto_iep_ready
-            notify_auto_iep_ready(student, doc)
+            from api.services.notification_service import notify_admins_in_app
+            notify_admins_in_app(
+                'STUDENT_ASSESSED',
+                f"Assessment Complete: {student.first_name} {student.last_name}",
+                f"The SPED Assessment document has been auto-generated for {student.first_name} {student.last_name}.",
+                link=f"/students/{student.id}",
+            )
         except Exception:
-            pass  # Don't block IEP generation if notification fails
+            pass  # Don't block assessment generation if notification fails
         return True, doc
     except Exception as exc:
-        logger.error("Failed to auto-generate IEP for student=%s cycle=%s: %s", student.id, cycle.id, exc)
+        logger.error("Failed to auto-generate assessment for student=%s cycle=%s: %s", student.id, cycle.id, exc)
         return False, None
+
 
 
 # ─── Lazy Cycle Creation ─────────────────────────────────────────────────────

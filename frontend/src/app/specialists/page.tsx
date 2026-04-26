@@ -23,6 +23,8 @@ import {
   Info,
   Languages,
   Loader2,
+  Lock,
+  FileText,
   MessageCircleHeart,
   RotateCcw,
   Search,
@@ -82,6 +84,7 @@ interface Student {
   id: number;
   first_name: string;
   last_name: string;
+  status?: string;
 }
 
 interface AvailabilitySlot {
@@ -168,6 +171,8 @@ function SpecialistsContent() {
   const [preferences, setPreferences] = useState<SpecialistPreference[]>([]);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [student, setStudent] = useState<Student | null>(null);
+  const [formStatuses, setFormStatuses] = useState<any>(null);
+  const [assignedStaff, setAssignedStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selections, setSelections] = useState<Record<string, number>>({});
@@ -182,8 +187,10 @@ function SpecialistsContent() {
 
     const fetchData = async () => {
       try {
-        const studentRes = await api.get(`/api/students/${studentId}/`);
-        setStudent(studentRes.data);
+        const profileRes = await api.get(`/api/students/${studentId}/profile/`);
+        setStudent(profileRes.data.student);
+        setFormStatuses(profileRes.data.form_statuses);
+        setAssignedStaff(profileRes.data.assigned_staff || []);
 
         const specRes = await api.get("/api/specialists/");
         setSpecialists(specRes.data);
@@ -336,6 +343,104 @@ function SpecialistsContent() {
 
   if (!student) {
     return <div className="p-8 text-center text-red-500">Student not found.</div>;
+  }
+
+  const parentAssessmentSubmitted = formStatuses?.parent_assessment?.submitted;
+  const assignedSpecialists = assignedStaff.filter(s => s.role === "SPECIALIST");
+  const isTeamFinalized = assignedSpecialists.length > 0 || student?.status === "ENROLLED";
+
+  if (!parentAssessmentSubmitted) {
+    return (
+      <div className="bg-gradient-to-b from-indigo-50/60 via-white to-white pb-32 min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center mb-6">
+          <Lock className="h-8 w-8 text-slate-400" />
+        </div>
+        <h1 className="text-2xl font-extrabold text-slate-900 mb-3">Assessment Required</h1>
+        <p className="text-slate-500 max-w-md mb-8 leading-relaxed">
+          Before we can match {childName} with the best specialists, we need you to complete the "About Your Child" form. This helps us understand their unique needs.
+        </p>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700"
+        >
+          <FileText className="h-4 w-4" />
+          Go to Assessment
+        </Link>
+      </div>
+    );
+  }
+
+  if (isTeamFinalized) {
+    return (
+      <div className="bg-gradient-to-b from-indigo-50/60 via-white to-white pb-32 min-h-screen">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 md:px-0 md:py-12">
+          {/* Header */}
+          <div className="flex items-start gap-4">
+            <Link
+              href="/dashboard"
+              aria-label="Back to dashboard"
+              className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200">
+                <Users className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div>
+                <h1 className="m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-2xl font-extrabold leading-tight tracking-tight text-transparent md:text-3xl">
+                  {childName}'s Clinical Team
+                </h1>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                  Our clinical directors have reviewed your child's needs and finalized their dedicated team of specialists.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {assignedSpecialists.length > 0 ? (
+              assignedSpecialists.map((staff, idx) => (
+                <div key={idx} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  {staff.profile_image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={staff.profile_image} alt="" className="h-14 w-14 rounded-full object-cover shadow-sm" />
+                  ) : (
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(staff.id)} text-base font-extrabold text-white shadow-sm`}>
+                      {staff.first_name?.[0] || ""}{staff.last_name?.[0] || ""}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-extrabold text-slate-900 truncate">
+                      {staff.first_name} {staff.last_name}
+                    </p>
+                    <p className="text-xs font-semibold text-indigo-600 mt-0.5 truncate">
+                      {staff.specialty || "Specialist"}
+                    </p>
+                    {staff.assigned_specialties && staff.assigned_specialties.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {staff.assigned_specialties.map((s: string) => (
+                          <span key={s} className="px-2 py-0.5 rounded-md bg-slate-100 text-[0.65rem] font-bold text-slate-600">
+                            {getPractitionerTitle(s)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-1 md:col-span-2 rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm italic text-slate-400 shadow-sm">
+                No specialists assigned yet.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
