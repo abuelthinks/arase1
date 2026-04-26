@@ -7,9 +7,9 @@ from django.db import transaction
 
 from api.models import (
     Student, ReportCycle, GeneratedDocument,
-    ParentAssessment, MultidisciplinaryAssessment,
-    DiagnosticReport,
+    ParentAssessment, MultidisciplinaryAssessment, DiagnosticReport,
 )
+from api.services.workflow_state_service import has_finalized_multidisciplinary_assessment
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +17,17 @@ logger = logging.getLogger(__name__)
 def collect_iep_inputs(student, cycle):
     """
     Collects form inputs required for IEP generation.
-    Returns: dict of model instances (or None)
+    Returns: dict of model instances (or None) + diagnostic_text string
     """
+    diag = DiagnosticReport.objects.filter(student=student).order_by('-created_at').first()
     return {
         'parent_assessment': ParentAssessment.objects.filter(student=student, report_cycle=cycle).first(),
-        'multi_assessment': MultidisciplinaryAssessment.objects.filter(student=student, report_cycle=cycle).first(),
-        'diagnostic_report': DiagnosticReport.objects.filter(student=student).order_by('-created_at').first(),
+        'multi_assessment': MultidisciplinaryAssessment.objects.filter(
+            student=student,
+            report_cycle=cycle,
+            finalized_at__isnull=False,
+        ).order_by('-finalized_at', '-created_at').first(),
+        'diagnostic_text': diag.extracted_text if diag else '',
     }
 
 
@@ -51,6 +56,8 @@ def run_iep_generation(student_id, cycle_id):
         return existing_doc, existing_doc.iep_data or {}
 
     inputs = collect_iep_inputs(student, cycle)
+    if not inputs["parent_assessment"] or not has_finalized_multidisciplinary_assessment(student, cycle):
+        raise ValueError("Parent Assessment and finalized Specialist Assessment are required before generating an IEP.")
 
     iep_data = generate_iep(student, cycle, inputs)
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo, useRef } from "react";
+import { useState, useEffect, Suspense, useMemo, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
@@ -172,6 +173,67 @@ const getWorkspaceFormUrl = (studentId: string, formType: string) => {
     if (!studentId || !tab) return null;
     return `/workspace?studentId=${encodeURIComponent(studentId)}&workspace=forms&tab=${encodeURIComponent(tab)}`;
 };
+
+const ASSESSMENT_SECTION_API_KEYS: Record<string, string> = {
+    section_a: "A",
+    section_b: "B",
+    section_c: "C",
+    section_d: "D",
+    section_e: "E",
+    section_f1: "F1",
+    section_f2: "F2",
+    section_g: "G",
+};
+
+function buildInitialFormData(schema: any) {
+    const initialData: any = {};
+    schema.sections?.forEach((sec: any) => {
+        const dataKey = sec.__dataSection || sec.id;
+        if (!initialData[dataKey]) {
+            initialData[dataKey] = {};
+        }
+        sec.fields?.forEach((field: any) => {
+            if (field.type === "checkbox_group") {
+                initialData[dataKey][field.id] = [];
+            } else if (field.type === "goal_rating_group") {
+                initialData[dataKey][field.id] = [];
+            } else if (field.type === "grid") {
+                initialData[dataKey][field.id] = {};
+            } else {
+                initialData[dataKey][field.id] = "";
+            }
+        });
+    });
+    return initialData;
+}
+
+function mergeSavedFormData(baseData: any, schema: any, rawSavedData: any) {
+    const savedData = rawSavedData?.v2 || rawSavedData || {};
+    const next = { ...baseData };
+    const isFlat = !Object.keys(savedData).some(key => key.startsWith("section_"));
+
+    if (isFlat) {
+        schema.sections?.forEach((sec: any) => {
+            const dataKey = sec.__dataSection || sec.id;
+            sec.fields?.forEach((field: any) => {
+                if (savedData[field.id] !== undefined) {
+                    next[dataKey] = {
+                        ...(next[dataKey] || {}),
+                        [field.id]: savedData[field.id],
+                    };
+                }
+            });
+        });
+        return next;
+    }
+
+    Object.keys(savedData).forEach(secKey => {
+        if (next[secKey]) {
+            next[secKey] = { ...next[secKey], ...savedData[secKey] };
+        }
+    });
+    return next;
+}
 
 /* ─── Shared UI Components ─────────────────────────────────────────────────── */
 
@@ -546,6 +608,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const formType = propType || (params?.type as string) || "unknown";
     const studentId = propStudentId || searchParams.get("studentId");
     const isTeamScopedForm = formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker";
+    const isSectionScopedAssessment = formType === "multidisciplinary-assessment";
 
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
@@ -555,6 +618,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [formData, setFormData] = useState<any>({});
     const [studentProfile, setStudentProfile] = useState<any>(null);
     const [showDescriptions, setShowDescriptions] = useState<Record<string, boolean>>({});
+    const [sectionContributions, setSectionContributions] = useState<Record<string, any>>({});
+    const [savingSectionKey, setSavingSectionKey] = useState<string | null>(null);
+    const [teamSubmission, setTeamSubmission] = useState<any>(null);
 
     const toggleDescription = (fieldId: string) => {
         setShowDescriptions(prev => ({ ...prev, [fieldId]: !prev[fieldId] }));
@@ -599,6 +665,25 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
 
     const draftKey = `draft_${formType}_${studentId}`;
+
+    const refreshSectionContributions = useCallback(async (cycleId = reportCycleId) => {
+        if (!isSectionScopedAssessment || !studentId || !cycleId) return;
+        try {
+            const res = await api.get(`/api/inputs/multidisciplinary-assessment/contributions/`, {
+                params: {
+                    student: studentId,
+                    report_cycle: cycleId,
+                },
+            });
+            const next: Record<string, any> = {};
+            for (const contribution of res.data || []) {
+                next[contribution.section_key] = contribution;
+            }
+            setSectionContributions(next);
+        } catch (err) {
+            console.error("Failed to load section contributions:", err);
+        }
+    }, [isSectionScopedAssessment, reportCycleId, studentId]);
 
     useEffect(() => {
         let isMounted = true;
@@ -690,68 +775,44 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
             // Initialize form data based on the original schema's data shape
             // (transformed sections collapse back to their __dataSection key).
-            const dataSchema = finalSchema;
-            const initialData: any = {};
-            dataSchema.sections?.forEach((sec: any) => {
-                initialData[sec.id] = {};
-                sec.fields?.forEach((f: any) => {
-                    if (f.type === "checkbox_group") {
-                        initialData[sec.id][f.id] = [];
-                    } else if (f.type === "goal_rating_group") {
-                        initialData[sec.id][f.id] = [];
-                    } else if (f.type === "grid") {
-                        initialData[sec.id][f.id] = {};
-                    } else {
-                        initialData[sec.id][f.id] = "";
-                    }
-                });
-            });
-
-            const mergedData = { ...initialData };
+            let mergedData = buildInitialFormData(renderSchema);
 
             if (isViewMode && formIdStr) {
                 // If viewing a previous submission
                 try {
                     const res = await api.get(`/api/inputs/${formType}/${formIdStr}/`);
                     setFullSubmission(res.data);
-                    const savedData = res.data.form_data?.v2 || res.data.form_data || {};
-                    
-                    // Detect if savedData is from older flat structure
-                    const isFlat = !Object.keys(savedData).some(k => k.startsWith("section_"));
-                    if (isFlat) {
-                        finalSchema.sections?.forEach((sec: any) => {
-                            sec.fields?.forEach((f: any) => {
-                                if (savedData[f.id] !== undefined) {
-                                    mergedData[sec.id][f.id] = savedData[f.id];
-                                }
-                            });
-                        });
-                    } else {
-                        Object.keys(savedData).forEach(secKey => {
-                            if (mergedData[secKey]) {
-                                mergedData[secKey] = { ...mergedData[secKey], ...savedData[secKey] };
-                            }
-                        });
-                    }
+                    setTeamSubmission(res.data);
+                    mergedData = mergeSavedFormData(mergedData, renderSchema, res.data.form_data);
                 } catch (err) {
                     console.error("Failed to load submission:", err);
                     setErrorMsg("Failed to load the form submission.");
                 }
             } else {
-                // Try to load auto-saved draft
-                try {
-                    const draftKey = `draft_${formType}_${studentId}`;
-                    const saved = localStorage.getItem(draftKey);
-                    if (saved) {
-                        const parsedData = JSON.parse(saved);
-                        Object.keys(parsedData).forEach(secKey => {
-                            if (mergedData[secKey]) {
-                                mergedData[secKey] = { ...mergedData[secKey], ...parsedData[secKey] };
-                            }
-                        });
+                if (isSectionScopedAssessment && profileData?.form_statuses?.multi_assessment?.id) {
+                    try {
+                        const res = await api.get(`/api/inputs/${formType}/${profileData.form_statuses.multi_assessment.id}/`);
+                        setTeamSubmission(res.data);
+                        mergedData = mergeSavedFormData(mergedData, renderSchema, res.data.form_data);
+                    } catch (err) {
+                        console.error("Failed to load assessment draft:", err);
                     }
-                } catch (err) {
-                    console.error("Failed to load draft:", err);
+                } else if (!isSectionScopedAssessment) {
+                    // Try to load auto-saved draft
+                    try {
+                        const draftKey = `draft_${formType}_${studentId}`;
+                        const saved = localStorage.getItem(draftKey);
+                        if (saved) {
+                            const parsedData = JSON.parse(saved);
+                            Object.keys(parsedData).forEach(secKey => {
+                                if (mergedData[secKey]) {
+                                    mergedData[secKey] = { ...mergedData[secKey], ...parsedData[secKey] };
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Failed to load draft:", err);
+                    }
                 }
             }
 
@@ -848,45 +909,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         loadForm();
         
         return () => { isMounted = false; };
-    }, [draftKey, formIdStr, formType, isAdmin, isTeamScopedForm, isViewMode, studentId, user, userSpecialties]);
+    }, [draftKey, formIdStr, formType, isAdmin, isSectionScopedAssessment, isTeamScopedForm, isViewMode, studentId, user, userSpecialties]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission && schema) {
             const sourceData = (isTranslated && fullSubmission.translated_data) ? fullSubmission.translated_data : fullSubmission.form_data;
-            const savedData = sourceData?.v2 || sourceData || {};
-            
-            // Re-run the merge logic for view mode
-            const initialData: any = {};
-            schema.sections?.forEach((sec: any) => {
-                initialData[sec.id] = {};
-                sec.fields?.forEach((f: any) => {
-                    if (f.type === "checkbox_group") {
-                        initialData[sec.id][f.id] = [];
-                    } else if (f.type === "grid") {
-                        initialData[sec.id][f.id] = {};
-                    } else {
-                        initialData[sec.id][f.id] = "";
-                    }
-                });
-            });
-
-            const mergedData = { ...initialData };
-            const isFlat = !Object.keys(savedData).some(k => k.startsWith("section_"));
-            if (isFlat) {
-                schema.sections?.forEach((sec: any) => {
-                    sec.fields?.forEach((f: any) => {
-                        if (savedData[f.id] !== undefined) {
-                            mergedData[sec.id][f.id] = savedData[f.id];
-                        }
-                    });
-                });
-            } else {
-                Object.keys(savedData).forEach(secKey => {
-                    if (mergedData[secKey]) {
-                        mergedData[secKey] = { ...mergedData[secKey], ...savedData[secKey] };
-                    }
-                });
-            }
+            const mergedData = mergeSavedFormData(buildInitialFormData(schema), schema, sourceData);
             setFormData(mergedData);
         }
     }, [isTranslated, fullSubmission, schema, isViewMode]);
@@ -894,6 +922,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     // Auto-save effect
     useEffect(() => {
         if (isViewMode) return; // Do not auto-save if merely viewing an old submission
+        if (isSectionScopedAssessment) return; // Collaborative assessment drafts live on the server.
         if (!formData || Object.keys(formData).length === 0 || !studentId || !formType) return;
         
         // Use a timeout to debounce the saving slightly
@@ -906,7 +935,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }, 1000); // 1s debounce
 
         return () => clearTimeout(timeoutId);
-    }, [draftKey, formData, formType, isViewMode, studentId]);
+    }, [draftKey, formData, formType, isSectionScopedAssessment, isViewMode, studentId]);
+
+    useEffect(() => {
+        if (isViewMode || !isSectionScopedAssessment || !studentId || !reportCycleId) return;
+        refreshSectionContributions(reportCycleId);
+    }, [isSectionScopedAssessment, isViewMode, refreshSectionContributions, reportCycleId, studentId]);
 
     const handleChange = (sectionId: string, fieldId: string, value: any, isCheckboxArray = false) => {
         if (!isFieldEditable(sectionId, fieldId)) return;
@@ -938,11 +972,126 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         });
     };
 
+    const sectionStates = useMemo(() => {
+        if (!isSectionScopedAssessment || !schema) return {};
+        const next: Record<string, any> = {};
+        schema.sections?.forEach((section: any) => {
+            const apiKey = ASSESSMENT_SECTION_API_KEYS[section.id];
+            const contribution = apiKey ? sectionContributions[apiKey] : null;
+            const sectionOwner = getSectionOwner(formType, section.id);
+            const isVerificationLocked = apiKey === "A" && formData.section_a?.a2_verification === "matches";
+            const canEditSection = !isViewMode
+                && !specialistOnboardingLocked
+                && !teamSubmission?.finalized_at
+                && !isVerificationLocked
+                && contribution?.status !== "submitted"
+                && canEditOwner(
+                    sectionOwner === "MIXED" ? SHARED : sectionOwner,
+                    editableSpecialties,
+                    isAdmin,
+                );
+
+            next[section.id] = {
+                apiKey,
+                contribution,
+                isVerificationLocked,
+                isLocked: !!teamSubmission?.finalized_at || contribution?.status === "submitted" || isVerificationLocked,
+                canEditSection,
+            };
+        });
+        return next;
+    }, [
+        editableSpecialties,
+        formData.section_a,
+        formType,
+        isAdmin,
+        isSectionScopedAssessment,
+        isViewMode,
+        schema,
+        sectionContributions,
+        specialistOnboardingLocked,
+        teamSubmission?.finalized_at,
+    ]);
+
+    const saveAssessmentSection = async (section: any, submit = false) => {
+        const apiKey = ASSESSMENT_SECTION_API_KEYS[section.id];
+        if (!apiKey || !studentId) return;
+        if (specialistOnboardingLocked) {
+            const message = specialistOnboardingMessage(user?.specialist_onboarding_missing);
+            setErrorMsg(message);
+            toast.error(message);
+            return;
+        }
+
+        setSavingSectionKey(`${apiKey}:${submit ? "submit" : "save"}`);
+        setSuccessMsg("");
+        setErrorMsg("");
+
+        const dataKey = dataKeyFor(section);
+        const currentSectionData = formData[dataKey] || {};
+        const sectionPayload: Record<string, any> = {};
+        section.fields?.forEach((field: any) => {
+            sectionPayload[field.id] = currentSectionData[field.id];
+        });
+
+        try {
+            const saveRes = await api.patch(`/api/inputs/multidisciplinary-assessment/sections/${apiKey}/`, {
+                student: parseInt(studentId || "0"),
+                report_cycle: parseInt(reportCycleId),
+                section_data: sectionPayload,
+            });
+            setTeamSubmission(saveRes.data);
+
+            if (submit) {
+                const submitRes = await api.post(`/api/inputs/multidisciplinary-assessment/sections/${apiKey}/submit/`, {
+                    student: parseInt(studentId || "0"),
+                    report_cycle: parseInt(reportCycleId),
+                });
+                setTeamSubmission(submitRes.data);
+                await refreshSectionContributions(reportCycleId);
+
+                if (submitRes.data?.finalized_at) {
+                    const message = `${schema.title || "Form"} finalized successfully.`;
+                    setSuccessMsg(message);
+                    toast.success(message);
+                    await propOnSubmitted?.(message);
+                    if (!propHideNavigation) {
+                        const workspaceUrl = getWorkspaceFormUrl(studentId || "", formType);
+                        setTimeout(() => router.replace(workspaceUrl || "/dashboard"), 1200);
+                    }
+                    return;
+                }
+
+                const message = `Section ${apiKey} submitted.`;
+                setSuccessMsg(message);
+                toast.success(message);
+                return;
+            }
+
+            await refreshSectionContributions(reportCycleId);
+            const message = `Section ${apiKey} saved.`;
+            setSuccessMsg(message);
+            toast.success(message);
+        } catch (err: any) {
+            const message = err.response?.data?.error || err.response?.data?.detail || "Failed to save section. Please try again.";
+            setErrorMsg(message);
+            toast.error(message);
+        } finally {
+            setSavingSectionKey(null);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setSuccessMsg("");
         setErrorMsg("");
+
+        if (isSectionScopedAssessment) {
+            setErrorMsg("Use the section Save Draft and Submit My Section buttons instead of submitting the whole form at once.");
+            setLoading(false);
+            return;
+        }
 
         if (!schema) {
             setErrorMsg("Invalid form schema.");
@@ -1117,6 +1266,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         {schema.sections?.map((section: any) => {
                             const dataKey = dataKeyFor(section);
                             const sectionOwner = getSectionOwner(formType, section.id);
+                            const sectionState = sectionStates[section.id];
                             const sectionFullyEditable = isAdmin
                                 || sectionOwner === null
                                 || sectionOwner === SHARED
@@ -1143,7 +1293,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 {section.fields?.map((field: any) => {
                                     const currentValue = formData[dataKey]?.[field.id];
                                     const currentSectionData = formData[dataKey] || {};
-                                    const fieldReadOnly = field.type === "readonly_parent_summary" || (!isViewMode && !isFieldEditable(section.id, field.id));
+                                    const fieldReadOnly = field.type === "readonly_parent_summary"
+                                        || !!sectionState?.isLocked
+                                        || (!isViewMode && !isFieldEditable(section.id, field.id));
 
                                     return (
                                         <div key={field.id}>
@@ -1248,13 +1400,53 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                         </div>
                                     );
                                 })}
+                                {!isViewMode && isSectionScopedAssessment && sectionState?.apiKey && (
+                                    <div style={{ marginTop: "0.75rem" }}>
+                                        {sectionState.isLocked && !isAdmin ? (
+                                            <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#f1f5f9", color: "#475569", fontSize: "0.85rem" }}>
+                                                {teamSubmission?.finalized_at ? (
+                                                    <>Assessment finalized on <strong>{new Date(teamSubmission.finalized_at).toLocaleString()}</strong>.</>
+                                                ) : sectionState.isVerificationLocked ? (
+                                                    <>Section A is locked after the verification is marked as <strong>matches</strong>.</>
+                                                ) : sectionState.contribution?.specialist_name ? (
+                                                    <>Submitted by <strong>{sectionState.contribution.specialist_name}</strong>{sectionState.contribution.submitted_at ? ` on ${new Date(sectionState.contribution.submitted_at).toLocaleDateString()}` : ""}.</>
+                                                ) : (
+                                                    <>This section is locked.</>
+                                                )}
+                                            </div>
+                                        ) : !sectionState.canEditSection ? (
+                                            <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#f8fafc", color: "#64748b", fontSize: "0.85rem" }}>
+                                                Only the assigned specialist can edit this section.
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => saveAssessmentSection(section, false)}
+                                                    disabled={!!savingSectionKey}
+                                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", color: "#334155", fontWeight: 600, cursor: savingSectionKey ? "not-allowed" : "pointer", fontSize: "0.85rem" }}
+                                                >
+                                                    {savingSectionKey === `${sectionState.apiKey}:save` ? "Saving..." : "Save Draft"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => saveAssessmentSection(section, true)}
+                                                    disabled={!!savingSectionKey}
+                                                    style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: savingSectionKey ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: savingSectionKey ? "not-allowed" : "pointer", fontSize: "0.85rem" }}
+                                                >
+                                                    {savingSectionKey === `${sectionState.apiKey}:submit` ? "Submitting..." : "Submit My Section"}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </SectionCard>
                             );
                         })}
                     </fieldset>
 
                     {/* Submit */}
-                    {!isViewMode && (
+                    {!isViewMode && !isSectionScopedAssessment && (
                         <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "0.5rem" }}>
                             <button type="button" onClick={() => router.push("/dashboard")}
                                 style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" }}>

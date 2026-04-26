@@ -190,7 +190,23 @@ def can_edit_section(form_type: str, section_key: str, user_specialty) -> bool:
     return normalize_specialty(user_specialty) == owner
 
 
-def required_owner_sections(form_type: str) -> list[str]:
-    """Return the list of section keys that must be submitted for finalization."""
+def required_owner_sections(form_type: str, specialties: list[str] | None = None) -> list[str]:
+    """Return the section keys that must be submitted for finalization."""
     owners = get_section_owners(form_type)
-    return [key for key, owner in owners.items() if owner != SHARED_SECTION]
+    default_required = [key for key, owner in owners.items() if owner != SHARED_SECTION]
+    if not specialties:
+        return default_required
+
+    discipline_map = (
+        ASSESSMENT_DISCIPLINE_SECTIONS
+        if form_type == "assessment"
+        else TRACKER_DISCIPLINE_SECTIONS
+    )
+    required: list[str] = []
+    for specialty in specialties:
+        normalized = normalize_specialty(specialty)
+        section_key = discipline_map.get(normalized)
+        if section_key and section_key not in required:
+            required.append(section_key)
+
+    return required or default_required

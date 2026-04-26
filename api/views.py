@@ -24,6 +24,7 @@ from .services.notification_service import (
     notify_student_status_change, notify_staff_assigned, notify_new_user_registered,
     notify_assessment_scheduled, notify_assessment_cancelled,
 )
+from .services.workflow_state_service import has_finalized_multidisciplinary_assessment
 from .serializers import (
     StudentSerializer, GeneratedDocumentSerializer, CustomTokenObtainPairSerializer,
     ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer, SpedAssessmentSerializer,
@@ -315,18 +316,14 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
         user = self.request.user
         if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
             raise PermissionDenied("Complete your profile setup before editing specialist work.")
+        if user.role == 'SPECIALIST':
+            raise ValidationError(
+                "Specialists must save and submit their assigned sections individually."
+            )
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
-        student = instance.student
         notify_form_submitted(self.request.user, instance.student, 'Specialist Assessment')
-        # Auto-advance to ASSESSED when a specialist submits an assessment (new workflow)
-        if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
-            student.status = 'ASSESSED'
-            student.save()
-            notify_student_status_change(student, 'ASSESSED', changed_by=self.request.user)
-        from .services.cycle_service import check_and_trigger_iep_generation
-        check_and_trigger_iep_generation(student, instance.report_cycle)
 
 
 
@@ -908,6 +905,11 @@ class EnrollStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
+            if not has_finalized_multidisciplinary_assessment(student):
+                return Response(
+                    {"error": "A finalized multidisciplinary assessment is required before enrollment."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             student.status = 'ENROLLED'
             student.save()
             
@@ -1244,6 +1246,14 @@ class GenerateIEPView(APIView):
                 "message": "IEP already exists for this cycle.",
                 "iep_id": existing_iep.id,
             }, status=status.HTTP_200_OK)
+
+        has_parent = ParentAssessment.objects.filter(student=student, report_cycle=report_cycle).exists()
+        has_finalized_multi = has_finalized_multidisciplinary_assessment(student, report_cycle)
+        if not (has_parent and has_finalized_multi):
+            return Response(
+                {"error": "Parent Assessment and finalized Specialist Assessment are required before generating an IEP."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         from .services.iep_service import run_iep_generation
         doc, _ = run_iep_generation(student_id, report_cycle_id)

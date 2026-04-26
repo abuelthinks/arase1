@@ -207,7 +207,16 @@ def _maybe_finalize(form_type: str, instance, user):
     if instance.finalized_at:
         return
 
-    required = required_owner_sections(form_type)
+    assigned_specialties: list[str] = []
+    for access in StudentAccess.objects.filter(
+        student_id=instance.student_id,
+        user__role="SPECIALIST",
+    ).select_related("user"):
+        for specialty in access.specialty_list():
+            if specialty and specialty not in assigned_specialties:
+                assigned_specialties.append(specialty)
+
+    required = required_owner_sections(form_type, assigned_specialties)
     submitted = SectionContribution.objects.filter(
         **{_fk_field(form_type): instance},
         section_key__in=required,
@@ -217,7 +226,7 @@ def _maybe_finalize(form_type: str, instance, user):
     if set(submitted) >= set(required):
         instance.finalized_at = timezone.now()
         instance.finalized_by = user
-        instance.submitted_by = instance.submitted_by or user
+        instance.submitted_by = user
         instance.save(update_fields=["finalized_at", "finalized_by", "submitted_by"])
 
         if form_type == "assessment":

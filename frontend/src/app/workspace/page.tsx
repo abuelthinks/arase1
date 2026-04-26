@@ -567,6 +567,7 @@ function UnifiedWorkspaceContent() {
         const trackerTabs = TABS.slice(2);
         const pendingTrackers = trackerTabs.filter(tab => !formStatuses?.[tab.id]?.submitted);
         const allTrackersSubmitted = trackerTabs.every(tab => formStatuses?.[tab.id]?.submitted);
+        const assessmentFinalized = !!formStatuses?.multi_assessment?.submitted;
         const canGenerateMonthlyReport = normalizedStudentStatus === "ENROLLED" && allTrackersSubmitted && !latestMonthlyReport;
         const actions: { title: string; label: string; onClick: () => void; tone?: "warning" | "positive"; Icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
 
@@ -576,10 +577,10 @@ function UnifiedWorkspaceContent() {
         if (formStatuses?.parent_assessment?.submitted && specialists.length === 0) {
             actions.push({ title: "Assign specialist", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST"), Icon: UserPlus });
         }
-        if (normalizedStudentStatus === "ASSESSED") {
+        if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized) {
             actions.push({ title: `Enroll ${compactStudentName()}?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive", Icon: CheckCircle2 });
         }
-        if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && !latestIep) {
+        if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && assessmentFinalized && !latestIep) {
             actions.push({ title: "Generate IEP", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), Icon: FileText });
         }
         if (canGenerateMonthlyReport) {

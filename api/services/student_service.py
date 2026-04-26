@@ -92,7 +92,7 @@ def onboard_parent_student(user, student_data, form_data, student_id=None):
             last_name=last_name,
             date_of_birth=dob,
             grade=grade,
-            status='AWAITING_PARENT_INPUT',
+            status='PENDING_ASSESSMENT',
         )
         StudentAccess.objects.create(user=user, student=student)
 
@@ -121,7 +121,7 @@ def get_student_profile_data(student, user=None):
     Returns: dict
     """
     from api.models import (
-        MultidisciplinaryAssessment, SpedAssessment,
+        MultidisciplinaryAssessment,
         ParentProgressTracker, MultidisciplinaryProgressTracker,
         SpedProgressTracker, GeneratedDocument, DiagnosticReport,
     )
@@ -138,7 +138,6 @@ def get_student_profile_data(student, user=None):
     form_statuses = {
         "parent_assessment": {"submitted": False, "id": None},
         "multi_assessment": {"submitted": False, "id": None},
-        "sped_assessment": {"submitted": False, "id": None},  # Deprecated but kept for historical
         "diagnostic_report": {"submitted": False, "id": None},
         "parent_tracker": {"submitted": False, "id": None},
         "multi_tracker": {"submitted": False, "id": None},
@@ -157,7 +156,6 @@ def get_student_profile_data(student, user=None):
         form_map = {
             "parent_assessment": ParentAssessment,
             "multi_assessment": MultidisciplinaryAssessment,
-            "sped_assessment": SpedAssessment,
             "parent_tracker": ParentProgressTracker,
             "multi_tracker": MultidisciplinaryProgressTracker,
             "sped_tracker": SpedProgressTracker,
@@ -166,14 +164,19 @@ def get_student_profile_data(student, user=None):
             if user and user.role == 'PARENT' and key != 'parent_assessment':
                 form_statuses[key] = {"submitted": False, "id": None}
                 continue
-            if key in ['parent_assessment', 'multi_assessment', 'sped_assessment']:
+            if key in ['parent_assessment', 'multi_assessment']:
                 obj = model.objects.select_related('submitted_by').filter(student=student).order_by('-created_at').first()
             else:
                 obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
+            submitted = bool(obj)
+            submitted_at = obj.created_at if obj else None
+            if key == 'multi_assessment' and obj:
+                submitted = bool(obj.finalized_at)
+                submitted_at = obj.finalized_at
             form_statuses[key] = {
-                "submitted": bool(obj),
+                "submitted": submitted,
                 "id": obj.id if obj else None,
-                "submitted_at": obj.created_at if obj else None,
+                "submitted_at": submitted_at,
                 "submitted_by": {
                     "id": obj.submitted_by.id,
                     "name": (
@@ -184,27 +187,20 @@ def get_student_profile_data(student, user=None):
                 } if obj and obj.submitted_by else None,
             }
 
-        # Diagnostic report (separate from form_map — different model structure)
+        # Diagnostic report (separate model, not cycle-scoped)
         diag = DiagnosticReport.objects.filter(student=student).order_by('-created_at').first()
-        if user and user.role == 'PARENT':
-            form_statuses["diagnostic_report"] = {
-                "submitted": bool(diag),
-                "id": diag.id if diag else None,
-                "submitted_at": diag.created_at if diag else None,
-                "original_filename": diag.original_filename if diag else None,
-            }
-        elif diag:
-            form_statuses["diagnostic_report"] = {
-                "submitted": True,
-                "id": diag.id,
-                "submitted_at": diag.created_at,
-                "original_filename": diag.original_filename,
-                "uploaded_by": {
-                    "id": diag.uploaded_by.id,
-                    "name": f"{diag.uploaded_by.first_name} {diag.uploaded_by.last_name}".strip() or diag.uploaded_by.email,
-                    "role": diag.uploaded_by.role,
-                } if diag.uploaded_by else None,
-            }
+        form_statuses["diagnostic_report"] = {
+            "submitted": bool(diag),
+            "id": diag.id if diag else None,
+            "submitted_at": diag.created_at if diag else None,
+            "original_filename": diag.original_filename if diag else None,
+            "uploaded_by": {
+                "id": diag.uploaded_by.id,
+                "name": f"{diag.uploaded_by.first_name} {diag.uploaded_by.last_name}".strip() or diag.uploaded_by.email,
+                "role": diag.uploaded_by.role,
+            } if diag and diag.uploaded_by else None,
+        }
+
 
     # Generated documents
     docs = GeneratedDocument.objects.filter(student=student).order_by('-created_at')
@@ -365,8 +361,8 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
         access.save(update_fields=['assigned_specialties'])
 
     # Update student status based on assignment
-    if expected_role == 'SPECIALIST' and student.status == 'AWAITING_PARENT_INPUT':
-        student.status = 'PENDING_ASSESSMENT'
+    if expected_role == 'SPECIALIST' and student.status == 'PENDING_ASSESSMENT':
+        student.status = 'ASSESSMENT_SCHEDULED'
         student.save()
     # Removed observation status update because teacher is assigned post-enrollment
 
