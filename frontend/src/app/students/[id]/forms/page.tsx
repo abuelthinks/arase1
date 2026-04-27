@@ -120,50 +120,6 @@ export default function UnifiedFormsViewer() {
                             </div>
                         </div>
 
-    return (
-        <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
-            <div className="max-w-6xl mx-auto pb-16 px-4">
-                
-                <div className="flex items-end gap-1 mb-4 border-b border-slate-300 px-2 mt-4 md:mt-0">
-                    <button 
-                        className="px-6 py-2.5 text-sm font-bold border-b-2 border-indigo-600 text-indigo-700 transition-colors"
-                    >
-                        <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        Input Forms
-                    </button>
-                    <button 
-                        onClick={() => router.push(`/students/${studentId}/reports`)}
-                        className="px-6 py-2.5 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors"
-                    >
-                        <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                        Reports & Documents
-                    </button>
-                </div>
-
-                {/* Unified Card */}
-                <div className="bg-white rounded-xl border border-slate-300 shadow-sm h-[85vh] min-h-[600px] flex flex-col md:flex-row overflow-hidden">
-                    
-                    {/* Left Sidebar */}
-                    <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                        {/* Sidebar Header */}
-                        <div className="p-6 border-b border-slate-200 flex flex-col gap-4">
-                            <div>
-                                <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
-                                <p className="text-xs text-slate-400 mt-1 mb-0 uppercase tracking-wider font-semibold">Data Collection</p>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <button 
-                                    onClick={() => router.push(`/students/${studentId}`)}
-                                    className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 whitespace-nowrap"
-                                >
-                                    View Profile
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
                         {/* Navigation Menu */}
                         <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                             
