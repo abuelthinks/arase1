@@ -91,6 +91,27 @@ CHANNEL_LAYERS = {
     },
 }
 
+# Cache — used by the form-collaboration soft-lock service. Must be cross-process
+# so all ASGI workers see the same locks. Falls back to LocMem if Redis is down,
+# which is fine for a single-process `runserver` dev session.
+try:
+    import importlib
+    importlib.import_module('django_redis')
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': _redis_url,
+            'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'},
+        }
+    }
+except ImportError:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'arase-collab',
+        }
+    }
+
 # ─── Password validation ────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

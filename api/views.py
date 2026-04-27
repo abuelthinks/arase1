@@ -324,6 +324,13 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         notify_form_submitted(self.request.user, instance.student, 'Specialist Assessment')
+        from .services.collaboration_service import broadcast_section_saved
+        from django.db import transaction
+        v2 = (instance.form_data or {}).get('v2') if isinstance(instance.form_data, dict) else None
+        transaction.on_commit(lambda: broadcast_section_saved(
+            form_type='assessment', instance=instance, section_key='*',
+            user=self.request.user, form_data_v2=v2,
+        ))
 
 
 
@@ -404,19 +411,94 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
     require_enrolled_student = True
     require_active_cycle = True
 
-    def perform_create(self, serializer):
-        instance = serializer.save(submitted_by=self.request.user)
-        notify_form_submitted(self.request.user, instance.student, 'Specialist Progress Tracker')
+    def create(self, request, *args, **kwargs):
+        """Upsert one canonical tracker row per (student, cycle), merging
+        incoming form_data field-by-field with per-field ownership gating.
+
+        Why: the schema-driven tracker form posts the whole form_data on save.
+        If two specialists save in the same cycle, the default DRF create()
+        would insert a NEW row each time and fork the data — SLP's session
+        count and OT's session count would never end up on the same record.
+        Instead we look up the existing row (creating one if absent), then
+        merge only the fields this user is allowed to write to.
+        """
+        from .services.collaboration_service import broadcast_section_saved
+        from .specialties import TRACKER_FIELD_OWNERS, normalize_specialty
+        from django.db import transaction
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self._validate_submission(serializer.validated_data)
+
+        student = serializer.validated_data.get('student')
+        cycle = serializer.validated_data.get('report_cycle')
+        incoming_form_data = serializer.validated_data.get('form_data') or {}
+
+        user = request.user
+        user_specialties = {
+            normalize_specialty(s) for s in (user.specialty_list() if hasattr(user, 'specialty_list') else [])
+            if s
+        }
+
+        with transaction.atomic():
+            instance = (MultidisciplinaryProgressTracker.objects
+                        .select_for_update()
+                        .filter(student=student, report_cycle=cycle)
+                        .first())
+            if instance is None:
+                instance = MultidisciplinaryProgressTracker.objects.create(
+                    student=student, report_cycle=cycle,
+                    submitted_by=user, form_data={},
+                )
+                created = True
+            else:
+                created = False
+
+            merged = dict(instance.form_data or {})
+            for section_key, section_value in incoming_form_data.items():
+                if not isinstance(section_value, dict):
+                    merged[section_key] = section_value
+                    continue
+                existing_section = dict(merged.get(section_key) or {})
+                for field_id, value in section_value.items():
+                    # Admins may write any field. Specialists may write only
+                    # fields whose ownership matches one of their specialties,
+                    # or unowned (shared) fields.
+                    if user.role == 'ADMIN':
+                        existing_section[field_id] = value
+                        continue
+                    owner = TRACKER_FIELD_OWNERS.get(field_id)
+                    if owner is None or owner in user_specialties:
+                        existing_section[field_id] = value
+                merged[section_key] = existing_section
+
+            instance.form_data = merged
+            instance.submitted_by = user
+            instance.save(update_fields=['form_data', 'submitted_by'])
+
+        notify_form_submitted(user, instance.student, 'Specialist Progress Tracker')
         p = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        m = True  # just submitted
+        m = True
         s = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
+        notify_tracker_progress(user, instance.student, instance.report_cycle, sum([p, m, s]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
+        transaction.on_commit(lambda: broadcast_section_saved(
+            form_type='tracker', instance=instance, section_key='*',
+            user=user, form_data_v2=instance.form_data,
+        ))
+
+        out_serializer = self.get_serializer(instance)
+        return Response(
+            out_serializer.data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
     def _validate_submission(self, validated_data):
         super()._validate_submission(validated_data)
-        if self.request.user.role == 'SPECIALIST' and not self.request.user.is_specialist_onboarding_complete():
+        user = self.request.user
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
             raise PermissionDenied("Complete your profile setup before editing specialist work.")
 
 
@@ -567,6 +649,56 @@ class TrackerContributionsView(SectionContributionsListView):
     form_type = 'tracker'
 
 
+class FormEnsureView(APIView):
+    """POST: materialize the multidisciplinary form row so the collab WS can
+    hook in before any section has been saved. Returns the same payload the
+    list endpoint would for that record."""
+    permission_classes = [permissions.IsAuthenticated]
+    form_type = ''
+
+    def post(self, request):
+        from .services.section_service import (
+            ensure_form, SectionPermissionError, SectionValidationError,
+        )
+        from .serializers import (
+            MultidisciplinaryAssessmentSerializer,
+            MultidisciplinaryProgressTrackerSerializer,
+        )
+        student_id = request.data.get('student')
+        report_cycle_id = request.data.get('report_cycle')
+        if not student_id or not report_cycle_id:
+            return Response(
+                {"error": "student and report_cycle are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            instance, _created = ensure_form(
+                form_type=self.form_type,
+                user=request.user,
+                student_id=student_id,
+                report_cycle_id=report_cycle_id,
+            )
+        except SectionPermissionError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except SectionValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer_cls = (
+            MultidisciplinaryAssessmentSerializer
+            if self.form_type == 'assessment'
+            else MultidisciplinaryProgressTrackerSerializer
+        )
+        return Response(serializer_cls(instance).data)
+
+
+class AssessmentEnsureView(FormEnsureView):
+    form_type = 'assessment'
+
+
+class TrackerEnsureView(FormEnsureView):
+    form_type = 'tracker'
+
+
 # ─── Parent Onboarding ───────────────────────────────────────────────────────
 
 class ParentOnboardView(APIView):
@@ -688,7 +820,28 @@ class AdminDashboardActionsView(APIView):
                     "type": "warning"
                 })
 
-        # 2. Ready for Enrollment Review (all assessments done, waiting for admin decision)
+        # 2. Auto-generated IEP drafts waiting for admin review.
+        #    These are produced by check_and_trigger_iep_generation() the moment
+        #    the final multidisciplinary assessment section is submitted, so the
+        #    admin needs an explicit nudge to review/finalize.
+        draft_ieps = (
+            GeneratedDocument.objects
+            .filter(document_type='IEP', status='DRAFT')
+            .select_related('student')
+            .order_by('-created_at')
+        )
+        for doc in draft_ieps:
+            student = doc.student
+            actions.append({
+                "id": f"review_iep_{doc.id}",
+                "title": f"Review IEP Draft: {student.first_name} {student.last_name}",
+                "description": "Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize.",
+                "action_text": "Review →",
+                "link": f"/admin/iep?id={doc.id}",
+                "type": "positive",
+            })
+
+        # 3. Ready for Enrollment Review (all assessments done, waiting for admin decision)
         in_review = Student.objects.filter(status='ASSESSED')
         for s in in_review:
             actions.append({
@@ -701,7 +854,7 @@ class AdminDashboardActionsView(APIView):
             })
 
 
-        # 3. Parent Onboarding Submitted (in INQUIRY, parent input received)
+        # 4. Parent Onboarding Submitted (in INQUIRY, parent input received)
         inquiry = Student.objects.filter(status='PENDING_ASSESSMENT')
         for s in inquiry:
             if ParentAssessment.objects.filter(student=s).exists():

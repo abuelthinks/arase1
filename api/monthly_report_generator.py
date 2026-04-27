@@ -187,10 +187,15 @@ def _combine_gas_scores(entries):
 def _flatten_form_data(fd):
     """
     Flatten section-keyed form data into a single dict.
-    Handles three formats:
-      1. { 'v2': { section_a: {...}, section_b: {...} } }  ← old v2 wrapper
-      2. { section_a: {...}, section_b: {...} }             ← current frontend format
-      3. { communication_notes: ..., ... }                  ← legacy flat format
+    Handles four formats:
+      1. { 'v2': { section_a: {...}, section_b: {...} } }       ← old v2 wrapper
+      2. { section_a: {...}, section_b: {...} }                  ← legacy shared A/B
+      3. { section_a_slp: {...}, section_b_slp: {...}, ... }     ← per-discipline A/B
+      4. { communication_notes: ..., ... }                       ← legacy flat format
+
+    Per-discipline section keys (section_a_slp, section_b_ot, …) are namespaced
+    by suffix so collisions on common field names (attendance, sessions_completed,
+    notes) don't silently overwrite each other.
     """
     if not fd or not isinstance(fd, dict):
         return {}
@@ -199,18 +204,31 @@ def _flatten_form_data(fd):
     if 'v2' in fd and isinstance(fd['v2'], dict):
         fd = fd['v2']
 
-    # Check if this is section-keyed (keys like 'section_a', 'section_b', ...)
     is_section_keyed = any(k.startswith('section_') for k in fd.keys())
+    if not is_section_keyed:
+        return fd
 
-    if is_section_keyed:
-        flat = {}
-        for sec_key, sec_val in fd.items():
-            if isinstance(sec_val, dict):
-                flat.update(sec_val)
-        return flat
-
-    # Already flat
-    return fd
+    flat = {}
+    for sec_key, sec_val in fd.items():
+        if not isinstance(sec_val, dict):
+            continue
+        # Per-discipline A/B/C live under section_a_<suffix>, section_b_<suffix>,
+        # section_c_<suffix>. Suffix the inner keys so each discipline's data
+        # survives the flatten step.
+        match = None
+        for prefix in ('section_a_', 'section_b_', 'section_c_'):
+            if sec_key.startswith(prefix):
+                match = (prefix.rstrip('_').split('_')[1], sec_key[len(prefix):])
+                break
+        if match:
+            section_letter, suffix = match
+            for k, v in sec_val.items():
+                flat[f"{section_letter}_{suffix}_{k}"] = v
+        else:
+            # Shared sections (section_d, section_e, section_f) and legacy
+            # section_a / section_b: flat-merge their fields directly.
+            flat.update(sec_val)
+    return flat
 
 
 def _collect_form_data(inputs):
@@ -284,11 +302,40 @@ def _build_monthly_prompt(student, cycle, pt, mt, st, iep_goals):
     if mt:
         specialist_gas = _extract_gas_scores(mt, "Specialist", iep_goals)
         lines.append("=== SPECIALIST MULTIDISCIPLINARY TRACKER DATA ===")
-        lines.append(f"Discipline: {_list_join(_safe(mt, 'discipline', default=[]))}")
-        lines.append(f"Session Type: {_safe(mt, 'session_type')}")
-        lines.append(f"Sessions Completed: {_safe(mt, 'sessions_completed')}")
-        lines.append(f"Attendance: {_safe(mt, 'attendance')}")
-        lines.append(f"Participation Level: {_list_join(_safe(mt, 'participation_level', default=[]))}")
+        # Per-discipline session metadata + attendance (Sections A and B are
+        # now per-specialist, so render each discipline that has data).
+        DISCIPLINE_LABELS = [
+            ("slp", "Speech-Language Pathology"),
+            ("ot", "Occupational Therapy"),
+            ("pt", "Physical Therapy"),
+            ("aba", "Applied Behavior Analysis"),
+            ("developmental_psychology", "Developmental Psychology"),
+        ]
+        for suffix, label in DISCIPLINE_LABELS:
+            therapist = _safe(mt, f'a_{suffix}_therapist_name')
+            session_type = _safe(mt, f'a_{suffix}_session_type')
+            sessions_completed = _safe(mt, f'a_{suffix}_sessions_completed')
+            attendance = _safe(mt, f'b_{suffix}_attendance')
+            participation = _safe(mt, f'b_{suffix}_participation_level')
+            b_notes = _safe(mt, f'b_{suffix}_notes')
+            if not any([therapist, session_type, sessions_completed, attendance, participation, b_notes]):
+                continue
+            lines.append(f"--- {label} sessions ---")
+            if therapist: lines.append(f"  Therapist: {therapist}")
+            if session_type: lines.append(f"  Session Type: {session_type}")
+            if sessions_completed: lines.append(f"  Sessions Completed: {sessions_completed}")
+            if attendance: lines.append(f"  Attendance: {attendance}")
+            if participation: lines.append(f"  Participation: {participation}")
+            if b_notes: lines.append(f"  Session Notes: {b_notes}")
+        # Legacy fallback for older trackers that still hold shared A/B fields:
+        legacy_session_type = _safe(mt, 'session_type')
+        legacy_sessions_completed = _safe(mt, 'sessions_completed')
+        legacy_attendance = _safe(mt, 'attendance')
+        if any([legacy_session_type, legacy_sessions_completed, legacy_attendance]):
+            lines.append(f"Session Type (legacy): {legacy_session_type}")
+            lines.append(f"Sessions Completed (legacy): {legacy_sessions_completed}")
+            lines.append(f"Attendance (legacy): {legacy_attendance}")
+            lines.append(f"Participation Level (legacy): {_list_join(_safe(mt, 'participation_level', default=[]))}")
         lines.append(f"Participation Notes: {_safe(mt, 'participation_notes')}")
         lines.append(f"Communication (SLP): {_list_join(_safe(mt, 'communication', default=[]))}")
         lines.append(f"SLP Notes: {_safe(mt, 'slp_notes')}")

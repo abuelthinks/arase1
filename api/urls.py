@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    StudentViewSet, ParentAssessmentViewSet, MultidisciplinaryAssessmentViewSet, SpedAssessmentViewSet,
+    StudentViewSet, ParentAssessmentViewSet, MultidisciplinaryAssessmentViewSet,
     ParentProgressTrackerViewSet, MultidisciplinaryProgressTrackerViewSet, SpedProgressTrackerViewSet,
     DiagnosticReportViewSet,
     AIGenerateGoalsView, GenerateReportDraftView, GenerateReportFinalView,
@@ -22,6 +22,7 @@ from .views import (
     AssessmentSectionWriteView, AssessmentSectionSubmitView,
     TrackerSectionWriteView, TrackerSectionSubmitView,
     AssessmentContributionsView, TrackerContributionsView,
+    AssessmentEnsureView, TrackerEnsureView,
     AssessmentAvailabilityView, AssessmentAvailabilityDetailView,
     AssessmentAppointmentView, AssessmentAppointmentDetailView,
 )
@@ -31,7 +32,6 @@ router.register(r'students', StudentViewSet, basename='student')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'inputs/parent-assessment', ParentAssessmentViewSet, basename='parent-assessment')
 router.register(r'inputs/multidisciplinary-assessment', MultidisciplinaryAssessmentViewSet, basename='multidisciplinary-assessment')
-router.register(r'inputs/sped-assessment', SpedAssessmentViewSet, basename='sped-assessment')  # Deprecated: read-only
 router.register(r'inputs/diagnostic-report', DiagnosticReportViewSet, basename='diagnostic-report')
 router.register(r'inputs/parent-tracker', ParentProgressTrackerViewSet, basename='parent-tracker')
 router.register(r'inputs/multidisciplinary-tracker', MultidisciplinaryProgressTrackerViewSet, basename='multidisciplinary-tracker')
@@ -53,6 +53,24 @@ urlpatterns = [
     path('users/send-verification-sms/', SendVerificationSMSView.as_view(), name='send-verification-sms'),
     path('users/verify-sms/', VerifySMSView.as_view(), name='verify-sms'),
     path('users/request-specialty-change/', RequestSpecialtyChangeView.as_view(), name='request-specialty-change'),
+    # Section-scoped multi-specialist forms
+    path('inputs/multidisciplinary-assessment/sections/<str:section_key>/',
+         AssessmentSectionWriteView.as_view(), name='assessment-section-write'),
+    path('inputs/multidisciplinary-assessment/sections/<str:section_key>/submit/',
+         AssessmentSectionSubmitView.as_view(), name='assessment-section-submit'),
+    path('inputs/multidisciplinary-assessment/contributions/',
+         AssessmentContributionsView.as_view(), name='assessment-contributions'),
+    path('inputs/multidisciplinary-assessment/ensure/',
+         AssessmentEnsureView.as_view(), name='assessment-ensure'),
+    path('inputs/multidisciplinary-tracker/sections/<str:section_key>/',
+         TrackerSectionWriteView.as_view(), name='tracker-section-write'),
+    path('inputs/multidisciplinary-tracker/sections/<str:section_key>/submit/',
+         TrackerSectionSubmitView.as_view(), name='tracker-section-submit'),
+    path('inputs/multidisciplinary-tracker/contributions/',
+         TrackerContributionsView.as_view(), name='tracker-contributions'),
+    path('inputs/multidisciplinary-tracker/ensure/',
+         TrackerEnsureView.as_view(), name='tracker-ensure'),
+
     path('', include(router.urls)),
     path('staff/', StaffListView.as_view(), name='staff-list'),
     path('ai/generate-goals/', AIGenerateGoalsView.as_view(), name='ai-generate-goals'),
@@ -93,18 +111,4 @@ urlpatterns = [
     path('assessment/availability/<int:pk>/', AssessmentAvailabilityDetailView.as_view(), name='assessment-availability-detail'),
     path('assessment/appointments/', AssessmentAppointmentView.as_view(), name='assessment-appointments'),
     path('assessment/appointments/<int:pk>/', AssessmentAppointmentDetailView.as_view(), name='assessment-appointment-detail'),
-
-    # Section-scoped multi-specialist forms
-    path('inputs/multidisciplinary-assessment/sections/<str:section_key>/',
-         AssessmentSectionWriteView.as_view(), name='assessment-section-write'),
-    path('inputs/multidisciplinary-assessment/sections/<str:section_key>/submit/',
-         AssessmentSectionSubmitView.as_view(), name='assessment-section-submit'),
-    path('inputs/multidisciplinary-assessment/contributions/',
-         AssessmentContributionsView.as_view(), name='assessment-contributions'),
-    path('inputs/multidisciplinary-tracker/sections/<str:section_key>/',
-         TrackerSectionWriteView.as_view(), name='tracker-section-write'),
-    path('inputs/multidisciplinary-tracker/sections/<str:section_key>/submit/',
-         TrackerSectionSubmitView.as_view(), name='tracker-section-submit'),
-    path('inputs/multidisciplinary-tracker/contributions/',
-         TrackerContributionsView.as_view(), name='tracker-contributions'),
 ]

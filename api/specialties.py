@@ -165,6 +165,22 @@ TRACKER_DISCIPLINE_SECTIONS = {
     DEVELOPMENTAL_PSYCHOLOGY: "section_c_developmental_psychology",
 }
 
+# Per-field ownership for the schema-driven tracker form (section_c). Used by
+# the tracker viewset's upsert-merge to gate which fields a given specialist
+# may write into. Mirrors frontend TRACKER_C_FIELD_OWNERS.
+TRACKER_FIELD_OWNERS = {
+    "communication": SPEECH_LANGUAGE_PATHOLOGY,
+    "slp_notes": SPEECH_LANGUAGE_PATHOLOGY,
+    "fine_motor_sensory_adls": OCCUPATIONAL_THERAPY,
+    "ot_notes": OCCUPATIONAL_THERAPY,
+    "gross_motor": PHYSICAL_THERAPY,
+    "pt_notes": PHYSICAL_THERAPY,
+    "behavior_emotional": APPLIED_BEHAVIOR_ANALYSIS,
+    "aba_notes": APPLIED_BEHAVIOR_ANALYSIS,
+    "developmental_psychology": DEVELOPMENTAL_PSYCHOLOGY,
+    "developmental_psychology_notes": DEVELOPMENTAL_PSYCHOLOGY,
+}
+
 
 def get_section_owners(form_type: str) -> dict:
     if form_type == "assessment":
@@ -205,8 +221,13 @@ def required_owner_sections(form_type: str, specialties: list[str] | None = None
     required: list[str] = []
     for specialty in specialties:
         normalized = normalize_specialty(specialty)
-        section_key = discipline_map.get(normalized)
-        if section_key and section_key not in required:
-            required.append(section_key)
+        mapped = discipline_map.get(normalized)
+        if not mapped:
+            continue
+        # mapped may be a single section_key (assessment) or a list of keys (tracker).
+        keys = mapped if isinstance(mapped, (list, tuple)) else [mapped]
+        for key in keys:
+            if key not in required:
+                required.append(key)
 
     return required or default_required

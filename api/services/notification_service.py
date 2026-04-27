@@ -196,9 +196,9 @@ def notify_auto_iep_ready(student, doc):
     student_name = f"{student.first_name} {student.last_name}"
     notify_admins_in_app(
         notification_type='IEP_GENERATED',
-        title=f"IEP draft ready: {student_name}",
-        message="Parent and specialist assessments complete. IEP draft auto-generated.",
-        link=f"/iep/{doc.id}",
+        title=f"IEP draft ready for review: {student_name}",
+        message="Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize when ready.",
+        link=f"/admin/iep?id={doc.id}",
         actor_name="System",
     )
 

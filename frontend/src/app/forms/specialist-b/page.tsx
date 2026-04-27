@@ -13,6 +13,7 @@ import {
     SectionOwner,
     userSpecialtyList,
 } from "@/lib/sectionOwners";
+import { useFormCollaboration } from "@/hooks/useFormCollaboration";
 
 const getWorkspaceFormUrl = (studentId: string) =>
     `/workspace?studentId=${encodeURIComponent(studentId)}&workspace=forms&tab=multi_tracker`;
@@ -21,9 +22,12 @@ const getWorkspaceFormUrl = (studentId: string) =>
 
 function SectionCard({
     title, subtitle, children, ownerLabel, status, locked,
+    onFocus, onBlur, remoteHolder,
 }: {
     title: string; subtitle?: string; children: React.ReactNode;
     ownerLabel?: string; status?: "draft" | "submitted" | "pending"; locked?: boolean;
+    onFocus?: () => void; onBlur?: () => void;
+    remoteHolder?: { user_name: string; specialty?: string } | null;
 }) {
     const badge = status === "submitted"
         ? { label: "✓ Submitted", color: "#065f46", bg: "#d1fae5" }
@@ -32,7 +36,14 @@ function SectionCard({
         : { label: "Pending", color: "#475569", bg: "#f1f5f9" };
 
     return (
-        <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}>
+        <div
+            style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}
+            onFocusCapture={onFocus}
+            onBlurCapture={(e) => {
+                const next = e.relatedTarget as Node | null;
+                if (!next || !e.currentTarget.contains(next)) onBlur?.();
+            }}
+        >
             <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-light)", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" }}>
                 <div>
                     <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h2>
@@ -44,7 +55,13 @@ function SectionCard({
                             {ownerLabel}
                         </span>
                     )}
-                    {locked && (
+                    {remoteHolder && (
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#fef3c7", color: "#92400e", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                            {remoteHolder.user_name} editing…
+                        </span>
+                    )}
+                    {locked && !remoteHolder && (
                         <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#fef3c7", color: "#92400e", borderRadius: "999px" }}>
                             🔒 Locked
                         </span>
@@ -133,14 +150,29 @@ function SpecialistBFormContent() {
     const userSpecialty = userSpecialties[0] || "";
     const isAdmin = user?.role === "ADMIN";
 
+    const blankSectionA = () => ({ date: new Date().toISOString().split('T')[0], therapist_name: "", session_type: "", sessions_completed: "0" });
+    const blankSectionB = () => ({ attendance: "", participation_level: "", notes: "" });
+
     const [formData, setFormData] = useState({
-        section_a: { date: new Date().toISOString().split('T')[0], therapist_name: "", discipline: "", session_type: "", sessions_completed: "0" },
-        section_b: { attendance: "", participation_level: "", notes: "" },
+        // Per-discipline session metadata (each specialist runs distinct sessions)
+        section_a_slp: blankSectionA(),
+        section_a_ot: blankSectionA(),
+        section_a_pt: blankSectionA(),
+        section_a_aba: blankSectionA(),
+        section_a_developmental_psychology: blankSectionA(),
+        // Per-discipline attendance / participation
+        section_b_slp: blankSectionB(),
+        section_b_ot: blankSectionB(),
+        section_b_pt: blankSectionB(),
+        section_b_aba: blankSectionB(),
+        section_b_developmental_psychology: blankSectionB(),
+        // Per-discipline goals + notes
         section_c_slp: { goals: [] as string[], notes: "" },
         section_c_ot: { goals: [] as string[], notes: "" },
         section_c_pt: { goals: [] as string[], notes: "" },
         section_c_aba: { goals: [] as string[], notes: "" },
         section_c_developmental_psychology: { goals: [] as string[], notes: "" },
+        // Shared
         section_d: { independent_skills: "", behavior_interaction: "", sensory_motor: "", communication_adults: "", notes: "" },
         section_e: { goal_1: "", goal_2: "", goal_3: "", goal_4: "", comments: "" },
         section_f: { therapy_recommendations: [] as string[], home_strategies: [] as string[], therapist_suggested_activities: "" },
@@ -232,14 +264,27 @@ function SpecialistBFormContent() {
 
                     if (!isViewMode && user) {
                         const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
-                        setFormData(prev => ({
-                            ...prev,
-                            section_a: {
-                                ...prev.section_a,
-                                therapist_name: prev.section_a.therapist_name || name || user.email || "",
-                                discipline: userSpecialty || prev.section_a.discipline,
-                            },
-                        }));
+                        // Auto-fill therapist name into the user's own discipline section(s).
+                        const SUFFIX_BY_SPECIALTY: Record<string, string> = {
+                            "Speech-Language Pathology": "slp",
+                            "Occupational Therapy": "ot",
+                            "Physical Therapy": "pt",
+                            "Applied Behavior Analysis (ABA)": "aba",
+                            "Developmental Psychology": "developmental_psychology",
+                        };
+                        setFormData(prev => {
+                            const next: any = { ...prev };
+                            for (const sp of userSpecialties) {
+                                const suffix = SUFFIX_BY_SPECIALTY[sp];
+                                if (!suffix) continue;
+                                const key = `section_a_${suffix}`;
+                                next[key] = {
+                                    ...prev[key as keyof typeof prev],
+                                    therapist_name: (prev as any)[key]?.therapist_name || name || user.email || "",
+                                };
+                            }
+                            return next;
+                        });
                     }
                 })
                 .catch(err => console.error(err));
@@ -259,15 +304,17 @@ function SpecialistBFormContent() {
     useEffect(() => {
         if (!studentId || !reportCycleId || isViewMode) return;
         refreshContributions();
-        api.get(`/api/inputs/multidisciplinary-tracker/`, {
-            params: { student: studentId, report_cycle: reportCycleId },
+        // Ensure the parent tracker row exists so the collab WebSocket can
+        // connect before any specialist has saved a section.
+        api.post(`/api/inputs/multidisciplinary-tracker/ensure/`, {
+            student: parseInt(studentId), report_cycle: parseInt(reportCycleId),
         })
             .then(res => {
-                const list = Array.isArray(res.data?.results) ? res.data.results : res.data;
-                const match = (list || []).find((x: any) => String(x.student) === String(studentId) && String(x.report_cycle) === String(reportCycleId));
-                if (match?.form_data) {
-                    setFormData(prev => ({ ...prev, ...match.form_data }));
-                    setFullSubmission(match);
+                if (res.data) {
+                    if (res.data.form_data && Object.keys(res.data.form_data).length > 0) {
+                        setFormData(prev => ({ ...prev, ...res.data.form_data }));
+                    }
+                    setFullSubmission(res.data);
                 }
             })
             .catch(() => {});
@@ -281,27 +328,77 @@ function SpecialistBFormContent() {
         }
     }, [isTranslated, fullSubmission, isViewMode]);
 
+    // ─── Real-time collaboration ───────────────────────────────────────────
+    const trackerInstanceId = fullSubmission?.id ?? null;
+    const collab = useFormCollaboration({
+        formType: "tracker",
+        instanceId: isViewMode ? null : trackerInstanceId,
+        currentUserId: user?.id as number | undefined,
+        onSectionSaved: (event) => {
+            // Other specialist's save → merge their section data into ours,
+            // but never stomp the section the current user is editing.
+            if (!event.form_data) return;
+            if (collab.isLockedByMe(event.section_key)) return;
+            const sectionPayload = (event.form_data as any)[event.section_key];
+            if (!sectionPayload || typeof sectionPayload !== "object") {
+                refreshContributions();
+                return;
+            }
+            setFormData(prev => ({
+                ...prev,
+                [event.section_key]: { ...(prev as any)[event.section_key], ...sectionPayload },
+            } as any));
+            refreshContributions();
+            toast.info(`${event.by.user_name} updated ${event.section_key.replace("section_", "Section ").toUpperCase()}`);
+        },
+        onSectionSubmitted: (event) => {
+            refreshContributions();
+            if (event.finalized) {
+                toast.success("Tracker finalized — all sections complete.");
+            } else {
+                toast.success(`${event.by.user_name} submitted ${event.section_key.replace("section_", "Section ").toUpperCase()}`);
+            }
+        },
+    });
+
     const sectionStatus = useMemo(() => {
-        const result: Record<string, { status: "draft" | "submitted" | "pending"; locked: boolean; canEdit: boolean; ownerLabel: string }> = {};
+        const result: Record<string, {
+            status: "draft" | "submitted" | "pending";
+            locked: boolean; canEdit: boolean; ownerLabel: string;
+            remoteHolder?: { user_name: string; specialty?: string } | null;
+        }> = {};
         for (const key of Object.keys(TRACKER_SECTION_OWNERS)) {
             const owner = TRACKER_SECTION_OWNERS[key];
             const ownerLabel = specialtyShortLabel(owner as SectionOwner);
             const contrib = contributions[key];
             const isFinalized = !!fullSubmission?.finalized_at;
             const isSelfSubmitted = contrib?.status === "submitted";
+            const remoteHolder = collab.isLockedByOther(key);
             const canEdit = !isViewMode && !isFinalized && !isSelfSubmitted
+                && !remoteHolder
                 && canEditSection(TRACKER_SECTION_OWNERS, key, userSpecialties, user?.role);
             result[key] = {
                 status: contrib?.status || "pending",
-                locked: isSelfSubmitted || isFinalized,
+                locked: isSelfSubmitted || isFinalized || !!remoteHolder,
                 canEdit,
                 ownerLabel,
+                remoteHolder: remoteHolder ? { user_name: remoteHolder.user_name, specialty: remoteHolder.specialty } : null,
             };
         }
         return result;
-    }, [contributions, fullSubmission, isViewMode, user?.role, userSpecialties]);
+    }, [contributions, fullSubmission, isViewMode, user?.role, userSpecialties, collab]);
 
     const ro = (key: string) => isViewMode || !sectionStatus[key]?.canEdit;
+
+    const cardProps = (sectionKey: string) => {
+        const s = sectionStatus[sectionKey];
+        const eligible = !!s?.canEdit;
+        return {
+            remoteHolder: s?.remoteHolder ?? null,
+            onFocus: eligible ? () => collab.acquireLock(sectionKey) : undefined,
+            onBlur: eligible ? () => collab.releaseLock(sectionKey) : undefined,
+        };
+    };
 
     const saveSection = async (sectionKey: string, opts: { submit?: boolean } = {}) => {
         if (!studentId) { setErrorMsg("No student selected."); return; }
@@ -326,6 +423,7 @@ function SpecialistBFormContent() {
                 toast.success(`Section saved.`);
             }
             await refreshContributions();
+            collab.releaseLock(sectionKey);
         } catch (err: any) {
             const msg = err.response?.data?.error || err.response?.data?.detail || "Save failed.";
             setErrorMsg(msg);
@@ -339,6 +437,13 @@ function SpecialistBFormContent() {
         if (isViewMode) return null;
         const s = sectionStatus[sectionKey];
         if (!s) return null;
+        if (s.remoteHolder && !isAdmin) {
+            return (
+                <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#92400e", background: "#fef3c7", padding: "10px 14px", borderRadius: "8px", border: "1px solid #fde68a" }}>
+                    <strong>{s.remoteHolder.user_name}</strong> is editing this section right now. You'll be able to edit once they finish.
+                </div>
+            );
+        }
         if (s.locked && !isAdmin) {
             const contrib = contributions[sectionKey];
             return (
@@ -373,12 +478,18 @@ function SpecialistBFormContent() {
 
     if (!studentId && !isViewMode) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing student context. Return to dashboard.</div>;
 
-    const disciplineSectionsToShow: { key: string; title: string; goals: string[]; }[] = [
-        { key: "section_c_slp", title: "C1. Communication (SLP)", goals: OPTIONS.slp_goals },
-        { key: "section_c_ot", title: "C2. Fine Motor / Sensory / ADLs (OT)", goals: OPTIONS.ot_goals },
-        { key: "section_c_pt", title: "C3. Gross Motor / Gait / Coordination (PT)", goals: OPTIONS.pt_goals },
-        { key: "section_c_aba", title: "C4. Applied Behavior Analysis (ABA)", goals: OPTIONS.aba_goals },
-        { key: "section_c_developmental_psychology", title: "C5. Developmental Psychology", goals: OPTIONS.dev_psy_goals },
+    type DisciplineGroup = {
+        suffix: string;
+        label: string;       // short tag — SLP / OT / PT / ABA / Dev. Psych
+        cTitle: string;      // existing Section C card title
+        goals: string[];
+    };
+    const DISCIPLINE_GROUPS: DisciplineGroup[] = [
+        { suffix: "slp", label: "SLP", cTitle: "C1. Communication (SLP)", goals: OPTIONS.slp_goals },
+        { suffix: "ot", label: "OT", cTitle: "C2. Fine Motor / Sensory / ADLs (OT)", goals: OPTIONS.ot_goals },
+        { suffix: "pt", label: "PT", cTitle: "C3. Gross Motor / Gait / Coordination (PT)", goals: OPTIONS.pt_goals },
+        { suffix: "aba", label: "ABA", cTitle: "C4. Applied Behavior Analysis (ABA)", goals: OPTIONS.aba_goals },
+        { suffix: "developmental_psychology", label: "Dev. Psych", cTitle: "C5. Developmental Psychology", goals: OPTIONS.dev_psy_goals },
     ];
 
     return (
@@ -413,6 +524,19 @@ function SpecialistBFormContent() {
                         <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
                             Logged in as <strong>{userSpecialties.join(", ")}</strong> — you can edit your discipline section{userSpecialties.length > 1 ? "s" : ""} and shared sections.
                         </p>
+                    )}
+                    {!isViewMode && trackerInstanceId && (
+                        <div style={{ marginTop: "8px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: collab.connected ? "#dcfce7" : "#f1f5f9", color: collab.connected ? "#166534" : "#475569", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: collab.connected ? "#22c55e" : "#94a3b8", display: "inline-block" }} />
+                                {collab.connected ? "Live" : "Reconnecting…"}
+                            </span>
+                            {collab.locks.filter(l => l.user_id !== user?.id).map(l => (
+                                <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px" }}>
+                                    {l.user_name} · {l.section_key.replace("section_", "§").toUpperCase()}
+                                </span>
+                            ))}
+                        </div>
                     )}
                     {fullSubmission?.finalized_at && (
                         <p style={{ fontSize: "0.85rem", color: "#047857", marginTop: "4px" }}>
@@ -458,90 +582,91 @@ function SpecialistBFormContent() {
                 </div>
             )}
 
-            {/* Section A */}
-            <SectionCard title="Section A — General Information" ownerLabel="Shared" status={sectionStatus.section_a?.status} locked={sectionStatus.section_a?.locked}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Child Name</p>
-                        <TextInput value={studentName} readOnly={true} />
-                    </div>
-                    <div>
-                        <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Date</p>
-                        <TextInput type="date" value={formData.section_a.date} onChange={ro("section_a") ? undefined : v => handleNestedChange('section_a', 'date', v)} readOnly={ro("section_a")} />
-                    </div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
-                    <div>
-                        <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Therapist Name</p>
-                        <TextInput value={formData.section_a.therapist_name} onChange={ro("section_a") ? undefined : v => handleNestedChange('section_a', 'therapist_name', v)} readOnly={ro("section_a")} />
-                    </div>
-                    <div>
-                        <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Discipline (auto-filled from your profile)</p>
-                        <TextInput value={formData.section_a.discipline} readOnly={true} />
-                    </div>
-                </div>
-
-                <FieldGroup label="Session Type">
-                    <div style={{ display: "flex", gap: "16px" }}>
-                        {OPTIONS.session_type.map(opt => (
-                            <RadioItem key={opt} label={opt} checked={formData.section_a.session_type === opt} onChange={() => handleNestedChange('section_a', 'session_type', opt)} readOnly={ro("section_a")} />
-                        ))}
-                    </div>
-                </FieldGroup>
-
-                <div>
-                    <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Number of sessions completed this period</p>
-                    <TextInput type="number" value={formData.section_a.sessions_completed} onChange={ro("section_a") ? undefined : v => handleNestedChange('section_a', 'sessions_completed', v)} readOnly={ro("section_a")} />
-                </div>
-                {sectionFooter("section_a")}
-            </SectionCard>
-
-            {/* Section B */}
-            <SectionCard title="Section B — Session Attendance & Participation" ownerLabel="Shared" status={sectionStatus.section_b?.status} locked={sectionStatus.section_b?.locked}>
-                <FieldGroup label="B1. Attendance">
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
-                        {OPTIONS.attendance.map(opt => (
-                            <RadioItem key={opt} label={opt} checked={formData.section_b.attendance === opt} onChange={() => handleNestedChange('section_b', 'attendance', opt)} readOnly={ro("section_b")} />
-                        ))}
-                    </div>
-                </FieldGroup>
-                <FieldGroup label="B2. Participation Level">
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
-                        {OPTIONS.participation.map(opt => (
-                            <RadioItem key={opt} label={opt} checked={formData.section_b.participation_level === opt} onChange={() => handleNestedChange('section_b', 'participation_level', opt)} readOnly={ro("section_b")} />
-                        ))}
-                    </div>
-                </FieldGroup>
-                <FieldGroup label="Notes">
-                    <TextArea value={formData.section_b.notes} onChange={ro("section_b") ? undefined : v => handleNestedChange('section_b', 'notes', v)} readOnly={ro("section_b")} />
-                </FieldGroup>
-                {sectionFooter("section_b")}
-            </SectionCard>
-
-            {/* Section C — discipline-specific */}
-            {disciplineSectionsToShow.map(({ key, title, goals }) => {
-                const owner = TRACKER_SECTION_OWNERS[key] as SectionOwner;
-                const ownerLabel = specialtyShortLabel(owner);
-                const sectionData = (formData as any)[key] as { goals: string[]; notes: string };
+            {/* Per-discipline trio: each specialist owns their own A/B/C. */}
+            {DISCIPLINE_GROUPS.map(({ suffix, label, cTitle, goals }) => {
+                const aKey = `section_a_${suffix}`;
+                const bKey = `section_b_${suffix}`;
+                const cKey = `section_c_${suffix}`;
+                const aData = (formData as any)[aKey] as { date: string; therapist_name: string; session_type: string; sessions_completed: string };
+                const bData = (formData as any)[bKey] as { attendance: string; participation_level: string; notes: string };
+                const cData = (formData as any)[cKey] as { goals: string[]; notes: string };
                 return (
-                    <SectionCard key={key} title={title} ownerLabel={ownerLabel} status={sectionStatus[key]?.status} locked={sectionStatus[key]?.locked}>
-                        <FieldGroup label="Goals">
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                                {goals.map(opt => (
-                                    <CheckboxItem key={opt} label={opt} checked={sectionData.goals.includes(opt)} onChange={() => handleArrayToggle(key as any, 'goals', opt)} readOnly={ro(key)} />
-                                ))}
+                    <div key={suffix} style={{ marginBottom: "1.5rem", padding: "0.5rem 0" }}>
+                        <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#4338ca", margin: "0 0 0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                            {label} — your section
+                        </h3>
+
+                        <SectionCard title={`Section A — General Information (${label})`} ownerLabel={label} status={sectionStatus[aKey]?.status} locked={sectionStatus[aKey]?.locked} {...cardProps(aKey)}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Child Name</p>
+                                    <TextInput value={studentName} readOnly={true} />
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Date</p>
+                                    <TextInput type="date" value={aData.date} onChange={ro(aKey) ? undefined : v => handleNestedChange(aKey as any, 'date', v)} readOnly={ro(aKey)} />
+                                </div>
                             </div>
-                        </FieldGroup>
-                        <FieldGroup label="Notes">
-                            <TextArea value={sectionData.notes} onChange={ro(key) ? undefined : v => handleNestedChange(key as any, 'notes', v)} readOnly={ro(key)} />
-                        </FieldGroup>
-                        {sectionFooter(key)}
-                    </SectionCard>
+                            <div style={{ marginTop: "12px" }}>
+                                <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Therapist Name</p>
+                                <TextInput value={aData.therapist_name} onChange={ro(aKey) ? undefined : v => handleNestedChange(aKey as any, 'therapist_name', v)} readOnly={ro(aKey)} />
+                            </div>
+
+                            <FieldGroup label="Session Type">
+                                <div style={{ display: "flex", gap: "16px" }}>
+                                    {OPTIONS.session_type.map(opt => (
+                                        <RadioItem key={opt} label={opt} checked={aData.session_type === opt} onChange={() => handleNestedChange(aKey as any, 'session_type', opt)} readOnly={ro(aKey)} />
+                                    ))}
+                                </div>
+                            </FieldGroup>
+
+                            <div>
+                                <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Number of sessions completed this period</p>
+                                <TextInput type="number" value={aData.sessions_completed} onChange={ro(aKey) ? undefined : v => handleNestedChange(aKey as any, 'sessions_completed', v)} readOnly={ro(aKey)} />
+                            </div>
+                            {sectionFooter(aKey)}
+                        </SectionCard>
+
+                        <SectionCard title={`Section B — Session Attendance & Participation (${label})`} ownerLabel={label} status={sectionStatus[bKey]?.status} locked={sectionStatus[bKey]?.locked} {...cardProps(bKey)}>
+                            <FieldGroup label="B1. Attendance">
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                                    {OPTIONS.attendance.map(opt => (
+                                        <RadioItem key={opt} label={opt} checked={bData.attendance === opt} onChange={() => handleNestedChange(bKey as any, 'attendance', opt)} readOnly={ro(bKey)} />
+                                    ))}
+                                </div>
+                            </FieldGroup>
+                            <FieldGroup label="B2. Participation Level">
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                                    {OPTIONS.participation.map(opt => (
+                                        <RadioItem key={opt} label={opt} checked={bData.participation_level === opt} onChange={() => handleNestedChange(bKey as any, 'participation_level', opt)} readOnly={ro(bKey)} />
+                                    ))}
+                                </div>
+                            </FieldGroup>
+                            <FieldGroup label="Notes">
+                                <TextArea value={bData.notes} onChange={ro(bKey) ? undefined : v => handleNestedChange(bKey as any, 'notes', v)} readOnly={ro(bKey)} />
+                            </FieldGroup>
+                            {sectionFooter(bKey)}
+                        </SectionCard>
+
+                        <SectionCard title={cTitle} ownerLabel={label} status={sectionStatus[cKey]?.status} locked={sectionStatus[cKey]?.locked} {...cardProps(cKey)}>
+                            <FieldGroup label="Goals">
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                                    {goals.map(opt => (
+                                        <CheckboxItem key={opt} label={opt} checked={cData.goals.includes(opt)} onChange={() => handleArrayToggle(cKey as any, 'goals', opt)} readOnly={ro(cKey)} />
+                                    ))}
+                                </div>
+                            </FieldGroup>
+                            <FieldGroup label="Notes">
+                                <TextArea value={cData.notes} onChange={ro(cKey) ? undefined : v => handleNestedChange(cKey as any, 'notes', v)} readOnly={ro(cKey)} />
+                            </FieldGroup>
+                            {sectionFooter(cKey)}
+                        </SectionCard>
+                    </div>
                 );
             })}
 
             {/* Section D */}
-            <SectionCard title="Section D — Functional Observations" ownerLabel="Shared" status={sectionStatus.section_d?.status} locked={sectionStatus.section_d?.locked}>
+            <SectionCard title="Section D — Functional Observations" ownerLabel="Shared" status={sectionStatus.section_d?.status} locked={sectionStatus.section_d?.locked} {...cardProps("section_d")}>
                 <FieldGroup label="D1. Independent Skills">
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
                         {OPTIONS.independent_skills.map(opt => (
@@ -577,7 +702,7 @@ function SpecialistBFormContent() {
             </SectionCard>
 
             {/* Section E */}
-            <SectionCard title="Section E — Goal Achievement Rating (GAS)" subtitle="(Simple therapist rating for AI calibration)" ownerLabel="Shared" status={sectionStatus.section_e?.status} locked={sectionStatus.section_e?.locked}>
+            <SectionCard title="Section E — Goal Achievement Rating (GAS)" subtitle="(Simple therapist rating for AI calibration)" ownerLabel="Shared" status={sectionStatus.section_e?.status} locked={sectionStatus.section_e?.locked} {...cardProps("section_e")}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                     {['goal_1', 'goal_2', 'goal_3', 'goal_4'].map((g, i) => (
                         <div key={g} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
@@ -597,7 +722,7 @@ function SpecialistBFormContent() {
             </SectionCard>
 
             {/* Section F */}
-            <SectionCard title="Section F — Recommended Next Steps" ownerLabel="Shared" status={sectionStatus.section_f?.status} locked={sectionStatus.section_f?.locked}>
+            <SectionCard title="Section F — Recommended Next Steps" ownerLabel="Shared" status={sectionStatus.section_f?.status} locked={sectionStatus.section_f?.locked} {...cardProps("section_f")}>
                 <FieldGroup label="F1. Therapy Recommendations">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.therapy_recs.map(opt => (

@@ -20,9 +20,19 @@ export const ASSESSMENT_SECTION_OWNERS: Record<string, SectionOwner> = {
   G: SHARED,
 };
 
+// Sections A and B are per-discipline (each specialist records their own
+// attendance, session count, etc). Only D / E / F are truly shared.
 export const TRACKER_SECTION_OWNERS: Record<string, SectionOwner> = {
-  section_a: SHARED,
-  section_b: SHARED,
+  section_a_slp: SLP,
+  section_a_ot: OT,
+  section_a_pt: PT,
+  section_a_aba: ABA,
+  section_a_developmental_psychology: DEV_PSY,
+  section_b_slp: SLP,
+  section_b_ot: OT,
+  section_b_pt: PT,
+  section_b_aba: ABA,
+  section_b_developmental_psychology: DEV_PSY,
   section_c_slp: SLP,
   section_c_ot: OT,
   section_c_pt: PT,
@@ -32,6 +42,27 @@ export const TRACKER_SECTION_OWNERS: Record<string, SectionOwner> = {
   section_e: SHARED,
   section_f: SHARED,
 };
+
+const TRACKER_DISCIPLINE_TO_SUFFIX: Record<Specialty, string> = {
+  [SLP]: 'slp',
+  [OT]: 'ot',
+  [PT]: 'pt',
+  [ABA]: 'aba',
+  [DEV_PSY]: 'developmental_psychology',
+};
+
+/** Returns this user's per-discipline section keys for the tracker. Useful for
+ *  rendering "their" Section A / B / C cards instead of all five variants. */
+export function trackerDisciplineSectionsFor(specialty: Specialty): {
+  a: string; b: string; c: string;
+} {
+  const suffix = TRACKER_DISCIPLINE_TO_SUFFIX[specialty];
+  return {
+    a: `section_a_${suffix}`,
+    b: `section_b_${suffix}`,
+    c: `section_c_${suffix}`,
+  };
+}
 
 const ALIASES: Record<string, Specialty> = {
   'speech language pathology': SLP,
