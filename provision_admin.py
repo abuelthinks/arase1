@@ -46,20 +46,20 @@ def get_required_env(name):
 def create_master_admin(force_reset=False):
     from api.models import User
 
-    username = get_required_env("ADMIN_USERNAME")
+    admin_label = os.getenv("ADMIN_USERNAME", "").strip()
     email = get_required_env("ADMIN_EMAIL")
     password = get_required_env("ADMIN_PASSWORD")
 
-    admin_user = User.objects.filter(username=username).first()
+    admin_user = User.objects.filter(email=email).first()
     if not admin_user:
-        print(f"Creating master admin: {username}...")
-        admin_user = User.objects.create_superuser(username, email, password)
+        print(f"Creating master admin: {admin_label or email}...")
+        admin_user = User.objects.create_superuser(email, password)
         admin_user.role = "ADMIN"
         admin_user.save(update_fields=["role"])
         print("Master admin created successfully.")
         return
 
-    print(f"Admin '{username}' already exists. Ensuring admin permissions are intact.")
+    print(f"Admin '{admin_label or email}' already exists. Ensuring admin permissions are intact.")
     fields_to_update = []
 
     if admin_user.email != email:

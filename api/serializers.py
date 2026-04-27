@@ -285,7 +285,7 @@ class SectionContributionSerializer(serializers.ModelSerializer):
         if not obj.specialist:
             return ''
         name = f"{obj.specialist.first_name} {obj.specialist.last_name}".strip()
-        return name or obj.specialist.username
+        return name or obj.specialist.email
 
 
 class MultidisciplinaryAssessmentSerializer(serializers.ModelSerializer):

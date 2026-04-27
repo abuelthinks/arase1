@@ -23,7 +23,7 @@ from api.auth_views import (
 class HealthView(APIView):
     permission_classes = [permissions.AllowAny]
     def get(self, request):
-        admins = User.objects.filter(is_superuser=True).values('username', 'email', 'role')
+        admins = User.objects.filter(is_superuser=True).values('email', 'role', 'first_name', 'last_name')
         return Response({
             "status": "online",
             "superusers": list(admins),
@@ -34,6 +34,7 @@ class HealthView(APIView):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', HealthView.as_view(), name='root_health_check'),
+    path('api/health/', HealthView.as_view(), name='health_check_alias'),
     path('api/health-check/', HealthView.as_view(), name='health_check'),
     path('api/', include('api.urls')),
 
