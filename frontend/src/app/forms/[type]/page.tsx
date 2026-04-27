@@ -700,7 +700,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const collab = useFormCollaboration({
         formType: collabFormType ?? "assessment",
         instanceId: collabFormType ? collabInstanceId : null,
-        currentUserId: user?.id as number | undefined,
+        currentUserId: user?.user_id,
         onSectionSaved: () => {
             // Some other specialist saved a section. Pull the latest so our
             // local form state reflects their changes — without overwriting
@@ -1190,7 +1190,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         user?.specialist_onboarding_missing,
     ]);
 
-    const ownedAssessmentSections = useMemo(() => {
+    const ownedAssessmentSections = useMemo<Array<{ section: any; owner: SectionOwner; state: any }>>(() => {
         if (!isSectionScopedAssessment || !schema) return [];
         return (schema.sections || [])
             .map((section: any) => {
@@ -1198,7 +1198,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 const state = sectionStates[section.id];
                 return { section, owner, state };
             })
-            .filter(({ owner }) => owner && owner !== SHARED && owner !== "MIXED" && editableSpecialties.includes(owner));
+            .filter(({ owner }: { owner: SectionOwner | "MIXED" | null }) =>
+                owner && owner !== SHARED && owner !== "MIXED" && editableSpecialties.includes(owner)
+            ) as Array<{ section: any; owner: SectionOwner; state: any }>;
     }, [editableSpecialties, formType, isSectionScopedAssessment, schema, sectionStates]);
 
     const submittableOwnedSections = useMemo(
@@ -1440,7 +1442,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: collab.connected ? "#22c55e" : "#94a3b8", display: "inline-block" }} />
                                     {collab.connected ? "Live" : "Reconnecting…"}
                                 </span>
-                                {collab.locks.filter(l => l.user_id !== user?.id).map(l => (
+                                {collab.locks.filter(l => l.user_id !== user?.user_id).map(l => (
                                     <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px" }}>
                                         {l.user_name}{l.section_key && l.section_key !== "*" ? ` · §${l.section_key}` : ""}
                                     </span>

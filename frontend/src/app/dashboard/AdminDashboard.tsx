@@ -1316,7 +1316,7 @@ export default function AdminDashboard() {
                                             <tbody>
                                                 {paginatedUsers.map(u => {
                                                     const hasName = u.first_name || u.last_name;
-                                                    const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@` : u.email);
+                                                    const displayName = hasName ? `${u.first_name} ${u.last_name}`.trim() : u.email;
                                                     return (
                                                         <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
                                                             <td style={{ padding: "12px" }}>
@@ -1371,7 +1371,7 @@ export default function AdminDashboard() {
                                     <div className="md:hidden flex flex-col gap-3">
                                         {paginatedUsers.map(u => {
                                             const hasName = u.first_name || u.last_name;
-                                            const displayName = hasName ? `${u.first_name} ${u.last_name}` : (u.username && u.username !== u.email ? `@` : u.email);
+                                            const displayName = hasName ? `${u.first_name} ${u.last_name}`.trim() : u.email;
                                             return (
                                                 <div key={u.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
