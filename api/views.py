@@ -3,7 +3,9 @@ API Views — thin orchestrators.
 Business logic lives in api/services/*.
 """
 
-from django.db.models import Case, When, Value, IntegerField
+from django.db import transaction
+from django.db.models import Case, When, Value, IntegerField, Q
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.views import APIView
@@ -14,15 +16,22 @@ from .models import (
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     User, Invitation, PhoneVerification, Notification, SpecialistPreference,
-    SectionContribution,
+    SectionContribution, SpecialistAvailabilitySlot, AssessmentAppointment,
+    DiagnosticReport,
 )
-from .services.notification_service import notify_admins_in_app
+from .services.notification_service import (
+    notify_admins_in_app, notify_form_submitted, notify_tracker_progress,
+    notify_student_status_change, notify_staff_assigned, notify_new_user_registered,
+    notify_assessment_scheduled, notify_assessment_cancelled,
+)
+from .services.workflow_state_service import has_finalized_multidisciplinary_assessment
 from .serializers import (
     StudentSerializer, GeneratedDocumentSerializer, CustomTokenObtainPairSerializer,
     ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer, SpedAssessmentSerializer,
     ParentProgressTrackerSerializer, MultidisciplinaryProgressTrackerSerializer, SpedProgressTrackerSerializer,
     AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer,
-    SpecialistPreferenceSerializer
+    SpecialistPreferenceSerializer, SpecialistAvailabilitySlotSerializer,
+    AssessmentAppointmentSerializer, DiagnosticReportSerializer,
 )
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -115,6 +124,23 @@ class UserViewSet(viewsets.ModelViewSet):
             return AdminUserSerializer
         return SelfUserSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if request.user.role == 'ADMIN':
+            serializer = AdminUserSerializer(instance, context={'request': request})
+            return Response(serializer.data)
+
+        serializer = SelfUserSerializer(instance, context={'request': request})
+        data = serializer.data
+
+        if instance.id != request.user.id:
+            data['email'] = ''
+            data['phone_number'] = ''
+            data['is_phone_verified'] = False
+
+        return Response(data)
+
     def _require_admin(self, request):
         if request.user.role != 'ADMIN':
             raise PermissionDenied("Only admins can manage users.")
@@ -128,11 +154,19 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
-        self._require_admin(request)
+        if request.user.role != 'ADMIN':
+            instance = self.get_object()
+            requested_fields = set(request.data.keys())
+            if instance.id != request.user.id or requested_fields - {'first_name', 'last_name', 'languages'}:
+                raise PermissionDenied("Only admins can manage users.")
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
-        self._require_admin(request)
+        if request.user.role != 'ADMIN':
+            instance = self.get_object()
+            requested_fields = set(request.data.keys())
+            if instance.id != request.user.id or requested_fields - {'first_name', 'last_name', 'languages'}:
+                raise PermissionDenied("Only admins can manage users.")
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -142,6 +176,42 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"error": "Cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST)
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RequestSpecialtyChangeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if user.role != 'SPECIALIST':
+            return Response({"error": "Only specialists can request a specialty change."}, status=status.HTTP_403_FORBIDDEN)
+
+        requested_specialty = (request.data.get('specialty') or '').strip()
+        note = (request.data.get('note') or '').strip()
+
+        from .specialties import normalize_specialty, SPECIALIST_SPECIALTIES
+
+        normalized_specialty = normalize_specialty(requested_specialty)
+        if not normalized_specialty or normalized_specialty not in SPECIALIST_SPECIALTIES:
+            return Response({"error": "Select a valid specialty."}, status=status.HTTP_400_BAD_REQUEST)
+
+        current_specialties = user.specialty_list()
+        if normalized_specialty in current_specialties:
+            return Response({"error": "That specialty is already assigned to your account."}, status=status.HTTP_400_BAD_REQUEST)
+
+        specialist_name = f"{user.first_name} {user.last_name}".strip() or user.email
+        current_label = ', '.join(current_specialties) if current_specialties else 'Not assigned'
+        message = f"{specialist_name} requested a specialty change from {current_label} to {normalized_specialty}."
+        if note:
+            message = f"{message} Note: {note}"
+
+        notify_admins_in_app(
+            'SYSTEM',
+            f"Specialty change request: {specialist_name}",
+            message,
+            link=f"/users/{user.id}",
+        )
+        return Response({"message": "Your specialty change request was sent to admin."}, status=status.HTTP_201_CREATED)
 
 # ─── Form Input ViewSets ─────────────────────────────────────────────────────
 
@@ -231,8 +301,9 @@ class ParentAssessmentViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
-        from .services.cycle_service import check_and_trigger_iep_generation
-        check_and_trigger_iep_generation(instance.student, instance.report_cycle)
+        notify_form_submitted(self.request.user, instance.student, 'Parent Assessment')
+        from .services.cycle_service import check_and_trigger_assessment_generation
+        check_and_trigger_assessment_generation(instance.student, instance.report_cycle)
 
 
 class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
@@ -240,27 +311,79 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
     serializer_class = MultidisciplinaryAssessmentSerializer
     allowed_submitter_roles = ('SPECIALIST',)
 
-    def perform_create(self, serializer):
-        instance = serializer.save(submitted_by=self.request.user)
-        student = instance.student
-        # Auto-advance to ASSESSED when a specialist submits an assessment (new workflow)
-        if student.status in ['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED']:
-            student.status = 'ASSESSED'
-            student.save()
-        from .services.cycle_service import check_and_trigger_iep_generation
-        check_and_trigger_iep_generation(student, instance.report_cycle)
-
-
-class SpedAssessmentViewSet(BaseInputViewSet):
-    queryset = SpedAssessment.objects.all()
-    serializer_class = SpedAssessmentSerializer
-    allowed_submitter_roles = ('TEACHER',)
+    def _validate_submission(self, validated_data):
+        super()._validate_submission(validated_data)
+        user = self.request.user
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
+            raise PermissionDenied("Complete your profile setup before editing specialist work.")
+        if user.role == 'SPECIALIST':
+            raise ValidationError(
+                "Specialists must save and submit their assigned sections individually."
+            )
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
-        student = instance.student
-        # In the new workflow, Sped Assessment is done post-enrollment.
-        # No status auto-advance is required here.
+        notify_form_submitted(self.request.user, instance.student, 'Specialist Assessment')
+        from .services.collaboration_service import broadcast_section_saved
+        from django.db import transaction
+        v2 = (instance.form_data or {}).get('v2') if isinstance(instance.form_data, dict) else None
+        transaction.on_commit(lambda: broadcast_section_saved(
+            form_type='assessment', instance=instance, section_key='*',
+            user=self.request.user, form_data_v2=v2,
+        ))
+
+
+
+class DiagnosticReportViewSet(viewsets.ModelViewSet):
+    """Upload and manage diagnostic reports (PDF/DOCX) from parents."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DiagnosticReportSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'ADMIN':
+            return DiagnosticReport.objects.all().order_by('-created_at')
+        from .models import StudentAccess
+        student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
+        return DiagnosticReport.objects.filter(student_id__in=student_ids).order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        if request.user.role not in ('PARENT', 'ADMIN'):
+            return Response(
+                {"error": "Only parents or admins can upload diagnostic reports."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        uploaded_file = request.FILES.get('file')
+        original_filename = uploaded_file.name if uploaded_file else ''
+
+        instance = serializer.save(
+            uploaded_by=request.user,
+            original_filename=original_filename,
+        )
+
+        # Trigger text extraction via Gemini
+        try:
+            from .services.diagnostic_service import process_diagnostic_upload
+            process_diagnostic_upload(instance)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Diagnostic extraction failed: %s", e)
+
+        return Response(
+            DiagnosticReportSerializer(instance).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            return Response(
+                {"error": "Only admins can delete diagnostic reports."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class ParentProgressTrackerViewSet(BaseInputViewSet):
@@ -272,6 +395,11 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
+        notify_form_submitted(self.request.user, instance.student, 'Parent Progress Tracker')
+        p = True  # just submitted
+        m = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        s = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -283,10 +411,95 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
     require_enrolled_student = True
     require_active_cycle = True
 
-    def perform_create(self, serializer):
-        instance = serializer.save(submitted_by=self.request.user)
+    def create(self, request, *args, **kwargs):
+        """Upsert one canonical tracker row per (student, cycle), merging
+        incoming form_data field-by-field with per-field ownership gating.
+
+        Why: the schema-driven tracker form posts the whole form_data on save.
+        If two specialists save in the same cycle, the default DRF create()
+        would insert a NEW row each time and fork the data — SLP's session
+        count and OT's session count would never end up on the same record.
+        Instead we look up the existing row (creating one if absent), then
+        merge only the fields this user is allowed to write to.
+        """
+        from .services.collaboration_service import broadcast_section_saved
+        from .specialties import TRACKER_FIELD_OWNERS, normalize_specialty
+        from django.db import transaction
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self._validate_submission(serializer.validated_data)
+
+        student = serializer.validated_data.get('student')
+        cycle = serializer.validated_data.get('report_cycle')
+        incoming_form_data = serializer.validated_data.get('form_data') or {}
+
+        user = request.user
+        user_specialties = {
+            normalize_specialty(s) for s in (user.specialty_list() if hasattr(user, 'specialty_list') else [])
+            if s
+        }
+
+        with transaction.atomic():
+            instance = (MultidisciplinaryProgressTracker.objects
+                        .select_for_update()
+                        .filter(student=student, report_cycle=cycle)
+                        .first())
+            if instance is None:
+                instance = MultidisciplinaryProgressTracker.objects.create(
+                    student=student, report_cycle=cycle,
+                    submitted_by=user, form_data={},
+                )
+                created = True
+            else:
+                created = False
+
+            merged = dict(instance.form_data or {})
+            for section_key, section_value in incoming_form_data.items():
+                if not isinstance(section_value, dict):
+                    merged[section_key] = section_value
+                    continue
+                existing_section = dict(merged.get(section_key) or {})
+                for field_id, value in section_value.items():
+                    # Admins may write any field. Specialists may write only
+                    # fields whose ownership matches one of their specialties,
+                    # or unowned (shared) fields.
+                    if user.role == 'ADMIN':
+                        existing_section[field_id] = value
+                        continue
+                    owner = TRACKER_FIELD_OWNERS.get(field_id)
+                    if owner is None or owner in user_specialties:
+                        existing_section[field_id] = value
+                merged[section_key] = existing_section
+
+            instance.form_data = merged
+            instance.submitted_by = user
+            instance.save(update_fields=['form_data', 'submitted_by'])
+
+        notify_form_submitted(user, instance.student, 'Specialist Progress Tracker')
+        p = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        m = True
+        s = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        notify_tracker_progress(user, instance.student, instance.report_cycle, sum([p, m, s]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
+
+        transaction.on_commit(lambda: broadcast_section_saved(
+            form_type='tracker', instance=instance, section_key='*',
+            user=user, form_data_v2=instance.form_data,
+        ))
+
+        out_serializer = self.get_serializer(instance)
+        return Response(
+            out_serializer.data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def _validate_submission(self, validated_data):
+        super()._validate_submission(validated_data)
+        user = self.request.user
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
+            raise PermissionDenied("Complete your profile setup before editing specialist work.")
 
 
 class SpedProgressTrackerViewSet(BaseInputViewSet):
@@ -298,6 +511,11 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
+        notify_form_submitted(self.request.user, instance.student, 'Teacher Progress Tracker')
+        p = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        m = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        s = True  # just submitted
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -431,6 +649,56 @@ class TrackerContributionsView(SectionContributionsListView):
     form_type = 'tracker'
 
 
+class FormEnsureView(APIView):
+    """POST: materialize the multidisciplinary form row so the collab WS can
+    hook in before any section has been saved. Returns the same payload the
+    list endpoint would for that record."""
+    permission_classes = [permissions.IsAuthenticated]
+    form_type = ''
+
+    def post(self, request):
+        from .services.section_service import (
+            ensure_form, SectionPermissionError, SectionValidationError,
+        )
+        from .serializers import (
+            MultidisciplinaryAssessmentSerializer,
+            MultidisciplinaryProgressTrackerSerializer,
+        )
+        student_id = request.data.get('student')
+        report_cycle_id = request.data.get('report_cycle')
+        if not student_id or not report_cycle_id:
+            return Response(
+                {"error": "student and report_cycle are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            instance, _created = ensure_form(
+                form_type=self.form_type,
+                user=request.user,
+                student_id=student_id,
+                report_cycle_id=report_cycle_id,
+            )
+        except SectionPermissionError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except SectionValidationError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer_cls = (
+            MultidisciplinaryAssessmentSerializer
+            if self.form_type == 'assessment'
+            else MultidisciplinaryProgressTrackerSerializer
+        )
+        return Response(serializer_cls(instance).data)
+
+
+class AssessmentEnsureView(FormEnsureView):
+    form_type = 'assessment'
+
+
+class TrackerEnsureView(FormEnsureView):
+    form_type = 'tracker'
+
+
 # ─── Parent Onboarding ───────────────────────────────────────────────────────
 
 class ParentOnboardView(APIView):
@@ -552,7 +820,28 @@ class AdminDashboardActionsView(APIView):
                     "type": "warning"
                 })
 
-        # 2. Ready for Enrollment Review (all assessments done, waiting for admin decision)
+        # 2. Auto-generated IEP drafts waiting for admin review.
+        #    These are produced by check_and_trigger_iep_generation() the moment
+        #    the final multidisciplinary assessment section is submitted, so the
+        #    admin needs an explicit nudge to review/finalize.
+        draft_ieps = (
+            GeneratedDocument.objects
+            .filter(document_type='IEP', status='DRAFT')
+            .select_related('student')
+            .order_by('-created_at')
+        )
+        for doc in draft_ieps:
+            student = doc.student
+            actions.append({
+                "id": f"review_iep_{doc.id}",
+                "title": f"Review IEP Draft: {student.first_name} {student.last_name}",
+                "description": "Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize.",
+                "action_text": "Review →",
+                "link": f"/admin/iep?id={doc.id}",
+                "type": "positive",
+            })
+
+        # 3. Ready for Enrollment Review (all assessments done, waiting for admin decision)
         in_review = Student.objects.filter(status='ASSESSED')
         for s in in_review:
             actions.append({
@@ -565,7 +854,7 @@ class AdminDashboardActionsView(APIView):
             })
 
 
-        # 3. Parent Onboarding Submitted (in INQUIRY, parent input received)
+        # 4. Parent Onboarding Submitted (in INQUIRY, parent input received)
         inquiry = Student.objects.filter(status='PENDING_ASSESSMENT')
         for s in inquiry:
             if ParentAssessment.objects.filter(student=s).exists():
@@ -611,7 +900,7 @@ class AssignSpecialistView(APIView):
             from .services.student_service import assign_staff_to_student
             from rest_framework.exceptions import ValidationError
             staff, student = assign_staff_to_student(student_id, specialist_id, 'SPECIALIST', specialties=specialties)
-            return Response({"message": f"Specialist {staff.username} assigned."})
+            return Response({"message": f"Specialist {staff.email} assigned."})
         except ValidationError as ve:
             detail = ve.detail
             if isinstance(detail, list) and detail:
@@ -635,9 +924,31 @@ class AssignTeacherView(APIView):
         try:
             from .services.student_service import assign_staff_to_student
             staff, student = assign_staff_to_student(student_id, teacher_id, 'TEACHER')
-            return Response({"message": f"Teacher {staff.username} assigned to {student.first_name}."})
+            return Response({"message": f"Teacher {staff.email} assigned to {student.first_name}."})
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Teacher or Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UnassignStaffView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only Admins can unassign staff."}, status=status.HTTP_403_FORBIDDEN)
+
+        staff_id = request.data.get('staff_id')
+        specialty = request.data.get('specialty')  # Optional, for partial unassignment
+        
+        if not staff_id:
+            return Response({"error": "staff_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .services.student_service import unassign_staff_from_student
+        success = unassign_staff_from_student(student_id, staff_id, specialty)
+        
+        if success:
+            return Response({"message": "Staff member successfully unassigned."})
+        else:
+            return Response({"error": "Staff member is not assigned to this student or specialty."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AssignParentView(APIView):
@@ -654,7 +965,7 @@ class AssignParentView(APIView):
         try:
             from .services.student_service import assign_staff_to_student
             staff, student = assign_staff_to_student(student_id, parent_id, 'PARENT')
-            return Response({"message": f"Parent {staff.username} assigned to {student.first_name}."})
+            return Response({"message": f"Parent {staff.email} assigned to {student.first_name}."})
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Parent or Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -747,16 +1058,17 @@ class EnrollStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
+            if not has_finalized_multidisciplinary_assessment(student):
+                return Response(
+                    {"error": "A finalized multidisciplinary assessment is required before enrollment."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             student.status = 'ENROLLED'
             student.save()
             
-            # Notify admins of enrollment
-            notify_admins_in_app(
-                notification_type='STUDENT_ENROLLED',
-                title=f"Student Enrolled: {student.first_name} {student.last_name}",
-                message=f"{request.user.first_name} {request.user.last_name} has formally enrolled the student.",
-                link=f"/dashboard?student={student.id}"
-            )
+            # Notify admins and assigned users of enrollment
+            notify_student_status_change(student, 'ENROLLED', changed_by=request.user)
+
             
             return Response({"message": "Student successfully enrolled and set to Active."})
         except Student.DoesNotExist:
@@ -984,6 +1296,9 @@ class AcceptInvitationView(APIView):
                 serializer.validated_data.get('phone_number', ''),
             )
 
+            # Notify admins of new user registration
+            notify_new_user_registered(user)
+
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1084,6 +1399,14 @@ class GenerateIEPView(APIView):
                 "message": "IEP already exists for this cycle.",
                 "iep_id": existing_iep.id,
             }, status=status.HTTP_200_OK)
+
+        has_parent = ParentAssessment.objects.filter(student=student, report_cycle=report_cycle).exists()
+        has_finalized_multi = has_finalized_multidisciplinary_assessment(student, report_cycle)
+        if not (has_parent and has_finalized_multi):
+            return Response(
+                {"error": "Parent Assessment and finalized Specialist Assessment are required before generating an IEP."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         from .services.iep_service import run_iep_generation
         doc, _ = run_iep_generation(student_id, report_cycle_id)
@@ -1680,8 +2003,12 @@ class SendRemindersView(APIView):
         if request.user.role != 'ADMIN':
             return Response({"error": "Admin only."}, status=status.HTTP_403_FORBIDDEN)
 
-        from .services.notification_service import send_tracker_reminders_for_all_students
+        from .services.notification_service import (
+            send_tracker_reminders_for_all_students,
+            send_assessment_appointment_reminders,
+        )
         sent_count = send_tracker_reminders_for_all_students()
+        sent_count += send_assessment_appointment_reminders()
         return Response({"message": f"Sent {sent_count} reminder(s).", "count": sent_count})
 
 
@@ -1749,6 +2076,237 @@ class NotificationMarkAllReadView(APIView):
         Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         return Response({'status': 'ok'})
 
+
+class NotificationDeleteView(APIView):
+    """DELETE: Delete a single notification for the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            notif = Notification.objects.get(pk=pk, recipient=request.user)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        notif.delete()
+        return Response({'status': 'ok'}, status=status.HTTP_204_NO_CONTENT)
+
+
+def _user_can_access_student(user, student_id):
+    return user.role == 'ADMIN' or StudentAccess.objects.filter(user=user, student_id=student_id).exists()
+
+
+def _parent_for_student(student):
+    access = (
+        StudentAccess.objects
+        .filter(student=student, user__role='PARENT')
+        .select_related('user')
+        .first()
+    )
+    return access.user if access else None
+
+
+class AssessmentAvailabilityView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        student_id = request.query_params.get('student_id')
+        now = timezone.now()
+        qs = (
+            SpecialistAvailabilitySlot.objects
+            .select_related('specialist')
+            .filter(start_at__gte=now)
+            .order_by('start_at')
+        )
+
+        preference_scope = request.query_params.get('scope') == 'preferences'
+
+        if user.role == 'SPECIALIST':
+            qs = qs.filter(specialist=user)
+        elif user.role == 'PARENT':
+            if not student_id or not _user_can_access_student(user, student_id):
+                return Response({"error": "student_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if not preference_scope:
+                assigned_specialist_ids = StudentAccess.objects.filter(
+                    student_id=student_id,
+                    user__role='SPECIALIST',
+                ).values_list('user_id', flat=True)
+                qs = qs.filter(specialist_id__in=assigned_specialist_ids)
+            qs = qs.filter(is_active=True)
+        elif user.role != 'ADMIN':
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        elif student_id:
+            assigned_specialist_ids = StudentAccess.objects.filter(
+                student_id=student_id,
+                user__role='SPECIALIST',
+            ).values_list('user_id', flat=True)
+            qs = qs.filter(specialist_id__in=assigned_specialist_ids)
+
+        qs = qs.filter(appointment__isnull=True)
+        serializer = SpecialistAvailabilitySlotSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        user = request.user
+        if user.role not in ['SPECIALIST', 'ADMIN']:
+            return Response({"error": "Only specialists or admins can create availability."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
+            return Response({"error": "Complete your profile setup before editing specialist work."}, status=status.HTTP_403_FORBIDDEN)
+
+        specialist_id = request.data.get('specialist') if user.role == 'ADMIN' else user.id
+        try:
+            specialist = User.objects.get(id=specialist_id, role='SPECIALIST', is_active=True)
+        except User.DoesNotExist:
+            return Response({"error": "Specialist not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['specialist'] = specialist.id
+        serializer = SpecialistAvailabilitySlotSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        start_at = serializer.validated_data['start_at']
+        end_at = serializer.validated_data['end_at']
+        if end_at <= start_at:
+            return Response({"error": "End time must be after start time."}, status=status.HTTP_400_BAD_REQUEST)
+        if start_at < timezone.now():
+            return Response({"error": "Availability cannot start in the past."}, status=status.HTTP_400_BAD_REQUEST)
+
+        overlap = SpecialistAvailabilitySlot.objects.filter(
+            specialist=specialist,
+            is_active=True,
+            start_at__lt=end_at,
+            end_at__gt=start_at,
+        ).exists()
+        if overlap:
+            return Response({"error": "This overlaps an existing availability slot."}, status=status.HTTP_400_BAD_REQUEST)
+
+        slot = serializer.save(specialist=specialist)
+        return Response(SpecialistAvailabilitySlotSerializer(slot).data, status=status.HTTP_201_CREATED)
+
+
+class AssessmentAvailabilityDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        user = request.user
+        try:
+            slot = SpecialistAvailabilitySlot.objects.select_related('specialist').get(pk=pk)
+        except SpecialistAvailabilitySlot.DoesNotExist:
+            return Response({"error": "Availability slot not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.role != 'ADMIN' and slot.specialist_id != user.id:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role == 'SPECIALIST' and not user.is_specialist_onboarding_complete():
+            return Response({"error": "Complete your profile setup before editing specialist work."}, status=status.HTTP_403_FORBIDDEN)
+        if hasattr(slot, 'appointment') and slot.appointment.status == 'SCHEDULED':
+            return Response({"error": "Booked slots cannot be deleted. Cancel the appointment first."}, status=status.HTTP_400_BAD_REQUEST)
+
+        slot.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AssessmentAppointmentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        student_id = request.query_params.get('student_id')
+        qs = AssessmentAppointment.objects.select_related('student', 'parent', 'specialist')
+
+        if user.role == 'ADMIN':
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+        elif user.role == 'PARENT':
+            qs = qs.filter(parent=user)
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+        elif user.role == 'SPECIALIST':
+            qs = qs.filter(specialist=user)
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+        else:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = AssessmentAppointmentSerializer(qs.order_by('start_at'), many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        user = request.user
+        student_id = request.data.get('student')
+        slot_id = request.data.get('availability_slot')
+        if not student_id or not slot_id:
+            return Response({"error": "student and availability_slot are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if user.role not in ['PARENT', 'ADMIN']:
+            return Response({"error": "Only parents or admins can book assessments."}, status=status.HTTP_403_FORBIDDEN)
+        if not _user_can_access_student(user, student_id):
+            return Response({"error": "You do not have access to this student."}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            try:
+                student = Student.objects.select_for_update().get(id=student_id)
+                slot = SpecialistAvailabilitySlot.objects.select_for_update().select_related('specialist').get(id=slot_id)
+            except (Student.DoesNotExist, SpecialistAvailabilitySlot.DoesNotExist):
+                return Response({"error": "Student or slot not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            if not slot.is_active or slot.start_at < timezone.now():
+                return Response({"error": "This slot is no longer available."}, status=status.HTTP_400_BAD_REQUEST)
+            if AssessmentAppointment.objects.filter(availability_slot=slot, status='SCHEDULED').exists():
+                return Response({"error": "This slot is already booked."}, status=status.HTTP_400_BAD_REQUEST)
+            if not StudentAccess.objects.filter(student=student, user=slot.specialist).exists():
+                return Response({"error": "This specialist is not assigned to the student."}, status=status.HTTP_400_BAD_REQUEST)
+            if AssessmentAppointment.objects.filter(student=student, status='SCHEDULED').exists():
+                return Response({"error": "This student already has a scheduled assessment."}, status=status.HTTP_400_BAD_REQUEST)
+
+            parent = user if user.role == 'PARENT' else _parent_for_student(student)
+            appointment = AssessmentAppointment.objects.create(
+                student=student,
+                parent=parent,
+                specialist=slot.specialist,
+                availability_slot=slot,
+                start_at=slot.start_at,
+                end_at=slot.end_at,
+                mode=slot.mode,
+                booked_by=user,
+            )
+            if student.status == 'PENDING_ASSESSMENT':
+                student.status = 'ASSESSMENT_SCHEDULED'
+                student.save(update_fields=['status'])
+
+        notify_assessment_scheduled(appointment, booked_by=user)
+        return Response(AssessmentAppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
+
+
+class AssessmentAppointmentDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        user = request.user
+        try:
+            appointment = AssessmentAppointment.objects.select_related('student', 'parent', 'specialist').get(pk=pk)
+        except AssessmentAppointment.DoesNotExist:
+            return Response({"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.role == 'SPECIALIST' and appointment.specialist_id != user.id:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role == 'PARENT' and appointment.parent_id != user.id:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+        if user.role not in ['ADMIN', 'SPECIALIST', 'PARENT']:
+            return Response({"error": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+        next_status = request.data.get('status')
+        if next_status not in ['CANCELLED', 'COMPLETED', 'NO_SHOW']:
+            return Response({"error": "status must be CANCELLED, COMPLETED, or NO_SHOW."}, status=status.HTTP_400_BAD_REQUEST)
+        if appointment.status != 'SCHEDULED':
+            return Response({"error": f"Cannot update an appointment that is already {appointment.get_status_display().lower()}."}, status=status.HTTP_400_BAD_REQUEST)
+        if user.role != 'ADMIN' and next_status in ['COMPLETED', 'NO_SHOW']:
+            return Response({"error": "Only admins can mark completion or no-show."}, status=status.HTTP_403_FORBIDDEN)
+
+        appointment.status = next_status
+        appointment.save(update_fields=['status', 'updated_at'])
+
+        if next_status == 'CANCELLED':
+            notify_assessment_cancelled(appointment, cancelled_by=user)
+
+        return Response(AssessmentAppointmentSerializer(appointment).data)
+
 class SpecialistPreferenceViewSet(viewsets.ModelViewSet):
     queryset = SpecialistPreference.objects.all()
     serializer_class = SpecialistPreferenceSerializer
@@ -1771,10 +2329,17 @@ class SpecialistPreferenceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         student = serializer.validated_data['student']
+        specialist = serializer.validated_data['specialist']
+        slot = serializer.validated_data.get('preferred_slot')
 
         if user.role == 'PARENT':
             if not StudentAccess.objects.filter(user=user, student=student).exists():
                 raise PermissionDenied("You do not have permission to set preferences for this student.")
+        elif user.role != 'ADMIN':
+            raise PermissionDenied("Only parents or admins can set specialist preferences.")
+
+        if slot and slot.specialist_id != specialist.id:
+            raise ValidationError("Selected slot does not belong to this specialist.")
         
         serializer.save()
 
@@ -1790,6 +2355,7 @@ class SpecialistListView(APIView):
                 "last_name": sp.last_name,
                 "specialty": sp.specialty or "Other",
                 "specialties": sp.specialty_list() or ([sp.specialty] if sp.specialty else []),
+                "languages": sp.language_list() if hasattr(sp, 'language_list') else [],
             }
             for sp in specialists
         ]

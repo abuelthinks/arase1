@@ -29,6 +29,7 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/
 
 # ─── Application definition ─────────────────────────────────────────────────
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_results',
+    'channels',
     # Local apps
     'api',
 ]
@@ -76,6 +78,39 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+ASGI_APPLICATION = 'backend.asgi.application'
+
+# ─── Channels / WebSocket ────────────────────────────────────────────────────
+_redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [_redis_url],
+        },
+    },
+}
+
+# Cache — used by the form-collaboration soft-lock service. Must be cross-process
+# so all ASGI workers see the same locks. Falls back to LocMem if Redis is down,
+# which is fine for a single-process `runserver` dev session.
+try:
+    import importlib
+    importlib.import_module('django_redis')
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': _redis_url,
+            'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'},
+        }
+    }
+except ImportError:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'arase-collab',
+        }
+    }
 
 # ─── Password validation ────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [

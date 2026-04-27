@@ -71,6 +71,23 @@ def _get_or_create_form(form_type: str, user, student_id, report_cycle_id):
     return instance, True
 
 
+def ensure_form(*, form_type: str, user, student_id: int, report_cycle_id: int):
+    """Public wrapper that creates the parent record on demand (no section write).
+
+    Used by the frontend to materialize a MultidisciplinaryAssessment /
+    MultidisciplinaryProgressTracker row before any specialist has saved a
+    section, so the real-time collaboration WS can hook in immediately.
+    """
+    if user.role not in ("ADMIN", "SPECIALIST", "TEACHER"):
+        raise SectionPermissionError("You do not have access to this form.")
+    instance, created = _get_or_create_form(
+        form_type, user, student_id, report_cycle_id
+    )
+    # Verify the user actually has access to this student before returning.
+    _get_student_access(user, instance)
+    return instance, created
+
+
 def _get_student_access(user, instance):
     if user.role == "ADMIN":
         return None
@@ -86,6 +103,8 @@ def _check_section_edit(form_type: str, instance, user, section_key: str):
         return
     if user.role != "SPECIALIST":
         raise SectionPermissionError("Only specialists may edit section inputs.")
+    if not user.is_specialist_onboarding_complete():
+        raise SectionPermissionError("Complete your profile setup before editing specialist work.")
 
     owners = get_section_owners(form_type)
     if section_key not in owners:
@@ -164,6 +183,14 @@ def save_section(
             **{_fk_field(form_type): instance},
             section_key=section_key,
         )
+
+        # Real-time fan-out to other open clients editing this form.
+        from .collaboration_service import broadcast_section_saved
+        form_data_v2 = (instance.form_data or {}).get("v2") if form_type == "assessment" else instance.form_data
+        transaction.on_commit(lambda: broadcast_section_saved(
+            form_type=form_type, instance=instance, section_key=section_key,
+            user=user, form_data_v2=form_data_v2,
+        ))
         return instance, created
 
 
@@ -197,6 +224,23 @@ def submit_section(
         )
 
         _maybe_finalize(form_type, instance, user)
+
+        # Drop any presence lock the user held on this section + tell peers.
+        from .collaboration_service import (
+            release_lock, broadcast_lock_changed, broadcast_section_submitted,
+        )
+        release_lock(
+            form_type=form_type, instance_id=instance.id,
+            section_key=section_key, user=user,
+        )
+        finalized = bool(instance.finalized_at)
+        transaction.on_commit(lambda: (
+            broadcast_section_submitted(
+                form_type=form_type, instance=instance, section_key=section_key,
+                user=user, finalized=finalized,
+            ),
+            broadcast_lock_changed(form_type, instance.id),
+        ))
         return instance, contribution
 
 
@@ -205,7 +249,16 @@ def _maybe_finalize(form_type: str, instance, user):
     if instance.finalized_at:
         return
 
-    required = required_owner_sections(form_type)
+    assigned_specialties: list[str] = []
+    for access in StudentAccess.objects.filter(
+        student_id=instance.student_id,
+        user__role="SPECIALIST",
+    ).select_related("user"):
+        for specialty in access.specialty_list():
+            if specialty and specialty not in assigned_specialties:
+                assigned_specialties.append(specialty)
+
+    required = required_owner_sections(form_type, assigned_specialties)
     submitted = SectionContribution.objects.filter(
         **{_fk_field(form_type): instance},
         section_key__in=required,
@@ -215,7 +268,7 @@ def _maybe_finalize(form_type: str, instance, user):
     if set(submitted) >= set(required):
         instance.finalized_at = timezone.now()
         instance.finalized_by = user
-        instance.submitted_by = instance.submitted_by or user
+        instance.submitted_by = user
         instance.save(update_fields=["finalized_at", "finalized_by", "submitted_by"])
 
         if form_type == "assessment":

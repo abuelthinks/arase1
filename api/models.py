@@ -1,11 +1,40 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils import timezone
 
 def default_expiration():
     return timezone.now() + timezone.timedelta(hours=72)
 
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
+
 class User(AbstractUser):
+    username = None
+    email = models.EmailField(unique=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
+    objects = CustomUserManager()
+
     ROLE_CHOICES = (
         ('ADMIN', 'Admin'),
         ('TEACHER', 'Teacher'),
@@ -24,6 +53,11 @@ class User(AbstractUser):
         blank=True,
         help_text="All specialist disciplines this user holds. Source of truth for section ownership.",
     )
+    languages = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Languages this user can comfortably use with families.",
+    )
     phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Contact number for the user")
     is_phone_verified = models.BooleanField(default=False)
 
@@ -32,6 +66,29 @@ class User(AbstractUser):
         if isinstance(self.specialties, list) and self.specialties:
             return list(self.specialties)
         return [self.specialty] if self.specialty else []
+
+    def language_list(self) -> list[str]:
+        if isinstance(self.languages, list):
+            return [str(language).strip() for language in self.languages if str(language).strip()]
+        return []
+
+    def specialist_onboarding_missing(self) -> list[str]:
+        if self.role != 'SPECIALIST':
+            return []
+
+        missing = []
+        if not (self.first_name or '').strip():
+            missing.append('first_name')
+        if not (self.last_name or '').strip():
+            missing.append('last_name')
+        if not self.specialty_list():
+            missing.append('specialty')
+        if not self.language_list():
+            missing.append('languages')
+        return missing
+
+    def is_specialist_onboarding_complete(self) -> bool:
+        return len(self.specialist_onboarding_missing()) == 0
 
 class PhoneVerification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phone_verifications')
@@ -94,7 +151,7 @@ class StudentAccess(models.Model):
         return self.user.specialty_list() if hasattr(self.user, 'specialty_list') else []
 
     def __str__(self):
-        return f"{self.user.username} -> {self.student.first_name}"
+        return f"{self.user.email} -> {self.student.first_name}"
 
 class ReportCycle(models.Model):
     GRACE_PERIOD_DAYS = 3
@@ -149,6 +206,18 @@ class SpedAssessment(models.Model):
     translated_data = models.JSONField(default=dict, blank=True)
     original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class DiagnosticReport(models.Model):
+    """External diagnostic report uploaded by a parent (PDF/DOCX)."""
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='diagnostic_reports')
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    file = models.FileField(upload_to='diagnostic_reports/')
+    original_filename = models.CharField(max_length=255, blank=True, default='')
+    extracted_text = models.TextField(blank=True, default='', help_text='AI-extracted text from the uploaded document.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Diagnostic Report for {self.student} ({self.original_filename})"
 
 # --- PROGRESS TRACKERS ---
 
@@ -262,6 +331,7 @@ class Notification(models.Model):
     title = models.CharField(max_length=200)
     message = models.TextField(blank=True, default='')
     link = models.CharField(max_length=500, blank=True, default='')
+    actor_name = models.CharField(max_length=200, blank=True, default='', help_text="Display name of the user who triggered this notification.")
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -269,18 +339,88 @@ class Notification(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.notification_type} -> {self.recipient.username}"
+        return f"{self.notification_type} -> {self.recipient.email}"
 
 class SpecialistPreference(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='specialist_preferences')
     specialty = models.CharField(max_length=100)
     specialist = models.ForeignKey(User, on_delete=models.CASCADE)
+    preferred_slot = models.ForeignKey(
+        'SpecialistAvailabilitySlot',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='specialist_preferences',
+    )
+    preferred_start_at = models.DateTimeField(null=True, blank=True)
+    preferred_end_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('student', 'specialty')
 
+
+class SpecialistAvailabilitySlot(models.Model):
+    MODE_CHOICES = (
+        ('ONLINE', 'Online'),
+        ('ONSITE', 'On site'),
+    )
+
+    specialist = models.ForeignKey(User, on_delete=models.CASCADE, related_name='availability_slots')
+    start_at = models.DateTimeField()
+    end_at = models.DateTimeField()
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='ONLINE')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['start_at']
+        indexes = [
+            models.Index(fields=['specialist', 'start_at']),
+            models.Index(fields=['is_active', 'start_at']),
+        ]
+
     def __str__(self):
-        return f"Preference for {self.student}: {self.specialty} -> {self.specialist.username}"
+        return f"{self.specialist.email}: {self.start_at} - {self.end_at}"
+
+
+class AssessmentAppointment(models.Model):
+    STATUS_CHOICES = (
+        ('SCHEDULED', 'Scheduled'),
+        ('CANCELLED', 'Cancelled'),
+        ('COMPLETED', 'Completed'),
+        ('NO_SHOW', 'No show'),
+    )
+    MODE_CHOICES = SpecialistAvailabilitySlot.MODE_CHOICES
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='assessment_appointments')
+    parent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='parent_assessment_appointments')
+    specialist = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='specialist_assessment_appointments')
+    availability_slot = models.OneToOneField(
+        SpecialistAvailabilitySlot,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='appointment',
+    )
+    start_at = models.DateTimeField()
+    end_at = models.DateTimeField()
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='ONLINE')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
+    booked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='booked_assessment_appointments')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    reminder_24h_sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['start_at']
+        indexes = [
+            models.Index(fields=['student', 'status', 'start_at']),
+            models.Index(fields=['specialist', 'status', 'start_at']),
+        ]
+
+    def __str__(self):
+        specialist = self.specialist.email if self.specialist else "unassigned"
+        return f"{self.student} with {specialist} at {self.start_at}"
 
 
 class SectionContribution(models.Model):

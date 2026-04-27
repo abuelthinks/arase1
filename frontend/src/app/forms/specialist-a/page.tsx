@@ -14,6 +14,7 @@ import {
     userSpecialtyList,
 } from "@/lib/sectionOwners";
 import { toast } from "sonner";
+import { useFormCollaboration } from "@/hooks/useFormCollaboration";
 
 const getWorkspaceFormUrl = (studentId: string) =>
     `/workspace?studentId=${encodeURIComponent(studentId)}&workspace=forms&tab=multi_assessment`;
@@ -60,9 +61,12 @@ function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; c
 
 function SectionCard({
     title, subtitle, children, ownerLabel, status, locked,
+    onFocus, onBlur, remoteHolder,
 }: {
     title: string; subtitle?: string; children: React.ReactNode;
     ownerLabel?: string; status?: "draft" | "submitted" | "pending"; locked?: boolean;
+    onFocus?: () => void; onBlur?: () => void;
+    remoteHolder?: { user_name: string; specialty?: string } | null;
 }) {
     const badge = status === "submitted"
         ? { label: "✓ Submitted", color: "#065f46", bg: "#d1fae5" }
@@ -71,7 +75,15 @@ function SectionCard({
         : { label: "Pending", color: "#475569", bg: "#f1f5f9" };
 
     return (
-        <div className="bg-white rounded-xl border border-[var(--border-light)] overflow-hidden mb-5 shadow-sm">
+        <div
+            className="bg-white rounded-xl border border-[var(--border-light)] overflow-hidden mb-5 shadow-sm"
+            onFocusCapture={onFocus}
+            onBlurCapture={(e) => {
+                // Only release when focus moves outside this section.
+                const next = e.relatedTarget as Node | null;
+                if (!next || !e.currentTarget.contains(next)) onBlur?.();
+            }}
+        >
             <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--border-light)] bg-slate-50 flex items-start justify-between gap-3 flex-wrap">
                 <div>
                     <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }} className="font-bold text-[var(--text-primary)] m-0">{title}</h2>
@@ -83,7 +95,13 @@ function SectionCard({
                             {ownerLabel}
                         </span>
                     )}
-                    {locked && (
+                    {remoteHolder && (
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#fef3c7", color: "#92400e", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                            {remoteHolder.user_name} editing…
+                        </span>
+                    )}
+                    {locked && !remoteHolder && (
                         <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#fef3c7", color: "#92400e", borderRadius: "999px" }}>
                             🔒 Locked
                         </span>
@@ -223,6 +241,38 @@ function SpecialistAFormContent() {
     );
     const isAdmin = user?.role === "ADMIN";
 
+    // ─── Real-time collaboration ───────────────────────────────────────────
+    const assessmentInstanceId = fullSubmission?.id ?? null;
+    const collab = useFormCollaboration({
+        formType: "assessment",
+        instanceId: isViewMode ? null : assessmentInstanceId,
+        currentUserId: user?.id as number | undefined,
+        onSectionSaved: (event) => {
+            // Another specialist saved a section. Pull their changes into our
+            // local form state, but never overwrite a section *we're* editing.
+            if (!event.form_data) return;
+            if (collab.isLockedByMe(event.section_key)) return;
+            const incomingFields = SECTION_FIELDS[event.section_key] || [];
+            setForm(prev => {
+                const next: any = { ...prev };
+                for (const field of incomingFields) {
+                    if (field in event.form_data!) next[field] = event.form_data![field];
+                }
+                return next;
+            });
+            refreshContributions();
+            toast.info(`${event.by.user_name} updated Section ${event.section_key}`);
+        },
+        onSectionSubmitted: (event) => {
+            refreshContributions();
+            if (event.finalized) {
+                toast.success("Assessment finalized — all sections complete.");
+            } else {
+                toast.success(`${event.by.user_name} submitted Section ${event.section_key}`);
+            }
+        },
+    });
+
     const refreshContributions = async () => {
         if (!studentId || !reportCycleId) return;
         try {
@@ -281,7 +331,7 @@ function SpecialistAFormContent() {
                     }
                     if (!isViewMode && user && !form.therapist_name) {
                         const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
-                        set("therapist_name", name || user.username || "");
+                        set("therapist_name", name || user.email || "");
                     }
                 })
                 .catch(console.error);
@@ -289,19 +339,20 @@ function SpecialistAFormContent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isViewMode, studentId, submissionId, user]);
 
-    // Load contributions + existing form_data so other specialists' sections show as read-only.
+    // Ensure the parent assessment row exists + load contributions so the
+    // collab WebSocket can connect immediately, even before the first save.
     useEffect(() => {
         if (!studentId || !reportCycleId || isViewMode) return;
         refreshContributions();
-        api.get(`/api/inputs/multidisciplinary-assessment/`, {
-            params: { student: studentId, report_cycle: reportCycleId },
+        api.post(`/api/inputs/multidisciplinary-assessment/ensure/`, {
+            student: parseInt(studentId), report_cycle: parseInt(reportCycleId),
         })
             .then(res => {
-                const list = Array.isArray(res.data?.results) ? res.data.results : res.data;
-                const match = (list || []).find((x: any) => String(x.student) === String(studentId) && String(x.report_cycle) === String(reportCycleId));
-                if (match?.form_data?.v2) {
-                    setForm(prev => ({ ...prev, ...match.form_data.v2 }));
-                    setFullSubmission(match);
+                if (res.data) {
+                    if (res.data.form_data?.v2) {
+                        setForm(prev => ({ ...prev, ...res.data.form_data.v2 }));
+                    }
+                    setFullSubmission(res.data);
                 }
             })
             .catch(() => {});
@@ -329,7 +380,11 @@ function SpecialistAFormContent() {
 
     // Compute per-section editability
     const sectionStatus = useMemo(() => {
-        const result: Record<string, { status: "draft" | "submitted" | "pending"; locked: boolean; canEdit: boolean; ownerLabel: string }> = {};
+        const result: Record<string, {
+            status: "draft" | "submitted" | "pending";
+            locked: boolean; canEdit: boolean; ownerLabel: string;
+            remoteHolder?: { user_name: string; specialty?: string } | null;
+        }> = {};
         for (const key of Object.keys(ASSESSMENT_SECTION_OWNERS)) {
             const owner = ASSESSMENT_SECTION_OWNERS[key];
             const ownerLabel = specialtyShortLabel(owner as SectionOwner);
@@ -338,17 +393,20 @@ function SpecialistAFormContent() {
             const isFinalized = !!fullSubmission?.finalized_at;
             const isSelfSubmitted = contrib?.status === "submitted";
             const lockedShared = owner === SHARED && sectionASubmittedMatches && key === "A";
+            const remoteHolder = collab.isLockedByOther(key);
             const canEdit = !isViewMode && !isFinalized && !isSelfSubmitted && !lockedShared
+                && !remoteHolder
                 && canEditSection(ASSESSMENT_SECTION_OWNERS, key, userSpecialties, user?.role);
             result[key] = {
                 status: contrib?.status || "pending",
-                locked: lockedShared || isSelfSubmitted || isFinalized,
+                locked: lockedShared || isSelfSubmitted || isFinalized || !!remoteHolder,
                 canEdit,
                 ownerLabel,
+                remoteHolder: remoteHolder ? { user_name: remoteHolder.user_name, specialty: remoteHolder.specialty } : null,
             };
         }
         return result;
-    }, [contributions, form.a2_verification, fullSubmission, isViewMode, user?.role, userSpecialties]);
+    }, [contributions, form.a2_verification, fullSubmission, isViewMode, user?.role, userSpecialties, collab]);
 
     const saveSection = async (sectionKey: string, opts: { submit?: boolean } = {}) => {
         if (!studentId) { setErrorMsg("No student selected."); return; }
@@ -378,6 +436,8 @@ function SpecialistAFormContent() {
                 toast.success(`Section ${sectionKey} saved.`);
             }
             await refreshContributions();
+            // Free the soft lock so other specialists can pick this section up.
+            collab.releaseLock(sectionKey);
         } catch (err: any) {
             const msg = err.response?.data?.error || err.response?.data?.detail || "Save failed.";
             setErrorMsg(msg);
@@ -389,10 +449,28 @@ function SpecialistAFormContent() {
 
     const ro = (sectionKey: string) => isViewMode || !sectionStatus[sectionKey]?.canEdit;
 
+    // SectionCard collaboration props — focus acquires the lock, blur releases.
+    const cardProps = (sectionKey: string) => {
+        const s = sectionStatus[sectionKey];
+        const eligible = !!s?.canEdit;
+        return {
+            remoteHolder: s?.remoteHolder ?? null,
+            onFocus: eligible ? () => collab.acquireLock(sectionKey) : undefined,
+            onBlur: eligible ? () => collab.releaseLock(sectionKey) : undefined,
+        };
+    };
+
     const sectionFooter = (sectionKey: string) => {
         if (isViewMode) return null;
         const s = sectionStatus[sectionKey];
         if (!s) return null;
+        if (s.remoteHolder && !isAdmin) {
+            return (
+                <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#92400e", background: "#fef3c7", padding: "10px 14px", borderRadius: "8px", border: "1px solid #fde68a" }}>
+                    <strong>{s.remoteHolder.user_name}</strong> is editing this section right now. You'll be able to edit once they finish.
+                </div>
+            );
+        }
         if (s.locked && !isAdmin) {
             const contrib = contributions[sectionKey];
             return (
@@ -468,6 +546,19 @@ function SpecialistAFormContent() {
                             Logged in as <strong>{userSpecialties.join(", ")}</strong> — you can edit Section{mySections.length > 1 ? "s" : ""} {mySections.join(", ")} and shared sections.
                         </p>
                     )}
+                    {!isViewMode && assessmentInstanceId && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: collab.connected ? "#dcfce7" : "#f1f5f9", color: collab.connected ? "#166534" : "#475569", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: collab.connected ? "#22c55e" : "#94a3b8", display: "inline-block" }} />
+                                {collab.connected ? "Live" : "Reconnecting…"}
+                            </span>
+                            {collab.locks.filter(l => l.user_id !== user?.id).map(l => (
+                                <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px" }}>
+                                    {l.user_name} · §{l.section_key}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                     {!isViewMode && user?.role === "SPECIALIST" && userSpecialties.length === 0 && (
                         <p className="text-sm text-amber-600 mt-1 mb-0">
                             Your account has no specialty set. Contact an admin to assign one.
@@ -518,7 +609,7 @@ function SpecialistAFormContent() {
 
             {/* SECTION A: Background */}
             <SectionCard title="Section A — Background (Parent Input + Therapist Verification)" subtitle="A1 is auto-filled from parent submission. Complete A2 and A3."
-                ownerLabel="Shared" status={sectionStatus.A?.status} locked={sectionStatus.A?.locked}>
+                ownerLabel="Shared" status={sectionStatus.A?.status} locked={sectionStatus.A?.locked} {...cardProps("A")}>
                 <FieldGroup label="A1. Parent-Provided Information (Auto-filled)">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         {[
@@ -574,7 +665,7 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION B: Developmental Screening */}
-            <SectionCard title="Section B — Developmental Screening" ownerLabel="Shared" status={sectionStatus.B?.status} locked={sectionStatus.B?.locked}>
+            <SectionCard title="Section B — Developmental Screening" ownerLabel="Shared" status={sectionStatus.B?.status} locked={sectionStatus.B?.locked} {...cardProps("B")}>
                 <FieldGroup label="B1. Developmental Milestones Achieved">
                     {["Sat independently", "Crawled", "Walked", "First words", "Combined words", "Toilet trained", "Feeding independently"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.b1_milestones.includes(item)} readOnly={ro("B")}
@@ -591,7 +682,7 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION C: SLP */}
-            <SectionCard title="Section C — Speech & Language Pathology (SLP) Assessment" ownerLabel="SLP" status={sectionStatus.C?.status} locked={sectionStatus.C?.locked}>
+            <SectionCard title="Section C — Speech & Language Pathology (SLP) Assessment" ownerLabel="SLP" status={sectionStatus.C?.status} locked={sectionStatus.C?.locked} {...cardProps("C")}>
                 <FieldGroup label="C1. Expressive Language">
                     {["Babbling", "Single words", "Phrases", "Full sentences", "Limited vocabulary", "Echolalia", "Age-appropriate"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.c1_expressive.includes(item)} readOnly={ro("C")} onChange={() => tog("c1_expressive", item)} />
@@ -619,7 +710,7 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION D: OT */}
-            <SectionCard title="Section D — Occupational Therapy (OT) Assessment" ownerLabel="OT" status={sectionStatus.D?.status} locked={sectionStatus.D?.locked}>
+            <SectionCard title="Section D — Occupational Therapy (OT) Assessment" ownerLabel="OT" status={sectionStatus.D?.status} locked={sectionStatus.D?.locked} {...cardProps("D")}>
                 <FieldGroup label="D1. Fine Motor Skills">
                     {["Pencil grasp", "Hand dominance", "Manipulates small objects", "Hand strength concerns"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.d1_fine_motor.includes(item)} readOnly={ro("D")} onChange={() => tog("d1_fine_motor", item)} />
@@ -647,7 +738,7 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION E: PT */}
-            <SectionCard title="Section E — Physical Therapy (PT) Assessment" ownerLabel="PT" status={sectionStatus.E?.status} locked={sectionStatus.E?.locked}>
+            <SectionCard title="Section E — Physical Therapy (PT) Assessment" ownerLabel="PT" status={sectionStatus.E?.status} locked={sectionStatus.E?.locked} {...cardProps("E")}>
                 <FieldGroup label="E1. Gross Motor Skills">
                     {["Sitting balance", "Walking gait", "Running", "Jumping"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.e1_gross_motor.includes(item)} readOnly={ro("E")} onChange={() => tog("e1_gross_motor", item)} />
@@ -675,7 +766,7 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION F1: ABA */}
-            <SectionCard title="Section F1 — Applied Behavior Analysis (ABA) Assessment" ownerLabel="ABA" status={sectionStatus.F1?.status} locked={sectionStatus.F1?.locked}>
+            <SectionCard title="Section F1 — Applied Behavior Analysis (ABA) Assessment" ownerLabel="ABA" status={sectionStatus.F1?.status} locked={sectionStatus.F1?.locked} {...cardProps("F1")}>
                 <FieldGroup label="F1a. Behavior Observations">
                     {["Inattentive", "Hyperactive", "Impulsive", "Withdrawn", "Aggressive"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.f1_behavior.includes(item)} readOnly={ro("F1")} onChange={() => tog("f1_behavior", item)} />
@@ -693,7 +784,7 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION F2: Developmental Psychology */}
-            <SectionCard title="Section F2 — Developmental Psychology Assessment" ownerLabel="Dev. Psych" status={sectionStatus.F2?.status} locked={sectionStatus.F2?.locked}>
+            <SectionCard title="Section F2 — Developmental Psychology Assessment" ownerLabel="Dev. Psych" status={sectionStatus.F2?.status} locked={sectionStatus.F2?.locked} {...cardProps("F2")}>
                 <FieldGroup label="F2a. Cognitive / Play Skills Screening">
                     {["Memory", "Problem-solving", "Academic readiness"].map(item => (
                         <CheckboxItem key={item} label={item} checked={form.f3_cognitive.includes(item)} readOnly={ro("F2")} onChange={() => tog("f3_cognitive", item)} />
@@ -711,7 +802,7 @@ function SpecialistAFormContent() {
             </SectionCard>
 
             {/* SECTION G: Summary */}
-            <SectionCard title="Section G — Multidisciplinary Summary & Recommendations" ownerLabel="Shared" status={sectionStatus.G?.status} locked={sectionStatus.G?.locked}>
+            <SectionCard title="Section G — Multidisciplinary Summary & Recommendations" ownerLabel="Shared" status={sectionStatus.G?.status} locked={sectionStatus.G?.locked} {...cardProps("G")}>
                 <FieldGroup label="G1. Discipline Summaries — fill the row matching your specialty">
                     {[
                         ["SLP Summary", "g1_slp_summary", "Speech & Language observations and conclusions…", "Speech-Language Pathology"],

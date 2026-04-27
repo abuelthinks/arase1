@@ -72,7 +72,7 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         response = Response({
             'user_id': user.id,
             'role': user.role,
-            'username': user.username,
+            'email': user.email,
             'message': 'Login successful.',
         }, status=status.HTTP_200_OK)
 
@@ -151,7 +151,7 @@ class MeView(APIView):
         return Response({
             'user_id': user.id,
             'role': user.role,
-            'username': user.username,
+            'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
             'email': user.email,
@@ -161,4 +161,7 @@ class MeView(APIView):
             'specialties': user.specialty_list() if hasattr(user, 'specialty_list') else (
                 [user.specialty] if getattr(user, 'specialty', '') else []
             ),
+            'languages': user.language_list() if hasattr(user, 'language_list') else [],
+            'specialist_onboarding_complete': user.is_specialist_onboarding_complete() if hasattr(user, 'is_specialist_onboarding_complete') else True,
+            'specialist_onboarding_missing': user.specialist_onboarding_missing() if hasattr(user, 'specialist_onboarding_missing') else [],
         })

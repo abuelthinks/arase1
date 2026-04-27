@@ -121,9 +121,9 @@ def get_student_profile_data(student, user=None):
     Returns: dict
     """
     from api.models import (
-        MultidisciplinaryAssessment, SpedAssessment,
+        MultidisciplinaryAssessment,
         ParentProgressTracker, MultidisciplinaryProgressTracker,
-        SpedProgressTracker, GeneratedDocument,
+        SpedProgressTracker, GeneratedDocument, DiagnosticReport,
     )
     from api.services.cycle_service import (
         ensure_current_cycle, get_cycle_status_summary, get_previous_recommendations,
@@ -138,7 +138,7 @@ def get_student_profile_data(student, user=None):
     form_statuses = {
         "parent_assessment": {"submitted": False, "id": None},
         "multi_assessment": {"submitted": False, "id": None},
-        "sped_assessment": {"submitted": False, "id": None},
+        "diagnostic_report": {"submitted": False, "id": None},
         "parent_tracker": {"submitted": False, "id": None},
         "multi_tracker": {"submitted": False, "id": None},
         "sped_tracker": {"submitted": False, "id": None},
@@ -156,7 +156,6 @@ def get_student_profile_data(student, user=None):
         form_map = {
             "parent_assessment": ParentAssessment,
             "multi_assessment": MultidisciplinaryAssessment,
-            "sped_assessment": SpedAssessment,
             "parent_tracker": ParentProgressTracker,
             "multi_tracker": MultidisciplinaryProgressTracker,
             "sped_tracker": SpedProgressTracker,
@@ -165,23 +164,43 @@ def get_student_profile_data(student, user=None):
             if user and user.role == 'PARENT' and key != 'parent_assessment':
                 form_statuses[key] = {"submitted": False, "id": None}
                 continue
-            if key in ['parent_assessment', 'multi_assessment', 'sped_assessment']:
+            if key in ['parent_assessment', 'multi_assessment']:
                 obj = model.objects.select_related('submitted_by').filter(student=student).order_by('-created_at').first()
             else:
                 obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
+            submitted = bool(obj)
+            submitted_at = obj.created_at if obj else None
+            if key == 'multi_assessment' and obj:
+                submitted = bool(obj.finalized_at)
+                submitted_at = obj.finalized_at
             form_statuses[key] = {
-                "submitted": bool(obj),
+                "submitted": submitted,
                 "id": obj.id if obj else None,
-                "submitted_at": obj.created_at if obj else None,
+                "submitted_at": submitted_at,
                 "submitted_by": {
                     "id": obj.submitted_by.id,
                     "name": (
                         f"{obj.submitted_by.first_name} {obj.submitted_by.last_name}".strip()
-                        or obj.submitted_by.username
+                        or obj.submitted_by.email
                     ),
                     "role": obj.submitted_by.role,
                 } if obj and obj.submitted_by else None,
             }
+
+        # Diagnostic report (separate model, not cycle-scoped)
+        diag = DiagnosticReport.objects.filter(student=student).order_by('-created_at').first()
+        form_statuses["diagnostic_report"] = {
+            "submitted": bool(diag),
+            "id": diag.id if diag else None,
+            "submitted_at": diag.created_at if diag else None,
+            "original_filename": diag.original_filename if diag else None,
+            "uploaded_by": {
+                "id": diag.uploaded_by.id,
+                "name": f"{diag.uploaded_by.first_name} {diag.uploaded_by.last_name}".strip() or diag.uploaded_by.email,
+                "role": diag.uploaded_by.role,
+            } if diag and diag.uploaded_by else None,
+        }
+
 
     # Generated documents
     docs = GeneratedDocument.objects.filter(student=student).order_by('-created_at')
@@ -348,3 +367,31 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
     # Removed observation status update because teacher is assigned post-enrollment
 
     return staff, student
+
+
+def unassign_staff_from_student(student_id, staff_id, specialty=None):
+    """
+    Unassigns a staff member from a student.
+    If specialty is provided (for SPECIALIST), it removes only that specialty.
+    If the specialist has no more specialties, or if it's a TEACHER, it removes the access entirely.
+    """
+    try:
+        access = StudentAccess.objects.get(student_id=student_id, user_id=staff_id)
+    except StudentAccess.DoesNotExist:
+        return False
+        
+    if specialty and access.user.role == 'SPECIALIST':
+        normalized_specialty = normalize_specialty(specialty)
+        if normalized_specialty in access.assigned_specialties:
+            access.assigned_specialties.remove(normalized_specialty)
+            if not access.assigned_specialties:
+                access.delete()
+            else:
+                access.save(update_fields=['assigned_specialties'])
+            return True
+        return False
+        
+    # If no specialty specified or it's a teacher, just delete the access
+    access.delete()
+    return True
+

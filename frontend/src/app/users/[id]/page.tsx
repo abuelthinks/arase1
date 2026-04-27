@@ -5,7 +5,28 @@ import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { LANGUAGE_OPTIONS, normalizeLanguages } from "@/lib/languages";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
+import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
+import type { LucideIcon } from "lucide-react";
+import {
+    ActivityIcon,
+    ArrowLeft,
+    ArrowRight,
+    BadgeCheck,
+    Briefcase,
+    Check,
+    ChevronRight,
+    Languages,
+    Loader2,
+    Mail,
+    PhoneCall,
+    Plus,
+    ShieldCheck,
+    Sparkles,
+    Users,
+    X,
+} from "lucide-react";
 
 interface AssignedStudent {
     id: number;
@@ -17,59 +38,40 @@ interface AssignedStudent {
 
 interface UserData {
     id: number;
-    username: string;
+    
     email: string;
     role: string;
     first_name: string;
     last_name: string;
     specialty: SpecialistSpecialty | "";
     specialties?: SpecialistSpecialty[];
+    languages?: string[];
     phone_number?: string;
     is_phone_verified?: boolean;
+    specialist_onboarding_complete?: boolean;
+    specialist_onboarding_missing?: string[];
     assigned_students_count: number;
     assigned_students: AssignedStudent[];
     last_login?: string;
 }
 
-const roleConfig: Record<string, { color: string; gradient: string; accent: string }> = {
-    ADMIN: {
-        color: "#5b21b6",
-        gradient: "linear-gradient(135deg, #eef2ff 0%, #ede9fe 52%, #ddd6fe 100%)",
-        accent: "#6d28d9",
-    },
-    TEACHER: {
-        color: "#1e40af",
-        gradient: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 55%, #bfdbfe 100%)",
-        accent: "#2563eb",
-    },
-    SPECIALIST: {
-        color: "#065f46",
-        gradient: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 55%, #a7f3d0 100%)",
-        accent: "#059669",
-    },
-    PARENT: {
-        color: "#92400e",
-        gradient: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 55%, #fde68a 100%)",
-        accent: "#d97706",
-    },
-};
+const inputCls =
+    "w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition-all hover:bg-white focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/15";
 
-const statusColors: Record<string, { bg: string; color: string }> = {
-    PENDING_ASSESSMENT: { bg: "#fce7f3", color: "#9d174d" },
-    ASSESSMENT_SCHEDULED: { bg: "#fef3c7", color: "#92400e" },
-    ASSESSED: { bg: "#dbeafe", color: "#1e40af" },
-    ENROLLED: { bg: "#dcfce7", color: "#14532d" },
-    ARCHIVED: { bg: "#f1f5f9", color: "#64748b" },
+const statusStyles: Record<string, string> = {
+    PENDING_ASSESSMENT: "bg-pink-50 text-pink-700 border-pink-100",
+    ASSESSMENT_SCHEDULED: "bg-amber-50 text-amber-700 border-amber-100",
+    ASSESSED: "bg-blue-50 text-blue-700 border-blue-100",
+    ENROLLED: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    ARCHIVED: "bg-slate-50 text-slate-500 border-slate-200",
 };
 
 const profileCache = new Map<string, UserData>();
 
 function formatLastSeen(lastLogin?: string): string {
     if (!lastLogin) return "No recent login recorded";
-
     const date = new Date(lastLogin);
     if (Number.isNaN(date.getTime())) return "Last login unavailable";
-
     return date.toLocaleString("en-US", {
         month: "short",
         day: "numeric",
@@ -94,6 +96,34 @@ function getRoleSummary(role: string): string {
     }
 }
 
+function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+    return (
+        <section className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7 ${className}`}>
+            {children}
+        </section>
+    );
+}
+
+function SectionHeader({
+    title,
+    description,
+    action,
+}: {
+    title: string;
+    description?: string;
+    action?: React.ReactNode;
+}) {
+    return (
+        <div className="mb-5 flex flex-col gap-3 border-b border-indigo-100/60 pb-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <h2 className="m-0 text-lg font-extrabold text-slate-900">{title}</h2>
+                {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+            </div>
+            {action && <div className="shrink-0">{action}</div>}
+        </div>
+    );
+}
+
 export default function UserProfile() {
     const { id } = useParams();
     const router = useRouter();
@@ -108,6 +138,11 @@ export default function UserProfile() {
     const [savingSpecialty, setSavingSpecialty] = useState(false);
     const [specialtyError, setSpecialtyError] = useState("");
     const [isEditingSpecialty, setIsEditingSpecialty] = useState(false);
+    const [languages, setLanguages] = useState<string[]>([]);
+    const [languageOther, setLanguageOther] = useState("");
+    const [savingLanguages, setSavingLanguages] = useState(false);
+    const [languageError, setLanguageError] = useState("");
+    const [isEditingLanguages, setIsEditingLanguages] = useState(false);
 
     const initialSpecialties = (raw: UserData): SpecialistSpecialty[] => {
         if (Array.isArray(raw.specialties) && raw.specialties.length > 0) {
@@ -116,7 +151,11 @@ export default function UserProfile() {
         return raw.specialty ? [raw.specialty as SpecialistSpecialty] : [];
     };
 
+    const initialLanguages = (raw: UserData): string[] =>
+        normalizeLanguages(Array.isArray(raw.languages) ? raw.languages : []);
+
     const isAdmin = authUser?.role === "ADMIN";
+    const onboardingIncomplete = isSpecialistOnboardingIncomplete(user ?? authUser);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -125,6 +164,7 @@ export default function UserProfile() {
                 profileCache.set(cacheKey, res.data);
                 setUser(res.data);
                 setSpecialties(initialSpecialties(res.data));
+                setLanguages(initialLanguages(res.data));
                 setError("");
             } catch (err: any) {
                 if (!profileCache.has(cacheKey)) {
@@ -139,521 +179,693 @@ export default function UserProfile() {
     }, [cacheKey, id]);
 
     if (loading) {
-        return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading profile...</div>;
+        return (
+            <div className="flex items-center justify-center gap-2 p-12 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Loading profile...
+            </div>
+        );
     }
 
     if (error) {
-        return <div style={{ padding: "3rem", textAlign: "center", color: "#dc2626" }}>{error}</div>;
+        return <div className="p-12 text-center text-sm text-red-600">{error}</div>;
     }
 
     if (!user) {
-        return <div style={{ padding: "3rem", textAlign: "center" }}>User not found.</div>;
+        return <div className="p-12 text-center text-sm text-slate-500">User not found.</div>;
     }
 
-    const displayName = (user.first_name || user.last_name)
+    const displayName = user.first_name || user.last_name
         ? `${user.first_name} ${user.last_name}`.trim()
-        : user.username;
+        : user.email;
     const initials = displayName.split(" ").map(word => word[0]).join("").toUpperCase().slice(0, 2);
     const role = user.role?.toUpperCase() || "UNKNOWN";
-    const roleBadge = roleConfig[role] ?? {
-        color: "#475569",
-        gradient: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-        accent: "#475569",
-    };
 
     const assignedStudents = Array.isArray(user.assigned_students) ? user.assigned_students : [];
     const studentCount = assignedStudents.length;
-    const activeCount = assignedStudents.filter(student => student.status === "ENROLLED").length;
-    const pendingCount = assignedStudents.filter(student => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"].includes(student.status)).length;
-    const assessedCount = assignedStudents.filter(student => student.status === "ASSESSED").length;
+    const activeCount = assignedStudents.filter(s => s.status === "ENROLLED").length;
+    const pendingCount = assignedStudents.filter(s => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"].includes(s.status)).length;
+    const assessedCount = assignedStudents.filter(s => s.status === "ASSESSED").length;
     const isParent = role === "PARENT";
+    const viewerIsParent = authUser?.role === "PARENT";
+    const viewerIsSpecialist = authUser?.role === "SPECIALIST";
+    const viewingOwnProfile = authUser?.user_id === user.id;
+    const isParentViewingOther = viewerIsParent && !viewingOwnProfile;
+    const isCrossRoleParentSpecialist = !viewingOwnProfile && (
+        (viewerIsParent && role === "SPECIALIST") ||
+        (viewerIsSpecialist && role === "PARENT")
+    );
+    const canViewPrivateContact = isAdmin || viewingOwnProfile;
+    const canViewOperationalDetails = isAdmin || viewingOwnProfile;
+    const canEditLanguages = role === "SPECIALIST" && (isAdmin || authUser?.user_id === user.id);
+    const knownLanguageSet = new Set(LANGUAGE_OPTIONS.map(l => l.toLowerCase()));
 
-    const profileInfo = isParent
+    const profileInfo = !canViewPrivateContact
         ? [
-            { label: "Email", value: user.email, href: `mailto:${user.email}` },
-            { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined },
-            { label: "Account Status", value: "Active" },
+            { label: "Role", value: user.role, icon: Briefcase },
         ]
-        : [
-            { label: "Email", value: user.email, href: `mailto:${user.email}` },
-            { label: "Username", value: user.username !== user.email ? `@${user.username}` : "Same as email" },
-            { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined },
-            { label: "Role", value: user.role },
-            { label: "Last Active", value: formatLastSeen(user.last_login) },
-            { label: "Account Status", value: "Active" },
-        ];
+        : isParent
+                ? [
+                    { label: "Email", value: user.email, href: `mailto:${user.email}`, icon: Mail },
+                    { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
+                    { label: "Account Status", value: "Active", icon: ShieldCheck },
+                ]
+                : [
+                    { label: "Email", value: user.email, href: `mailto:${user.email}`, icon: Mail },
+                    
+                    { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
+                    { label: "Role", value: user.role, icon: Briefcase },
+                    { label: "Last Active", value: formatLastSeen(user.last_login), icon: ActivityIcon },
+                    { label: "Account Status", value: "Active", icon: ShieldCheck },
+                ];
 
-    const statCards = !isParent
+    const statCards = canViewOperationalDetails && !isParent
         ? [
-            { label: "Caseload", value: studentCount, note: "total assigned students", tone: "#4f46e5", bg: "#eef2ff" },
-            { label: "Active", value: activeCount, note: "enrolled students", tone: "#059669", bg: "#ecfdf5" },
-            { label: "Needs Follow-Up", value: pendingCount + assessedCount, note: "pending or assessed students", tone: "#d97706", bg: "#fffbeb" },
+            { label: "Caseload", value: studentCount, note: "total assigned students", accent: "from-indigo-500 to-blue-600" },
+            { label: "Active", value: activeCount, note: "enrolled students", accent: "from-emerald-500 to-teal-600" },
+            { label: "Needs Follow-up", value: pendingCount + assessedCount, note: "pending or assessed", accent: "from-amber-500 to-orange-600" },
         ]
         : [];
 
     return (
-        <div className="profile-shell">
-            <div className="profile-hero" style={{ background: roleBadge.gradient }}>
-                <div className="profile-hero-orb top"></div>
-                <div className="profile-hero-orb bottom"></div>
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 md:px-0">
 
-                <div className="profile-hero-inner">
-                    <div className="profile-hero-toolbar">
-                        <button
-                            type="button"
-                            onClick={() => router.back()}
-                            className="profile-back-button"
-                            aria-label="Go back"
-                        >
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Back
-                        </button>
-
-                        {!isParent && (
-                            <div className="profile-hero-actions">
-                                <Link href={`/users/${user.id}/activity`} className="profile-hero-link">
-                                    View Activity
-                                </Link>
-                                {user.email && (
-                                    <a href={`mailto:${user.email}`} className="profile-hero-link">
-                                        Email User
-                                    </a>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="profile-hero-identity">
-                        <div className="profile-avatar" style={{ color: roleBadge.accent }}>
-                            {initials}
+            {/* Hero */}
+            <SectionCard>
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                        type="button"
+                        onClick={() => router.back()}
+                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                        Back
+                    </button>
+                    {canViewOperationalDetails && !isParent && (
+                        <div className="flex flex-wrap gap-2">
+                            <Link
+                                href={`/users/${user.id}/activity`}
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 no-underline transition-colors hover:bg-slate-50"
+                            >
+                                <ActivityIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                                View Activity
+                            </Link>
+                            {canViewPrivateContact && user.email && (
+                                <a
+                                    href={`mailto:${user.email}`}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 no-underline transition-colors hover:bg-slate-50"
+                                >
+                                    <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                                    Email User
+                                </a>
+                            )}
                         </div>
+                    )}
+                </div>
 
-                        <div className="profile-identity-copy">
-                            <div className="profile-name-row">
-                                <h1 className="profile-name">{displayName}</h1>
-                                <span className="profile-role-chip" style={{ color: roleBadge.color }}>
-                                    {role}
+                <div className="flex flex-col items-start gap-5 sm:flex-row">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-2xl font-extrabold text-white shadow-md shadow-indigo-200">
+                        {initials}
+                    </div>
+                    <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h1 className="m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-2xl font-extrabold leading-tight text-transparent">
+                                {displayName}
+                            </h1>
+                            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide text-indigo-700">
+                                {role}
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                            {getRoleSummary(role)}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {canViewPrivateContact && user.email && (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                                    <Mail className="h-3 w-3" aria-hidden="true" />
+                                    {user.email}
                                 </span>
-                            </div>
-
-                            <p className="profile-summary">
-                                {getRoleSummary(role)}
-                            </p>
-
-                            <div className="profile-meta-row">
-                                <span className="profile-meta-pill">{user.email}</span>
-                                {user.phone_number && (
-                                    <span className="profile-meta-pill">{user.phone_number}</span>
-                                )}
-                                {!isParent && (
-                                    <span className="profile-meta-pill">
-                                        {(user.specialties && user.specialties.length > 0)
-                                            ? user.specialties.join(", ")
-                                            : (user.specialty || "Specialty not set")}
-                                    </span>
-                                )}
-                            </div>
+                            )}
+                            {canViewPrivateContact && user.phone_number && (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                                    <PhoneCall className="h-3 w-3" aria-hidden="true" />
+                                    {user.phone_number}
+                                </span>
+                            )}
+                            {!isParent && (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                    <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                                    {(user.specialties && user.specialties.length > 0)
+                                        ? user.specialties.join(", ")
+                                        : (user.specialty || "Specialty not set")}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
-            </div>
+            </SectionCard>
 
+            {/* Stats */}
             {statCards.length > 0 && (
-                <div className="profile-stats-grid">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {statCards.map(card => (
-                        <div key={card.label} className="profile-stat-card">
-                            <div className="profile-stat-icon" style={{ background: card.bg, color: card.tone }}>
+                        <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.accent} text-lg font-extrabold text-white shadow-md`}>
                                 {card.value}
                             </div>
-                            <p className="profile-stat-label">{card.label}</p>
-                            <p className="profile-stat-note">{card.note}</p>
+                            <p className="m-0 text-xs font-bold uppercase tracking-wide text-slate-500">{card.label}</p>
+                            <p className="mt-1 text-sm text-slate-500">{card.note}</p>
                         </div>
                     ))}
                 </div>
             )}
 
-            <div className="profile-main-grid">
-                <div className="profile-column">
-                    <section className="profile-panel">
-                        <div className="profile-panel-header">
-                            <h2 className="profile-panel-title">{isParent ? "Your Information" : "Profile Information"}</h2>
-                            <p className="profile-panel-copy">{isParent ? "Your contact details and account status." : "Identity, contact details, and account state."}</p>
-                        </div>
+            {/* Onboarding callout */}
+            {role === "SPECIALIST" && onboardingIncomplete && canViewOperationalDetails && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="m-0 text-sm font-extrabold text-amber-900">Complete your profile setup</p>
+                        <p className="mt-1 text-sm text-amber-800">{specialistOnboardingMessage(user.specialist_onboarding_missing || authUser?.specialist_onboarding_missing)}</p>
+                    </div>
+                    <Link
+                        href="/specialist-onboarding"
+                        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white no-underline shadow-sm hover:bg-amber-700"
+                    >
+                        Finish setup
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                </div>
+            )}
 
-                        <div>
-                            {profileInfo.map((item, index) => (
-                                <div
-                                    key={item.label}
-                                    className="profile-info-row"
-                                    style={{ borderBottom: index < profileInfo.length - 1 ? "1px solid #f8fafc" : "none" }}
-                                >
-                                    <span style={{ color: "#64748b", fontWeight: 600, fontSize: "0.82rem" }}>
-                                        {item.label}
-                                    </span>
-                                    {item.href ? (
-                                        <a href={item.href} style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none", textAlign: "right", wordBreak: "break-word", fontSize: "0.84rem" }}>
-                                            {item.value}
-                                        </a>
-                                    ) : (
-                                        <span style={{ color: "#0f172a", fontWeight: 600, textAlign: "right", fontSize: "0.84rem" }}>
-                                            {item.value}
+            {/* Main grid */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="flex flex-col gap-6">
+                    <SectionCard>
+                        <SectionHeader
+                            title={isParent ? "Your Information" : "Profile Information"}
+                            description={isParent ? "Your contact details and account status." : "Identity, contact details, and account state."}
+                        />
+                        <div className="flex flex-col gap-2">
+                            {profileInfo.map(item => {
+                                const Icon = item.icon;
+                                return (
+                                    <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50">
+                                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500">
+                                            {Icon && <Icon className="h-4 w-4 text-slate-400" aria-hidden="true" />}
+                                            {item.label}
                                         </span>
-                                    )}
-                                </div>
-                            ))}
+                                        {item.href ? (
+                                            <a href={item.href} className="break-all text-right text-sm font-bold text-indigo-600 no-underline hover:underline">
+                                                {item.value}
+                                            </a>
+                                        ) : (
+                                            <span className="text-right text-sm font-bold text-slate-900">{item.value}</span>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
-                    </section>
+                    </SectionCard>
 
                     {!isParent && (
-                        <section className="profile-panel">
-                            <div className="profile-panel-header">
-                                <h2 className="profile-panel-title">Verification & Role Context</h2>
-                                <p className="profile-panel-copy">Important account context at a glance.</p>
-                            </div>
-
-                            <div className="profile-panel-body" style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-                                <div className="profile-context-card">
-                                    <div className="profile-context-label">Phone Verification</div>
-                                    <div className="profile-context-inline">
-                                        <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>
-                                            {user.phone_number || "No phone number on file"}
-                                        </span>
-                                        <span
-                                            className="profile-status-chip"
-                                            style={{
-                                                background: user.is_phone_verified ? "#dcfce7" : "#fffbeb",
-                                                color: user.is_phone_verified ? "#166534" : "#b45309",
-                                            }}
-                                        >
-                                            {user.is_phone_verified ? "Verified" : "Not verified"}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="profile-context-card">
-                                    <div className="profile-context-label">Specialties / Responsibility</div>
-                                    <div className="profile-context-value">
-                                        {(user.specialties && user.specialties.length > 0)
-                                            ? user.specialties.join(", ")
-                                            : (user.specialty || "Not configured yet")}
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    )}
-
-                    {isAdmin && role === "SPECIALIST" && (
-                        <section className="profile-panel">
-                            <div className="profile-panel-header split">
-                                <div>
-                                    <h2 className="profile-panel-title">Edit Specialties</h2>
-                                    <p className="profile-panel-copy">A specialist may hold one or more disciplines. Each one unlocks the matching section in assessment and tracker forms.</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSpecialtyError("");
-                                        setIsEditingSpecialty(current => !current);
-                                        setSpecialties(initialSpecialties(user));
-                                    }}
-                                    className="btn-slate"
-                                >
-                                    {isEditingSpecialty ? "Close" : "Edit"}
-                                </button>
-                            </div>
-
-                            <div className="profile-panel-body">
-                                {isEditingSpecialty ? (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                            {SPECIALIST_SPECIALTIES.map(option => {
-                                                const checked = specialties.includes(option);
-                                                return (
-                                                    <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", color: "#0f172a", cursor: "pointer" }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={checked}
-                                                            onChange={() => {
-                                                                setSpecialties(prev => checked
-                                                                    ? prev.filter(s => s !== option)
-                                                                    : [...prev, option]
-                                                                );
-                                                            }}
-                                                            style={{ width: 16, height: 16, accentColor: "#4f46e5" }}
-                                                        />
-                                                        {option}
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                        {specialtyError && (
-                                            <div style={{ fontSize: "0.8rem", color: "#dc2626" }}>
-                                                {specialtyError}
-                                            </div>
-                                        )}
-                                        <div style={{ display: "flex", gap: "8px" }}>
-                                            <button
-                                                type="button"
-                                                disabled={savingSpecialty}
-                                                onClick={async () => {
-                                                    setSavingSpecialty(true);
-                                                    setSpecialtyError("");
-                                                    try {
-                                                        const res = await api.patch(`/api/users/${id}/`, { specialties });
-                                                        profileCache.delete(cacheKey);
-                                                        setUser(prev => prev ? {
-                                                            ...prev,
-                                                            specialty: res.data?.specialty ?? (specialties[0] || ""),
-                                                            specialties: res.data?.specialties ?? specialties,
-                                                        } : prev);
-                                                        setIsEditingSpecialty(false);
-                                                    } catch (err: any) {
-                                                        setSpecialtyError(err.response?.data?.specialties || err.response?.data?.detail || "Could not save specialties. Please try again.");
-                                                    } finally {
-                                                        setSavingSpecialty(false);
-                                                    }
-                                                }}
-                                                className="btn-primary"
-                                                style={{ flex: 1 }}
-                                            >
-                                                {savingSpecialty ? "Saving..." : "Save Specialties"}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setIsEditingSpecialty(false);
-                                                    setSpecialties(initialSpecialties(user));
-                                                    setSpecialtyError("");
-                                                }}
-                                                className="btn-slate"
-                                                style={{ flex: 1 }}
-                                            >
-                                                Cancel
-                                            </button>
+                        <SectionCard>
+                            <SectionHeader
+                                title={isParentViewingOther ? "About this specialist" : "Verification & Role Context"}
+                                description={isParentViewingOther ? "Who this specialist is and how they can support your child." : "Important account context at a glance."}
+                            />
+                            <div className="flex flex-col gap-3">
+                                {canViewPrivateContact && (
+                                    <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
+                                        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                                            <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" />
+                                            Phone Verification
+                                        </p>
+                                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                            <span className="text-sm font-bold text-slate-900">
+                                                {user.phone_number || "No phone number on file"}
+                                            </span>
+                                            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${user.is_phone_verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                                {user.is_phone_verified ? "Verified" : "Not verified"}
+                                            </span>
                                         </div>
                                     </div>
-                                ) : (
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                                        {specialties.length > 0
-                                            ? specialties.map(s => (
-                                                <span
-                                                    key={s}
-                                                    className="profile-meta-pill"
-                                                    style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
-                                                >
+                                )}
+
+                                <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
+                                    <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                                        <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                                        Area of Practice
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {user.specialties && user.specialties.length > 0 ? (
+                                            user.specialties.map(s => (
+                                                <span key={s} className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
                                                     {s}
                                                 </span>
                                             ))
-                                            : (
-                                                <span style={{ fontSize: "0.84rem", color: "#94a3b8", fontStyle: "italic" }}>
-                                                    No specialty configured yet.
-                                                </span>
+                                        ) : user.specialty ? (
+                                            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                                {user.specialty}
+                                            </span>
+                                        ) : (
+                                            <span className="text-sm italic text-slate-400">Not configured yet</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {role === "SPECIALIST" && (
+                                    <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
+                                        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                                            <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+                                            Session Languages
+                                        </p>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {languages.length > 0 ? (
+                                                languages.map(l => (
+                                                    <span key={l} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                                        {l}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-sm italic text-slate-400">Not configured yet</span>
                                             )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                        </section>
+                        </SectionCard>
+                    )}
+
+                    {canEditLanguages && (
+                        <SectionCard>
+                            <SectionHeader
+                                title="Edit Session Languages"
+                                description="Languages this specialist can comfortably use with parents and children."
+                                action={
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setLanguageError("");
+                                            setIsEditingLanguages(current => !current);
+                                            setLanguages(initialLanguages(user));
+                                            setLanguageOther("");
+                                        }}
+                                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                    >
+                                        {isEditingLanguages ? "Close" : "Edit"}
+                                    </button>
+                                }
+                            />
+                            {isEditingLanguages ? (
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {LANGUAGE_OPTIONS.map(option => {
+                                            const checked = languages.some(l => l.toLowerCase() === option.toLowerCase());
+                                            return (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setLanguages(prev => normalizeLanguages(
+                                                            checked
+                                                                ? prev.filter(l => l.toLowerCase() !== option.toLowerCase())
+                                                                : [...prev, option],
+                                                        ));
+                                                    }}
+                                                    aria-pressed={checked}
+                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
+                                                        ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
+                                                        : "border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+                                                        }`}
+                                                >
+                                                    {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
+                                                    <span className={checked ? "font-bold" : "font-medium"}>{option}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        <input
+                                            type="text"
+                                            value={languageOther}
+                                            onChange={e => setLanguageOther(e.target.value)}
+                                            placeholder="Other language"
+                                            className={inputCls}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setLanguages(prev => normalizeLanguages([...prev, languageOther]));
+                                                setLanguageOther("");
+                                            }}
+                                            disabled={!languageOther.trim()}
+                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <Plus className="h-4 w-4" aria-hidden="true" />
+                                            Add
+                                        </button>
+                                    </div>
+
+                                    {languages.some(l => !knownLanguageSet.has(l.toLowerCase())) && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {languages
+                                                .filter(l => !knownLanguageSet.has(l.toLowerCase()))
+                                                .map(language => (
+                                                    <span key={language} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1 text-xs font-semibold text-slate-700">
+                                                        {language}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setLanguages(prev => prev.filter(l => l !== language))}
+                                                            aria-label={`Remove ${language}`}
+                                                            className="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                                                        >
+                                                            <X className="h-3 w-3" aria-hidden="true" />
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                        </div>
+                                    )}
+
+                                    {languageError && (
+                                        <p className="m-0 text-xs font-medium text-red-600">{languageError}</p>
+                                    )}
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            disabled={savingLanguages}
+                                            onClick={async () => {
+                                                setSavingLanguages(true);
+                                                setLanguageError("");
+                                                try {
+                                                    const nextLanguages = normalizeLanguages([...languages, languageOther]);
+                                                    const res = await api.patch(`/api/users/${id}/`, { languages: nextLanguages });
+                                                    profileCache.delete(cacheKey);
+                                                    setUser(prev => prev ? { ...prev, languages: res.data?.languages ?? nextLanguages } : prev);
+                                                    setLanguages(res.data?.languages ?? nextLanguages);
+                                                    setLanguageOther("");
+                                                    setIsEditingLanguages(false);
+                                                } catch (err: any) {
+                                                    setLanguageError(err.response?.data?.languages || err.response?.data?.detail || "Could not save languages. Please try again.");
+                                                } finally {
+                                                    setSavingLanguages(false);
+                                                }
+                                            }}
+                                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {savingLanguages ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                "Save Languages"
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsEditingLanguages(false);
+                                                setLanguages(initialLanguages(user));
+                                                setLanguageOther("");
+                                                setLanguageError("");
+                                            }}
+                                            className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {languages.length > 0 ? (
+                                        languages.map(language => (
+                                            <span key={language} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                                {language}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-sm italic text-slate-400">No session languages configured yet.</span>
+                                    )}
+                                </div>
+                            )}
+                        </SectionCard>
+                    )}
+
+                    {isAdmin && role === "SPECIALIST" && (
+                        <SectionCard>
+                            <SectionHeader
+                                title="Edit Specialties"
+                                description="A specialist may hold one or more disciplines. Each one unlocks the matching section in assessment and tracker forms."
+                                action={
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSpecialtyError("");
+                                            setIsEditingSpecialty(current => !current);
+                                            setSpecialties(initialSpecialties(user));
+                                        }}
+                                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                    >
+                                        {isEditingSpecialty ? "Close" : "Edit"}
+                                    </button>
+                                }
+                            />
+                            {isEditingSpecialty ? (
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {SPECIALIST_SPECIALTIES.map(option => {
+                                            const checked = specialties.includes(option);
+                                            return (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSpecialties(prev => checked ? prev.filter(s => s !== option) : [...prev, option]);
+                                                    }}
+                                                    aria-pressed={checked}
+                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
+                                                        ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
+                                                        : "border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+                                                        }`}
+                                                >
+                                                    {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
+                                                    <span className={checked ? "font-bold" : "font-medium"}>{option}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {specialtyError && (
+                                        <p className="m-0 text-xs font-medium text-red-600">{specialtyError}</p>
+                                    )}
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            disabled={savingSpecialty}
+                                            onClick={async () => {
+                                                setSavingSpecialty(true);
+                                                setSpecialtyError("");
+                                                try {
+                                                    const res = await api.patch(`/api/users/${id}/`, { specialties });
+                                                    profileCache.delete(cacheKey);
+                                                    setUser(prev => prev ? {
+                                                        ...prev,
+                                                        specialty: res.data?.specialty ?? (specialties[0] || ""),
+                                                        specialties: res.data?.specialties ?? specialties,
+                                                    } : prev);
+                                                    setIsEditingSpecialty(false);
+                                                } catch (err: any) {
+                                                    setSpecialtyError(err.response?.data?.specialties || err.response?.data?.detail || "Could not save specialties. Please try again.");
+                                                } finally {
+                                                    setSavingSpecialty(false);
+                                                }
+                                            }}
+                                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {savingSpecialty ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                "Save Specialties"
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsEditingSpecialty(false);
+                                                setSpecialties(initialSpecialties(user));
+                                                setSpecialtyError("");
+                                            }}
+                                            className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {specialties.length > 0 ? (
+                                        specialties.map(s => (
+                                            <span key={s} className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                                {s}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-sm italic text-slate-400">No specialty configured yet.</span>
+                                    )}
+                                </div>
+                            )}
+                        </SectionCard>
                     )}
                 </div>
 
-                <div className="profile-column">
-                    <section className="profile-panel">
-                        <div className="profile-panel-header split">
-                            <div>
-                                <h2 className="profile-panel-title">
-                                    {isParent ? "Children" : "Assigned Students"}
-                                </h2>
-                                <p className="profile-panel-copy">
-                                    {isParent
-                                        ? "Children connected to this account."
-                                        : "Students this user is currently responsible for supporting."}
-                                </p>
-                            </div>
-                            {!isParent && (
-                                <span className="profile-student-summary">
-                                    {activeCount} Active • {pendingCount} Pending • {assessedCount} Assessed
-                                </span>
-                            )}
-                        </div>
+                <div className="flex flex-col gap-6">
+                    {(isParent || canViewOperationalDetails) && (
+                        <SectionCard>
+                            <SectionHeader
+                                title={isParent ? "Children" : "Assigned Students"}
+                                description={isParent ? "Children connected to this account." : "Students this user is currently responsible for supporting."}
+                                action={!isParent ? (
+                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
+                                        {activeCount} Active · {pendingCount} Pending · {assessedCount} Assessed
+                                    </span>
+                                ) : undefined}
+                            />
 
-                        {studentCount === 0 ? (
-                            <div className="profile-empty">
-                                <div className="profile-empty-icon">
-                                    <svg style={{ width: 24, height: 24 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
+                            {studentCount === 0 ? (
+                                <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 py-10 text-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                                        <Users className="h-5 w-5" aria-hidden="true" />
+                                    </div>
+                                    <p className="m-0 text-sm font-bold text-slate-700">
+                                        {isParent ? "No children linked yet" : "No students assigned yet"}
+                                    </p>
+                                    <p className="m-0 max-w-sm text-xs text-slate-500">
+                                        {isParent
+                                            ? "Once your child is added by the administrator, their profile will appear here."
+                                            : "This profile will become more useful once students are linked to the account."}
+                                    </p>
                                 </div>
-                                <p style={{ fontSize: "0.95rem", color: "#334155", fontWeight: 700, marginBottom: "4px" }}>
-                                    {isParent ? "No children linked yet" : "No students assigned yet"}
-                                </p>
-                                <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0 }}>
-                                    {isParent ? "Once your child is added by the administrator, their profile will appear here." : "This profile will become more useful once students are linked to the account."}
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="hidden md:block profile-students-scroll">
-                                    <table className="profile-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Student</th>
-                                                <th>Grade</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {[...assignedStudents].sort((a, b) => b.id - a.id).map(student => {
-                                                const badge = statusColors[student.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
-                                                return (
-                                                    <tr key={student.id}>
-                                                        <td>
-                                                            <Link href={`/students/${student.id}`} style={{ color: "#0f172a", textDecoration: "none", fontWeight: 700 }}>
-                                                                {student.first_name} {student.last_name}
-                                                            </Link>
-                                                        </td>
-                                                        <td style={{ color: "#64748b", fontWeight: 600 }}>
-                                                            {student.grade || "TBD"}
-                                                        </td>
-                                                        <td>
-                                                            <span style={{
-                                                                display: "inline-flex",
-                                                                alignItems: "center",
-                                                                padding: "4px 10px",
-                                                                borderRadius: "999px",
-                                                                fontSize: "0.68rem",
-                                                                fontWeight: 800,
-                                                                textTransform: "uppercase",
-                                                                letterSpacing: "0.45px",
-                                                                background: badge.bg,
-                                                                color: badge.color,
-                                                            }}>
-                                                                {student.status?.replace(/_/g, " ")}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div className="md:hidden profile-students-scroll profile-mobile-students">
+                            ) : (
+                                <div className="flex flex-col gap-2">
                                     {[...assignedStudents].sort((a, b) => b.id - a.id).map(student => {
-                                        const badge = statusColors[student.status?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
+                                        const statusCls = statusStyles[student.status?.toUpperCase()] ?? "bg-slate-50 text-slate-500 border-slate-200";
                                         return (
                                             <Link
                                                 key={student.id}
                                                 href={`/students/${student.id}`}
-                                                className="profile-student-card"
+                                                className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
                                             >
-                                                <div className="profile-student-card-row">
-                                                    <div>
-                                                        <div style={{ color: "#0f172a", fontWeight: 700 }}>
-                                                            {student.first_name} {student.last_name}
-                                                        </div>
-                                                        <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "3px" }}>
-                                                            Grade: {student.grade || "TBD"}
-                                                        </div>
-                                                    </div>
-                                                    <span style={{
-                                                        display: "inline-flex",
-                                                        alignItems: "center",
-                                                        padding: "4px 8px",
-                                                        borderRadius: "999px",
-                                                        fontSize: "0.62rem",
-                                                        fontWeight: 800,
-                                                        textTransform: "uppercase",
-                                                        background: badge.bg,
-                                                        color: badge.color,
-                                                    }}>
-                                                        {student.status?.replace(/_/g, " ")}
-                                                    </span>
+                                                <div>
+                                                    <p className="m-0 text-sm font-bold text-slate-900 group-hover:text-indigo-700">
+                                                        {student.first_name} {student.last_name}
+                                                    </p>
+                                                    <p className="m-0 text-xs text-slate-500">Grade: {student.grade || "TBD"}</p>
                                                 </div>
+                                                <span className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-extrabold uppercase tracking-wide ${statusCls}`}>
+                                                    {student.status?.replace(/_/g, " ")}
+                                                </span>
                                             </Link>
                                         );
                                     })}
                                 </div>
-                            </>
-                        )}
-                    </section>
-
-                    <section className="profile-panel">
-                        <div className="profile-panel-header">
-                            <h2 className="profile-panel-title">{isParent ? "Quick Links" : "Next Best Actions"}</h2>
-                            <p className="profile-panel-copy">{isParent ? "Helpful shortcuts for you." : "Quick paths for reviewing this account and continuing work."}</p>
-                        </div>
-
-                        <div className="profile-action-list">
-                            {isParent ? (
-                                <>
-                                    <Link href="/dashboard" className="profile-action-card">
-                                        <div>
-                                            <div className="profile-action-title">Go to Dashboard</div>
-                                            <div className="profile-action-copy">See your children and any pending tasks at a glance.</div>
-                                        </div>
-                                        <span className="profile-action-arrow">›</span>
-                                    </Link>
-                                    {studentCount > 0 && (
-                                        <Link href={`/students/${assignedStudents[0].id}`} className="profile-action-card">
-                                            <div>
-                                                <div className="profile-action-title">View {assignedStudents[0].first_name}'s Profile</div>
-                                                <div className="profile-action-copy">Check progress, status, and available actions for your child.</div>
-                                            </div>
-                                            <span className="profile-action-arrow">›</span>
-                                        </Link>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <Link href={`/users/${user.id}/activity`} className="profile-action-card">
-                                        <div>
-                                            <div className="profile-action-title">Review Activity Log</div>
-                                            <div className="profile-action-copy">See recent account events and history for this user.</div>
-                                        </div>
-                                        <span className="profile-action-arrow">›</span>
-                                    </Link>
-
-                                    {studentCount > 0 && (
-                                        <Link href={`/students/${assignedStudents[0].id}`} className="profile-action-card">
-                                            <div>
-                                                <div className="profile-action-title">Open Latest Student</div>
-                                                <div className="profile-action-copy">Jump into the most recently listed student on this profile.</div>
-                                            </div>
-                                            <span className="profile-action-arrow">›</span>
-                                        </Link>
-                                    )}
-
-                                    {user.email && (
-                                        <a href={`mailto:${user.email}`} className="profile-action-card">
-                                            <div>
-                                                <div className="profile-action-title">Contact User</div>
-                                                <div className="profile-action-copy">Send an email directly from the profile page.</div>
-                                            </div>
-                                            <span className="profile-action-arrow">›</span>
-                                        </a>
-                                    )}
-                                </>
                             )}
-                        </div>
-                    </section>
+                        </SectionCard>
+                    )}
+
+                    {isCrossRoleParentSpecialist ? (
+                        <SectionCard>
+                            <SectionHeader
+                                title="Communication"
+                                description="All messages go through the system to keep records and protect both parties."
+                            />
+                            <div className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+                                    <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                                </div>
+                                <div>
+                                    <p className="m-0 text-sm font-extrabold text-indigo-950">
+                                        Direct contact is not available
+                                    </p>
+                                    <p className="mt-1 text-sm text-indigo-800">
+                                        In-app messaging will be available soon. Until then, coordinate through your admin or scheduled session.
+                                    </p>
+                                </div>
+                            </div>
+                        </SectionCard>
+                    ) : (
+                        <SectionCard>
+                            <SectionHeader
+                                title={isParent ? "Quick Links" : "Next Best Actions"}
+                                description={isParent ? "Helpful shortcuts for you." : "Quick paths for reviewing this account and continuing work."}
+                            />
+                            <div className="flex flex-col gap-2">
+                                {isParent ? (
+                                    <>
+                                        <ActionRow href="/dashboard" title="Go to Dashboard" copy="See your children and any pending tasks at a glance." icon={Sparkles} />
+                                        {studentCount > 0 && (
+                                            <ActionRow
+                                                href={`/students/${assignedStudents[0].id}`}
+                                                title={`View ${assignedStudents[0].first_name}'s Profile`}
+                                                copy="Check progress, status, and available actions for your child."
+                                                icon={Users}
+                                            />
+                                        )}
+                                    </>
+                                ) : canViewOperationalDetails ? (
+                                    <>
+                                        <ActionRow
+                                            href={`/users/${user.id}/activity`}
+                                            title="Review Activity Log"
+                                            copy="See recent account events and history for this user."
+                                            icon={ActivityIcon}
+                                        />
+                                        {studentCount > 0 && (
+                                            <ActionRow
+                                                href={`/students/${assignedStudents[0].id}`}
+                                                title="Open Latest Student"
+                                                copy="Jump into the most recently listed student on this profile."
+                                                icon={Users}
+                                            />
+                                        )}
+                                        {canViewPrivateContact && user.email && (
+                                            <ActionRow
+                                                href={`mailto:${user.email}`}
+                                                title="Contact User"
+                                                copy="Send an email directly from the profile page."
+                                                icon={Mail}
+                                                external
+                                            />
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="m-0 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                                        This profile is limited to public information.
+                                    </p>
+                                )}
+                            </div>
+                        </SectionCard>
+                    )}
 
                     {isAdmin && (
-                        <section className="profile-admin-panel">
-                            <div className="profile-panel-header">
-                                <h2 className="profile-panel-title" style={{ color: "#9a3412" }}>Admin Tools</h2>
-                                <p className="profile-panel-copy" style={{ color: "#c2410c" }}>
-                                    Higher-impact actions belong here once they are wired up.
-                                </p>
-                            </div>
-
-                            <div className="profile-admin-body">
-                                <div style={{ fontSize: "0.84rem", color: "#7c2d12" }}>
+                        <section className="rounded-2xl border border-orange-200 bg-orange-50/60 p-6 md:p-7">
+                            <SectionHeader
+                                title="Admin Tools"
+                                description="Higher-impact actions belong here once they are wired up."
+                            />
+                            <div className="flex flex-col gap-3">
+                                <p className="m-0 text-sm text-orange-900">
                                     This section is intentionally limited to real tools. Reset-password and deactivate controls should be added only after the backend action is implemented.
-                                </div>
-                                <Link href={`/users/${user.id}/activity`} className="btn-slate" style={{ width: "fit-content" }}>
+                                </p>
+                                <Link
+                                    href={`/users/${user.id}/activity`}
+                                    className="inline-flex w-fit items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-bold text-orange-800 no-underline transition-colors hover:bg-orange-100"
+                                >
                                     Open Audit Trail
+                                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
                                 </Link>
                             </div>
                         </section>
@@ -661,5 +873,49 @@ export default function UserProfile() {
                 </div>
             </div>
         </div>
+    );
+}
+
+function ActionRow({
+    href,
+    title,
+    copy,
+    icon: Icon,
+    external,
+}: {
+    href: string;
+    title: string;
+    copy: string;
+    icon: LucideIcon;
+    external?: boolean;
+}) {
+    const content = (
+        <>
+            <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                    <p className="m-0 text-sm font-bold text-slate-900">{title}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{copy}</p>
+                </div>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        </>
+    );
+
+    const cls = "flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30";
+
+    if (external) {
+        return (
+            <a href={href} className={cls}>
+                {content}
+            </a>
+        );
+    }
+    return (
+        <Link href={href} className={cls}>
+            {content}
+        </Link>
     );
 }

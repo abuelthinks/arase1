@@ -14,7 +14,6 @@ export default function UserSidebar() {
     const { user } = useAuth();
     const [lastParentStudentId, setLastParentStudentId] = useState<string | null>(null);
     const [fallbackParentStudentId, setFallbackParentStudentId] = useState<string | null>(null);
-    const [hasEnrolledChild, setHasEnrolledChild] = useState<boolean>(false);
 
     const isTeacher = user?.role === "TEACHER";
     const isSpecialist = user?.role === "SPECIALIST";
@@ -48,7 +47,9 @@ export default function UserSidebar() {
 
         api.get("/api/students/").then(res => {
             const firstEnrolled = res.data?.find((student: any) => student.status === "ENROLLED")?.id;
-            setFallbackParentStudentId(firstEnrolled ? String(firstEnrolled) : null);
+            const firstAny = res.data?.[0]?.id;
+            const chosen = firstEnrolled || firstAny;
+            setFallbackParentStudentId(chosen ? String(chosen) : null);
         }).catch(() => {});
     }, [isParent, pathname, searchParams]);
 

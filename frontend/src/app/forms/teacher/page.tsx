@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
-import { toast } from "sonner";
 
 // ─── Shared UI ───────────────────────────────────────────────────────────────
 
@@ -178,12 +177,6 @@ function TeacherFormContent() {
         if (studentId) {
             api.get(`/api/students/${studentId}/profile/`)
                 .then(res => {
-                    if (!isViewMode && res.data?.student?.status !== "Enrolled") {
-                        toast.error("This progress tracking form is locked until the student is formally enrolled.");
-                        router.push(`/students/${studentId}`);
-                        return;
-                    }
-
                     const { student, active_cycle } = res.data;
                     setStudentProfile(res.data);
                     if (active_cycle?.id) setReportCycleId(String(active_cycle.id));

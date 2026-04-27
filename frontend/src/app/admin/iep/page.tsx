@@ -474,7 +474,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
 
 export default function IEPViewerPage() {
     return (
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["ADMIN"]}>
             <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading IEP…</div>}>
                 <IEPViewerContent />
             </Suspense>

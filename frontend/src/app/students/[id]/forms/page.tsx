@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 
 // Import components
@@ -21,6 +22,7 @@ export default function UnifiedFormsViewer() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { user } = useAuth();
     
     const studentId = params?.id as string;
     
@@ -30,6 +32,11 @@ export default function UnifiedFormsViewer() {
     const [studentName, setStudentName] = useState("");
     const [formStatuses, setFormStatuses] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const visibleTabs = user?.role === "PARENT"
+        ? TABS.filter(tab => ["parent_assessment", "parent_tracker"].includes(tab.id))
+        : user?.role === "TEACHER"
+            ? TABS.filter(tab => tab.id === "sped_tracker")
+            : TABS;
 
     useEffect(() => {
         if (!studentId) return;
@@ -63,8 +70,55 @@ export default function UnifiedFormsViewer() {
         return <div className="p-8 text-center text-red-500">Failed to load student data.</div>;
     }
 
-    const currentTabConf = TABS.find(t => t.id === activeTab);
-    const currentStatus = formStatuses[activeTab];
+    const resolvedActiveTab = visibleTabs.some(tab => tab.id === activeTab)
+        ? activeTab
+        : visibleTabs[0]?.id || "parent_assessment";
+    const currentTabConf = visibleTabs.find(t => t.id === resolvedActiveTab);
+    const currentStatus = formStatuses[resolvedActiveTab];
+
+    return (
+        <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
+            <div className="max-w-6xl mx-auto pb-16 px-4">
+                
+                <div className="flex items-end gap-1 mb-4 border-b border-slate-300 px-2 mt-4 md:mt-0">
+                    <button 
+                        className="px-6 py-2.5 text-sm font-bold border-b-2 border-indigo-600 text-indigo-700 transition-colors"
+                    >
+                        <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Input Forms
+                    </button>
+                    <button 
+                        onClick={() => router.push(`/students/${studentId}/reports`)}
+                        className="px-6 py-2.5 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors"
+                    >
+                        <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                        Reports & Documents
+                    </button>
+                </div>
+
+                {/* Unified Card */}
+                <div className="bg-white rounded-xl border border-slate-300 shadow-sm h-[85vh] min-h-[600px] flex flex-col md:flex-row overflow-hidden">
+                    
+                    {/* Left Sidebar */}
+                    <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                        {/* Sidebar Header */}
+                        <div className="p-6 border-b border-slate-200 flex flex-col gap-4">
+                            <div>
+                                <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
+                                <p className="text-xs text-slate-400 mt-1 mb-0 uppercase tracking-wider font-semibold">Data Collection</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button 
+                                    onClick={() => router.push(`/students/${studentId}`)}
+                                    className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 whitespace-nowrap"
+                                >
+                                    View Profile
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
 
     return (
         <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
@@ -116,9 +170,9 @@ export default function UnifiedFormsViewer() {
                             <div className="px-4 mb-4">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Assessments</p>
                                 <div className="flex flex-col gap-1">
-                                    {TABS.slice(0, 2).map((tab) => {
+                                    {visibleTabs.filter(tab => ["parent_assessment", "multi_assessment"].includes(tab.id)).map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
-                                        const isActive = activeTab === tab.id;
+                                        const isActive = resolvedActiveTab === tab.id;
                                         return (
                                             <button 
                                                 key={tab.id}
@@ -137,9 +191,9 @@ export default function UnifiedFormsViewer() {
                             <div className="px-4 pb-4">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Progress Trackers</p>
                                 <div className="flex flex-col gap-1">
-                                    {TABS.slice(2).map((tab) => {
+                                    {visibleTabs.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id)).map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
-                                        const isActive = activeTab === tab.id;
+                                        const isActive = resolvedActiveTab === tab.id;
                                         return (
                                             <button 
                                                 key={tab.id}
@@ -170,7 +224,7 @@ export default function UnifiedFormsViewer() {
                             </div>
                         ) : (
                             <div className="w-full">
-                                {activeTab === "parent_assessment" ? (
+                                {resolvedActiveTab === "parent_assessment" ? (
                                     <ParentFormContent 
                                         propMode="view" 
                                         propHideNavigation={true}

@@ -377,7 +377,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
 
 export default function MonthlyReportPage() {
     return (
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["ADMIN"]}>
             <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading Monthly Report…</div>}>
                 <MonthlyReportContent />
             </Suspense>

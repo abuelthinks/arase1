@@ -2,12 +2,14 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .languages import normalize_languages
 from .specialties import validate_specialties
 from .models import (
     User, Student, StudentAccess, ReportCycle, GeneratedDocument,
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
-    Invitation, Notification, SpecialistPreference, SectionContribution
+    Invitation, Notification, SpecialistPreference, SectionContribution,
+    SpecialistAvailabilitySlot, AssessmentAppointment, DiagnosticReport
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -18,10 +20,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if identifier and password:
             user_model = get_user_model()
             matched_user = user_model.objects.filter(
-                Q(username__iexact=identifier) | Q(email__iexact=identifier)
+                Q(email__iexact=identifier)
             ).first()
-            if matched_user and matched_user.username != identifier:
-                attrs[self.username_field] = matched_user.username
+            if matched_user and matched_user.email != identifier:
+                attrs[self.username_field] = matched_user.email
 
         return super().validate(attrs)
 
@@ -38,6 +40,13 @@ class AdminUserSerializer(serializers.ModelSerializer):
         required=False,
         allow_empty=True,
     )
+    languages = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+        allow_empty=True,
+    )
+    specialist_onboarding_complete = serializers.SerializerMethodField()
+    specialist_onboarding_missing = serializers.SerializerMethodField()
     assigned_students_count = serializers.SerializerMethodField()
     assigned_student_names = serializers.SerializerMethodField()
 
@@ -45,10 +54,11 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'first_name', 'last_name', 'specialty',
-                  'specialties',
+        fields = ['id', 'email', 'role', 'first_name', 'last_name', 'specialty',
+                  'specialties', 'languages',
                   'phone_number', 'is_phone_verified',
-                  'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students']
+                  'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students',
+                  'specialist_onboarding_complete', 'specialist_onboarding_missing']
 
     def get_assigned_students_count(self, obj):
         return obj.student_access.count()
@@ -93,6 +103,18 @@ class AdminUserSerializer(serializers.ModelSerializer):
         validated_data['specialty'] = normalized[0] if normalized else ''
         return normalized
 
+    def validate_languages(self, value):
+        try:
+            return normalize_languages(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc))
+
+    def get_specialist_onboarding_complete(self, obj):
+        return obj.is_specialist_onboarding_complete() if hasattr(obj, 'is_specialist_onboarding_complete') else True
+
+    def get_specialist_onboarding_missing(self, obj):
+        return obj.specialist_onboarding_missing() if hasattr(obj, 'specialist_onboarding_missing') else []
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         self._resolve_specialties(validated_data.get('role', ''), validated_data)
@@ -123,13 +145,45 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class SelfUserSerializer(serializers.ModelSerializer):
+    languages = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+        allow_empty=True,
+    )
+    specialist_onboarding_complete = serializers.SerializerMethodField()
+    specialist_onboarding_missing = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'role', 'first_name', 'last_name',
-            'specialty', 'specialties', 'phone_number', 'is_phone_verified'
+            'id', 'email', 'role', 'first_name', 'last_name',
+            'specialty', 'specialties', 'languages', 'phone_number', 'is_phone_verified',
+            'specialist_onboarding_complete', 'specialist_onboarding_missing'
         ]
-        read_only_fields = fields
+        read_only_fields = [
+            'id', 'email', 'role',
+            'specialty', 'specialties', 'phone_number', 'is_phone_verified',
+            'specialist_onboarding_complete', 'specialist_onboarding_missing'
+        ]
+
+    def validate_languages(self, value):
+        try:
+            return normalize_languages(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc))
+
+    def update(self, instance, validated_data):
+        if 'first_name' in validated_data:
+            validated_data['first_name'] = validated_data['first_name'].strip().title()
+        if 'last_name' in validated_data:
+            validated_data['last_name'] = validated_data['last_name'].strip().title()
+        return super().update(instance, validated_data)
+
+    def get_specialist_onboarding_complete(self, obj):
+        return obj.is_specialist_onboarding_complete() if hasattr(obj, 'is_specialist_onboarding_complete') else True
+
+    def get_specialist_onboarding_missing(self, obj):
+        return obj.specialist_onboarding_missing() if hasattr(obj, 'specialist_onboarding_missing') else []
 
 class StudentSerializer(serializers.ModelSerializer):
     has_parent_assessment = serializers.SerializerMethodField()
@@ -248,6 +302,12 @@ class SpedAssessmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['submitted_by']
 
+class DiagnosticReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiagnosticReport
+        fields = ['id', 'student', 'uploaded_by', 'file', 'original_filename', 'extracted_text', 'created_at']
+        read_only_fields = ['id', 'uploaded_by', 'extracted_text', 'created_at']
+
 class ParentProgressTrackerSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParentProgressTracker
@@ -296,19 +356,94 @@ class AcceptInvitationSerializer(serializers.Serializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ['id', 'notification_type', 'title', 'message', 'link', 'is_read', 'created_at']
-        read_only_fields = ['id', 'notification_type', 'title', 'message', 'link', 'created_at']
+        fields = ['id', 'notification_type', 'title', 'message', 'link', 'actor_name', 'is_read', 'created_at']
+        read_only_fields = ['id', 'notification_type', 'title', 'message', 'link', 'actor_name', 'created_at']
 
 class SpecialistPreferenceSerializer(serializers.ModelSerializer):
     # Include basic details of the specialist for display purposes
     specialist_name = serializers.SerializerMethodField()
     specialist_first_name = serializers.CharField(source='specialist.first_name', read_only=True)
     specialist_last_name = serializers.CharField(source='specialist.last_name', read_only=True)
+    preferred_slot_start_at = serializers.DateTimeField(source='preferred_slot.start_at', read_only=True)
+    preferred_slot_end_at = serializers.DateTimeField(source='preferred_slot.end_at', read_only=True)
 
     class Meta:
         model = SpecialistPreference
-        fields = ['id', 'student', 'specialty', 'specialist', 'specialist_name', 'specialist_first_name', 'specialist_last_name']
+        fields = [
+            'id', 'student', 'specialty', 'specialist', 'specialist_name',
+            'specialist_first_name', 'specialist_last_name', 'preferred_slot',
+            'preferred_start_at', 'preferred_end_at', 'preferred_slot_start_at',
+            'preferred_slot_end_at',
+        ]
         read_only_fields = ['id']
 
+    def validate(self, attrs):
+        specialist = attrs.get('specialist') or getattr(self.instance, 'specialist', None)
+        slot = attrs.get('preferred_slot')
+        if slot:
+            if specialist and slot.specialist_id != specialist.id:
+                raise serializers.ValidationError({"preferred_slot": "Selected slot does not belong to this specialist."})
+            if not slot.is_active or self._slot_is_booked(slot):
+                raise serializers.ValidationError({"preferred_slot": "Selected slot is no longer available."})
+            attrs['preferred_start_at'] = slot.start_at
+            attrs['preferred_end_at'] = slot.end_at
+        return attrs
+
+    def _slot_is_booked(self, slot):
+        return hasattr(slot, 'appointment') and slot.appointment.status == 'SCHEDULED'
+
     def get_specialist_name(self, obj):
-        return f"{obj.specialist.first_name} {obj.specialist.last_name}".strip() or obj.specialist.username
+        return f"{obj.specialist.first_name} {obj.specialist.last_name}".strip() or obj.specialist.email
+
+
+class SpecialistAvailabilitySlotSerializer(serializers.ModelSerializer):
+    specialist_name = serializers.SerializerMethodField()
+    is_booked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SpecialistAvailabilitySlot
+        fields = [
+            'id', 'specialist', 'specialist_name', 'start_at', 'end_at',
+            'mode', 'is_active', 'is_booked', 'created_at',
+        ]
+        read_only_fields = ['id', 'specialist_name', 'is_booked', 'created_at']
+
+    def get_specialist_name(self, obj):
+        name = f"{obj.specialist.first_name} {obj.specialist.last_name}".strip()
+        return name or obj.specialist.email
+
+    def get_is_booked(self, obj):
+        return hasattr(obj, 'appointment') and obj.appointment.status == 'SCHEDULED'
+
+
+class AssessmentAppointmentSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+    specialist_name = serializers.SerializerMethodField()
+    parent_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentAppointment
+        fields = [
+            'id', 'student', 'student_name', 'parent', 'parent_name',
+            'specialist', 'specialist_name', 'availability_slot',
+            'start_at', 'end_at', 'mode', 'status', 'booked_by',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'student_name', 'parent', 'parent_name', 'specialist',
+            'specialist_name', 'availability_slot', 'start_at', 'end_at',
+            'mode', 'booked_by', 'created_at', 'updated_at',
+        ]
+
+    def get_student_name(self, obj):
+        return f"{obj.student.first_name} {obj.student.last_name}".strip()
+
+    def get_specialist_name(self, obj):
+        name = f"{obj.specialist.first_name} {obj.specialist.last_name}".strip()
+        return name or obj.specialist.email
+
+    def get_parent_name(self, obj):
+        if not obj.parent:
+            return ''
+        name = f"{obj.parent.first_name} {obj.parent.last_name}".strip()
+        return name or obj.parent.email
