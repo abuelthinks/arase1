@@ -124,6 +124,7 @@ function SpecialistsContent() {
   const [assignedStaff, setAssignedStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<'undecided' | 'manual'>('undecided');
   const [selections, setSelections] = useState<Record<string, number>>({});
   const [expandedForBrowsing, setExpandedForBrowsing] = useState<Record<string, boolean>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
@@ -166,6 +167,10 @@ function SpecialistsContent() {
         });
         setSelections(initialSelections);
         setExpandedForBrowsing(initialExpanded);
+
+        if (prefRes.data.length > 0) {
+          setSelectionMode('manual');
+        }
       } catch (err) {
         console.error('Failed to load data', err);
         toast.error('Failed to load specialist data.');
@@ -216,20 +221,33 @@ function SpecialistsContent() {
     if (!studentId) return;
     setSaving(true);
     try {
-      await Promise.all(preferences.map(preference => api.delete(`/api/specialist-preferences/${preference.id}/`)));
+      // 1. Fetch the absolute latest preferences to avoid 404s and handle dirty states from partial saves
+      const currentPrefsRes = await api.get(`/api/specialist-preferences/?student_id=${studentId}`);
+      const currentPrefs = currentPrefsRes.data;
 
-      const newPrefs = [];
-      for (const [specialty, specialistId] of Object.entries(selections)) {
-        if (!specialistId) continue;
-        const res = await api.post('/api/specialist-preferences/', {
-          student: Number(studentId),
-          specialty,
-          specialist: specialistId,
-        });
-        newPrefs.push(res.data);
-      }
+      // 2. Delete all existing preferences, ignoring 404s just in case
+      await Promise.all(
+        currentPrefs.map((pref: any) => 
+          api.delete(`/api/specialist-preferences/${pref.id}/`).catch(err => {
+            if (err.response?.status !== 404) throw err;
+          })
+        )
+      );
 
-      setPreferences(newPrefs);
+      // 3. Post new selections concurrently for speed and reliability
+      const postPromises = Object.entries(selections)
+        .filter(([_, specialistId]) => specialistId)
+        .map(([specialty, specialistId]) =>
+          api.post('/api/specialist-preferences/', {
+            student: Number(studentId),
+            specialty,
+            specialist: specialistId,
+          })
+        );
+
+      const results = await Promise.all(postPromises);
+      setPreferences(results.map(res => res.data));
+
       toast.success('Preferences saved successfully.');
       router.push('/dashboard');
     } catch (error) {
@@ -354,6 +372,63 @@ function SpecialistsContent() {
                 No specialists assigned yet.
               </div>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectionMode === 'undecided') {
+    return (
+      <div className='bg-gradient-to-b from-indigo-50/60 via-white to-white pb-32 min-h-screen flex flex-col items-center justify-center p-6 text-center'>
+        <div className='mx-auto flex w-full max-w-2xl flex-col gap-8'>
+          <div className='flex flex-col items-center gap-4'>
+            <div className='flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200'>
+              <Users className='h-8 w-8' aria-hidden='true' />
+            </div>
+            <h1 className='m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-3xl font-extrabold leading-tight tracking-tight text-transparent md:text-4xl'>
+              Who should work with {childName}?
+            </h1>
+            <p className='text-base leading-relaxed text-slate-500 max-w-lg'>
+              Our clinical directors can automatically match {childName} with the best-fit specialists based on their assessment. Alternatively, you can browse our clinical team and choose specialists yourself.
+            </p>
+          </div>
+
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4'>
+            <button
+              onClick={() => {
+                setSelections({});
+                handleSave();
+              }}
+              disabled={saving}
+              className='group relative flex flex-col items-center gap-3 rounded-2xl border-2 border-indigo-100 bg-white p-6 text-center transition-all hover:border-indigo-500 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-500/20 disabled:opacity-50'
+            >
+              <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-colors group-hover:bg-indigo-500 group-hover:text-white'>
+                {saving ? <Loader2 className='h-6 w-6 animate-spin' /> : <Sparkles className='h-6 w-6' />}
+              </div>
+              <div>
+                <h2 className='text-lg font-bold text-slate-900'>Match the best team</h2>
+                <p className='mt-2 text-sm text-slate-500'>
+                  We'll find the best specialists for {childName}'s specific needs.
+                </p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setSelectionMode('manual')}
+              disabled={saving}
+              className='group relative flex flex-col items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-6 text-center transition-all hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-slate-400/20 disabled:opacity-50'
+            >
+              <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition-colors group-hover:bg-slate-200 group-hover:text-slate-800'>
+                <Briefcase className='h-6 w-6' />
+              </div>
+              <div>
+                <h2 className='text-lg font-bold text-slate-900'>I'd like to choose</h2>
+                <p className='mt-2 text-sm text-slate-500'>
+                  Browse available specialists and pick who you prefer.
+                </p>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -538,40 +613,34 @@ function SpecialistsContent() {
                         </div>
                       ) : (
                         <div className='flex flex-col gap-3'>
-                          <div className='flex flex-wrap items-center gap-x-4 gap-y-2 text-sm'>
-                            <span className='inline-flex items-center gap-1.5 text-slate-700'>
-                              <Languages className={`h-4 w-4 ${requestedLanguages.length > 0 && languageMatchCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`} aria-hidden='true' />
-                              <span className='font-bold'>
-                                {requestedLanguages.length > 0
-                                  ? languageMatchCount > 0
-                                    ? `${languageMatchCount} match${languageMatchCount === 1 ? 'es' : ''} ${requestedLanguages[0]}`
-                                    : 'No language match yet'
-                                  : `${list.length} specialist${list.length !== 1 ? 's' : ''} available`}
+                          <div className='flex items-center justify-between gap-3'>
+                            <div className='flex items-center gap-4'>
+                              <div className='flex -space-x-2' aria-hidden='true'>
+                                {list.slice(0, 4).map(specialist => (
+                                  <div
+                                    key={specialist.id}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(specialist.id)} text-[0.65rem] font-extrabold text-white ring-2 ring-white`}
+                                    title={specialistName(specialist)}
+                                  >
+                                    {specialistInitials(specialist)}
+                                  </div>
+                                ))}
+                                {list.length > 4 && (
+                                  <div className='flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-[0.65rem] font-extrabold text-slate-600 ring-2 ring-white'>
+                                    +{list.length - 4}
+                                  </div>
+                                )}
+                              </div>
+                              <span className='inline-flex items-center gap-1.5 text-sm text-slate-700'>
+                                <Languages className={`h-4 w-4 ${requestedLanguages.length > 0 && languageMatchCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`} aria-hidden='true' />
+                                <span className='font-bold'>
+                                  {requestedLanguages.length > 0
+                                    ? languageMatchCount > 0
+                                      ? `${languageMatchCount} match${languageMatchCount === 1 ? 'es' : ''} ${requestedLanguages[0]}`
+                                      : 'No language match yet'
+                                    : `${list.length} specialist${list.length !== 1 ? 's' : ''} available`}
+                                </span>
                               </span>
-                            </span>
-                            <span className='h-3 w-px bg-slate-200' aria-hidden='true' />
-                            <span className='inline-flex items-center gap-1.5 text-slate-500'>
-                              <Info className='h-4 w-4' aria-hidden='true' />
-                              Scheduling will be coordinated after matching
-                            </span>
-                          </div>
-
-                          <div className='flex items-center gap-3'>
-                            <div className='flex -space-x-2' aria-hidden='true'>
-                              {list.slice(0, 4).map(specialist => (
-                                <div
-                                  key={specialist.id}
-                                  className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(specialist.id)} text-[0.65rem] font-extrabold text-white ring-2 ring-white`}
-                                  title={specialistName(specialist)}
-                                >
-                                  {specialistInitials(specialist)}
-                                </div>
-                              ))}
-                              {list.length > 4 && (
-                                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-[0.65rem] font-extrabold text-slate-600 ring-2 ring-white'>
-                                  +{list.length - 4}
-                                </div>
-                              )}
                             </div>
                             <button
                               type='button'
