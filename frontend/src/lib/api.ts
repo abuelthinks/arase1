@@ -39,10 +39,14 @@ const PUBLIC_PATHS = ['/api/auth/token/', '/api/auth/token/refresh/', '/api/auth
 const SAFE_METHODS = new Set(['get', 'head', 'options', 'trace']);
 
 let csrfBootstrapPromise: Promise<void> | null = null;
+let csrfTokenMemory: string | undefined = undefined;
 
-export const getCsrfToken = () => (
-    typeof window === 'undefined' ? undefined : Cookies.get('csrftoken')
-);
+export const getCsrfToken = () => {
+    if (typeof window === 'undefined') return undefined;
+    const cookieToken = Cookies.get('csrftoken');
+    if (cookieToken) return cookieToken;
+    return csrfTokenMemory;
+};
 
 export const fetchCsrfCookie = async () => {
     if (typeof window === 'undefined') {
@@ -54,7 +58,11 @@ export const fetchCsrfCookie = async () => {
     if (!csrfBootstrapPromise) {
         csrfBootstrapPromise = axios.get(`${API_BASE_URL}/api/auth/csrf/`, {
             withCredentials: true,
-        }).then(() => undefined).finally(() => {
+        }).then((response) => {
+            if (response.data?.csrfToken) {
+                csrfTokenMemory = response.data.csrfToken;
+            }
+        }).catch(() => undefined).finally(() => {
             csrfBootstrapPromise = null;
         });
     }

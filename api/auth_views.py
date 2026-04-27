@@ -42,13 +42,16 @@ def _set_auth_cookies(response, access_token, refresh_token=None):
     return response
 
 
+from django.middleware.csrf import get_token
+
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class CsrfCookieView(APIView):
     """Ensure the browser receives a CSRF cookie for cookie-authenticated writes."""
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
-        return Response({'detail': 'CSRF cookie set.'}, status=status.HTTP_200_OK)
+        csrf_token = get_token(request)
+        return Response({'detail': 'CSRF cookie set.', 'csrfToken': csrf_token}, status=status.HTTP_200_OK)
 
 
 class CookieTokenObtainPairView(TokenObtainPairView):
