@@ -118,8 +118,8 @@ class Invitation(models.Model):
 
 class Student(models.Model):
     STATUS_CHOICES = (
-        ('AWAITING_PARENT_INPUT', 'Awaiting Parent Input'),
         ('PENDING_ASSESSMENT', 'Pending Assessment'),
+        ('ASSESSMENT_SCHEDULED', 'Assessment Scheduled'),
         ('ASSESSED', 'Assessed'),
         ('ENROLLED', 'Enrolled'),
         ('ARCHIVED', 'Archived'),
@@ -128,7 +128,7 @@ class Student(models.Model):
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     grade = models.CharField(max_length=50)
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='AWAITING_PARENT_INPUT')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='PENDING_ASSESSMENT')
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -184,18 +184,6 @@ class ParentAssessment(models.Model):
     original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-class DiagnosticReport(models.Model):
-    """External diagnostic report uploaded by a parent (PDF/DOCX)."""
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='diagnostic_reports')
-    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    file = models.FileField(upload_to='diagnostic_reports/')
-    original_filename = models.CharField(max_length=255, blank=True, default='')
-    extracted_text = models.TextField(blank=True, default='', help_text='AI-extracted text from the uploaded document.')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Diagnostic Report for {self.student} ({self.original_filename})"
-
 class MultidisciplinaryAssessment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
@@ -218,6 +206,18 @@ class SpedAssessment(models.Model):
     translated_data = models.JSONField(default=dict, blank=True)
     original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class DiagnosticReport(models.Model):
+    """External diagnostic report uploaded by a parent (PDF/DOCX)."""
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='diagnostic_reports')
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    file = models.FileField(upload_to='diagnostic_reports/')
+    original_filename = models.CharField(max_length=255, blank=True, default='')
+    extracted_text = models.TextField(blank=True, default='', help_text='AI-extracted text from the uploaded document.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Diagnostic Report for {self.student} ({self.original_filename})"
 
 # --- PROGRESS TRACKERS ---
 

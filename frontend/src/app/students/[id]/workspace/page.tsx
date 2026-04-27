@@ -34,7 +34,6 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
 const TABS = [
     { id: "parent_assessment", label: "Parent Assessment", formType: null },
     { id: "multi_assessment", label: "Specialist Assessment", formType: "multidisciplinary-assessment" },
-    { id: "sped_assessment", label: "Teacher Assessment", formType: "sped-assessment" },
     { id: "parent_tracker", label: "Parent Progress", formType: "parent-tracker" },
     { id: "multi_tracker", label: "Specialist Progress", formType: "multidisciplinary-tracker" },
     { id: "sped_tracker", label: "Teacher Progress", formType: "sped-tracker" }
@@ -359,6 +358,7 @@ function UnifiedWorkspaceContent() {
         const trackerTabs = TABS.slice(2);
         const pendingTrackers = trackerTabs.filter(tab => !formStatuses?.[tab.id]?.submitted);
         const allTrackersSubmitted = trackerTabs.every(tab => formStatuses?.[tab.id]?.submitted);
+        const assessmentFinalized = !!formStatuses?.multi_assessment?.submitted;
         const canGenerateMonthlyReport = normalizedStudentStatus === "ENROLLED" && allTrackersSubmitted && !latestMonthlyReport;
         const actions: { title: string; label: string; onClick: () => void; tone?: "warning" | "positive" }[] = [];
 
@@ -368,10 +368,10 @@ function UnifiedWorkspaceContent() {
         if (formStatuses?.parent_assessment?.submitted && specialists.length === 0) {
             actions.push({ title: "Assign specialist", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST") });
         }
-        if (normalizedStudentStatus === "ASSESSED") {
+        if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized) {
             actions.push({ title: `Enroll ${compactStudentName()}?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive" });
         }
-        if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && !latestIep) {
+        if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && assessmentFinalized && !latestIep) {
             actions.push({ title: "Generate IEP", label: "Open Reports", onClick: () => handleReportMenuChange("generator") });
         }
         if (canGenerateMonthlyReport) {
@@ -559,8 +559,8 @@ function UnifiedWorkspaceContent() {
         const assessmentTabs = user?.role === "PARENT"
             ? visibleFormTabs.filter(tab => tab.id === "parent_assessment")
             : user?.role === "TEACHER"
-                ? visibleFormTabs.filter(tab => tab.id === "sped_assessment")
-                : visibleFormTabs.filter(tab => ["parent_assessment", "multi_assessment", "sped_assessment"].includes(tab.id));
+                ? []
+                : visibleFormTabs.filter(tab => ["parent_assessment", "multi_assessment"].includes(tab.id));
         const progressTabs = user?.role === "PARENT"
             ? visibleFormTabs.filter(tab => tab.id === "parent_tracker")
             : user?.role === "SPECIALIST"
@@ -568,7 +568,7 @@ function UnifiedWorkspaceContent() {
                 : user?.role === "TEACHER"
                     ? visibleFormTabs.filter(tab => tab.id === "sped_tracker")
                     : visibleFormTabs.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id));
-        const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment", "sped_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
+        const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
         const isAdminProgressLocked = user?.role === "ADMIN" && ["parent_tracker", "multi_tracker", "sped_tracker"].includes(activeFormTab) && !isStudentEnrolled;
         const isSpecialistProgressLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_tracker" && !isStudentEnrolled;
         const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && !isStudentEnrolled;

@@ -67,7 +67,7 @@ class SecurityHardeningTests(APITestCase):
             last_name='Smith',
             date_of_birth=date(2017, 5, 5),
             grade='Grade 1',
-            status='AWAITING_PARENT_INPUT',
+            status='PENDING_ASSESSMENT',
         )
         self.other_cycle = ReportCycle.objects.create(
             student=self.other_student,

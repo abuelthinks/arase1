@@ -67,8 +67,8 @@ def _collect_form_data(inputs):
 # Build prompt for OpenAI
 # ---------------------------------------------------------------------------
 
-def _build_openai_prompt(student, pa, ma, diagnostic_text=""):
-    """Build a structured prompt from the assessment form datasets and optional diagnostic report."""
+def _build_openai_prompt(student, pa, ma, diagnostic_text=None):
+    """Build a structured prompt from the assessment data and diagnostic report."""
 
     lines = [
         "You are an expert special education coordinator generating a comprehensive IEP.",
@@ -152,12 +152,13 @@ def _build_openai_prompt(student, pa, ma, diagnostic_text=""):
         lines.append(f"Follow-Up Plan: {_list_join(_safe(ma, 'follow_up_plan', default=[]))}")
         lines.append("")
 
-    # External Diagnostic Report (uploaded by parent)
+    # Diagnostic Report (extracted text from uploaded PDF/DOCX)
     if diagnostic_text:
-        lines.append("=== EXTERNAL DIAGNOSTIC REPORT ===")
-        lines.append("The following is extracted from a diagnostic report uploaded by the parent.")
-        lines.append("Use this to inform your IEP recommendations where clinically relevant.")
-        lines.append(diagnostic_text[:6000])  # Cap for token limits
+        lines.append("=== DIAGNOSTIC REPORT (External) ===")
+        lines.append("The following is text extracted from an external diagnostic report provided by the parent.")
+        lines.append("Use this clinical data to inform goals, accommodations, and therapy recommendations.")
+        lines.append("")
+        lines.append(diagnostic_text)
         lines.append("")
 
     # Output instructions
@@ -244,12 +245,7 @@ def generate_iep(student, cycle, inputs):
     forms = _collect_form_data(inputs)
     pa = forms.get('parent_assessment', {})
     ma = forms.get('multi_assessment', {})
-
-    # Get diagnostic report text if available
-    diag_obj = inputs.get('diagnostic_report')
-    diagnostic_text = ""
-    if diag_obj and hasattr(diag_obj, 'extracted_text'):
-        diagnostic_text = diag_obj.extracted_text or ""
+    diagnostic_text = inputs.get('diagnostic_text', '') or ''
 
     # Build and send prompt
     prompt = _build_openai_prompt(student, pa, ma, diagnostic_text)

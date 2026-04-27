@@ -144,6 +144,12 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     const isWizardMode = !isViewMode;
     const topRef = useRef<HTMLDivElement>(null);
 
+    // Diagnostic report upload state
+    const [diagnosticFile, setDiagnosticFile] = useState<File | null>(null);
+    const [diagnosticUploading, setDiagnosticUploading] = useState(false);
+    const [existingDiagnostic, setExistingDiagnostic] = useState<{ id: number; original_filename: string } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     // For Translation Toggle
     const [fullSubmission, setFullSubmission] = useState<any>(null);
     const [isTranslated, setIsTranslated] = useState(false);
@@ -300,8 +306,24 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                 form_data: { v2: form },
                 ...(studentIdParam ? { student_id: studentIdParam } : {}),
             };
-            await api.post("/api/students/onboard/", payload);
+            const res = await api.post("/api/students/onboard/", payload);
             if (draftKey) localStorage.removeItem(draftKey);
+
+            // Upload diagnostic report if file selected
+            const resolvedStudentId = studentIdParam || res.data?.student_id;
+            if (diagnosticFile && resolvedStudentId) {
+                setDiagnosticUploading(true);
+                try {
+                    const fd = new FormData();
+                    fd.append('file', diagnosticFile);
+                    fd.append('student', resolvedStudentId.toString());
+                    await api.post('/api/inputs/diagnostic-report/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                } catch (diagErr) {
+                    console.warn('Diagnostic upload failed:', diagErr);
+                }
+                setDiagnosticUploading(false);
+            }
+
             const message = "Parent assessment submitted successfully.";
             setSuccessMsg(message);
             await propOnSubmitted?.(message);
@@ -746,6 +768,84 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                                 )}
                             </div>
                         </Field>
+                    </section>
+                    </div>
+                    )}
+
+                    {/* ── DIAGNOSTIC REPORT UPLOAD (Step 5) ────────────────────────────── */}
+                    {(!isWizardMode || currentStep === 4) && (
+                    <div className="space-y-10 animate-fadeIn">
+                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-5 relative overflow-hidden">
+                        <SectionHeader title={isViewMode ? "Diagnostic Report" : "Upload Diagnostic Report (Optional)"} description={isViewMode ? "Uploaded diagnostic document." : "If you have an existing diagnostic report (PDF or Word document), you can upload it here. This helps our team understand your child's clinical background. You can also upload this later from your dashboard."} />
+
+                        {isViewMode ? (
+                            existingDiagnostic ? (
+                                <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                    <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    <span className="text-sm font-semibold text-emerald-800">{existingDiagnostic.original_filename}</span>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-400 italic">No diagnostic report uploaded.</p>
+                            )
+                        ) : (
+                            <div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept=".pdf,.doc,.docx"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) setDiagnosticFile(file);
+                                    }}
+                                />
+                                {diagnosticFile ? (
+                                    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <svg className="w-5 h-5 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            <span className="text-sm font-semibold text-indigo-800 truncate">{diagnosticFile.name}</span>
+                                            <span className="text-xs text-indigo-500 shrink-0">({(diagnosticFile.size / 1024 / 1024).toFixed(1)} MB)</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setDiagnosticFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                            className="text-xs font-bold text-red-500 hover:text-red-700 transition shrink-0"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ) : existingDiagnostic ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                            <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            <span className="text-sm font-semibold text-emerald-800">{existingDiagnostic.original_filename}</span>
+                                            <span className="text-xs text-emerald-600">(uploaded)</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition"
+                                        >
+                                            Upload a different file
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full flex flex-col items-center justify-center gap-3 px-6 py-8 border-2 border-dashed border-slate-300 rounded-2xl hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer group"
+                                    >
+                                        <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center group-hover:bg-indigo-200 transition">
+                                            <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-sm font-bold text-slate-700">Click to upload diagnostic report</p>
+                                            <p className="text-xs text-slate-400 mt-1">PDF, DOC, or DOCX • Max 20 MB</p>
+                                        </div>
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </section>
                     </div>
                     )}
