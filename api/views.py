@@ -1463,7 +1463,7 @@ class IEPDetailView(APIView):
             from .models import StudentAccess
             if not StudentAccess.objects.filter(user=request.user, student=doc.student).exists():
                 return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
-            if request.user.role == 'PARENT' and doc.status != 'FINAL':
+            if doc.status != 'FINAL':
                 return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({
@@ -1535,7 +1535,7 @@ class IEPDownloadView(APIView):
             from .models import StudentAccess
             if not StudentAccess.objects.filter(user=user, student=doc.student).exists():
                 return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
-            if user.role == 'PARENT' and doc.status != 'FINAL':
+            if doc.status != 'FINAL':
                 return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
 
         from io import BytesIO
@@ -1725,7 +1725,7 @@ class MonthlyReportDetailView(APIView):
             from .models import StudentAccess
             if not StudentAccess.objects.filter(user=request.user, student=doc.student).exists():
                 return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
-            if request.user.role == 'PARENT' and doc.status != 'FINAL':
+            if doc.status != 'FINAL':
                 return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({
@@ -1814,7 +1814,7 @@ class MonthlyReportDownloadView(APIView):
             from .models import StudentAccess
             if not StudentAccess.objects.filter(user=user, student=doc.student).exists():
                 return Response({"error": "You do not have permission to view this document."}, status=status.HTTP_403_FORBIDDEN)
-            if user.role == 'PARENT' and doc.status != 'FINAL':
+            if doc.status != 'FINAL':
                 return Response({"error": "This document is not yet finalized."}, status=status.HTTP_403_FORBIDDEN)
 
         from io import BytesIO

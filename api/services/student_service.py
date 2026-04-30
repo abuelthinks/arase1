@@ -206,7 +206,7 @@ def get_student_profile_data(student, user=None):
     docs = GeneratedDocument.objects.filter(student=student).order_by('-created_at')
     docs_data = []
     for d in docs:
-        if user and user.role == 'PARENT' and d.status != 'FINAL':
+        if user and user.role != 'ADMIN' and d.status != 'FINAL':
             continue
         docs_data.append({
             "id": d.id,
