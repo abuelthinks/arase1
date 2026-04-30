@@ -51,7 +51,9 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
     const [existingIepId, setExistingIepId] = useState<number | null>(null);
+    const [existingIepStatus, setExistingIepStatus] = useState<string | null>(null);
     const [existingMonthlyId, setExistingMonthlyId] = useState<number | null>(null);
+    const [existingMonthlyStatus, setExistingMonthlyStatus] = useState<string | null>(null);
     const [iepHovered, setIepHovered] = useState(false);
     const [monthlyHovered, setMonthlyHovered] = useState(false);
 
@@ -81,7 +83,9 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                     const iepDoc = docs.find((d: any) => d.type === "IEP");
                     const monthlyDoc = docs.find((d: any) => d.type === "MONTHLY");
                     setExistingIepId(iepDoc?.id ?? null);
+                    setExistingIepStatus(iepDoc?.status ?? null);
                     setExistingMonthlyId(monthlyDoc?.id ?? null);
+                    setExistingMonthlyStatus(monthlyDoc?.status ?? null);
                 })
                 .catch(() => {});
         }
@@ -290,7 +294,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         disabled={loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase())}
                         style={{
                             padding: "10px 20px", borderRadius: "8px", border: "none",
-                            background: loading ? "#a5b4fc" : existingIepId ? (iepHovered ? "#1e293b" : "#0f172a") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "#e2e8f0",
+                            background: loading ? "#a5b4fc" : (existingIepId && existingIepStatus === "FINAL") ? (iepHovered ? "#1e293b" : "#0f172a") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "#e2e8f0",
                             color: ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "white" : "#94a3b8",
                             fontWeight: 700, fontSize: "0.85rem",
                             cursor: loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
@@ -298,7 +302,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             transition: "background 0.2s ease",
                         }}
                     >
-                        {loading ? "⏳ Generating…" : existingIepId ? "📄 View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "🤖 Generate" : "Requires Review"}
+                        {loading ? "⏳ Generating…" : (existingIepId && existingIepStatus === "FINAL") ? "📄 View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "🤖 Generate IEP" : "Requires Review"}
                     </button>
                 </div>
             </div>
@@ -368,7 +372,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         disabled={existingMonthlyId ? false : !monthlyEnabled}
                         title={
                             existingMonthlyId
-                                ? "View existing monthly report"
+                                ? (existingMonthlyStatus === "FINAL" ? "View finalized monthly report" : "View draft monthly report")
                                 : !isEnrolled
                                 ? "Requires Active status"
                                 : !allTrackersSubmitted
@@ -377,7 +381,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         }
                         style={{
                             padding: "10px 20px", borderRadius: "8px", border: "none",
-                            background: monthlyLoading ? "#6ee7b7" : existingMonthlyId ? (monthlyHovered ? "#1e293b" : "#0f172a") : monthlyEnabled ? (monthlyHovered ? "#047857" : "#059669") : "#e2e8f0",
+                            background: monthlyLoading ? "#6ee7b7" : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? (monthlyHovered ? "#1e293b" : "#0f172a") : monthlyEnabled ? (monthlyHovered ? "#047857" : "#059669") : "#e2e8f0",
                             color: existingMonthlyId || monthlyEnabled ? "white" : "#94a3b8",
                             fontWeight: 700, fontSize: "0.85rem",
                             cursor: existingMonthlyId || monthlyEnabled ? "pointer" : "not-allowed",
@@ -387,7 +391,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         }}
                     >
                         {monthlyLoading ? "⏳ Generating…"
-                            : existingMonthlyId ? "📄 View Report"
+                            : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? "📄 View Report"
                             : !isEnrolled ? "Requires Active"
                             : !allTrackersSubmitted ? "Forms Pending"
                             : "🤖 Generate"}

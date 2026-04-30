@@ -254,7 +254,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                                     ✅ Finalize
                                 </button>
                                 <span style={{ fontSize: "0.78rem", color: saving ? "#64748b" : "#10b981", fontStyle: "italic", marginLeft: "4px" }}>
-                                    {saving ? "Saving…" : "✓ Saved"}
+                                    {saving ? "Saving…" : "All changes saved"}
                                 </span>
                             </div>
                         ) : (
