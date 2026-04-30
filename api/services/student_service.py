@@ -130,7 +130,7 @@ def get_student_profile_data(student, user=None):
     )
 
     # Lazy-create monthly cycle for enrolled students
-    if student.status == 'ENROLLED':
+    if student.status in ('ENROLLED', 'INTEGRATED'):
         cycle = ensure_current_cycle(student)
     else:
         cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
@@ -271,8 +271,8 @@ def get_student_profile_data(student, user=None):
         } for sa in assigned_users]
 
     # Cycle status summary and carry-forward recommendations
-    cycle_status = get_cycle_status_summary(student, cycle) if cycle and student.status == 'ENROLLED' else None
-    prev_recs = get_previous_recommendations(student) if student.status == 'ENROLLED' else None
+    cycle_status = get_cycle_status_summary(student, cycle) if cycle and student.status in ('ENROLLED', 'INTEGRATED') else None
+    prev_recs = get_previous_recommendations(student) if student.status in ('ENROLLED', 'INTEGRATED') else None
 
     return {
         "student": {
@@ -351,9 +351,9 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
                 )
 
     elif expected_role == 'TEACHER':
-        # Teacher assignment is locked until the student is Enrolled
-        if student.status != 'ENROLLED':
-            raise ValidationError("Cannot assign a Teacher until the student is ENROLLED.")
+        # Teacher assignment is locked until the student is ENROLLED/INTEGRATED
+        if student.status not in ('ENROLLED', 'INTEGRATED'):
+            raise ValidationError("Cannot assign a Teacher until the student is ENROLLED or INTEGRATED.")
             
     access, _ = StudentAccess.objects.get_or_create(user=staff, student=student)
     if expected_role == 'SPECIALIST':
@@ -388,10 +388,16 @@ def unassign_staff_from_student(student_id, staff_id, specialty=None):
                 access.delete()
             else:
                 access.save(update_fields=['assigned_specialties'])
+            
+            from api.services.section_service import re_evaluate_finalization
+            re_evaluate_finalization(student_id)
             return True
         return False
         
     # If no specialty specified or it's a teacher, just delete the access
     access.delete()
+    if access.user.role == 'SPECIALIST':
+        from api.services.section_service import re_evaluate_finalization
+        re_evaluate_finalization(student_id)
     return True
 

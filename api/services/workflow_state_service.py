@@ -82,12 +82,12 @@ def reconcile_student_assessment_state(
     if student.status in {"PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED", "ASSESSED"}:
         if student.status != expected_status:
             result.target_status = expected_status
-    elif student.status == "ENROLLED" and not has_finalized_multidisciplinary_assessment(student):
+    elif student.status in {"ENROLLED", "INTEGRATED"} and not has_finalized_multidisciplinary_assessment(student):
         active_cycle = getattr(student, "report_cycles", None)
         cycle = active_cycle.filter(is_active=True).order_by("-created_at").first() if active_cycle else None
         if cycle_has_downstream_artifacts(student, cycle):
             result.warnings.append(
-                "Student is ENROLLED without a finalized multidisciplinary assessment and has downstream progress artifacts."
+                f"Student is {student.status} without a finalized multidisciplinary assessment and has downstream progress artifacts."
             )
         else:
             result.target_status = "ASSESSMENT_SCHEDULED" if has_specialist_assignments(student) else "PENDING_ASSESSMENT"

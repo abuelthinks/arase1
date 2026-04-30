@@ -122,6 +122,7 @@ class Student(models.Model):
         ('ASSESSMENT_SCHEDULED', 'Assessment Scheduled'),
         ('ASSESSED', 'Assessed'),
         ('ENROLLED', 'Enrolled'),
+        ('INTEGRATED', 'Integrated'),
         ('ARCHIVED', 'Archived'),
     )
     first_name = models.CharField(max_length=100)

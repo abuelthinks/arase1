@@ -68,7 +68,7 @@ def ensure_current_cycle(student):
 
     Returns the active cycle.
     """
-    if student.status != 'ENROLLED':
+    if student.status not in ('ENROLLED', 'INTEGRATED'):
         # Non-enrolled students keep whatever cycle they have (assessment cycle)
         return ReportCycle.objects.filter(student=student, is_active=True).first()
 
@@ -147,11 +147,15 @@ def check_and_trigger_auto_generation(student, cycle):
             return False, existing_report
 
         p = ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-        m = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-        s = SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
+        m = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle, finalized_at__isnull=False).exists()
 
-        if not (p and m and s):
-            return False, None
+        if student.status == 'INTEGRATED':
+            s = SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
+            if not (p and m and s):
+                return False, None
+        else:
+            if not (p and m):
+                return False, None
 
         cycle.status = 'GENERATING'
         cycle.save(update_fields=['status'])

@@ -219,15 +219,19 @@ def required_owner_sections(form_type: str, specialties: list[str] | None = None
         else TRACKER_DISCIPLINE_SECTIONS
     )
     required: list[str] = []
+    has_valid_specialty = False
     for specialty in specialties:
         normalized = normalize_specialty(specialty)
         mapped = discipline_map.get(normalized)
         if not mapped:
             continue
+        has_valid_specialty = True
         # mapped may be a single section_key (assessment) or a list of keys (tracker).
         keys = mapped if isinstance(mapped, (list, tuple)) else [mapped]
         for key in keys:
             if key not in required:
                 required.append(key)
 
-    return required or default_required
+    if has_valid_specialty:
+        return required
+    return default_required

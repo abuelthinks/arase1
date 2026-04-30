@@ -267,8 +267,15 @@ def _maybe_finalize(form_type: str, instance, user):
 
     if set(submitted) >= set(required):
         instance.finalized_at = timezone.now()
-        instance.finalized_by = user
-        instance.submitted_by = user
+        
+        last_contrib = SectionContribution.objects.filter(
+            **{_fk_field(form_type): instance}, status="submitted"
+        ).order_by("-submitted_at").first()
+        finalizing_user = user or (last_contrib.specialist if last_contrib else None)
+        
+        instance.finalized_by = finalizing_user
+        if not instance.submitted_by:
+            instance.submitted_by = finalizing_user
         instance.save(update_fields=["finalized_at", "finalized_by", "submitted_by"])
 
         if form_type == "assessment":
@@ -281,3 +288,31 @@ def _maybe_finalize(form_type: str, instance, user):
         else:
             from .cycle_service import check_and_trigger_auto_generation
             check_and_trigger_auto_generation(instance.student, instance.report_cycle)
+
+
+def re_evaluate_finalization(student_id: int):
+    """
+    Called when specialist assignments change (e.g. a specialist is removed).
+    Checks open Multidisciplinary assessments and trackers to see if they 
+    now meet the requirements to finalize.
+    """
+    from .cycle_service import ensure_current_cycle
+    from ..models import Student, ReportCycle
+    
+    student = Student.objects.get(id=student_id)
+    cycle = ensure_current_cycle(student) if student.status in ('ENROLLED', 'INTEGRATED') else None
+    if not cycle:
+        cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
+        
+    if not cycle:
+        return
+
+    # Check assessment
+    assessment = MultidisciplinaryAssessment.objects.filter(student=student, report_cycle=cycle, finalized_at__isnull=True).first()
+    if assessment:
+        _maybe_finalize("assessment", assessment, None)
+
+    # Check tracker
+    tracker = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle, finalized_at__isnull=True).first()
+    if tracker:
+        _maybe_finalize("tracker", tracker, None)
