@@ -532,8 +532,23 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                         <Field label="Previous Services">
                             <div className="flex flex-wrap gap-3">
                                 {["Schooling before", "Speech Therapy", "Occupational Therapy", "Behavioral Therapy"].map(s => (
-                                    <Cb key={s} label={s} checked={checked("previous_services", s)} onChange={() => setArr("previous_services")(s)} disabled={dis} />
+                                    <Cb key={s} label={s} checked={checked("previous_services", s)} onChange={() => {
+                                        const current = (form.previous_services as string[]) || [];
+                                        if (current.includes("N/A")) {
+                                            set("previous_services")([s]);
+                                        } else {
+                                            setArr("previous_services")(s);
+                                        }
+                                    }} disabled={dis} />
                                 ))}
+                                <Cb label="N/A" checked={checked("previous_services", "N/A")} onChange={() => {
+                                    const current = (form.previous_services as string[]) || [];
+                                    if (current.includes("N/A")) {
+                                        set("previous_services")([]);
+                                    } else {
+                                        set("previous_services")(["N/A"]);
+                                    }
+                                }} disabled={dis} />
                             </div>
                         </Field>
 
