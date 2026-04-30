@@ -1717,6 +1717,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     )}
                 </form>
                     </>
+                )}
             </div>
         </ProtectedRoute>
     );
