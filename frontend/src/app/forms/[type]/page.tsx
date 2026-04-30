@@ -1471,16 +1471,27 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 </div>
 
                 {/* Alerts */}
-                {successMsg && (
-                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#d1fae5", color: "#065f46", border: "1px solid #a7f3d0", marginBottom: "1rem", fontWeight: 600 }}>
-                        ✓ {successMsg}
+                {successMsg ? (
+                    <div className="bg-white min-h-[500px] flex flex-col items-center justify-center p-8 text-center" style={{ borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "2rem" }}>
+                        <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px" }}>
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: 40, height: 40 }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#0f172a", marginBottom: "12px" }}>
+                            {schema.title} Submitted
+                        </h2>
+                        <p style={{ fontSize: "1rem", color: "#64748b", maxWidth: "450px", lineHeight: 1.5 }}>
+                            Thank you for your submission. Our clinical team has received your input.
+                        </p>
                     </div>
-                )}
-                {errorMsg && (
-                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", marginBottom: "1rem" }}>
-                        {errorMsg}
-                    </div>
-                )}
+                ) : (
+                    <>
+                        {errorMsg && (
+                            <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", marginBottom: "1rem" }}>
+                                {errorMsg}
+                            </div>
+                        )}
 
                 {/* Section-gating banner */}
                 {!isViewMode && !isAdmin && (formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker") && (
@@ -1705,6 +1716,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         </div>
                     )}
                 </form>
+                    </>
             </div>
         </ProtectedRoute>
     );
