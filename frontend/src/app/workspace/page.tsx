@@ -619,7 +619,7 @@ function UnifiedWorkspaceContent() {
             actions.push({ title: "Assign teacher", label: "Open Team", onClick: () => handleTeamMenuChange("TEACHER"), tone: "warning", Icon: UserPlus });
         }
         if (["ENROLLED", "INTEGRATED"].includes(normalizedStudentStatus || "") && pendingTrackers.length > 0) {
-            actions.push({ title: `${pendingTrackers.length} tracker${pendingTrackers.length === 1 ? "" : "s"} pending`, label: "Open Forms", onClick: () => setWorkspace("forms"), Icon: ClipboardList });
+            actions.push({ title: `${pendingTrackers.length} tracker${pendingTrackers.length === 1 ? "" : "s"} pending`, label: "Open Forms", onClick: () => handleFormTabChange("parent_tracker"), Icon: ClipboardList });
         }
 
         return actions;
