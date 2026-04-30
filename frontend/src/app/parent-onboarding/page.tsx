@@ -468,7 +468,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
 
                         <Field label="Primary Language(s)">
                             <div className="flex flex-wrap gap-3">
-                                {["English", "Arabic", "Tagalog", "Urdu", "Hindi"].map(l => (
+                                {["English", "Arabic", "Japanese", "Tagalog", "Urdu", "Hindi"].map(l => (
                                     <Cb key={l} label={l} checked={checked("primary_language", l)} onChange={() => setArr("primary_language")(l)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("primary_language", "Other")} onChange={() => setArr("primary_language")("Other")} disabled={dis} />
