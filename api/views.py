@@ -771,7 +771,7 @@ class AdminDashboardActionsView(APIView):
         actions = []
         
         # 1. Monthly report cycle status for each enrolled student
-        active_students = Student.objects.filter(status='ENROLLED')
+        active_students = Student.objects.filter(status__in=['ENROLLED', 'INTEGRATED'])
         for s in active_students:
             cycle = ReportCycle.objects.filter(student=s, is_active=True).first()
             if not cycle:
@@ -780,8 +780,15 @@ class AdminDashboardActionsView(APIView):
             p_done = ParentProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
             m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
             sp_done = SpedProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
-            submitted = sum([p_done, m_done, sp_done])
-            all_trackers_submitted = p_done and m_done and sp_done
+            
+            if s.status == 'INTEGRATED':
+                submitted = sum([p_done, m_done, sp_done])
+                all_trackers_submitted = p_done and m_done and sp_done
+                total_required = 3
+            else:
+                submitted = sum([p_done, m_done])
+                all_trackers_submitted = p_done and m_done
+                total_required = 2
 
             # Check if a report was auto-generated and needs review
             report = GeneratedDocument.objects.filter(
@@ -801,20 +808,20 @@ class AdminDashboardActionsView(APIView):
                 actions.append({
                     "id": f"monthly_{s.id}",
                     "title": f"Generate Monthly Progress Report: {s.first_name} {s.last_name}",
-                    "description": f"All three progress trackers are submitted for {cycle.label or 'the active cycle'}.",
+                    "description": f"All {total_required} progress trackers are submitted for {cycle.label or 'the active cycle'}.",
                     "action_text": "Generate →",
                     "link": f"/admin/reports?studentId={s.id}",
                     "type": "positive"
                 })
-            elif submitted > 0 and submitted < 3:
+            elif submitted > 0 and submitted < total_required:
                 missing = []
                 if not p_done: missing.append("Parent")
                 if not m_done: missing.append("Specialist")
-                if not sp_done: missing.append("Teacher")
+                if s.status == 'INTEGRATED' and not sp_done: missing.append("Teacher")
                 actions.append({
                     "id": f"pending_{s.id}",
                     "title": f"Trackers Pending: {s.first_name} {s.last_name}",
-                    "description": f"{submitted}/3 submitted for {cycle.label}. Waiting: {', '.join(missing)}.",
+                    "description": f"{submitted}/{total_required} submitted for {cycle.label}. Waiting: {', '.join(missing)}.",
                     "action_text": "View →",
                     "link": f"/students/{s.id}",
                     "type": "warning"
@@ -847,7 +854,7 @@ class AdminDashboardActionsView(APIView):
             actions.append({
                 "id": f"review_{s.id}",
                 "title": f"Ready for Enrollment Review: {s.first_name} {s.last_name}",
-                "description": "Both Specialist and Teacher assessments complete. Awaiting admin enrollment decision.",
+                "description": "Specialist assessment complete. Awaiting admin placement decision.",
                 "action_text": "Review →",
                 "link": f"/students/{s.id}",
                 "type": "info"
@@ -1071,6 +1078,30 @@ class EnrollStudentView(APIView):
 
             
             return Response({"message": "Student successfully enrolled and set to Active."})
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class IntegrateStudentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only Admins can integrate students."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            student = Student.objects.get(id=student_id)
+            if not has_finalized_multidisciplinary_assessment(student):
+                return Response(
+                    {"error": "A finalized multidisciplinary assessment is required before integration."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            student.status = 'INTEGRATED'
+            student.save()
+            
+            notify_student_status_change(student, 'INTEGRATED', changed_by=request.user)
+
+            return Response({"message": "Student successfully integrated into mainstream."})
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 

@@ -106,7 +106,7 @@ function UnifiedWorkspaceContent() {
     
     // -- Reports State --
     const [docs, setDocs] = useState<any[]>([]);
-    const activeReportView = searchParams.get("view") || "generator";
+    const activeReportView = searchParams.get("view") || (docs.some(d => d.type === "IEP") ? "iep" : "generator");
     const activeDocId = searchParams.get("docId");
     const workspaceParam = searchParams.get("workspace");
     const activeViewParam = searchParams.get("view");
@@ -122,6 +122,8 @@ function UnifiedWorkspaceContent() {
     const [sendingParentReminder, setSendingParentReminder] = useState(false);
     const [showEnrollConfirm, setShowEnrollConfirm] = useState(false);
     const [enrollingStudent, setEnrollingStudent] = useState(false);
+    const [showIntegrateConfirm, setShowIntegrateConfirm] = useState(false);
+    const [integratingStudent, setIntegratingStudent] = useState(false);
     const [specialistSearch, setSpecialistSearch] = useState("");
     const activeTeamRole = searchParams.get("teamRole") || "SPECIALIST";
     const isAuthorized = Boolean(user);
@@ -139,7 +141,7 @@ function UnifiedWorkspaceContent() {
     // Parents can only access the "forms" workspace (ignore any URL tampering)
     const rawWorkspace = workspaceParam || (user?.role === "ADMIN" ? "overview" : "forms");
     const workspace = user?.role === "PARENT" ? "forms" : rawWorkspace;
-    const isStudentCurrentlyEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
+    const isStudentCurrentlyEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
     const defaultFormTab = user?.role === "PARENT"
         ? (formStatuses?.parent_assessment?.submitted
             ? "parent_tracker"
@@ -428,6 +430,29 @@ function UnifiedWorkspaceContent() {
         }
     };
 
+    const handleIntegrateStudent = async () => {
+        if (!studentId || integratingStudent) return;
+        setIntegratingStudent(true);
+        try {
+            const res = await api.post(`/api/students/${studentId}/integrate/`);
+            const profileRes = await api.get(`/api/students/${studentId}/profile/`);
+            const data = profileRes.data;
+            setStudentStatus(data.student.status);
+            setStudentDetails(data.student);
+            setFormStatuses(data.form_statuses);
+            setAssignedStaff(data.assigned_staff || []);
+            const generatedDocs = data.generated_documents || [];
+            generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setDocs(generatedDocs);
+            setShowIntegrateConfirm(false);
+            toast.success(res.data.message || "Student integrated into mainstream school.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to integrate student.");
+        } finally {
+            setIntegratingStudent(false);
+        }
+    };
+
     if (!isAuthorized) {
         return null;
     }
@@ -564,11 +589,11 @@ function UnifiedWorkspaceContent() {
         const teachers = assignedStaff.filter(s => s.role === "TEACHER");
         const latestIep = docs.find(d => d.type === "IEP");
         const latestMonthlyReport = docs.find(d => d.type === "MONTHLY");
-        const trackerTabs = TABS.slice(2);
+        const trackerTabs = normalizedStudentStatus === "INTEGRATED" ? TABS.slice(2) : TABS.slice(2, 4);
         const pendingTrackers = trackerTabs.filter(tab => !formStatuses?.[tab.id]?.submitted);
-        const allTrackersSubmitted = trackerTabs.every(tab => formStatuses?.[tab.id]?.submitted);
+        const allTrackersSubmitted = trackerTabs.length > 0 && trackerTabs.every(tab => formStatuses?.[tab.id]?.submitted);
         const assessmentFinalized = !!formStatuses?.multi_assessment?.submitted;
-        const canGenerateMonthlyReport = normalizedStudentStatus === "ENROLLED" && allTrackersSubmitted && !latestMonthlyReport;
+        const canGenerateMonthlyReport = ["ENROLLED", "INTEGRATED"].includes(normalizedStudentStatus || "") && allTrackersSubmitted && !latestMonthlyReport;
         const actions: { title: string; label: string; onClick: () => void; tone?: "warning" | "positive"; Icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
 
         if (!formStatuses?.parent_assessment?.submitted) {
@@ -578,7 +603,11 @@ function UnifiedWorkspaceContent() {
             actions.push({ title: "Assign specialist", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST"), Icon: UserPlus });
         }
         if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized) {
-            actions.push({ title: `Enroll ${compactStudentName()}?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive", Icon: CheckCircle2 });
+            actions.push({ title: `Enroll ${compactStudentName()} (Therapy)?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive", Icon: CheckCircle2 });
+            actions.push({ title: `Integrate ${compactStudentName()} (Mainstream)?`, label: "Integrate", onClick: () => setShowIntegrateConfirm(true), tone: "positive", Icon: GraduationCap });
+        }
+        if (normalizedStudentStatus === "ENROLLED" && assessmentFinalized) {
+            actions.push({ title: `Integrate ${compactStudentName()} (Mainstream)?`, label: "Integrate", onClick: () => setShowIntegrateConfirm(true), tone: "positive", Icon: GraduationCap });
         }
         if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && assessmentFinalized && !latestIep) {
             actions.push({ title: "Generate IEP", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), Icon: FileText });
@@ -586,10 +615,10 @@ function UnifiedWorkspaceContent() {
         if (canGenerateMonthlyReport) {
             actions.push({ title: "Generate Monthly Progress Report", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), tone: "positive", Icon: Sparkles });
         }
-        if (normalizedStudentStatus === "ENROLLED" && teachers.length === 0) {
+        if (normalizedStudentStatus === "INTEGRATED" && teachers.length === 0) {
             actions.push({ title: "Assign teacher", label: "Open Team", onClick: () => handleTeamMenuChange("TEACHER"), tone: "warning", Icon: UserPlus });
         }
-        if (normalizedStudentStatus === "ENROLLED" && pendingTrackers.length > 0) {
+        if (["ENROLLED", "INTEGRATED"].includes(normalizedStudentStatus || "") && pendingTrackers.length > 0) {
             actions.push({ title: `${pendingTrackers.length} tracker${pendingTrackers.length === 1 ? "" : "s"} pending`, label: "Open Forms", onClick: () => setWorkspace("forms"), Icon: ClipboardList });
         }
 
@@ -942,9 +971,12 @@ function UnifiedWorkspaceContent() {
                     ? visibleFormTabs.filter(tab => tab.id === "sped_tracker")
                     : visibleFormTabs.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id));
         const isAdminAssessmentLocked = user?.role === "ADMIN" && ["parent_assessment", "multi_assessment", "sped_assessment"].includes(activeFormTab) && !currentStatus?.submitted;
-        const isAdminProgressLocked = user?.role === "ADMIN" && ["parent_tracker", "multi_tracker", "sped_tracker"].includes(activeFormTab) && !isStudentEnrolled;
+        const isAdminProgressLocked = user?.role === "ADMIN" && (
+            (["parent_tracker", "multi_tracker"].includes(activeFormTab) && !isStudentEnrolled) ||
+            (activeFormTab === "sped_tracker" && studentStatus?.toUpperCase() !== "INTEGRATED")
+        );
         const isSpecialistProgressLocked = user?.role === "SPECIALIST" && activeFormTab === "multi_tracker" && !isStudentEnrolled;
-        const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && !isStudentEnrolled;
+        const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && studentStatus?.toUpperCase() !== "INTEGRATED";
         const isParentProgressLocked = user?.role === "PARENT" && activeFormTab === "parent_tracker" && !isStudentEnrolled;
         const isSpecialistOnboardingLocked = user?.role === "SPECIALIST" && specialistOnboardingIncomplete && ["multi_assessment", "multi_tracker"].includes(activeFormTab);
         const canCreateCurrentForm =
@@ -1004,9 +1036,9 @@ function UnifiedWorkspaceContent() {
                                 {progressTabs.map((tab) => {
                                     const isSub = formStatuses[tab.id]?.submitted;
                                     const isActive = activeFormTab === tab.id;
-                                    const isLocked = (user?.role === "ADMIN" && !isStudentEnrolled) || (["SPECIALIST", "TEACHER", "PARENT"].includes(user?.role || "") && !isStudentEnrolled);
+                                    const isLocked = !isStudentEnrolled || (tab.id === "sped_tracker" && studentStatus?.toUpperCase() !== "INTEGRATED");
                                     return (
-                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment/integration" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
                                             <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{user?.role === "PARENT" && tab.id === "parent_tracker" ? "Home Update" : tab.label}</span>
                                             {isLocked ? (
@@ -2138,6 +2170,38 @@ function UnifiedWorkspaceContent() {
                                     className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     {enrollingStudent ? "Enrolling..." : "Confirm Enrollment"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showIntegrateConfirm && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                                <GraduationCap size={24} />
+                            </div>
+                            <h2 className="mb-2 text-xl font-bold text-slate-900">Integrate {studentName}?</h2>
+                            <p className="mb-6 text-sm leading-6 text-slate-500">
+                                This will transition the student into the mainstream school program. This unlocks the SPED Teacher tracker required for monthly progress reports.
+                            </p>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => !integratingStudent && setShowIntegrateConfirm(false)}
+                                    disabled={integratingStudent}
+                                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleIntegrateStudent}
+                                    disabled={integratingStudent}
+                                    className="rounded-lg border border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                >
+                                    {integratingStudent ? "Integrating..." : "Confirm Integration"}
                                 </button>
                             </div>
                         </div>

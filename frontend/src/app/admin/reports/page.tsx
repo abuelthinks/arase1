@@ -50,6 +50,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     const [loading, setLoading] = useState(false);
     const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
+    const [existingIepId, setExistingIepId] = useState<number | null>(null);
+    const [existingMonthlyId, setExistingMonthlyId] = useState<number | null>(null);
+    const [iepHovered, setIepHovered] = useState(false);
+    const [monthlyHovered, setMonthlyHovered] = useState(false);
 
     useEffect(() => {
         if (studentId) {
@@ -72,6 +76,12 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                     if (res.data.cycle_status) {
                         setCycleStatus(res.data.cycle_status);
                     }
+                    // Check for existing generated documents
+                    const docs = res.data.generated_documents || [];
+                    const iepDoc = docs.find((d: any) => d.type === "IEP");
+                    const monthlyDoc = docs.find((d: any) => d.type === "MONTHLY");
+                    setExistingIepId(iepDoc?.id ?? null);
+                    setExistingMonthlyId(monthlyDoc?.id ?? null);
                 })
                 .catch(() => {});
         }
@@ -174,11 +184,15 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
         }
     };
 
+    const isEnrolled = ["enrolled", "integrated", "active"].includes(studentStatus.toLowerCase());
+    const isIntegrated = studentStatus.toLowerCase() === "integrated";
+
     const allTrackersSubmitted = formStatuses
-        ? Object.values(formStatuses).every(fs => fs.submitted)
+        ? formStatuses.parent_tracker.submitted && 
+          formStatuses.multi_tracker.submitted && 
+          (!isIntegrated || formStatuses.sped_tracker.submitted)
         : false;
 
-    const isEnrolled = ["enrolled", "active"].includes(studentStatus.toLowerCase());
     const monthlyEnabled = isEnrolled && allTrackersSubmitted && !monthlyLoading;
 
     if (!studentId) {
@@ -264,18 +278,27 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         </div>
                     </div>
                     <button
-                        onClick={handleGenerateIEP}
-                        disabled={loading || !["assessed", "enrolled"].includes(studentStatus.toLowerCase())}
+                        onClick={() => {
+                            if (existingIepId) {
+                                openGeneratedDocument("iep", existingIepId);
+                            } else {
+                                handleGenerateIEP();
+                            }
+                        }}
+                        onMouseEnter={() => setIepHovered(true)}
+                        onMouseLeave={() => setIepHovered(false)}
+                        disabled={loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase())}
                         style={{
                             padding: "10px 20px", borderRadius: "8px", border: "none",
-                            background: loading ? "#a5b4fc" : ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "#4f46e5" : "#e2e8f0",
-                            color: ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "white" : "#94a3b8",
+                            background: loading ? "#a5b4fc" : existingIepId ? (iepHovered ? "#1e293b" : "#0f172a") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "#e2e8f0",
+                            color: ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "white" : "#94a3b8",
                             fontWeight: 700, fontSize: "0.85rem",
-                            cursor: loading || !["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
+                            cursor: loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
                             whiteSpace: "nowrap", flexShrink: 0, marginTop: "4px",
+                            transition: "background 0.2s ease",
                         }}
                     >
-                        {loading ? "⏳ Generating…" : ["assessed", "enrolled"].includes(studentStatus.toLowerCase()) ? "🤖 Generate" : "Requires Review"}
+                        {loading ? "⏳ Generating…" : existingIepId ? "📄 View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "🤖 Generate" : "Requires Review"}
                     </button>
                 </div>
             </div>
@@ -296,7 +319,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
 
                         {/* Progress Tracker Status Pills */}
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                            {Object.entries(progressTrackerLabels).map(([key, label]) => {
+                            {Object.entries(progressTrackerLabels).filter(([key]) => isIntegrated || key !== 'sped_tracker').map(([key, label]) => {
                                 const submitted = formStatuses?.[key as keyof FormStatuses]?.submitted ?? false;
                                 return (
                                     <span key={key} style={{
@@ -319,7 +342,12 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                     </span>
                                 );
                             })}
-                            {studentStatus.toLowerCase() === "enrolled" && !allTrackersSubmitted && (
+                            {["enrolled", "active"].includes(studentStatus.toLowerCase()) && !allTrackersSubmitted && (
+                                <span style={{ fontSize: "0.75rem", color: "#92400e", fontStyle: "italic", alignSelf: "center" }}>
+                                    All 2 trackers must be submitted first
+                                </span>
+                            )}
+                            {studentStatus.toLowerCase() === "integrated" && !allTrackersSubmitted && (
                                 <span style={{ fontSize: "0.75rem", color: "#92400e", fontStyle: "italic", alignSelf: "center" }}>
                                     All 3 trackers must be submitted first
                                 </span>
@@ -328,26 +356,38 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                     </div>
 
                     <button
-                        onClick={handleGenerateMonthly}
-                        disabled={!monthlyEnabled}
+                        onClick={() => {
+                            if (existingMonthlyId) {
+                                openGeneratedDocument("monthly", existingMonthlyId);
+                            } else {
+                                handleGenerateMonthly();
+                            }
+                        }}
+                        onMouseEnter={() => setMonthlyHovered(true)}
+                        onMouseLeave={() => setMonthlyHovered(false)}
+                        disabled={existingMonthlyId ? false : !monthlyEnabled}
                         title={
-                            !isEnrolled
+                            existingMonthlyId
+                                ? "View existing monthly report"
+                                : !isEnrolled
                                 ? "Requires Active status"
                                 : !allTrackersSubmitted
-                                ? "All 3 progress tracker forms must be submitted first"
+                                ? `All ${isIntegrated ? '3' : '2'} progress tracker forms must be submitted first`
                                 : "Generate monthly progress report"
                         }
                         style={{
                             padding: "10px 20px", borderRadius: "8px", border: "none",
-                            background: monthlyLoading ? "#6ee7b7" : monthlyEnabled ? "#059669" : "#e2e8f0",
-                            color: monthlyEnabled ? "white" : "#94a3b8",
+                            background: monthlyLoading ? "#6ee7b7" : existingMonthlyId ? (monthlyHovered ? "#1e293b" : "#0f172a") : monthlyEnabled ? (monthlyHovered ? "#047857" : "#059669") : "#e2e8f0",
+                            color: existingMonthlyId || monthlyEnabled ? "white" : "#94a3b8",
                             fontWeight: 700, fontSize: "0.85rem",
-                            cursor: monthlyEnabled ? "pointer" : "not-allowed",
+                            cursor: existingMonthlyId || monthlyEnabled ? "pointer" : "not-allowed",
                             whiteSpace: "nowrap", flexShrink: 0,
                             marginTop: "4px",
+                            transition: "background 0.2s ease",
                         }}
                     >
                         {monthlyLoading ? "⏳ Generating…"
+                            : existingMonthlyId ? "📄 View Report"
                             : !isEnrolled ? "Requires Active"
                             : !allTrackersSubmitted ? "Forms Pending"
                             : "🤖 Generate"}

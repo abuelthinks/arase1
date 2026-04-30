@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api, { API_BASE_URL } from "@/lib/api";
@@ -92,6 +92,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
     const [errorMsg, setErrorMsg] = useState("");
     const [showAuditModal, setShowAuditModal] = useState(false);
     const [auditHistory, setAuditHistory] = useState<any[]>([]);
+    const loadedIepStr = useRef("");
+    const editSnapshotStr = useRef("");
 
     useEffect(() => {
         if (!iepId) return;
@@ -99,15 +101,38 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
         api.get(`/api/iep/${iepId}/`)
             .then(res => {
                 setIep(res.data.iep_data);
+                loadedIepStr.current = JSON.stringify(res.data.iep_data);
                 setMeta({ student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
                 setIepStatus(res.data.status);
                 if (res.data.status === "DRAFT") {
                     setEditing(true);
+                    editSnapshotStr.current = JSON.stringify(res.data.iep_data);
                 }
             })
             .catch(() => setErrorMsg("Failed to load IEP."))
             .finally(() => setLoading(false));
     }, [iepId]);
+
+    // Auto-save
+    useEffect(() => {
+        if (!editing || !iep) return;
+        const currentIepStr = JSON.stringify(iep);
+        if (currentIepStr === loadedIepStr.current) return;
+        
+        const timeoutId = setTimeout(() => {
+            setSaving(true);
+            api.patch(`/api/iep/${iepId}/`, { iep_data: iep, status: iepStatus })
+                .then(res => {
+                    setIepStatus(res.data.status);
+                    loadedIepStr.current = currentIepStr;
+                    setErrorMsg("");
+                })
+                .catch(() => setErrorMsg("Auto-save failed."))
+                .finally(() => setSaving(false));
+        }, 1500);
+
+        return () => clearTimeout(timeoutId);
+    }, [iep, editing, iepId, iepStatus]);
 
     if (!iepId) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing IEP ID.</div>;
     if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading IEP…</div>;
@@ -195,7 +220,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                         Comprehensive AI-Generated IEP
                         <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: iepStatus === "FINAL" ? "#dcfce7" : "#fef3c7", color: iepStatus === "FINAL" ? "#166534" : "#92400e", border: `1px solid ${iepStatus === "FINAL" ? "#bbf7d0" : "#fde68a"}` }}>
                             {iepStatus === "FINAL" ? "FINAL" : "DRAFT"}
@@ -211,16 +236,29 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         <button onClick={handleDownload} className="btn-slate" style={{ fontSize: "0.82rem" }}>📥 Download PDF</button>
                         {editing ? (
                             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                <button onClick={() => setEditing(false)} className="btn-slate" style={{ fontSize: "0.82rem" }}>Cancel</button>
-                                <button onClick={() => handleSave("DRAFT")} disabled={saving} className="btn-slate" style={{ fontSize: "0.82rem", fontWeight: 700 }}>
-                                    {saving ? "Saving…" : "💾 Save Draft"}
-                                </button>
+                                <button onClick={() => {
+                                    const snapshot = editSnapshotStr.current;
+                                    if (snapshot) {
+                                        const original = JSON.parse(snapshot);
+                                        setIep(original);
+                                        loadedIepStr.current = snapshot;
+                                        setSaving(true);
+                                        api.patch(`/api/iep/${iepId}/`, { iep_data: original, status: iepStatus })
+                                            .then(() => setErrorMsg(""))
+                                            .catch(() => setErrorMsg("Failed to revert changes."))
+                                            .finally(() => setSaving(false));
+                                    }
+                                    setEditing(false);
+                                }} className="btn-slate" style={{ fontSize: "0.82rem" }}>Cancel Edit</button>
                                 <button onClick={() => handleSave("FINAL")} disabled={saving} className="btn-green" style={{ fontSize: "0.82rem" }}>
-                                    {saving ? "Saving…" : "✅ Finalize"}
+                                    ✅ Finalize
                                 </button>
+                                <span style={{ fontSize: "0.78rem", color: saving ? "#64748b" : "#10b981", fontStyle: "italic", marginLeft: "4px" }}>
+                                    {saving ? "Saving…" : "✓ Saved"}
+                                </span>
                             </div>
                         ) : (
-                            <button onClick={() => setEditing(true)} className="btn-indigo" style={{ fontSize: "0.82rem" }}>✏️ Edit</button>
+                            <button onClick={() => { editSnapshotStr.current = JSON.stringify(iep); setEditing(true); }} className="btn-indigo" style={{ fontSize: "0.82rem" }}>✏️ Edit</button>
                         )}
                     </div>
                 )}
