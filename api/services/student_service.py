@@ -170,7 +170,7 @@ def get_student_profile_data(student, user=None):
                 obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
             submitted = bool(obj)
             submitted_at = obj.created_at if obj else None
-            if key == 'multi_assessment' and obj:
+            if key in ['multi_assessment', 'multi_tracker'] and obj:
                 submitted = bool(obj.finalized_at)
                 submitted_at = obj.finalized_at
             form_statuses[key] = {
