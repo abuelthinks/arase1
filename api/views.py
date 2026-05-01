@@ -247,8 +247,8 @@ class BaseInputViewSet(viewsets.ModelViewSet):
         if not StudentAccess.objects.filter(user=user, student=student).exists():
             raise PermissionDenied("You do not have access to this student.")
 
-        if self.require_enrolled_student and student.status != 'ENROLLED':
-            raise ValidationError("Progress tracking is only available for active (enrolled) students.")
+        if self.require_enrolled_student and student.status not in ('ENROLLED', 'INTEGRATED'):
+            raise ValidationError("Progress tracking is only available for active (enrolled or integrated) students.")
 
         if self.require_active_cycle and not ReportCycle.objects.filter(
             id=report_cycle.id,
