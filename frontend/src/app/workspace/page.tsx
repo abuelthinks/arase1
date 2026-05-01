@@ -34,6 +34,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
     "ASSESSED":     { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
     "ASSESSED (AWAITING ENROLLMENT)": { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
     "ENROLLED":     { bg: "#dcfce7", color: "#14532d", label: "Enrolled" },
+    "INTEGRATED":   { bg: "#ede9fe", color: "#5b21b6", label: "Integrated" },
     "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b", label: "Archived" },
 };
 
@@ -1567,11 +1568,11 @@ function UnifiedWorkspaceContent() {
 
         const isLocked = activeTeamRole === "SPECIALIST"
             ? !formStatuses?.parent_assessment?.submitted
-            : studentStatus !== "Enrolled";
+            : !["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
 
         const lockReason = activeTeamRole === "SPECIALIST"
             ? "Waiting on Parent Input"
-            : "Waiting for Enrollment";
+            : "Waiting for enrollment. Staff cannot be assigned until prerequisite conditions are met.";
 
         const specialtyGroups = isSpecialist
             ? SPECIALIST_SPECIALTIES.map((specialty) => {
@@ -2036,7 +2037,7 @@ function UnifiedWorkspaceContent() {
                                     ) : (
                                         filteredStudents.map(s => {
                                             const isCurrent = s.id.toString() === studentId;
-                                            const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", ARCHIVED: "#94a3b8" };
+                                            const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", INTEGRATED: "#7c3aed", ARCHIVED: "#94a3b8" };
                                             const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
                                             const statusLabel = STATUS_COLORS[s.status?.toUpperCase()]?.label || s.status?.replace(/_/g, ' ');
                                             return (
