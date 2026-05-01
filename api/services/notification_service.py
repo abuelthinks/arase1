@@ -171,7 +171,7 @@ def notify_auto_report_ready(student, doc):
         notification_type='REPORT_GENERATED',
         title=f"Monthly report ready: {student_name}",
         message=f"All trackers submitted. Draft report auto-generated and awaiting review.",
-        link=f"/admin/monthly-report?id={doc.id}",
+        link=f"/workspace?studentId={student.id}&workspace=reports&view=monthly&docId={doc.id}",
         actor_name="System",
     )
 
@@ -186,7 +186,7 @@ def notify_auto_report_ready(student, doc):
             notification_type='REPORT_GENERATED',
             title=f"Progress report in review for {student_name}",
             message="All monthly trackers have been submitted. The report is being reviewed.",
-            link=f"/workspace?studentId={student.id}&workspace=documents",
+            link=f"/workspace?studentId={student.id}&workspace=reports",
             actor_name="System",
         )
 
@@ -198,7 +198,7 @@ def notify_auto_iep_ready(student, doc):
         notification_type='IEP_GENERATED',
         title=f"IEP draft ready for review: {student_name}",
         message="Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize when ready.",
-        link=f"/admin/iep?id={doc.id}",
+        link=f"/workspace?studentId={student.id}&workspace=reports&view=iep&docId={doc.id}",
         actor_name="System",
     )
 
@@ -420,7 +420,7 @@ def notify_report_ready(admin_user, student, report_id):
     """
     student_name = f"{student.first_name} {student.last_name}"
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-    report_url = f"{frontend_url}/admin/monthly-report?id={report_id}"
+    report_url = f"{frontend_url}/workspace?studentId={student.id}&workspace=reports"
     subject = f"Monthly report auto-generated for {student_name}"
     message = (
         f"Hi {admin_user.first_name or 'Admin'},\n\n"
@@ -455,7 +455,7 @@ def notify_parent_report_finalized(parent_user, student, report_id):
         notification_type='REPORT_FINALIZED',
         title=f"Monthly report ready for {student_name}",
         message="The monthly progress report has been finalized and is ready for you to review.",
-        link=f"/workspace?studentId={student.id}&workspace=documents",
+        link=f"/workspace?studentId={student.id}&workspace=reports",
         actor_name="ARASE",
     )
 

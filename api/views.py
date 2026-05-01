@@ -801,7 +801,7 @@ class AdminDashboardActionsView(APIView):
                     "title": f"Review Monthly Report: {s.first_name} {s.last_name}",
                     "description": f"{cycle.label} report auto-generated. Review and finalize.",
                     "action_text": "Review →",
-                    "link": f"/admin/monthly-report?id={report.id}",
+                    "link": f"/workspace?studentId={s.id}&workspace=reports&view=monthly&docId={report.id}",
                     "type": "positive"
                 })
             elif all_trackers_submitted and not report:
@@ -810,7 +810,7 @@ class AdminDashboardActionsView(APIView):
                     "title": f"Generate Monthly Progress Report: {s.first_name} {s.last_name}",
                     "description": f"All {total_required} progress trackers are submitted for {cycle.label or 'the active cycle'}.",
                     "action_text": "Generate →",
-                    "link": f"/admin/reports?studentId={s.id}",
+                    "link": f"/workspace?studentId={s.id}&workspace=reports&view=generator",
                     "type": "positive"
                 })
             elif submitted > 0 and submitted < total_required:
@@ -823,7 +823,7 @@ class AdminDashboardActionsView(APIView):
                     "title": f"Trackers Pending: {s.first_name} {s.last_name}",
                     "description": f"{submitted}/{total_required} submitted for {cycle.label}. Waiting: {', '.join(missing)}.",
                     "action_text": "View →",
-                    "link": f"/students/{s.id}",
+                    "link": f"/workspace?studentId={s.id}",
                     "type": "warning"
                 })
 
@@ -844,7 +844,7 @@ class AdminDashboardActionsView(APIView):
                 "title": f"Review IEP Draft: {student.first_name} {student.last_name}",
                 "description": "Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize.",
                 "action_text": "Review →",
-                "link": f"/admin/iep?id={doc.id}",
+                "link": f"/workspace?studentId={doc.student_id}&workspace=reports&view=iep&docId={doc.id}",
                 "type": "positive",
             })
 
@@ -856,7 +856,7 @@ class AdminDashboardActionsView(APIView):
                 "title": f"Ready for Enrollment Review: {s.first_name} {s.last_name}",
                 "description": "Specialist assessment complete. Awaiting admin placement decision.",
                 "action_text": "Review →",
-                "link": f"/students/{s.id}",
+                "link": f"/workspace?studentId={s.id}",
                 "type": "info"
             })
 
@@ -870,7 +870,7 @@ class AdminDashboardActionsView(APIView):
                     "title": f"Parent Onboarding Complete: {s.first_name} {s.last_name}",
                     "description": "Parent has submitted initial assessment. Assign a specialist to begin evaluation.",
                     "action_text": "Assign →",
-                    "link": f"/students/{s.id}",
+                    "link": f"/workspace?studentId={s.id}&workspace=team",
                     "type": "info"
                 })
 
