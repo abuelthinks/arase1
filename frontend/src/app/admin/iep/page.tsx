@@ -513,9 +513,21 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
 export default function IEPViewerPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
+
     useEffect(() => {
         const id = searchParams.get("id");
-        router.replace(id ? `/workspace?workspace=reports&view=iep&docId=${id}` : "/workspace");
+        if (id) {
+            api.get(`/api/iep/${id}/`)
+                .then(res => {
+                    router.replace(`/workspace?studentId=${res.data.student_id}&workspace=reports&view=iep&docId=${id}`);
+                })
+                .catch(() => {
+                    router.replace("/workspace");
+                });
+        } else {
+            router.replace("/workspace");
+        }
     }, [searchParams, router]);
+
     return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
 }

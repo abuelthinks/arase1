@@ -378,9 +378,21 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
 export default function MonthlyReportPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
+
     useEffect(() => {
         const id = searchParams.get("id");
-        router.replace(id ? `/workspace?workspace=reports&view=monthly&docId=${id}` : "/workspace");
+        if (id) {
+            api.get(`/api/monthly-report/${id}/`)
+                .then(res => {
+                    router.replace(`/workspace?studentId=${res.data.student_id}&workspace=reports&view=monthly&docId=${id}`);
+                })
+                .catch(() => {
+                    router.replace("/workspace");
+                });
+        } else {
+            router.replace("/workspace");
+        }
     }, [searchParams, router]);
+
     return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
 }
