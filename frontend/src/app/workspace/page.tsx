@@ -958,7 +958,7 @@ function UnifiedWorkspaceContent() {
     const renderFormsWorkspace = () => {
         const currentTabConf = visibleFormTabs.find(t => t.id === activeFormTab);
         const currentStatus = formStatuses[activeFormTab];
-        const isStudentEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
+        const isStudentEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
         const assessmentTabs = user?.role === "PARENT"
             ? visibleFormTabs.filter(tab => tab.id === "parent_assessment")
             : user?.role === "TEACHER"
@@ -1283,7 +1283,7 @@ function UnifiedWorkspaceContent() {
 
     // 3. PARENT UNIFIED WORKSPACE RENDERER
     const renderParentUnifiedWorkspace = () => {
-        const isStudentEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
+        const isStudentEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
         const trackerStatus = formStatuses?.parent_tracker;
         const assessmentStatus = formStatuses?.parent_assessment;
         const iepDocs = docs.filter(d => d.type === "IEP");
