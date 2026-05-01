@@ -454,9 +454,11 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
 }
 
 export default function AdminReportsPage() {
-    return (
-        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading Report Generator...</div>}>
-            <AdminReportsContent />
-        </Suspense>
-    );
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    useEffect(() => {
+        const studentId = searchParams.get("studentId");
+        router.replace(studentId ? `/workspace?studentId=${studentId}&workspace=reports&view=generator` : "/workspace");
+    }, [searchParams, router]);
+    return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
 }

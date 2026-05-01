@@ -832,24 +832,19 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
 }
 
 function StudentProfileRouter({ id }: { id: string }) {
-    const { user } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-        if (user?.role === "PARENT" && id) {
+        if (id) {
             router.replace(`/workspace?studentId=${id}`);
         }
-    }, [user?.role, id, router]);
+    }, [id, router]);
 
-    if (user?.role === "PARENT") {
-        return (
-            <div className="flex items-center justify-center p-12 text-sm text-slate-500">
-                Loading your workspace...
-            </div>
-        );
-    }
-
-    return <StudentProfileContent propStudentId={id} />;
+    return (
+        <div className="flex items-center justify-center p-12 text-sm text-slate-500">
+            Redirecting to workspace...
+        </div>
+    );
 }
 
 export default function StudentProfilePage() {
