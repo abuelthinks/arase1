@@ -244,6 +244,47 @@ def submit_section(
         return instance, contribution
 
 
+def reopen_section(
+    *, form_type: str, user, student_id: int, report_cycle_id: int,
+    section_key: str,
+):
+    """Revert a submitted shared section back to draft status."""
+    with transaction.atomic():
+        instance, _ = _get_or_create_form(
+            form_type, user, student_id, report_cycle_id
+        )
+        
+        if instance.finalized_at:
+            raise SectionLockedError("This form is finalized and cannot be reopened.")
+            
+        owners = get_section_owners(form_type)
+        if owners.get(section_key) != SHARED_SECTION:
+            raise SectionPermissionError("Only shared sections can be explicitly reopened.")
+            
+        access = _get_student_access(user, instance)
+        if user.role != "SPECIALIST" and user.role != "ADMIN":
+            raise SectionPermissionError("Only specialists or admins can reopen sections.")
+            
+        if _is_shared_locked(form_type, instance, section_key):
+            raise SectionLockedError(f"Section {section_key} is locked (verified) and cannot be reopened.")
+            
+        contribution = SectionContribution.objects.filter(
+            **{_fk_field(form_type): instance}, section_key=section_key
+        ).first()
+        
+        if not contribution or contribution.status != "submitted":
+            return instance, contribution
+            
+        contribution.status = "draft"
+        contribution.submitted_at = None
+        contribution.save(update_fields=["status", "submitted_at"])
+        
+        from .collaboration_service import broadcast_lock_changed
+        transaction.on_commit(lambda: broadcast_lock_changed(form_type, instance.id))
+        
+        return instance, contribution
+
+
 def _maybe_finalize(form_type: str, instance, user):
     """If every owner-section is submitted, mark the form finalized."""
     if instance.finalized_at:

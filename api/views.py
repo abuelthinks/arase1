@@ -607,6 +607,59 @@ class TrackerSectionSubmitView(SectionSubmitView):
     form_type = 'tracker'
 
 
+class SectionReopenView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    form_type = ''
+
+    def post(self, request, section_key):
+        from .services.section_service import (
+            reopen_section, SectionPermissionError, SectionLockedError
+        )
+        from .serializers import (
+            MultidisciplinaryAssessmentSerializer,
+            MultidisciplinaryProgressTrackerSerializer,
+        )
+
+        student_id = request.data.get('student')
+        report_cycle_id = request.data.get('report_cycle')
+
+        if not student_id or not report_cycle_id:
+            return Response(
+                {"error": "student and report_cycle are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            instance, _ = reopen_section(
+                form_type=self.form_type,
+                user=request.user,
+                student_id=student_id,
+                report_cycle_id=report_cycle_id,
+                section_key=section_key,
+            )
+        except SectionPermissionError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except SectionLockedError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer_cls = (
+            MultidisciplinaryAssessmentSerializer
+            if self.form_type == 'assessment'
+            else MultidisciplinaryProgressTrackerSerializer
+        )
+        return Response(serializer_cls(instance).data, status=status.HTTP_200_OK)
+
+
+class AssessmentSectionReopenView(SectionReopenView):
+    form_type = 'assessment'
+
+
+class TrackerSectionReopenView(SectionReopenView):
+    form_type = 'tracker'
+
+
 class SectionContributionsListView(APIView):
     """Return all section contributions for a given student/report_cycle."""
     permission_classes = [permissions.IsAuthenticated]

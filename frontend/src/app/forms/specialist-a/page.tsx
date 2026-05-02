@@ -67,6 +67,7 @@ function SectionCard({
     ownerLabel?: string; status?: "draft" | "submitted" | "pending"; locked?: boolean;
     onFocus?: () => void; onBlur?: () => void;
     remoteHolder?: { user_name: string; specialty?: string } | null;
+    isMySection?: boolean;
 }) {
     const badge = status === "submitted"
         ? { label: "✓ Submitted", color: "#065f46", bg: "#d1fae5" }
@@ -76,7 +77,9 @@ function SectionCard({
 
     return (
         <div
-            className="bg-white rounded-xl border border-[var(--border-light)] overflow-hidden mb-5 shadow-sm"
+            className={`bg-white rounded-xl overflow-hidden mb-5 shadow-sm transition-all duration-200 ${
+                isMySection ? 'border-2 border-indigo-400 ring-2 ring-indigo-50 ring-opacity-50' : 'border border-[var(--border-light)]'
+            }`}
             onFocusCapture={onFocus}
             onBlurCapture={(e) => {
                 // Only release when focus moves outside this section.
@@ -84,7 +87,9 @@ function SectionCard({
                 if (!next || !e.currentTarget.contains(next)) onBlur?.();
             }}
         >
-            <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--border-light)] bg-slate-50 flex items-start justify-between gap-3 flex-wrap">
+            <div className={`px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--border-light)] flex items-start justify-between gap-3 flex-wrap ${
+                isMySection ? 'bg-indigo-50/40' : 'bg-slate-50'
+            }`}>
                 <div>
                     <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }} className="font-bold text-[var(--text-primary)] m-0">{title}</h2>
                     {subtitle && <p className="text-sm text-[var(--text-secondary)] m-0 mt-1 leading-relaxed">{subtitle}</p>}
@@ -460,6 +465,25 @@ function SpecialistAFormContent() {
         };
     };
 
+    const reopenSection = async (sectionKey: string) => {
+        if (!studentId) return;
+        setSavingSection(sectionKey + ":reopen");
+        setErrorMsg("");
+        try {
+            await api.post(`/api/inputs/multidisciplinary-assessment/sections/${sectionKey}/reopen/`, {
+                student: parseInt(studentId), report_cycle: parseInt(reportCycleId)
+            });
+            toast.success(`Section ${sectionKey} reopened.`);
+            await refreshContributions();
+        } catch (err: any) {
+            const msg = err.response?.data?.error || err.response?.data?.detail || "Reopen failed.";
+            setErrorMsg(msg);
+            toast.error(msg);
+        } finally {
+            setSavingSection(null);
+        }
+    };
+
     const sectionFooter = (sectionKey: string) => {
         if (isViewMode) return null;
         const s = sectionStatus[sectionKey];
@@ -471,11 +495,26 @@ function SpecialistAFormContent() {
                 </div>
             );
         }
+        const contrib = contributions[sectionKey];
+        const isShared = ASSESSMENT_SECTION_OWNERS[sectionKey] === SHARED;
+        const isFinalized = !!fullSubmission?.finalized_at;
+        const isSectionAMatched = sectionKey === "A" && form.a2_verification === "matches";
+        
         if (s.locked && !isAdmin) {
-            const contrib = contributions[sectionKey];
+            const canReopen = isShared && !isFinalized && !isSectionAMatched && user?.role === "SPECIALIST";
+            const reopening = savingSection === sectionKey + ":reopen";
+            
             return (
-                <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#475569", background: "#f1f5f9", padding: "10px 14px", borderRadius: "8px" }}>
-                    {contrib ? <>Submitted by <strong>{contrib.specialist_name}</strong>{contrib.submitted_at ? ` on ${new Date(contrib.submitted_at).toLocaleDateString()}` : ""}.</> : "Locked."}
+                <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.85rem", color: "#475569", background: "#f1f5f9", padding: "10px 14px", borderRadius: "8px" }}>
+                    <div>
+                        {contrib ? <>Submitted by <strong>{contrib.specialist_name}</strong>{contrib.submitted_at ? ` on ${new Date(contrib.submitted_at).toLocaleString()}` : ""}.</> : "Locked."}
+                    </div>
+                    {canReopen && (
+                        <button onClick={() => reopenSection(sectionKey)} disabled={reopening}
+                            style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", background: "white", color: "#4f46e5", fontWeight: 600, cursor: reopening ? "not-allowed" : "pointer", fontSize: "0.8rem" }}>
+                            {reopening ? "Updating…" : "Update"}
+                        </button>
+                    )}
                 </div>
             );
         }
@@ -486,11 +525,20 @@ function SpecialistAFormContent() {
                 </div>
             );
         }
+        
+        const draftInfo = contrib && contrib.status === "draft" ? (
+            <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#64748b" }}>
+                Last edited by <strong>{contrib.specialist_name}</strong>{contrib.updated_at ? ` on ${new Date(contrib.updated_at).toLocaleString()}` : ""}
+            </div>
+        ) : null;
+        
         const saving = !!(savingSection && savingSection.startsWith(sectionKey + ":"));
         const savingDraft = savingSection === sectionKey + ":save";
         const savingSubmit = savingSection === sectionKey + ":submit";
         return (
-            <div style={{ marginTop: "0.75rem", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <>
+                {draftInfo}
+                <div style={{ marginTop: "0.75rem", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                 <button onClick={() => saveSection(sectionKey, { submit: false })} disabled={saving}
                     style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", color: "#334155", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontSize: "0.85rem" }}>
                     {savingDraft ? "Saving…" : "Save Draft"}
@@ -500,12 +548,27 @@ function SpecialistAFormContent() {
                     {savingSubmit ? "Submitting…" : "Submit My Section"}
                 </button>
             </div>
+            </>
         );
     };
 
     const mySections = userSpecialties
         .map((s) => SPECIALTY_TO_SECTION[s])
         .filter(Boolean);
+
+    const studentAssignedSpecialties = useMemo(() => {
+        if (!studentProfile?.assigned_staff) return [];
+        return studentProfile.assigned_staff
+            .filter((s: any) => s.role === "SPECIALIST")
+            .flatMap((s: any) => s.specialties || []);
+    }, [studentProfile]);
+
+    const shouldShowSection = (sectionKey: string) => {
+        const owner = ASSESSMENT_SECTION_OWNERS[sectionKey];
+        if (owner === SHARED) return true;
+        if (!owner) return true;
+        return studentAssignedSpecialties.includes(owner as string);
+    };
 
     return (
         <div style={{ maxWidth: "1024px", margin: "0 auto", paddingBottom: "3rem" }}>
@@ -541,10 +604,21 @@ function SpecialistAFormContent() {
                     <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] m-0 flex flex-wrap items-baseline gap-2">
                         Multidisciplinary Assessment Form {isViewMode && <span className="text-sm font-medium text-slate-500">— Read Only</span>}
                     </h1>
-                    {!isViewMode && userSpecialties.length > 0 && mySections.length > 0 && (
-                        <p className="text-sm text-[var(--text-secondary)] mt-1 mb-0">
-                            Logged in as <strong>{userSpecialties.join(", ")}</strong> — you can edit Section{mySections.length > 1 ? "s" : ""} {mySections.join(", ")} and shared sections.
-                        </p>
+                    {!isViewMode && (
+                        <div style={{ marginTop: "1rem", padding: "16px 20px", background: "#eef2ff", borderRadius: "12px", border: "1px solid #c7d2fe", display: "flex", gap: "12px", alignItems: "flex-start", width: "100%" }}>
+                            <div style={{ color: "#4f46e5", marginTop: "2px" }}>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "20px", height: "20px" }}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div style={{ fontSize: "0.9rem", color: "#3730a3", lineHeight: 1.5 }}>
+                                {userSpecialties.length > 0 ? (
+                                    <>You can edit shared sections and your assigned discipline area{userSpecialties.length > 1 ? "s" : ""}: <strong>{userSpecialties.map(s => specialtyShortLabel(s as SectionOwner)).join(", ")}</strong>. Other sections are read-only.</>
+                                ) : (
+                                    <>No assigned discipline found for your account — you can only edit shared sections.</>
+                                )}
+                            </div>
+                        </div>
                     )}
                     {!isViewMode && assessmentInstanceId && (
                         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -681,128 +755,133 @@ function SpecialistAFormContent() {
                 {sectionFooter("B")}
             </SectionCard>
 
-            {/* SECTION C: SLP */}
-            <SectionCard title="Section C — Speech & Language Pathology (SLP) Assessment" ownerLabel="SLP" status={sectionStatus.C?.status} locked={sectionStatus.C?.locked} {...cardProps("C")}>
-                <FieldGroup label="C1. Expressive Language">
-                    {["Babbling", "Single words", "Phrases", "Full sentences", "Limited vocabulary", "Echolalia", "Age-appropriate"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.c1_expressive.includes(item)} readOnly={ro("C")} onChange={() => tog("c1_expressive", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="C2. Receptive Language">
-                    {["Responds to name", "Follows 1-step instructions", "Follows 2-step instructions", "Understands WH questions", "Limited comprehension"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.c2_receptive.includes(item)} readOnly={ro("C")} onChange={() => tog("c2_receptive", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="C3. Speech Sound / Articulation">
-                    {["Clear", "Substitutions", "Omissions", "Lisp", "Stuttering"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.c3_articulation.includes(item)} readOnly={ro("C")} onChange={() => tog("c3_articulation", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="C4. Pragmatics / Social Communication">
-                    {["Eye contact", "Turn-taking", "Joint attention"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.c4_pragmatics.includes(item)} readOnly={ro("C")} onChange={() => tog("c4_pragmatics", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="SLP Notes">
-                    <TextArea value={form.c_notes} onChange={ro("C") ? undefined : v => set("c_notes", v)} placeholder="SLP clinical notes…" readOnly={ro("C")} />
-                </FieldGroup>
-                {sectionFooter("C")}
-            </SectionCard>
+            {shouldShowSection("C") && (
+                <SectionCard title="Section C — Speech & Language Pathology (SLP) Assessment" ownerLabel="SLP" status={sectionStatus.C?.status} locked={sectionStatus.C?.locked} {...cardProps("C")} isMySection={mySections.includes("C")}>
+                    <FieldGroup label="C1. Expressive Language">
+                        {["Babbling", "Single words", "Phrases", "Full sentences", "Limited vocabulary", "Echolalia", "Age-appropriate"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.c1_expressive.includes(item)} readOnly={ro("C")} onChange={() => tog("c1_expressive", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="C2. Receptive Language">
+                        {["Responds to name", "Follows 1-step instructions", "Follows 2-step instructions", "Understands WH questions", "Limited comprehension"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.c2_receptive.includes(item)} readOnly={ro("C")} onChange={() => tog("c2_receptive", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="C3. Speech Sound / Articulation">
+                        {["Clear", "Substitutions", "Omissions", "Lisp", "Stuttering"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.c3_articulation.includes(item)} readOnly={ro("C")} onChange={() => tog("c3_articulation", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="C4. Pragmatics / Social Communication">
+                        {["Eye contact", "Turn-taking", "Joint attention"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.c4_pragmatics.includes(item)} readOnly={ro("C")} onChange={() => tog("c4_pragmatics", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="SLP Notes">
+                        <TextArea value={form.c_notes} onChange={ro("C") ? undefined : v => set("c_notes", v)} placeholder="SLP clinical notes…" readOnly={ro("C")} />
+                    </FieldGroup>
+                    {sectionFooter("C")}
+                </SectionCard>
+            )}
 
-            {/* SECTION D: OT */}
-            <SectionCard title="Section D — Occupational Therapy (OT) Assessment" ownerLabel="OT" status={sectionStatus.D?.status} locked={sectionStatus.D?.locked} {...cardProps("D")}>
-                <FieldGroup label="D1. Fine Motor Skills">
-                    {["Pencil grasp", "Hand dominance", "Manipulates small objects", "Hand strength concerns"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.d1_fine_motor.includes(item)} readOnly={ro("D")} onChange={() => tog("d1_fine_motor", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="D2. Sensory Processing">
-                    {["Auditory sensitivity", "Tactile sensitivity", "Seeks movement", "Avoids textures"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.d2_sensory.includes(item)} readOnly={ro("D")} onChange={() => tog("d2_sensory", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="D3. Activities of Daily Living (ADLs)">
-                    {["Feeding independence", "Dressing", "Grooming", "Toileting"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.d3_adls.includes(item)} readOnly={ro("D")} onChange={() => tog("d3_adls", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="D4. Emotional / Self-Regulation">
-                    {["Identifies feelings", "Uses calming strategies", "Impulsive behavior"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.d4_regulation.includes(item)} readOnly={ro("D")} onChange={() => tog("d4_regulation", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="OT Notes">
-                    <TextArea value={form.d_notes} onChange={ro("D") ? undefined : v => set("d_notes", v)} placeholder="OT clinical notes…" readOnly={ro("D")} />
-                </FieldGroup>
-                {sectionFooter("D")}
-            </SectionCard>
+            {shouldShowSection("D") && (
+                <SectionCard title="Section D — Occupational Therapy (OT) Assessment" ownerLabel="OT" status={sectionStatus.D?.status} locked={sectionStatus.D?.locked} {...cardProps("D")} isMySection={mySections.includes("D")}>
+                    <FieldGroup label="D1. Fine Motor Skills">
+                        {["Pencil grasp", "Hand dominance", "Manipulates small objects", "Hand strength concerns"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.d1_fine_motor.includes(item)} readOnly={ro("D")} onChange={() => tog("d1_fine_motor", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="D2. Sensory Processing">
+                        {["Auditory sensitivity", "Tactile sensitivity", "Seeks movement", "Avoids textures"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.d2_sensory.includes(item)} readOnly={ro("D")} onChange={() => tog("d2_sensory", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="D3. Activities of Daily Living (ADLs)">
+                        {["Feeding independence", "Dressing", "Grooming", "Toileting"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.d3_adls.includes(item)} readOnly={ro("D")} onChange={() => tog("d3_adls", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="D4. Emotional / Self-Regulation">
+                        {["Identifies feelings", "Uses calming strategies", "Impulsive behavior"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.d4_regulation.includes(item)} readOnly={ro("D")} onChange={() => tog("d4_regulation", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="OT Notes">
+                        <TextArea value={form.d_notes} onChange={ro("D") ? undefined : v => set("d_notes", v)} placeholder="OT clinical notes…" readOnly={ro("D")} />
+                    </FieldGroup>
+                    {sectionFooter("D")}
+                </SectionCard>
+            )}
 
-            {/* SECTION E: PT */}
-            <SectionCard title="Section E — Physical Therapy (PT) Assessment" ownerLabel="PT" status={sectionStatus.E?.status} locked={sectionStatus.E?.locked} {...cardProps("E")}>
-                <FieldGroup label="E1. Gross Motor Skills">
-                    {["Sitting balance", "Walking gait", "Running", "Jumping"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.e1_gross_motor.includes(item)} readOnly={ro("E")} onChange={() => tog("e1_gross_motor", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="E2. Strength & Endurance">
-                    {["Core weakness", "Tires easily", "Difficulty with stairs"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.e2_strength.includes(item)} readOnly={ro("E")} onChange={() => tog("e2_strength", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="E3. Posture & Alignment">
-                    {["Toe-walking", "Flat feet", "Poor posture"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.e3_posture.includes(item)} readOnly={ro("E")} onChange={() => tog("e3_posture", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="E4. Motor Planning & Coordination">
-                    {["Difficulty imitating movements", "Clumsy", "Poor coordination"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.e4_motor_planning.includes(item)} readOnly={ro("E")} onChange={() => tog("e4_motor_planning", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="PT Notes">
-                    <TextArea value={form.e_notes} onChange={ro("E") ? undefined : v => set("e_notes", v)} placeholder="PT clinical notes…" readOnly={ro("E")} />
-                </FieldGroup>
-                {sectionFooter("E")}
-            </SectionCard>
+            {shouldShowSection("E") && (
+                <SectionCard title="Section E — Physical Therapy (PT) Assessment" ownerLabel="PT" status={sectionStatus.E?.status} locked={sectionStatus.E?.locked} {...cardProps("E")} isMySection={mySections.includes("E")}>
+                    <FieldGroup label="E1. Gross Motor Skills">
+                        {["Sitting balance", "Walking gait", "Running", "Jumping"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.e1_gross_motor.includes(item)} readOnly={ro("E")} onChange={() => tog("e1_gross_motor", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="E2. Strength & Endurance">
+                        {["Core weakness", "Tires easily", "Difficulty with stairs"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.e2_strength.includes(item)} readOnly={ro("E")} onChange={() => tog("e2_strength", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="E3. Posture & Alignment">
+                        {["Toe-walking", "Flat feet", "Poor posture"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.e3_posture.includes(item)} readOnly={ro("E")} onChange={() => tog("e3_posture", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="E4. Motor Planning & Coordination">
+                        {["Difficulty imitating movements", "Clumsy", "Poor coordination"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.e4_motor_planning.includes(item)} readOnly={ro("E")} onChange={() => tog("e4_motor_planning", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="PT Notes">
+                        <TextArea value={form.e_notes} onChange={ro("E") ? undefined : v => set("e_notes", v)} placeholder="PT clinical notes…" readOnly={ro("E")} />
+                    </FieldGroup>
+                    {sectionFooter("E")}
+                </SectionCard>
+            )}
 
-            {/* SECTION F1: ABA */}
-            <SectionCard title="Section F1 — Applied Behavior Analysis (ABA) Assessment" ownerLabel="ABA" status={sectionStatus.F1?.status} locked={sectionStatus.F1?.locked} {...cardProps("F1")}>
-                <FieldGroup label="F1a. Behavior Observations">
-                    {["Inattentive", "Hyperactive", "Impulsive", "Withdrawn", "Aggressive"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.f1_behavior.includes(item)} readOnly={ro("F1")} onChange={() => tog("f1_behavior", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="F1b. Regulation / Behavior Support">
-                    {["Anxiety", "Mood changes", "Easily overwhelmed"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.f2_emotional.includes(item)} readOnly={ro("F1")} onChange={() => tog("f2_emotional", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="ABA Notes">
-                    <TextArea value={form.f_aba_notes} onChange={ro("F1") ? undefined : v => set("f_aba_notes", v)} placeholder="ABA clinical notes…" readOnly={ro("F1")} />
-                </FieldGroup>
-                {sectionFooter("F1")}
-            </SectionCard>
+            {shouldShowSection("F1") && (
+                <SectionCard title="Section F1 — Applied Behavior Analysis (ABA) Assessment" ownerLabel="ABA" status={sectionStatus.F1?.status} locked={sectionStatus.F1?.locked} {...cardProps("F1")} isMySection={mySections.includes("F1")}>
+                    <FieldGroup label="F1a. Behavior Observations">
+                        {["Inattentive", "Hyperactive", "Impulsive", "Withdrawn", "Aggressive"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.f1_behavior.includes(item)} readOnly={ro("F1")} onChange={() => tog("f1_behavior", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="F1b. Regulation / Behavior Support">
+                        {["Anxiety", "Mood changes", "Easily overwhelmed"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.f2_emotional.includes(item)} readOnly={ro("F1")} onChange={() => tog("f2_emotional", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="ABA Notes">
+                        <TextArea value={form.f_aba_notes} onChange={ro("F1") ? undefined : v => set("f_aba_notes", v)} placeholder="ABA clinical notes…" readOnly={ro("F1")} />
+                    </FieldGroup>
+                    {sectionFooter("F1")}
+                </SectionCard>
+            )}
 
-            {/* SECTION F2: Developmental Psychology */}
-            <SectionCard title="Section F2 — Developmental Psychology Assessment" ownerLabel="Dev. Psych" status={sectionStatus.F2?.status} locked={sectionStatus.F2?.locked} {...cardProps("F2")}>
-                <FieldGroup label="F2a. Cognitive / Play Skills Screening">
-                    {["Memory", "Problem-solving", "Academic readiness"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.f3_cognitive.includes(item)} readOnly={ro("F2")} onChange={() => tog("f3_cognitive", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="F2b. Autism / Social-Development Screening">
-                    {["Reduced eye contact", "Repetitive behaviors", "Restricted interests"].map(item => (
-                        <CheckboxItem key={item} label={item} checked={form.f4_autism.includes(item)} readOnly={ro("F2")} onChange={() => tog("f4_autism", item)} />
-                    ))}
-                </FieldGroup>
-                <FieldGroup label="Developmental Psychology Notes">
-                    <TextArea value={form.f_dev_psych_notes} onChange={ro("F2") ? undefined : v => set("f_dev_psych_notes", v)} placeholder="Developmental psychology clinical notes…" readOnly={ro("F2")} />
-                </FieldGroup>
-                {sectionFooter("F2")}
-            </SectionCard>
+            {shouldShowSection("F2") && (
+                <SectionCard title="Section F2 — Developmental Psychology Assessment" ownerLabel="Dev. Psych" status={sectionStatus.F2?.status} locked={sectionStatus.F2?.locked} {...cardProps("F2")} isMySection={mySections.includes("F2")}>
+                    <FieldGroup label="F2a. Cognitive / Play Skills Screening">
+                        {["Memory", "Problem-solving", "Academic readiness"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.f3_cognitive.includes(item)} readOnly={ro("F2")} onChange={() => tog("f3_cognitive", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="F2b. Autism / Social-Development Screening">
+                        {["Reduced eye contact", "Repetitive behaviors", "Restricted interests"].map(item => (
+                            <CheckboxItem key={item} label={item} checked={form.f4_autism.includes(item)} readOnly={ro("F2")} onChange={() => tog("f4_autism", item)} />
+                        ))}
+                    </FieldGroup>
+                    <FieldGroup label="Developmental Psychology Notes">
+                        <TextArea value={form.f_dev_psych_notes} onChange={ro("F2") ? undefined : v => set("f_dev_psych_notes", v)} placeholder="Developmental psychology clinical notes…" readOnly={ro("F2")} />
+                    </FieldGroup>
+                    {sectionFooter("F2")}
+                </SectionCard>
+            )}
 
-            {/* SECTION G: Summary */}
-            <SectionCard title="Section G — Multidisciplinary Summary & Recommendations" ownerLabel="Shared" status={sectionStatus.G?.status} locked={sectionStatus.G?.locked} {...cardProps("G")}>
+            {shouldShowSection("G") && (
+                <SectionCard title="Section G — Multidisciplinary Summary & Recommendations" ownerLabel="Shared" status={sectionStatus.G?.status} locked={sectionStatus.G?.locked} {...cardProps("G")} isMySection={mySections.includes("G")}>
                 <FieldGroup label="G1. Discipline Summaries — fill the row matching your specialty">
                     {[
                         ["SLP Summary", "g1_slp_summary", "Speech & Language observations and conclusions…", "Speech-Language Pathology"],

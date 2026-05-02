@@ -12,6 +12,7 @@ import {
     specialtyShortLabel,
     SectionOwner,
     userSpecialtyList,
+    SHARED,
 } from "@/lib/sectionOwners";
 import { useFormCollaboration } from "@/hooks/useFormCollaboration";
 
@@ -28,6 +29,7 @@ function SectionCard({
     ownerLabel?: string; status?: "draft" | "submitted" | "pending"; locked?: boolean;
     onFocus?: () => void; onBlur?: () => void;
     remoteHolder?: { user_name: string; specialty?: string } | null;
+    isMySection?: boolean;
 }) {
     const badge = status === "submitted"
         ? { label: "✓ Submitted", color: "#065f46", bg: "#d1fae5" }
@@ -37,14 +39,19 @@ function SectionCard({
 
     return (
         <div
-            style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}
+            style={{ 
+                background: "white", borderRadius: "14px", overflow: "hidden", marginBottom: "1.25rem",
+                border: isMySection ? "2px solid #818cf8" : "1px solid #e2e8f0",
+                boxShadow: isMySection ? "0 0 0 2px rgba(238, 242, 255, 0.5)" : "none",
+                transition: "all 0.2s"
+            }}
             onFocusCapture={onFocus}
             onBlurCapture={(e) => {
                 const next = e.relatedTarget as Node | null;
                 if (!next || !e.currentTarget.contains(next)) onBlur?.();
             }}
         >
-            <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-light)", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-light)", background: isMySection ? "#eef2ff" : "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" }}>
                 <div>
                     <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h2>
                     {subtitle && <p style={{ fontSize: "var(--form-helper-font-size)", lineHeight: "var(--form-line-height)", color: "var(--text-secondary)", margin: "2px 0 0" }}>{subtitle}</p>}
@@ -136,7 +143,7 @@ function SpecialistBFormContent() {
     const [reportCycleId, setReportCycleId] = useState("1");
     const [studentProfile, setStudentProfile] = useState<any>(null);
     const [studentName, setStudentName] = useState("");
-    const [contributions, setContributions] = useState<Record<string, { status: "draft" | "submitted"; specialist_name: string; submitted_at?: string | null }>>({});
+    const [contributions, setContributions] = useState<Record<string, { status: "draft" | "submitted"; specialist_name: string; submitted_at?: string | null; updated_at?: string }>>({});
 
     const [fullSubmission, setFullSubmission] = useState<any>(null);
     const [isTranslated, setIsTranslated] = useState(false);
@@ -188,7 +195,7 @@ function SpecialistBFormContent() {
             });
             const map: typeof contributions = {};
             for (const c of res.data || []) {
-                map[c.section_key] = { status: c.status, specialist_name: c.specialist_name, submitted_at: c.submitted_at };
+                map[c.section_key] = { status: c.status, specialist_name: c.specialist_name, submitted_at: c.submitted_at, updated_at: c.updated_at };
             }
             setContributions(map);
         } catch (err) {
@@ -400,6 +407,25 @@ function SpecialistBFormContent() {
         };
     };
 
+    const reopenSection = async (sectionKey: string) => {
+        if (!studentId) return;
+        setSavingSection(sectionKey + ":reopen");
+        setErrorMsg("");
+        try {
+            await api.post(`/api/inputs/multidisciplinary-tracker/sections/${sectionKey}/reopen/`, {
+                student: parseInt(studentId), report_cycle: parseInt(reportCycleId)
+            });
+            toast.success(`Section ${sectionKey} reopened.`);
+            await refreshContributions();
+        } catch (err: any) {
+            const msg = err.response?.data?.error || err.response?.data?.detail || "Reopen failed.";
+            setErrorMsg(msg);
+            toast.error(msg);
+        } finally {
+            setSavingSection(null);
+        }
+    };
+
     const saveSection = async (sectionKey: string, opts: { submit?: boolean } = {}) => {
         if (!studentId) { setErrorMsg("No student selected."); return; }
         setSavingSection(sectionKey + (opts.submit ? ":submit" : ":save"));
@@ -444,11 +470,26 @@ function SpecialistBFormContent() {
                 </div>
             );
         }
+        
+        const contrib = contributions[sectionKey];
+        const isShared = TRACKER_SECTION_OWNERS[sectionKey] === SHARED;
+        const isFinalized = !!fullSubmission?.finalized_at;
+        
         if (s.locked && !isAdmin) {
-            const contrib = contributions[sectionKey];
+            const canReopen = isShared && !isFinalized && user?.role === "SPECIALIST";
+            const reopening = savingSection === sectionKey + ":reopen";
+            
             return (
-                <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#475569", background: "#f1f5f9", padding: "10px 14px", borderRadius: "8px" }}>
-                    {contrib ? <>Submitted by <strong>{contrib.specialist_name}</strong>{contrib.submitted_at ? ` on ${new Date(contrib.submitted_at).toLocaleDateString()}` : ""}.</> : "Locked."}
+                <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.85rem", color: "#475569", background: "#f1f5f9", padding: "10px 14px", borderRadius: "8px" }}>
+                    <div>
+                        {contrib ? <>Submitted by <strong>{contrib.specialist_name}</strong>{contrib.submitted_at ? ` on ${new Date(contrib.submitted_at).toLocaleString()}` : ""}.</> : "Locked."}
+                    </div>
+                    {canReopen && (
+                        <button type="button" onClick={() => reopenSection(sectionKey)} disabled={reopening}
+                            style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", background: "white", color: "#4f46e5", fontWeight: 600, cursor: reopening ? "not-allowed" : "pointer", fontSize: "0.8rem" }}>
+                            {reopening ? "Updating…" : "Update"}
+                        </button>
+                    )}
                 </div>
             );
         }
@@ -459,20 +500,30 @@ function SpecialistBFormContent() {
                 </div>
             );
         }
+        
+        const draftInfo = contrib && contrib.status === "draft" ? (
+            <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#64748b" }}>
+                Last edited by <strong>{contrib.specialist_name}</strong>{contrib.updated_at ? ` on ${new Date(contrib.updated_at).toLocaleString()}` : ""}
+            </div>
+        ) : null;
+        
         const saving = !!(savingSection && savingSection.startsWith(sectionKey + ":"));
         const savingDraft = savingSection === sectionKey + ":save";
         const savingSubmit = savingSection === sectionKey + ":submit";
         return (
-            <div style={{ marginTop: "0.75rem", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => saveSection(sectionKey, { submit: false })} disabled={saving}
-                    style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", color: "#334155", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontSize: "0.85rem" }}>
-                    {savingDraft ? "Saving…" : "Save Draft"}
-                </button>
-                <button type="button" onClick={() => saveSection(sectionKey, { submit: true })} disabled={saving}
-                    style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: saving ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", fontSize: "0.85rem" }}>
-                    {savingSubmit ? "Submitting…" : "Submit My Section"}
-                </button>
-            </div>
+            <>
+                {draftInfo}
+                <div style={{ marginTop: "0.75rem", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                    <button type="button" onClick={() => saveSection(sectionKey, { submit: false })} disabled={saving}
+                        style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", color: "#334155", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontSize: "0.85rem" }}>
+                        {savingDraft ? "Saving…" : "Save Draft"}
+                    </button>
+                    <button type="button" onClick={() => saveSection(sectionKey, { submit: true })} disabled={saving}
+                        style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: saving ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", fontSize: "0.85rem" }}>
+                        {savingSubmit ? "Submitting…" : "Submit My Section"}
+                    </button>
+                </div>
+            </>
         );
     };
 
@@ -520,10 +571,21 @@ function SpecialistBFormContent() {
                         Monthly Progress Report {studentName && `for ${studentName}`}
                         {isViewMode && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#64748b", marginLeft: "8px" }}>— Read Only</span>}
                     </h1>
-                    {!isViewMode && userSpecialties.length > 0 && (
-                        <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
-                            Logged in as <strong>{userSpecialties.join(", ")}</strong> — you can edit your discipline section{userSpecialties.length > 1 ? "s" : ""} and shared sections.
-                        </p>
+                    {!isViewMode && (
+                        <div style={{ marginTop: "1rem", padding: "16px 20px", background: "#eef2ff", borderRadius: "12px", border: "1px solid #c7d2fe", display: "flex", gap: "12px", alignItems: "flex-start", width: "100%", maxWidth: "800px" }}>
+                            <div style={{ color: "#4f46e5", marginTop: "2px" }}>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "20px", height: "20px" }}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div style={{ fontSize: "0.9rem", color: "#3730a3", lineHeight: 1.5 }}>
+                                {userSpecialties.length > 0 ? (
+                                    <>You can edit shared sections and your assigned discipline area{userSpecialties.length > 1 ? "s" : ""}: <strong>{userSpecialties.map(s => specialtyShortLabel(s as SectionOwner)).join(", ")}</strong>. Other sections are read-only.</>
+                                ) : (
+                                    <>No assigned discipline found for your account — you can only edit shared sections.</>
+                                )}
+                            </div>
+                        </div>
                     )}
                     {!isViewMode && trackerInstanceId && (
                         <div style={{ marginTop: "8px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
@@ -590,13 +652,20 @@ function SpecialistBFormContent() {
                 const aData = (formData as any)[aKey] as { date: string; therapist_name: string; session_type: string; sessions_completed: string };
                 const bData = (formData as any)[bKey] as { attendance: string; participation_level: string; notes: string };
                 const cData = (formData as any)[cKey] as { goals: string[]; notes: string };
+                if (!shouldShowSection(aKey)) return null;
+                const isMyDiscipline = userSpecialties.includes(DISCIPLINE_GROUPS.find(g => g.suffix === suffix)?.label === "SLP" ? "Speech-Language Pathology" : 
+                    DISCIPLINE_GROUPS.find(g => g.suffix === suffix)?.label === "OT" ? "Occupational Therapy" : 
+                    DISCIPLINE_GROUPS.find(g => g.suffix === suffix)?.label === "PT" ? "Physical Therapy" : 
+                    DISCIPLINE_GROUPS.find(g => g.suffix === suffix)?.label === "ABA" ? "Applied Behavior Analysis (ABA)" : 
+                    "Developmental Psychology");
+
                 return (
                     <div key={suffix} style={{ marginBottom: "1.5rem", padding: "0.5rem 0" }}>
                         <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#4338ca", margin: "0 0 0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                            {label} — your section
+                            {label}
                         </h3>
 
-                        <SectionCard title={`Section A — General Information (${label})`} ownerLabel={label} status={sectionStatus[aKey]?.status} locked={sectionStatus[aKey]?.locked} {...cardProps(aKey)}>
+                        <SectionCard title={`Section A — General Information (${label})`} ownerLabel={label} status={sectionStatus[aKey]?.status} locked={sectionStatus[aKey]?.locked} {...cardProps(aKey)} isMySection={isMyDiscipline}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
                                     <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>Child Name</p>
@@ -627,7 +696,7 @@ function SpecialistBFormContent() {
                             {sectionFooter(aKey)}
                         </SectionCard>
 
-                        <SectionCard title={`Section B — Session Attendance & Participation (${label})`} ownerLabel={label} status={sectionStatus[bKey]?.status} locked={sectionStatus[bKey]?.locked} {...cardProps(bKey)}>
+                        <SectionCard title={`Section B — Session Attendance & Participation (${label})`} ownerLabel={label} status={sectionStatus[bKey]?.status} locked={sectionStatus[bKey]?.locked} {...cardProps(bKey)} isMySection={isMyDiscipline}>
                             <FieldGroup label="B1. Attendance">
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
                                     {OPTIONS.attendance.map(opt => (
@@ -648,7 +717,7 @@ function SpecialistBFormContent() {
                             {sectionFooter(bKey)}
                         </SectionCard>
 
-                        <SectionCard title={cTitle} ownerLabel={label} status={sectionStatus[cKey]?.status} locked={sectionStatus[cKey]?.locked} {...cardProps(cKey)}>
+                        <SectionCard title={cTitle} ownerLabel={label} status={sectionStatus[cKey]?.status} locked={sectionStatus[cKey]?.locked} {...cardProps(cKey)} isMySection={isMyDiscipline}>
                             <FieldGroup label="Goals">
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                                     {goals.map(opt => (
@@ -665,8 +734,8 @@ function SpecialistBFormContent() {
                 );
             })}
 
-            {/* Section D */}
-            <SectionCard title="Section D — Functional Observations" ownerLabel="Shared" status={sectionStatus.section_d?.status} locked={sectionStatus.section_d?.locked} {...cardProps("section_d")}>
+            {shouldShowSection("section_d") && (
+                <SectionCard title="Section D — Functional Observations" ownerLabel="Shared" status={sectionStatus.section_d?.status} locked={sectionStatus.section_d?.locked} {...cardProps("section_d")} isMySection={false}>
                 <FieldGroup label="D1. Independent Skills">
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
                         {OPTIONS.independent_skills.map(opt => (
@@ -700,9 +769,10 @@ function SpecialistBFormContent() {
                 </FieldGroup>
                 {sectionFooter("section_d")}
             </SectionCard>
+            )}
 
-            {/* Section E */}
-            <SectionCard title="Section E — Goal Achievement Rating (GAS)" subtitle="(Simple therapist rating for AI calibration)" ownerLabel="Shared" status={sectionStatus.section_e?.status} locked={sectionStatus.section_e?.locked} {...cardProps("section_e")}>
+            {shouldShowSection("section_e") && (
+                <SectionCard title="Section E — Goal Achievement Rating (GAS)" subtitle="(Simple therapist rating for AI calibration)" ownerLabel="Shared" status={sectionStatus.section_e?.status} locked={sectionStatus.section_e?.locked} {...cardProps("section_e")} isMySection={false}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                     {['goal_1', 'goal_2', 'goal_3', 'goal_4'].map((g, i) => (
                         <div key={g} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
@@ -720,9 +790,10 @@ function SpecialistBFormContent() {
                 </FieldGroup>
                 {sectionFooter("section_e")}
             </SectionCard>
+            )}
 
-            {/* Section F */}
-            <SectionCard title="Section F — Recommended Next Steps" ownerLabel="Shared" status={sectionStatus.section_f?.status} locked={sectionStatus.section_f?.locked} {...cardProps("section_f")}>
+            {shouldShowSection("section_f") && (
+                <SectionCard title="Section F — Recommended Next Steps" ownerLabel="Shared" status={sectionStatus.section_f?.status} locked={sectionStatus.section_f?.locked} {...cardProps("section_f")} isMySection={false}>
                 <FieldGroup label="F1. Therapy Recommendations">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.therapy_recs.map(opt => (
@@ -742,6 +813,7 @@ function SpecialistBFormContent() {
                 </FieldGroup>
                 {sectionFooter("section_f")}
             </SectionCard>
+            )}
 
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
                 <button type="button" onClick={() => router.push(`/students/${studentId}`)}

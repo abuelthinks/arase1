@@ -238,10 +238,15 @@ function mergeSavedFormData(baseData: any, schema: any, rawSavedData: any) {
 
 /* ─── Shared UI Components ─────────────────────────────────────────────────── */
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, children, isMySection }: { title: string; children: React.ReactNode; isMySection?: boolean }) {
     return (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-5">
-            <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-slate-50">
+        <div style={{
+            background: "white", borderRadius: "12px", overflow: "hidden", marginBottom: "1.25rem",
+            border: isMySection ? "2px solid #818cf8" : "1px solid #e2e8f0",
+            boxShadow: isMySection ? "0 0 0 2px rgba(238, 242, 255, 0.5)" : "none",
+            transition: "all 0.2s"
+        }} className={isMySection ? "" : "bg-white rounded-xl"}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", background: isMySection ? "#eef2ff" : "#f8fafc" }}>
                 <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }} className="font-bold text-slate-900 m-0">{title}</h2>
             </div>
             <div className="p-4 sm:p-6 flex flex-col gap-4">
@@ -623,6 +628,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [pendingSectionSaves, setPendingSectionSaves] = useState<Record<string, number>>({});
     const [submittingOwnedSections, setSubmittingOwnedSections] = useState(false);
     const [teamSubmission, setTeamSubmission] = useState<any>(null);
+    const [isReopening, setIsReopening] = useState<string | null>(null);
 
     const toggleDescription = (fieldId: string) => {
         setShowDescriptions(prev => ({ ...prev, [fieldId]: !prev[fieldId] }));
@@ -1190,6 +1196,23 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         user?.specialist_onboarding_missing,
     ]);
 
+    const reopenSection = async (sectionKey: string) => {
+        if (!studentId || !reportCycleId) return;
+        setIsReopening(sectionKey);
+        try {
+            const res = await api.post(`/api/inputs/multidisciplinary-assessment/sections/${sectionKey}/reopen/`, {
+                student: parseInt(studentId),
+                report_cycle: parseInt(reportCycleId),
+            });
+            toast.success(`Section ${sectionKey} reopened for editing.`);
+            await refreshSectionContributions(reportCycleId);
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || `Failed to reopen Section ${sectionKey}.`);
+        } finally {
+            setIsReopening(null);
+        }
+    };
+
     const ownedAssessmentSections = useMemo<Array<{ section: any; owner: SectionOwner; state: any }>>(() => {
         if (!isSectionScopedAssessment || !schema) return [];
         return (schema.sections || [])
@@ -1523,18 +1546,30 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         {schema.sections?.map((section: any) => {
                             const dataKey = dataKeyFor(section);
                             const sectionOwner = getSectionOwner(formType, section.id);
+                            
+                            // Determine if we should show this section
+                            const shouldShowSection = 
+                                isAdmin || 
+                                !sectionOwner || 
+                                sectionOwner === SHARED || 
+                                sectionOwner === "MIXED" || 
+                                editableSpecialties.includes(sectionOwner);
+                                
+                            if (!shouldShowSection) return null;
+
                             const sectionState = sectionStates[section.id];
                             const sectionFullyEditable = isAdmin
                                 || sectionOwner === null
                                 || sectionOwner === SHARED
                                 || (sectionOwner !== "MIXED" && editableSpecialties.includes(sectionOwner));
+                            const isMySection = !isAdmin && sectionOwner && sectionOwner !== SHARED && sectionOwner !== "MIXED" && editableSpecialties.includes(sectionOwner);
                             const ownerLabel: string | null =
                                 !sectionOwner ? null
                                 : sectionOwner === SHARED ? "Shared"
                                 : sectionOwner === "MIXED" ? "Per-field"
                                 : specialtyShortLabel(sectionOwner);
                             return (
-                            <SectionCard key={section.id} title={section.title}>
+                            <SectionCard key={section.id} title={section.title} isMySection={isMySection}>
                                 {ownerLabel && !isViewMode && (
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "-4px", marginBottom: "4px" }}>
                                         <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px", textTransform: "uppercase", letterSpacing: "0.4px" }}>
@@ -1660,16 +1695,39 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 {!isViewMode && isSectionScopedAssessment && sectionState?.apiKey && (
                                     <div style={{ marginTop: "0.75rem" }}>
                                         {sectionState.isLocked && !isAdmin ? (
-                                            <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#f1f5f9", color: "#475569", fontSize: "0.85rem" }}>
-                                                {teamSubmission?.finalized_at ? (
-                                                    <>Assessment finalized on <strong>{new Date(teamSubmission.finalized_at).toLocaleString()}</strong>.</>
-                                                ) : sectionState.isVerificationLocked ? (
-                                                    <>Section A is locked after the verification is marked as <strong>matches</strong>.</>
-                                                ) : sectionState.contribution?.specialist_name ? (
-                                                    <>Submitted by <strong>{sectionState.contribution.specialist_name}</strong>{sectionState.contribution.submitted_at ? ` on ${new Date(sectionState.contribution.submitted_at).toLocaleDateString()}` : ""}.</>
-                                                ) : (
-                                                    <>This section is locked.</>
+                                            <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#f1f5f9", color: "#475569", fontSize: "0.85rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                <div>
+                                                    {teamSubmission?.finalized_at ? (
+                                                        <>Assessment finalized on <strong>{new Date(teamSubmission.finalized_at).toLocaleString()}</strong>.</>
+                                                    ) : sectionState.isVerificationLocked ? (
+                                                        <>Section A is locked after the verification is marked as <strong>matches</strong>.</>
+                                                    ) : sectionState.contribution?.specialist_name ? (
+                                                        <>Submitted by <strong>{sectionState.contribution.specialist_name}</strong>{sectionState.contribution.submitted_at ? ` on ${new Date(sectionState.contribution.submitted_at).toLocaleDateString()}` : ""}.</>
+                                                    ) : (
+                                                        <>This section is locked.</>
+                                                    )}
+                                                </div>
+                                                {!teamSubmission?.finalized_at && sectionOwner === SHARED && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => reopenSection(sectionState.apiKey)}
+                                                        disabled={isReopening === sectionState.apiKey}
+                                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", background: "white", color: "#334155", fontWeight: 600, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                                                    >
+                                                        {isReopening === sectionState.apiKey ? "..." : (
+                                                            <>
+                                                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                                </svg>
+                                                                Update
+                                                            </>
+                                                        )}
+                                                    </button>
                                                 )}
+                                            </div>
+                                        ) : !sectionState.isLocked && sectionState.contribution?.updated_at && !isAdmin ? (
+                                            <div style={{ padding: "6px 14px", color: "#64748b", fontSize: "0.75rem", display: "flex", justifyContent: "flex-end" }}>
+                                                Last edited by {sectionState.contribution.specialist_name || "Unknown"} on {new Date(sectionState.contribution.updated_at).toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                                             </div>
                                         ) : null}
                                     </div>
