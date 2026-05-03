@@ -375,7 +375,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
     );
 }
 
-export default function MonthlyReportPage() {
+function MonthlyReportRedirect() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -395,4 +395,12 @@ export default function MonthlyReportPage() {
     }, [searchParams, router]);
 
     return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
+}
+
+export default function MonthlyReportPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading…</div>}>
+            <MonthlyReportRedirect />
+        </Suspense>
+    );
 }

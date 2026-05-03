@@ -453,7 +453,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     );
 }
 
-export default function AdminReportsPage() {
+function AdminReportsRedirect() {
     const searchParams = useSearchParams();
     const router = useRouter();
     useEffect(() => {
@@ -461,4 +461,12 @@ export default function AdminReportsPage() {
         router.replace(studentId ? `/workspace?studentId=${studentId}&workspace=reports&view=generator` : "/workspace");
     }, [searchParams, router]);
     return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
+}
+
+export default function AdminReportsPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading…</div>}>
+            <AdminReportsRedirect />
+        </Suspense>
+    );
 }

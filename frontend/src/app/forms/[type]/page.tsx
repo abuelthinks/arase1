@@ -1562,7 +1562,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 || sectionOwner === null
                                 || sectionOwner === SHARED
                                 || (sectionOwner !== "MIXED" && editableSpecialties.includes(sectionOwner));
-                            const isMySection = !isAdmin && sectionOwner && sectionOwner !== SHARED && sectionOwner !== "MIXED" && editableSpecialties.includes(sectionOwner);
+                            const isMySection = Boolean(!isAdmin && sectionOwner && sectionOwner !== SHARED && sectionOwner !== "MIXED" && editableSpecialties.includes(sectionOwner));
                             const ownerLabel: string | null =
                                 !sectionOwner ? null
                                 : sectionOwner === SHARED ? "Shared"

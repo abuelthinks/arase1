@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
@@ -18,7 +18,7 @@ const TABS = [
     { id: "sped_tracker", label: "Teacher Progress", formType: "sped-tracker" }
 ];
 
-export default function UnifiedFormsViewer() {
+function UnifiedFormsViewerInner() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -217,5 +217,13 @@ export default function UnifiedFormsViewer() {
 
             </div>
         </ProtectedRoute>
+    );
+}
+
+export default function UnifiedFormsViewer() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading forms...</div>}>
+            <UnifiedFormsViewerInner />
+        </Suspense>
     );
 }

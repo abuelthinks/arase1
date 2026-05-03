@@ -23,7 +23,7 @@ const getWorkspaceFormUrl = (studentId: string) =>
 
 function SectionCard({
     title, subtitle, children, ownerLabel, status, locked,
-    onFocus, onBlur, remoteHolder,
+    onFocus, onBlur, remoteHolder, isMySection,
 }: {
     title: string; subtitle?: string; children: React.ReactNode;
     ownerLabel?: string; status?: "draft" | "submitted" | "pending"; locked?: boolean;
@@ -394,6 +394,19 @@ function SpecialistBFormContent() {
         }
         return result;
     }, [contributions, fullSubmission, isViewMode, user?.role, userSpecialties, collab]);
+
+    const studentAssignedSpecialties: string[] = useMemo(() => {
+        if (!studentProfile?.assigned_staff) return [];
+        return studentProfile.assigned_staff
+            .filter((s: any) => s.role === "SPECIALIST")
+            .flatMap((s: any) => s.specialties || []);
+    }, [studentProfile]);
+
+    const shouldShowSection = (sectionKey: string) => {
+        const owner = TRACKER_SECTION_OWNERS[sectionKey];
+        if (owner === SHARED || !owner) return true;
+        return studentAssignedSpecialties.includes(owner as string);
+    };
 
     const ro = (key: string) => isViewMode || !sectionStatus[key]?.canEdit;
 

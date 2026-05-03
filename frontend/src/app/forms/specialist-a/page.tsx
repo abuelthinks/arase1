@@ -61,7 +61,7 @@ function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; c
 
 function SectionCard({
     title, subtitle, children, ownerLabel, status, locked,
-    onFocus, onBlur, remoteHolder,
+    onFocus, onBlur, remoteHolder, isMySection,
 }: {
     title: string; subtitle?: string; children: React.ReactNode;
     ownerLabel?: string; status?: "draft" | "submitted" | "pending"; locked?: boolean;
@@ -528,7 +528,7 @@ function SpecialistAFormContent() {
         
         const draftInfo = contrib && contrib.status === "draft" ? (
             <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#64748b" }}>
-                Last edited by <strong>{contrib.specialist_name}</strong>{contrib.updated_at ? ` on ${new Date(contrib.updated_at).toLocaleString()}` : ""}
+                Last edited by <strong>{contrib.specialist_name}</strong>{contrib.submitted_at ? ` on ${new Date(contrib.submitted_at).toLocaleString()}` : ""}
             </div>
         ) : null;
         
@@ -921,6 +921,7 @@ function SpecialistAFormContent() {
                 </FieldGroup>
                 {sectionFooter("G")}
             </SectionCard>
+            )}
 
             {!isViewMode && (
                 <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>

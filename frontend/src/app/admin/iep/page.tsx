@@ -510,7 +510,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
     );
 }
 
-export default function IEPViewerPage() {
+function IEPViewerRedirect() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -530,4 +530,12 @@ export default function IEPViewerPage() {
     }, [searchParams, router]);
 
     return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
+}
+
+export default function IEPViewerPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading…</div>}>
+            <IEPViewerRedirect />
+        </Suspense>
+    );
 }
