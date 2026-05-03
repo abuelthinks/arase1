@@ -1,19 +1,22 @@
 """
 API Views — thin orchestrators.
-Business logic lives in api/services/*.
+Most business logic lives in api/services/*.
 """
+
+import logging
+import secrets
 
 from django.db import transaction
 from django.db.models import Case, When, Value, IntegerField, Q
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import (
-    Student, ReportCycle, GeneratedDocument, DocumentVersion, StudentAccess,
-    ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
+    Student, ReportCycle, GeneratedDocument, StudentAccess,
+    ParentAssessment, MultidisciplinaryAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     User, Invitation, PhoneVerification, Notification, SpecialistPreference,
     SectionContribution, SpecialistAvailabilitySlot, AssessmentAppointment,
@@ -21,23 +24,20 @@ from .models import (
 )
 from .services.notification_service import (
     notify_admins_in_app, notify_form_submitted, notify_tracker_progress,
-    notify_student_status_change, notify_staff_assigned, notify_new_user_registered,
+    notify_student_status_change, notify_new_user_registered,
     notify_assessment_scheduled, notify_assessment_cancelled,
 )
 from .services.workflow_state_service import has_finalized_multidisciplinary_assessment
 from .serializers import (
-    StudentSerializer, GeneratedDocumentSerializer, CustomTokenObtainPairSerializer,
-    ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer, SpedAssessmentSerializer,
+    StudentSerializer,
+    ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer,
     ParentProgressTrackerSerializer, MultidisciplinaryProgressTrackerSerializer, SpedProgressTrackerSerializer,
     AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer,
     SpecialistPreferenceSerializer, SpecialistAvailabilitySlotSerializer,
     AssessmentAppointmentSerializer, DiagnosticReportSerializer,
 )
 
-# ─── Auth ────────────────────────────────────────────────────────────────────
-
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
+logger = logging.getLogger(__name__)
 
 # ─── Students ────────────────────────────────────────────────────────────────
 
@@ -47,15 +47,13 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        
-        # 1. PENDING_ASSESSMENT / ASSESSMENT_SCHEDULED -> 1
-        # 2. ASSESSED -> 2
-        # 3. ENROLLED -> 3
-        # 4. ARCHIVED -> 4
+
+        # Sort by workflow urgency so the most actionable students appear first.
+        # Students needing assessment come before assessed, enrolled, then archived.
         urgency_case = Case(
             When(status__in=['PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED'], then=Value(1)),
             When(status='ASSESSED', then=Value(2)),
-            When(status='ENROLLED', then=Value(3)),
+            When(status__in=['ENROLLED', 'INTEGRATED'], then=Value(3)),
             When(status='ARCHIVED', then=Value(4)),
             default=Value(5),
             output_field=IntegerField()
@@ -64,8 +62,9 @@ class StudentViewSet(viewsets.ModelViewSet):
         if user.role == 'ADMIN':
             qs = Student.objects.all()
         else:
+            # Non-admins only see students they've been explicitly assigned to via StudentAccess.
             qs = Student.objects.filter(assigned_users__user=user).distinct()
-            
+
         return qs.alias(urgency=urgency_case).order_by('urgency', '-id')
 
     def create(self, request, *args, **kwargs):
@@ -216,15 +215,27 @@ class RequestSpecialtyChangeView(APIView):
 # ─── Form Input ViewSets ─────────────────────────────────────────────────────
 
 class BaseInputViewSet(viewsets.ModelViewSet):
+    """
+    Shared base for all form-input ViewSets (assessments and trackers).
+    Subclasses declare which roles may submit and whether enrollment is required.
+    """
     permission_classes = [permissions.IsAuthenticated]
     allowed_submitter_roles = ()
-    require_enrolled_student = False
-    require_active_cycle = False
+    require_enrolled_student = False   # set True on tracker ViewSets
+    require_active_cycle = False       # set True on tracker ViewSets
 
     def perform_create(self, serializer):
         serializer.save(submitted_by=self.request.user)
 
     def _validate_submission(self, validated_data):
+        """
+        Central guard for all form submissions. Checks in order:
+        1. student and report_cycle are present and belong together
+        2. the user's role is allowed to submit this form type
+        3. the user has explicit StudentAccess for this student (non-admins)
+        4. the student is enrolled/integrated (tracker forms only)
+        5. the cycle is the active one (tracker forms only)
+        """
         user = self.request.user
         student = validated_data.get('student')
         report_cycle = validated_data.get('report_cycle')
@@ -232,6 +243,7 @@ class BaseInputViewSet(viewsets.ModelViewSet):
         if student is None or report_cycle is None:
             raise ValidationError("Both student and report_cycle are required.")
 
+        # Prevent submitting a cycle that belongs to a different student.
         if report_cycle.student_id != student.id:
             raise ValidationError("The selected report cycle does not belong to this student.")
 
@@ -272,8 +284,10 @@ class BaseInputViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'ADMIN':
             return self.queryset
+        # Parents only ever see forms they personally submitted (their child's data).
         if user.role == 'PARENT':
             return self.queryset.filter(submitted_by=user)
+        # Teachers and specialists see all forms for their assigned students.
         from .models import StudentAccess
         assigned_student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
         return self.queryset.filter(student_id__in=assigned_student_ids)
@@ -353,11 +367,30 @@ class DiagnosticReportViewSet(viewsets.ModelViewSet):
                 {"error": "Only parents or admins can upload diagnostic reports."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return Response({"error": "A file is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed_types = {
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }
+        if uploaded_file.content_type not in allowed_types:
+            return Response(
+                {"error": "Only PDF and DOCX files are accepted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        max_bytes = 20 * 1024 * 1024  # 20 MB
+        if uploaded_file.size > max_bytes:
+            return Response(
+                {"error": "File must be under 20 MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        uploaded_file = request.FILES.get('file')
-        original_filename = uploaded_file.name if uploaded_file else ''
+        original_filename = uploaded_file.name
 
         instance = serializer.save(
             uploaded_by=request.user,
@@ -369,8 +402,7 @@ class DiagnosticReportViewSet(viewsets.ModelViewSet):
             from .services.diagnostic_service import process_diagnostic_upload
             process_diagnostic_upload(instance)
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning("Diagnostic extraction failed: %s", e)
+            logger.warning("Diagnostic extraction failed: %s", e)
 
         return Response(
             DiagnosticReportSerializer(instance).data,
@@ -396,10 +428,10 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         notify_form_submitted(self.request.user, instance.student, 'Parent Progress Tracker')
-        p = True  # just submitted
-        m = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        s = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
+        parent_done = True  # just submitted
+        multi_done = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        sped_done = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([parent_done, multi_done, sped_done]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -477,10 +509,10 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
             instance.save(update_fields=['form_data', 'submitted_by'])
 
         notify_form_submitted(user, instance.student, 'Specialist Progress Tracker')
-        p = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        m = True
-        s = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        notify_tracker_progress(user, instance.student, instance.report_cycle, sum([p, m, s]))
+        parent_done = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        multi_done = True  # just submitted
+        sped_done = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        notify_tracker_progress(user, instance.student, instance.report_cycle, sum([parent_done, multi_done, sped_done]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -512,10 +544,10 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
         notify_form_submitted(self.request.user, instance.student, 'Teacher Progress Tracker')
-        p = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        m = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        s = True  # just submitted
-        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([p, m, s]))
+        parent_done = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        multi_done = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
+        sped_done = True  # just submitted
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([parent_done, multi_done, sped_done]))
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -641,8 +673,9 @@ class SectionReopenView(APIView):
             return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except SectionLockedError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_409_CONFLICT)
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Unexpected error in SectionReopenView")
+            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         serializer_cls = (
             MultidisciplinaryAssessmentSerializer
@@ -791,8 +824,9 @@ class ParentOnboardView(APIView):
             return Response({"error": detail}, status=status.HTTP_400_BAD_REQUEST)
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            logger.exception("Unexpected error in ParentOnboardView")
+            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ─── Student Profile ─────────────────────────────────────────────────────────
 
@@ -820,90 +854,113 @@ class AdminDashboardActionsView(APIView):
     def get(self, request):
         if request.user.role != 'ADMIN':
             return Response({"error": "Admin only"}, status=status.HTTP_403_FORBIDDEN)
-        
+
         actions = []
-        
-        # 1. Monthly report cycle status for each enrolled student
-        active_students = Student.objects.filter(status__in=['ENROLLED', 'INTEGRATED'])
-        for s in active_students:
-            cycle = ReportCycle.objects.filter(student=s, is_active=True).first()
-            if not cycle:
-                continue
 
-            p_done = ParentProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
-            m_done = MultidisciplinaryProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
-            sp_done = SpedProgressTracker.objects.filter(student=s, report_cycle=cycle).exists()
-            
-            if s.status == 'INTEGRATED':
-                submitted = sum([p_done, m_done, sp_done])
-                all_trackers_submitted = p_done and m_done and sp_done
-                total_required = 3
-            else:
-                submitted = sum([p_done, m_done])
-                all_trackers_submitted = p_done and m_done
-                total_required = 2
+        # 1. Monthly report cycle status for enrolled/integrated students.
+        #    Bulk-fetch everything to avoid N+1 queries.
+        active_students = list(Student.objects.filter(status__in=['ENROLLED', 'INTEGRATED']))
+        if active_students:
+            student_ids = [s.id for s in active_students]
 
-            # Check if a report was auto-generated and needs review
-            report = GeneratedDocument.objects.filter(
-                student=s, report_cycle=cycle, document_type='MONTHLY'
-            ).order_by('-created_at').first()
+            active_cycles = {
+                rc.student_id: rc
+                for rc in ReportCycle.objects.filter(student_id__in=student_ids, is_active=True)
+            }
+            cycle_ids = list(active_cycles[sid].id for sid in active_cycles)
 
-            if report and report.status == 'DRAFT':
-                actions.append({
-                    "id": f"review_report_{s.id}",
-                    "title": f"Review Monthly Report: {s.first_name} {s.last_name}",
-                    "description": f"{cycle.label} report auto-generated. Review and finalize.",
-                    "action_text": "Review →",
-                    "link": f"/workspace?studentId={s.id}&workspace=reports&view=monthly&docId={report.id}",
-                    "type": "positive"
-                })
-            elif all_trackers_submitted and not report:
-                actions.append({
-                    "id": f"monthly_{s.id}",
-                    "title": f"Generate Monthly Progress Report: {s.first_name} {s.last_name}",
-                    "description": f"All {total_required} progress trackers are submitted for {cycle.label or 'the active cycle'}.",
-                    "action_text": "Generate →",
-                    "link": f"/workspace?studentId={s.id}&workspace=reports&view=generator",
-                    "type": "positive"
-                })
-            elif submitted > 0 and submitted < total_required:
-                missing = []
-                if not p_done: missing.append("Parent")
-                if not m_done: missing.append("Specialist")
-                if s.status == 'INTEGRATED' and not sp_done: missing.append("Teacher")
-                actions.append({
-                    "id": f"pending_{s.id}",
-                    "title": f"Trackers Pending: {s.first_name} {s.last_name}",
-                    "description": f"{submitted}/{total_required} submitted for {cycle.label}. Waiting: {', '.join(missing)}.",
-                    "action_text": "View →",
-                    "link": f"/workspace?studentId={s.id}",
-                    "type": "warning"
-                })
+            parent_done_cycle_ids = set(
+                ParentProgressTracker.objects
+                .filter(report_cycle_id__in=cycle_ids)
+                .values_list('report_cycle_id', flat=True)
+            )
+            multi_done_cycle_ids = set(
+                MultidisciplinaryProgressTracker.objects
+                .filter(report_cycle_id__in=cycle_ids)
+                .values_list('report_cycle_id', flat=True)
+            )
+            sped_done_cycle_ids = set(
+                SpedProgressTracker.objects
+                .filter(report_cycle_id__in=cycle_ids)
+                .values_list('report_cycle_id', flat=True)
+            )
+
+            # Latest monthly report per (student_id, report_cycle_id)
+            latest_monthly: dict = {}
+            for doc in GeneratedDocument.objects.filter(
+                student_id__in=student_ids, document_type='MONTHLY'
+            ).order_by('-created_at'):
+                key = (doc.student_id, doc.report_cycle_id)
+                if key not in latest_monthly:
+                    latest_monthly[key] = doc
+
+            for s in active_students:
+                cycle = active_cycles.get(s.id)
+                if not cycle:
+                    continue
+
+                p_done = cycle.id in parent_done_cycle_ids
+                m_done = cycle.id in multi_done_cycle_ids
+                sp_done = cycle.id in sped_done_cycle_ids
+
+                if s.status == 'INTEGRATED':
+                    submitted = sum([p_done, m_done, sp_done])
+                    all_trackers_submitted = p_done and m_done and sp_done
+                    total_required = 3
+                else:
+                    submitted = sum([p_done, m_done])
+                    all_trackers_submitted = p_done and m_done
+                    total_required = 2
+
+                report = latest_monthly.get((s.id, cycle.id))
+
+                if report and report.status == 'DRAFT':
+                    actions.append({
+                        "id": f"review_report_{s.id}",
+                        "title": f"Review Monthly Report: {s.first_name} {s.last_name}",
+                        "description": f"{cycle.label} report auto-generated. Review and finalize.",
+                        "action_text": "Review →",
+                        "link": f"/workspace?studentId={s.id}&workspace=reports&view=monthly&docId={report.id}",
+                        "type": "positive"
+                    })
+                elif all_trackers_submitted and not report:
+                    actions.append({
+                        "id": f"monthly_{s.id}",
+                        "title": f"Generate Monthly Progress Report: {s.first_name} {s.last_name}",
+                        "description": f"All {total_required} progress trackers are submitted for {cycle.label or 'the active cycle'}.",
+                        "action_text": "Generate →",
+                        "link": f"/workspace?studentId={s.id}&workspace=reports&view=generator",
+                        "type": "positive"
+                    })
+                elif submitted > 0 and submitted < total_required:
+                    missing = []
+                    if not p_done: missing.append("Parent")
+                    if not m_done: missing.append("Specialist")
+                    if s.status == 'INTEGRATED' and not sp_done: missing.append("Teacher")
+                    actions.append({
+                        "id": f"pending_{s.id}",
+                        "title": f"Trackers Pending: {s.first_name} {s.last_name}",
+                        "description": f"{submitted}/{total_required} submitted for {cycle.label}. Waiting: {', '.join(missing)}.",
+                        "action_text": "View →",
+                        "link": f"/workspace?studentId={s.id}",
+                        "type": "warning"
+                    })
 
         # 2. Auto-generated IEP drafts waiting for admin review.
-        #    These are produced by check_and_trigger_iep_generation() the moment
-        #    the final multidisciplinary assessment section is submitted, so the
-        #    admin needs an explicit nudge to review/finalize.
-        draft_ieps = (
-            GeneratedDocument.objects
-            .filter(document_type='IEP', status='DRAFT')
-            .select_related('student')
-            .order_by('-created_at')
-        )
-        for doc in draft_ieps:
-            student = doc.student
+        for doc in GeneratedDocument.objects.filter(
+            document_type='IEP', status='DRAFT'
+        ).select_related('student').order_by('-created_at'):
             actions.append({
                 "id": f"review_iep_{doc.id}",
-                "title": f"Review IEP Draft: {student.first_name} {student.last_name}",
+                "title": f"Review IEP Draft: {doc.student.first_name} {doc.student.last_name}",
                 "description": "Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize.",
                 "action_text": "Review →",
                 "link": f"/workspace?studentId={doc.student_id}&workspace=reports&view=iep&docId={doc.id}",
                 "type": "positive",
             })
 
-        # 3. Ready for Enrollment Review (all assessments done, waiting for admin decision)
-        in_review = Student.objects.filter(status='ASSESSED')
-        for s in in_review:
+        # 3. Ready for Enrollment Review
+        for s in Student.objects.filter(status='ASSESSED'):
             actions.append({
                 "id": f"review_{s.id}",
                 "title": f"Ready for Enrollment Review: {s.first_name} {s.last_name}",
@@ -913,19 +970,24 @@ class AdminDashboardActionsView(APIView):
                 "type": "info"
             })
 
-
-        # 4. Parent Onboarding Submitted (in INQUIRY, parent input received)
-        inquiry = Student.objects.filter(status='PENDING_ASSESSMENT')
-        for s in inquiry:
-            if ParentAssessment.objects.filter(student=s).exists():
-                actions.append({
-                    "id": f"inquiry_{s.id}",
-                    "title": f"Parent Onboarding Complete: {s.first_name} {s.last_name}",
-                    "description": "Parent has submitted initial assessment. Assign a specialist to begin evaluation.",
-                    "action_text": "Assign →",
-                    "link": f"/workspace?studentId={s.id}&workspace=team",
-                    "type": "info"
-                })
+        # 4. Parent Onboarding Submitted — bulk check to avoid N+1
+        inquiry_students = list(Student.objects.filter(status='PENDING_ASSESSMENT'))
+        if inquiry_students:
+            assessed_inquiry_ids = set(
+                ParentAssessment.objects
+                .filter(student_id__in=[s.id for s in inquiry_students])
+                .values_list('student_id', flat=True)
+            )
+            for s in inquiry_students:
+                if s.id in assessed_inquiry_ids:
+                    actions.append({
+                        "id": f"inquiry_{s.id}",
+                        "title": f"Parent Onboarding Complete: {s.first_name} {s.last_name}",
+                        "description": "Parent has submitted initial assessment. Assign a specialist to begin evaluation.",
+                        "action_text": "Assign →",
+                        "link": f"/workspace?studentId={s.id}&workspace=team",
+                        "type": "info"
+                    })
 
         return Response({"actions": actions})
 
@@ -935,8 +997,10 @@ class RequestAssessmentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can schedule assessments."}, status=status.HTTP_403_FORBIDDEN)
         try:
-            student = Student.objects.get(id=student_id, assigned_users__user=request.user)
+            student = Student.objects.get(id=student_id)
             student.status = 'ASSESSMENT_SCHEDULED'
             student.save()
             return Response({"message": "Evaluation requested successfully."})
@@ -1029,8 +1093,6 @@ class AssignParentView(APIView):
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Parent or Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
-# ─── Staff List ──────────────────────────────────────────────────────────────
-
 class ParentAssessmentReminderView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1086,6 +1148,8 @@ class ParentAssessmentReminderView(APIView):
             return Response({"error": f"Failed to send reminder: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# ─── Staff ───────────────────────────────────────────────────────────────────
+
 class StaffListView(APIView):
     """Returns all specialists and teachers with caseload and recommendation."""
     permission_classes = [permissions.IsAuthenticated]
@@ -1097,16 +1161,6 @@ class StaffListView(APIView):
         from .services.user_service import score_staff_for_student
         student_id = request.query_params.get('student_id')
         return Response(score_staff_for_student(student_id))
-
-
-class AIRecommendSpecialtyView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, student_id):
-        return Response({
-            "recommendation": "Speech-Language Pathology (75% Match)",
-            "reasoning": "Based on the Parent Input, there are significant delays in expressive language milestones."
-        })
 
 
 class EnrollStudentView(APIView):
@@ -1174,23 +1228,6 @@ class ArchiveStudentView(APIView):
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
-
-# ─── AI Goals ────────────────────────────────────────────────────────────────
-
-class AIGenerateGoalsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        return Response({
-            "generated_goals": [
-                {"goal": "Improve expressive language to 4-word sentences", "objective": "Child will use 4 words in 4/5 daily interactions.", "timeframe": "3 months"},
-                {"goal": "Enhance fine motor skills for writing", "objective": "Child will accurately trace their name.", "timeframe": "6 months"}
-            ],
-            "recommended_activities": [
-                "Practice tracing letters in sand.",
-                "Use word correlation games during free play."
-            ]
-        }, status=status.HTTP_200_OK)
 
 # ─── Report Generation ───────────────────────────────────────────────────────
 
@@ -1340,6 +1377,12 @@ class ResendInvitationView(APIView):
 
 
 class AcceptInvitationView(APIView):
+    """
+    Two-step invitation acceptance:
+      GET  ?token=...  — validate the token and return the pre-filled email/role for the sign-up form
+      POST             — submit the password to actually create the account and mark the token used
+    Both steps are open to unauthenticated users (the invitee hasn't logged in yet).
+    """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
@@ -1390,6 +1433,8 @@ class AcceptInvitationView(APIView):
 
 class SendVerificationSMSView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'sms'
 
     def post(self, request):
         user = request.user
@@ -1405,13 +1450,12 @@ class SendVerificationSMSView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
 
-        import random
         from django.utils import timezone
 
         # Invalidate any previously issued codes for this user
         PhoneVerification.objects.filter(user=user, is_used=False).update(is_used=True)
 
-        code = str(random.randint(100000, 999999))
+        code = str(secrets.randbelow(900000) + 100000)
         PhoneVerification.objects.create(
             user=user,
             code=code,
@@ -1473,29 +1517,35 @@ class GenerateIEPView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        existing_iep = GeneratedDocument.objects.filter(
-            student=student,
-            report_cycle=report_cycle,
-            document_type='IEP',
-        ).order_by('-created_at').first()
-        if existing_iep:
-            return Response({
-                "message": "IEP already exists for this cycle.",
-                "iep_id": existing_iep.id,
-            }, status=status.HTTP_200_OK)
+        # Lock the student row so two simultaneous admin clicks can't create duplicate IEPs.
+        # select_for_update() holds a DB-level row lock until the transaction commits.
+        with transaction.atomic():
+            student = Student.objects.select_for_update().get(id=student_id)
 
-        has_parent = ParentAssessment.objects.filter(student=student, report_cycle=report_cycle).exists()
-        has_finalized_multi = has_finalized_multidisciplinary_assessment(student, report_cycle)
-        if not (has_parent and has_finalized_multi):
-            return Response(
-                {"error": "Parent Assessment and finalized Specialist Assessment are required before generating an IEP."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            existing_iep = GeneratedDocument.objects.filter(
+                student=student,
+                report_cycle=report_cycle,
+                document_type='IEP',
+            ).order_by('-created_at').first()
+            if existing_iep:
+                return Response({
+                    "message": "IEP already exists for this cycle.",
+                    "iep_id": existing_iep.id,
+                }, status=status.HTTP_200_OK)
 
-        from .services.iep_service import run_iep_generation
-        doc, _ = run_iep_generation(student_id, report_cycle_id)
-        from .services.document_service import record_document_version
-        record_document_version(doc, request.user, 'GENERATED')
+            has_parent = ParentAssessment.objects.filter(student=student, report_cycle=report_cycle).exists()
+            has_finalized_multi = has_finalized_multidisciplinary_assessment(student, report_cycle)
+            if not (has_parent and has_finalized_multi):
+                return Response(
+                    {"error": "Parent Assessment and finalized Specialist Assessment are required before generating an IEP."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            from .services.iep_service import run_iep_generation
+            doc, _ = run_iep_generation(student_id, report_cycle_id)
+            from .services.document_service import record_document_version
+            record_document_version(doc, request.user, 'GENERATED')
+
         return Response({
             "message": "IEP generated.",
             "iep_id": doc.id,
@@ -1560,24 +1610,10 @@ class IEPDetailView(APIView):
 
 class IEPDownloadView(APIView):
     """GET: Render the IEP JSON as a PDF and return for download."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
-        # Support both cookie auth and token query param
-        token = request.GET.get('token')
-        if not token:
-            # Try cookie auth
-            if not request.user or not request.user.is_authenticated:
-                return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
-            user = request.user
-        else:
-            from rest_framework_simplejwt.authentication import JWTAuthentication
-            try:
-                auth = JWTAuthentication()
-                validated_token = auth.get_validated_token(token)
-                user = auth.get_user(validated_token)
-            except Exception:
-                return Response({"detail": "Invalid or expired token."}, status=status.HTTP_401_UNAUTHORIZED)
+        user = request.user
 
         try:
             doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='IEP')
@@ -1740,24 +1776,29 @@ class GenerateMonthlyReportView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        existing_report = GeneratedDocument.objects.filter(
-            student=student,
-            report_cycle=report_cycle,
-            document_type='MONTHLY',
-        ).order_by('-created_at').first()
-        if existing_report:
-            if report_cycle.status == 'GENERATING':
-                report_cycle.status = 'COMPLETED'
-                report_cycle.save(update_fields=['status'])
-            return Response({
-                "message": "Monthly report already exists for this cycle.",
-                "report_id": existing_report.id,
-            }, status=status.HTTP_200_OK)
+        # Lock the student row so two simultaneous admin clicks can't create duplicate reports.
+        with transaction.atomic():
+            student = Student.objects.select_for_update().get(id=student_id)
 
-        from .services.iep_service import run_monthly_report_generation
-        doc, _ = run_monthly_report_generation(student_id, report_cycle_id)
-        from .services.document_service import record_document_version
-        record_document_version(doc, request.user, 'GENERATED')
+            existing_report = GeneratedDocument.objects.filter(
+                student=student,
+                report_cycle=report_cycle,
+                document_type='MONTHLY',
+            ).order_by('-created_at').first()
+            if existing_report:
+                if report_cycle.status == 'GENERATING':
+                    report_cycle.status = 'COMPLETED'
+                    report_cycle.save(update_fields=['status'])
+                return Response({
+                    "message": "Monthly report already exists for this cycle.",
+                    "report_id": existing_report.id,
+                }, status=status.HTTP_200_OK)
+
+            from .services.iep_service import run_monthly_report_generation
+            doc, _ = run_monthly_report_generation(student_id, report_cycle_id)
+            from .services.document_service import record_document_version
+            record_document_version(doc, request.user, 'GENERATED')
+
         return Response({
             "message": "Monthly report generated.",
             "report_id": doc.id,
@@ -1840,23 +1881,10 @@ class MonthlyReportDetailView(APIView):
 
 class MonthlyReportDownloadView(APIView):
     """GET: Render the Monthly Report JSON as a PDF for download."""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
-        # Support both cookie auth and token query param
-        token = request.GET.get('token')
-        if not token:
-            if not request.user or not request.user.is_authenticated:
-                return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
-            user = request.user
-        else:
-            from rest_framework_simplejwt.authentication import JWTAuthentication
-            try:
-                auth = JWTAuthentication()
-                validated_token = auth.get_validated_token(token)
-                user = auth.get_user(validated_token)
-            except Exception:
-                return Response({"detail": "Invalid or expired token."}, status=status.HTTP_401_UNAUTHORIZED)
+        user = request.user
 
         try:
             doc = GeneratedDocument.objects.select_related('student', 'report_cycle').get(id=pk, document_type='MONTHLY')

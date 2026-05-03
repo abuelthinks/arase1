@@ -1,10 +1,13 @@
 from datetime import date
 
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from api.models import (
+    Invitation,
+    ParentAssessment,
     ParentProgressTracker,
     MultidisciplinaryProgressTracker,
     Notification,
@@ -319,7 +322,7 @@ class SecurityHardeningTests(APITestCase):
             monthly_action['title'],
             'Generate Monthly Progress Report: Jamie Doe',
         )
-        self.assertEqual(monthly_action['link'], f'/admin/reports?studentId={self.student.id}')
+        self.assertEqual(monthly_action['link'], f'/workspace?studentId={self.student.id}&workspace=reports&view=generator')
         self.assertEqual(monthly_action['type'], 'positive')
 
     def test_cookie_authenticated_mutation_requires_csrf(self):
@@ -364,3 +367,247 @@ class SecurityHardeningTests(APITestCase):
             HTTP_X_CSRFTOKEN=stale_client.cookies['csrftoken'].value,
         )
         self.assertEqual(stale_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+# ─── Auth ────────────────────────────────────────────────────────────────────
+
+@override_settings(ROOT_URLCONF='backend.urls')
+class AuthTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='user@example.com',
+            password='ValidPass123!',
+            role='ADMIN',
+        )
+
+    def test_login_wrong_password_returns_401(self):
+        response = self.client.post('/api/auth/token/', {
+            'email': 'user@example.com',
+            'password': 'wrongpassword',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertNotIn('access_token', response.cookies)
+
+    def test_unauthenticated_request_returns_401(self):
+        response = self.client.get('/api/students/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_login_sets_httponly_cookies(self):
+        self.client.get('/api/auth/csrf/')
+        response = self.client.post('/api/auth/token/', {
+            'email': 'user@example.com',
+            'password': 'ValidPass123!',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access_token', response.cookies)
+        self.assertIn('refresh_token', response.cookies)
+        self.assertTrue(response.cookies['access_token']['httponly'])
+        self.assertTrue(response.cookies['refresh_token']['httponly'])
+
+
+# ─── Role permissions ─────────────────────────────────────────────────────────
+
+@override_settings(ROOT_URLCONF='backend.urls')
+class RolePermissionTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email='admin@example.com', password='Pass123!', role='ADMIN',
+        )
+        self.parent = User.objects.create_user(
+            email='parent@example.com', password='Pass123!', role='PARENT',
+        )
+        self.specialist = User.objects.create_user(
+            email='spec@example.com', password='Pass123!', role='SPECIALIST',
+        )
+        self.teacher = User.objects.create_user(
+            email='teacher@example.com', password='Pass123!', role='TEACHER',
+        )
+        self.student = Student.objects.create(
+            first_name='Test', last_name='Student',
+            date_of_birth=date(2018, 1, 1), grade='Kinder',
+            status='PENDING_ASSESSMENT',
+        )
+        StudentAccess.objects.create(user=self.parent, student=self.student)
+
+    def test_parent_cannot_schedule_assessment(self):
+        self.client.force_authenticate(user=self.parent)
+        response = self.client.post(f'/api/students/{self.student.id}/request-assessment/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, 'PENDING_ASSESSMENT')
+
+    def test_parent_cannot_access_staff_list(self):
+        self.client.force_authenticate(user=self.parent)
+        response = self.client.get('/api/staff/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_non_admin_cannot_delete_student(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.delete(f'/api/students/{self.student.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Student.objects.filter(id=self.student.id).exists())
+
+    def test_non_admin_cannot_list_all_users(self):
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.get('/api/users/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_non_admin_cannot_generate_iep(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.post('/api/iep/generate/', {
+            'student_id': self.student.id,
+            'report_cycle_id': 999,
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_specialist_cannot_schedule_assessment(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.post(f'/api/students/{self.student.id}/request-assessment/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ─── Student data isolation ───────────────────────────────────────────────────
+
+@override_settings(ROOT_URLCONF='backend.urls')
+class StudentAccessTests(APITestCase):
+    def setUp(self):
+        self.specialist = User.objects.create_user(
+            email='spec@example.com', password='Pass123!', role='SPECIALIST',
+        )
+        self.other_specialist = User.objects.create_user(
+            email='otherspec@example.com', password='Pass123!', role='SPECIALIST',
+        )
+        self.parent = User.objects.create_user(
+            email='parent@example.com', password='Pass123!', role='PARENT',
+        )
+        self.other_parent = User.objects.create_user(
+            email='otherparent@example.com', password='Pass123!', role='PARENT',
+        )
+        self.unassigned_teacher = User.objects.create_user(
+            email='newteacher@example.com', password='Pass123!', role='TEACHER',
+        )
+        self.assigned_student = Student.objects.create(
+            first_name='Assigned', last_name='Kid',
+            date_of_birth=date(2018, 1, 1), grade='Kinder',
+            status='ENROLLED',
+        )
+        self.other_student = Student.objects.create(
+            first_name='Other', last_name='Kid',
+            date_of_birth=date(2017, 1, 1), grade='Grade 1',
+            status='ENROLLED',
+        )
+        self.cycle = ReportCycle.objects.create(
+            student=self.assigned_student,
+            label='Test Cycle',
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 30),
+            is_active=True,
+            status='OPEN',
+        )
+        StudentAccess.objects.create(user=self.specialist, student=self.assigned_student)
+        StudentAccess.objects.create(user=self.parent, student=self.assigned_student)
+
+    def test_specialist_only_sees_assigned_students(self):
+        self.client.force_authenticate(user=self.specialist)
+        response = self.client.get('/api/students/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [s['id'] for s in response.data]
+        self.assertIn(self.assigned_student.id, ids)
+        self.assertNotIn(self.other_student.id, ids)
+
+    def test_unassigned_specialist_sees_no_students(self):
+        self.client.force_authenticate(user=self.other_specialist)
+        response = self.client.get('/api/students/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
+    def test_parent_only_sees_own_submitted_forms(self):
+        # other_parent submits a form for other_student
+        other_cycle = ReportCycle.objects.create(
+            student=self.other_student,
+            label='Other Cycle',
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 30),
+            is_active=True,
+            status='OPEN',
+        )
+        StudentAccess.objects.create(user=self.other_parent, student=self.other_student)
+        ParentAssessment.objects.create(
+            student=self.other_student,
+            report_cycle=other_cycle,
+            submitted_by=self.other_parent,
+            form_data={},
+        )
+
+        self.client.force_authenticate(user=self.parent)
+        response = self.client.get('/api/inputs/parent-assessment/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for form in response.data:
+            self.assertEqual(form['submitted_by'], self.parent.id)
+
+    def test_unassigned_user_gets_404_on_student_profile(self):
+        self.client.force_authenticate(user=self.unassigned_teacher)
+        response = self.client.get(f'/api/students/{self.assigned_student.id}/profile/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ─── Invitation flow ──────────────────────────────────────────────────────────
+
+@override_settings(ROOT_URLCONF='backend.urls')
+class InvitationFlowTests(APITestCase):
+    def test_expired_token_returns_410(self):
+        invitation = Invitation.objects.create(
+            email='late@example.com',
+            role='PARENT',
+            expires_at=timezone.now() - timezone.timedelta(hours=1),
+        )
+        response = self.client.get(
+            '/api/invitations/accept/',
+            {'token': str(invitation.token)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_410_GONE)
+
+    def test_used_token_returns_404(self):
+        invitation = Invitation.objects.create(
+            email='used@example.com',
+            role='PARENT',
+            is_used=True,
+        )
+        response = self.client.get(
+            '/api/invitations/accept/',
+            {'token': str(invitation.token)},
+        )
+        # is_used=True means get() raises DoesNotExist → 404
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_valid_token_creates_user_with_correct_role(self):
+        invitation = Invitation.objects.create(
+            email='newparent@example.com',
+            role='PARENT',
+        )
+        response = self.client.post('/api/invitations/accept/', {
+            'token': str(invitation.token),
+            'password': 'NewPass123!',
+            'first_name': 'New',
+            'last_name': 'Parent',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email='newparent@example.com')
+        self.assertEqual(user.role, 'PARENT')
+        invitation.refresh_from_db()
+        self.assertTrue(invitation.is_used)
+
+    def test_valid_token_cannot_be_reused(self):
+        invitation = Invitation.objects.create(
+            email='once@example.com',
+            role='SPECIALIST',
+        )
+        payload = {
+            'token': str(invitation.token),
+            'password': 'NewPass123!',
+            'first_name': 'Once',
+            'last_name': 'Only',
+        }
+        self.client.post('/api/invitations/accept/', payload, format='json')
+        response = self.client.post('/api/invitations/accept/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

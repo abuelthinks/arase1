@@ -21,8 +21,8 @@ def enforce_csrf(request):
 class CookieJWTAuthentication(JWTAuthentication):
     """
     Extends SimpleJWT to read the access token from an HttpOnly cookie.
-    Falls back to the standard Authorization header for backwards compatibility
-    (e.g., PDF download endpoints that pass token as query param).
+    Falls back to the standard Authorization: Bearer header so API clients
+    like Postman or mobile apps can still authenticate without cookies.
     """
 
     def authenticate(self, request):

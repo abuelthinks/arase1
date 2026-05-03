@@ -8,7 +8,6 @@ from django.conf.urls.static import static
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
-from api.models import User
 
 # Cookie-based auth views (HttpOnly cookies)
 from api.auth_views import (
@@ -21,14 +20,10 @@ from api.auth_views import (
 
 
 class HealthView(APIView):
+    # Public liveness probe. Returns no user data — safe to hit without auth.
     permission_classes = [permissions.AllowAny]
     def get(self, request):
-        admins = User.objects.filter(is_superuser=True).values('email', 'role', 'first_name', 'last_name')
-        return Response({
-            "status": "online",
-            "superusers": list(admins),
-            "total_users": User.objects.count()
-        })
+        return Response({"status": "online"})
 
 
 urlpatterns = [

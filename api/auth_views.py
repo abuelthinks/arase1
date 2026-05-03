@@ -22,6 +22,9 @@ def _set_auth_cookies(response, access_token, refresh_token=None):
     is_secure = not getattr(settings, 'DEBUG', False)
     cookie_kwargs = {
         'httponly': True,
+        # SameSite=None is required in production because the frontend (Vercel) and
+        # backend (Railway) are on different domains. SameSite=Lax is safe for local
+        # dev because both run on localhost and cross-site cookies aren't needed.
         'samesite': 'None' if is_secure else 'Lax',
         'secure': is_secure,
         'path': '/',
@@ -157,7 +160,6 @@ class MeView(APIView):
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'email': user.email,
             'phone_number': user.phone_number,
             'is_phone_verified': user.is_phone_verified,
             'specialty': getattr(user, 'specialty', '') or '',

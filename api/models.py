@@ -27,6 +27,7 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 class User(AbstractUser):
+    # username is removed — email is the sole login identifier.
     username = None
     email = models.EmailField(unique=True)
 
@@ -35,6 +36,10 @@ class User(AbstractUser):
 
     objects = CustomUserManager()
 
+    # ADMIN  — full platform access; manages students, staff, cycles, documents
+    # TEACHER — assigned post-enrollment; submits SPED progress trackers
+    # SPECIALIST — assigned per specialty; fills sections of multidisciplinary forms
+    # PARENT — one per student; completes parent assessment and parent tracker
     ROLE_CHOICES = (
         ('ADMIN', 'Admin'),
         ('TEACHER', 'Teacher'),
@@ -117,12 +122,15 @@ class Invitation(models.Model):
         return f"Invite for {self.email} ({self.role}) - Used: {self.is_used}"
 
 class Student(models.Model):
+    # Lifecycle: PENDING_ASSESSMENT → ASSESSMENT_SCHEDULED → ASSESSED → ENROLLED ↔ INTEGRATED → ARCHIVED
+    # Progress trackers are only available for ENROLLED and INTEGRATED students.
+    # A finalized multidisciplinary assessment is required before ENROLLED or INTEGRATED.
     STATUS_CHOICES = (
         ('PENDING_ASSESSMENT', 'Pending Assessment'),
         ('ASSESSMENT_SCHEDULED', 'Assessment Scheduled'),
         ('ASSESSED', 'Assessed'),
         ('ENROLLED', 'Enrolled'),
-        ('INTEGRATED', 'Integrated'),
+        ('INTEGRATED', 'Integrated'),   # mainstream classroom with support
         ('ARCHIVED', 'Archived'),
     )
     first_name = models.CharField(max_length=100)
@@ -147,6 +155,8 @@ class StudentAccess(models.Model):
         unique_together = ('user', 'student')
 
     def specialty_list(self) -> list[str]:
+        # Per-student specialty override takes precedence over the user's global specialties.
+        # This lets an admin assign a specialist to a student for only a subset of their disciplines.
         if self.user.role == 'SPECIALIST' and isinstance(self.assigned_specialties, list) and self.assigned_specialties:
             return list(self.assigned_specialties)
         return self.user.specialty_list() if hasattr(self.user, 'specialty_list') else []
