@@ -380,30 +380,26 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
         if expected_role == 'SPECIALIST':
             specialty_label = ', '.join(assigned_specialties)
             role_label = f"{specialty_label} specialist" if specialty_label else "Specialist"
-            dedupe_key = f"staff-assigned:{student.id}:{staff.id}:SPECIALIST:{'|'.join(assigned_specialties)}"
         else:
             role_label = "Teacher"
-            dedupe_key = f"staff-assigned:{student.id}:{staff.id}:TEACHER"
 
         notify_staff_assigned(
             student,
             staff,
             role_label,
             assigned_by=assigned_by,
-            dedupe_key=dedupe_key,
         )
         notify_parent_team_updated(
             student,
             staff,
             role_label,
             assigned_by=assigned_by,
-            dedupe_key=dedupe_key,
         )
 
     return staff, student
 
 
-def unassign_staff_from_student(student_id, staff_id, specialty=None):
+def unassign_staff_from_student(student_id, staff_id, specialty=None, unassigned_by=None):
     """
     Unassigns a staff member from a student.
     If specialty is provided (for SPECIALIST), it removes only that specialty.
@@ -413,25 +409,127 @@ def unassign_staff_from_student(student_id, staff_id, specialty=None):
         access = StudentAccess.objects.get(student_id=student_id, user_id=staff_id)
     except StudentAccess.DoesNotExist:
         return False
+    student = access.student
+    staff = access.user
+    removed_specialties = []
+    removed_all = False
         
     if specialty and access.user.role == 'SPECIALIST':
         normalized_specialty = normalize_specialty(specialty)
         if normalized_specialty in access.assigned_specialties:
             access.assigned_specialties.remove(normalized_specialty)
+            removed_specialties = [normalized_specialty]
             if not access.assigned_specialties:
                 access.delete()
+                removed_all = True
             else:
                 access.save(update_fields=['assigned_specialties'])
             
             from api.services.section_service import re_evaluate_finalization
             re_evaluate_finalization(student_id)
+            _notify_staff_removed_from_team(
+                student,
+                staff,
+                removed_specialties,
+                removed_all,
+                unassigned_by,
+            )
             return True
         return False
         
     # If no specialty specified or it's a teacher, just delete the access
     access.delete()
+    removed_all = True
+    if staff.role == 'SPECIALIST':
+        removed_specialties = access.specialty_list()
     if access.user.role == 'SPECIALIST':
         from api.services.section_service import re_evaluate_finalization
         re_evaluate_finalization(student_id)
+    _notify_staff_removed_from_team(
+        student,
+        staff,
+        removed_specialties,
+        removed_all,
+        unassigned_by,
+    )
     return True
+
+
+def _notify_staff_removed_from_team(student, staff, removed_specialties, removed_all, unassigned_by=None):
+    if staff.role not in ('SPECIALIST', 'TEACHER'):
+        return
+    from api.services.notification_service import (
+        notify_parent_team_member_removed,
+        notify_staff_unassigned,
+    )
+    if staff.role == 'SPECIALIST':
+        specialty_label = ', '.join(removed_specialties)
+        role_label = f"{specialty_label} specialist" if specialty_label else "Specialist"
+    else:
+        role_label = "Teacher"
+
+    notify_staff_unassigned(student, staff, role_label, unassigned_by=unassigned_by)
+    notify_parent_team_member_removed(student, staff, role_label, unassigned_by=unassigned_by)
+
+
+def update_student_team(student_id, specialist_assignments, teacher_ids, changed_by=None):
+    student = Student.objects.get(id=student_id)
+    try:
+        desired_specialists = {
+            int(item['staff_id']): validate_specialties('SPECIALIST', item.get('specialties') or [])
+            for item in specialist_assignments
+            if item.get('staff_id')
+        }
+    except ValueError as exc:
+        raise ValidationError(str(exc))
+    desired_teachers = {int(teacher_id) for teacher_id in teacher_ids}
+
+    existing_access = (
+        StudentAccess.objects
+        .filter(student=student, user__role__in=['SPECIALIST', 'TEACHER'])
+        .select_related('user')
+    )
+    existing_specialists = {access.user_id: access for access in existing_access if access.user.role == 'SPECIALIST'}
+    existing_teachers = {access.user_id: access for access in existing_access if access.user.role == 'TEACHER'}
+
+    for staff_id, specialties in desired_specialists.items():
+        current = existing_specialists.get(staff_id)
+        if current and current.specialty_list() == specialties:
+            continue
+        assign_staff_to_student(
+            student_id,
+            staff_id,
+            'SPECIALIST',
+            specialties=specialties,
+            assigned_by=changed_by,
+        )
+
+    for staff_id in desired_teachers:
+        if staff_id in existing_teachers:
+            continue
+        assign_staff_to_student(
+            student_id,
+            staff_id,
+            'TEACHER',
+            assigned_by=changed_by,
+        )
+
+    for staff_id, access in existing_specialists.items():
+        desired_specialties = desired_specialists.get(staff_id)
+        if desired_specialties is None:
+            unassign_staff_from_student(student_id, staff_id, unassigned_by=changed_by)
+            continue
+
+        for specialty in set(access.specialty_list()) - set(desired_specialties):
+            unassign_staff_from_student(
+                student_id,
+                staff_id,
+                specialty=specialty,
+                unassigned_by=changed_by,
+            )
+
+    for staff_id in set(existing_teachers) - desired_teachers:
+        unassign_staff_from_student(student_id, staff_id, unassigned_by=changed_by)
+
+    return student
 

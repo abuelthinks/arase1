@@ -349,6 +349,41 @@ def notify_parent_team_updated(student, staff_user, role_label, assigned_by=None
         )
 
 
+def notify_staff_unassigned(student, staff_user, role_label, unassigned_by=None):
+    """Notify a staff member that they were removed from a student's team."""
+    student_name = f"{student.first_name} {student.last_name}"
+    actor = _user_display_name(unassigned_by) if unassigned_by else "Admin"
+    notify_user_in_app(
+        user=staff_user,
+        notification_type='SYSTEM',
+        title=f"Removed from team: {student_name}",
+        message=f"{actor} removed you as {role_label.lower()} for {student_name}.",
+        link=f"/workspace?studentId={student.id}",
+        actor_name=actor,
+    )
+
+
+def notify_parent_team_member_removed(student, staff_user, role_label, unassigned_by=None):
+    """Warm parent-facing notice when someone is removed from the child's team."""
+    from api.models import StudentAccess
+
+    student_name = f"{student.first_name} {student.last_name}"
+    staff_name = _user_display_name(staff_user)
+    parents = StudentAccess.objects.filter(
+        student=student,
+        user__role='PARENT',
+    ).select_related('user')
+    for sa in parents:
+        notify_user_in_app(
+            user=sa.user,
+            notification_type='SYSTEM',
+            title=f"{student_name}'s team was updated",
+            message=f"{staff_name} was removed as {role_label.lower()} for {student_name}.",
+            link=f"/workspace?studentId={student.id}&workspace=team",
+            actor_name=_user_display_name(unassigned_by) if unassigned_by else "ARASE",
+        )
+
+
 def notify_specialist_form_finalized(user, student, cycle, form_label):
     """Notify admins once the full specialist-owned assessment/tracker is finalized."""
     student_name = f"{student.first_name} {student.last_name}"

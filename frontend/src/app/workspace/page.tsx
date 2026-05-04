@@ -116,10 +116,13 @@ function UnifiedWorkspaceContent() {
 
     // -- Team State --
     const [assignedStaff, setAssignedStaff] = useState<any[]>([]);
+    const [stagedAssignedStaff, setStagedAssignedStaff] = useState<any[]>([]);
     const [staffList, setStaffList] = useState<any[]>([]);
     const [assigning, setAssigning] = useState<number | null>(null);
     const [unassigningStaff, setUnassigningStaff] = useState<{ id: number, specialty?: string, name?: string, role: string } | null>(null);
     const [isUnassigning, setIsUnassigning] = useState(false);
+    const [confirmingTeam, setConfirmingTeam] = useState(false);
+    const [pendingTeamNavigation, setPendingTeamNavigation] = useState<string | null>(null);
     const [sendingParentReminder, setSendingParentReminder] = useState(false);
     const [showEnrollConfirm, setShowEnrollConfirm] = useState(false);
     const [enrollingStudent, setEnrollingStudent] = useState(false);
@@ -242,6 +245,7 @@ function UnifiedWorkspaceContent() {
                 setStudentDetails(data.student);
                 setFormStatuses(data.form_statuses);
                 setAssignedStaff(data.assigned_staff || []);
+                setStagedAssignedStaff(data.assigned_staff || []);
                 
                 const generatedDocs = data.generated_documents || [];
                 generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -312,37 +316,174 @@ function UnifiedWorkspaceContent() {
     }, [studentId, user?.role]);
 
     // -- Handlers --
+    const normalizeTeam = (staff: any[]) => staff
+        .filter((member) => member.role === "SPECIALIST" || member.role === "TEACHER")
+        .map((member) => ({
+            id: member.id,
+            role: member.role,
+            specialties: getStaffSpecialties(member).slice().sort(),
+        }))
+        .sort((a, b) => `${a.role}-${a.id}`.localeCompare(`${b.role}-${b.id}`));
+
+    const teamHasChanges = JSON.stringify(normalizeTeam(assignedStaff)) !== JSON.stringify(normalizeTeam(stagedAssignedStaff));
+    const getTeamUnits = (staff: any[]) => staff.flatMap((member) => {
+        if (member.role === "SPECIALIST") {
+            return getStaffSpecialties(member).map((specialty) => ({
+                key: `SPECIALIST:${member.id}:${specialty}`,
+                name: getStaffName(member),
+                detail: specialty,
+            }));
+        }
+        if (member.role === "TEACHER") {
+            return [{
+                key: `TEACHER:${member.id}`,
+                name: getStaffName(member),
+                detail: "Teacher",
+            }];
+        }
+        return [];
+    });
+    const originalTeamUnits = getTeamUnits(assignedStaff);
+    const stagedTeamUnits = getTeamUnits(stagedAssignedStaff);
+    const addedTeamUnits = stagedTeamUnits.filter((unit) => !originalTeamUnits.some((original) => original.key === unit.key));
+    const removedTeamUnits = originalTeamUnits.filter((unit) => !stagedTeamUnits.some((staged) => staged.key === unit.key));
+
+    useEffect(() => {
+        if (!teamHasChanges || typeof window === "undefined") return;
+        const currentUrl = window.location.pathname + window.location.search;
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        const handlePopState = () => {
+            const targetUrl = window.location.pathname + window.location.search;
+            window.history.pushState({ teamGuard: true }, "", currentUrl);
+            setPendingTeamNavigation(targetUrl);
+        };
+        window.history.pushState({ teamGuard: true }, "", currentUrl);
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("popstate", handlePopState);
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+            window.removeEventListener("popstate", handlePopState);
+        };
+    }, [teamHasChanges]);
+
+    const getTeamPayload = () => ({
+        specialists: stagedAssignedStaff
+            .filter((member) => member.role === "SPECIALIST")
+            .map((member) => ({
+                staff_id: member.id,
+                specialties: getStaffSpecialties(member),
+            })),
+        teachers: stagedAssignedStaff
+            .filter((member) => member.role === "TEACHER")
+            .map((member) => member.id),
+    });
+
+    const confirmTeamChanges = async () => {
+        if (!studentId || !teamHasChanges || confirmingTeam) return true;
+        setConfirmingTeam(true);
+        try {
+            const res = await api.post(`/api/students/${studentId}/confirm-team/`, getTeamPayload());
+            const nextAssigned = res.data.assigned_staff || [];
+            setAssignedStaff(nextAssigned);
+            setStagedAssignedStaff(nextAssigned);
+            toast.success("Team confirmed.");
+            return true;
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to confirm team.");
+            return false;
+        } finally {
+            setConfirmingTeam(false);
+        }
+    };
+
+    const discardTeamChanges = () => {
+        setStagedAssignedStaff(assignedStaff);
+        setPendingTeamNavigation(null);
+    };
+
+    const navigateWithTeamGuard = (url: string) => {
+        if (workspace === "team" && teamHasChanges) {
+            setPendingTeamNavigation(url);
+            return;
+        }
+        router.push(url);
+    };
+
+    const proceedWithPendingNavigation = async () => {
+        if (!pendingTeamNavigation) return;
+        const target = pendingTeamNavigation;
+        const confirmed = await confirmTeamChanges();
+        if (confirmed) {
+            setPendingTeamNavigation(null);
+            router.push(target);
+        }
+    };
+
+    const stageSpecialist = (staff: any, specialties: string[]) => {
+        setStagedAssignedStaff((prev) => {
+            const withoutStaff = prev.filter((member) => member.id !== staff.id);
+            if (specialties.length === 0) {
+                return withoutStaff;
+            }
+            return [
+                ...withoutStaff,
+                {
+                    ...staff,
+                    role: "SPECIALIST",
+                    specialty: specialties[0],
+                    specialties,
+                },
+            ];
+        });
+    };
+
+    const stageTeacher = (staff: any) => {
+        setStagedAssignedStaff((prev) => {
+            const alreadyAssigned = prev.some((member) => member.id === staff.id && member.role === "TEACHER");
+            if (alreadyAssigned) {
+                return prev.filter((member) => !(member.id === staff.id && member.role === "TEACHER"));
+            }
+            return [...prev, { ...staff, role: "TEACHER" }];
+        });
+    };
+
     const confirmUnassign = async () => {
         if (!unassigningStaff || !studentDetails) return;
         setIsUnassigning(true);
         try {
-            const res = await api.post(`/api/students/${studentDetails.id}/unassign-staff/`, {
-                staff_id: unassigningStaff.id,
-                specialty: unassigningStaff.specialty
-            });
-            if (res.status === 200) {
-                toast.success("Staff member removed successfully.");
-                setProfileRefreshKey(prev => prev + 1);
+            if (unassigningStaff.role === "Specialist" && unassigningStaff.specialty) {
+                const current = stagedAssignedStaff.find((member) => member.id === unassigningStaff.id);
+                const nextSpecialties = getStaffSpecialties(current).filter((specialty) => specialty !== unassigningStaff.specialty);
+                const staff = staffList.find((member) => member.id === unassigningStaff.id) || current;
+                stageSpecialist(staff, nextSpecialties);
+            } else {
+                setStagedAssignedStaff((prev) => prev.filter((member) => member.id !== unassigningStaff.id));
             }
-        } catch (error: any) {
-            console.error("Error unassigning staff:", error);
-            toast.error(error.response?.data?.error || "Failed to remove staff member");
+            toast.success("Team selection updated.");
+        } catch {
+            toast.error("Failed to update team selection.");
         } finally {
             setIsUnassigning(false);
             setUnassigningStaff(null);
         }
     };
 
-    const handleAssign = async (type: "specialist" | "teacher", staffId: number, specialties: string[] = []) => {
+    const handleAssign = (type: "specialist" | "teacher", staffId: number, specialties: string[] = []) => {
         setAssigning(staffId);
         try {
-            const endpoint = type === "specialist" ? "assign-specialist" : "assign-teacher";
-            const payload = type === "specialist" ? { specialist_id: staffId, specialties } : { teacher_id: staffId };
-            await api.post(`/api/students/${studentId}/${endpoint}/`, payload);
-            const profileRes = await api.get(`/api/students/${studentId}/profile/`);
-            setAssignedStaff(profileRes.data.assigned_staff || []);
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || "Assignment failed.");
+            const staff = staffList.find((member) => member.id === staffId);
+            if (!staff) return;
+            if (type === "specialist") {
+                stageSpecialist(staff, specialties);
+            } else {
+                stageTeacher(staff);
+            }
+            toast.success("Team selection updated.");
+        } catch {
+            toast.error("Team change failed.");
         } finally {
             setAssigning(null);
         }
@@ -361,14 +502,14 @@ function UnifiedWorkspaceContent() {
                 url.searchParams.delete("docId");
             }
         }
-        router.push(url.pathname + url.search);
+        navigateWithTeamGuard(url.pathname + url.search);
     };
 
     const handleFormTabChange = (tabId: string) => {
         const url = new URL(window.location.href);
         url.searchParams.set("workspace", "forms");
         url.searchParams.set("tab", tabId);
-        router.push(url.pathname + url.search);
+        navigateWithTeamGuard(url.pathname + url.search);
     };
 
     const handleReportMenuChange = (view: string, docId?: string) => {
@@ -380,14 +521,14 @@ function UnifiedWorkspaceContent() {
         } else {
             url.searchParams.delete("docId");
         }
-        router.push(url.pathname + url.search);
+        navigateWithTeamGuard(url.pathname + url.search);
     };
 
     const handleTeamMenuChange = (role: string) => {
         const url = new URL(window.location.href);
         url.searchParams.set("workspace", "team");
         url.searchParams.set("teamRole", role);
-        router.push(url.pathname + url.search);
+        navigateWithTeamGuard(url.pathname + url.search);
     };
 
     const handleParentAssessmentReminder = async () => {
@@ -671,7 +812,7 @@ function UnifiedWorkspaceContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar flex flex-col gap-3">
-                        <button onClick={() => router.push(`/students/${studentId}`)} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                        <button onClick={() => navigateWithTeamGuard(`/students/${studentId}`)} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center gap-2 shadow-sm">
                             <FolderOpen size={14} />
                             Open Full Profile
                         </button>
@@ -1308,7 +1449,7 @@ function UnifiedWorkspaceContent() {
             } else {
                 url.searchParams.delete("docId");
             }
-            router.push(url.pathname + url.search);
+            navigateWithTeamGuard(url.pathname + url.search);
         };
 
         // Tracker form rendering logic
@@ -1522,7 +1663,7 @@ function UnifiedWorkspaceContent() {
         const isSpecialist = activeTeamRole === "SPECIALIST";
         const isTeacher = activeTeamRole === "TEACHER";
         const list = staffList.filter(s => s.role === activeTeamRole);
-        const assignedRoleStaff = assignedStaff.filter(s => s.role === activeTeamRole);
+        const assignedRoleStaff = stagedAssignedStaff.filter(s => s.role === activeTeamRole);
         const assignedIds = assignedRoleStaff.map(s => s.id);
         const searchTerm = specialistSearch.trim().toLowerCase();
         const assignedSpecialistBySpecialty: Record<string, any> = {};
@@ -1647,6 +1788,31 @@ function UnifiedWorkspaceContent() {
                                     ? "Pick one specialist for each required discipline. Multi-specialty staff appear in every group they can cover."
                                     : "Select staff members to assign to this student's caseload."}
                             </p>
+
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={confirmTeamChanges}
+                                    disabled={!teamHasChanges || confirmingTeam}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                >
+                                    <Check size={16} />
+                                    {confirmingTeam ? "Confirming..." : "Confirm Team"}
+                                </button>
+                                {teamHasChanges && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={discardTeamChanges}
+                                            disabled={confirmingTeam}
+                                            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                        >
+                                            Cancel Changes
+                                        </button>
+                                        <span className="text-xs font-semibold text-amber-700">Changes not saved yet</span>
+                                    </>
+                                )}
+                            </div>
 
                             {isLocked && (
                                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 shadow-sm">
@@ -2043,7 +2209,7 @@ function UnifiedWorkspaceContent() {
                                             return (
                                                 <button
                                                     key={s.id}
-                                                    onClick={() => !isCurrent && router.push(`/workspace?studentId=${s.id}&workspace=${workspace}`)}
+                                                    onClick={() => !isCurrent && navigateWithTeamGuard(`/workspace?studentId=${s.id}&workspace=${workspace}`)}
                                                     className={`w-full relative flex items-center gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
                                                         isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-slate-50'
                                                     }`}
@@ -2100,6 +2266,98 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
+                {pendingTeamNavigation && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden">
+                            <div className="p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="h-11 w-11 shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
+                                        <AlertCircle className="h-5 w-5 text-amber-700" />
+                                    </div>
+                                    <div>
+                                        <h3 className="m-0 text-lg font-bold text-slate-900">Save team changes?</h3>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            These changes are not saved yet. Review them before leaving this page.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="mt-5 max-h-[55vh] overflow-y-auto space-y-4 pr-1">
+                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-emerald-700">Added</p>
+                                        <div className="mt-3 space-y-2">
+                                            {addedTeamUnits.length === 0 ? (
+                                                <p className="m-0 text-sm text-emerald-700/70">No additions.</p>
+                                            ) : addedTeamUnits.map((unit) => (
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
+                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
+                                                    <span className="text-xs font-semibold text-emerald-700">{unit.detail}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-red-700">Removed</p>
+                                        <div className="mt-3 space-y-2">
+                                            {removedTeamUnits.length === 0 ? (
+                                                <p className="m-0 text-sm text-red-700/70">No removals.</p>
+                                            ) : removedTeamUnits.map((unit) => (
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
+                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
+                                                    <span className="text-xs font-semibold text-red-700">{unit.detail}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-slate-500">Current Selection</p>
+                                        <div className="mt-3 space-y-2">
+                                            {stagedTeamUnits.length === 0 ? (
+                                                <p className="m-0 text-sm text-slate-500">No team members selected.</p>
+                                            ) : stagedTeamUnits.map((unit) => (
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
+                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
+                                                    <span className="text-xs font-semibold text-slate-500">{unit.detail}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-6 flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPendingTeamNavigation(null)}
+                                        disabled={confirmingTeam}
+                                        className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-60"
+                                    >
+                                        Stay
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const target = pendingTeamNavigation;
+                                            discardTeamChanges();
+                                            if (target) router.push(target);
+                                        }}
+                                        disabled={confirmingTeam}
+                                        className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                    >
+                                        Cancel Changes
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={proceedWithPendingNavigation}
+                                        disabled={confirmingTeam}
+                                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+                                    >
+                                        <Check size={16} />
+                                        {confirmingTeam ? "Confirming..." : "Confirm Team"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Unassign Confirmation Modal */}
                 {unassigningStaff && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
@@ -2110,9 +2368,9 @@ function UnifiedWorkspaceContent() {
                                         <AlertCircle className="h-6 w-6 text-red-600" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-900">Remove {unassigningStaff.role}?</h3>
+                                        <h3 className="text-lg font-bold text-slate-900">Remove from selection?</h3>
                                         <p className="text-sm text-slate-500 mt-1">
-                                            Are you sure you want to remove <strong>{unassigningStaff.name}</strong> from this team?
+                                            Remove <strong>{unassigningStaff.name}</strong> from the team selection. This will be saved when you confirm the team.
                                         </p>
                                     </div>
                                 </div>
@@ -2136,7 +2394,7 @@ function UnifiedWorkspaceContent() {
                                                 Removing...
                                             </>
                                         ) : (
-                                            "Remove Specialist"
+                                            "Remove from Selection"
                                         )}
                                     </button>
                                 </div>

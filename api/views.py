@@ -1114,12 +1114,46 @@ class UnassignStaffView(APIView):
             return Response({"error": "staff_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         from .services.student_service import unassign_staff_from_student
-        success = unassign_staff_from_student(student_id, staff_id, specialty)
+        success = unassign_staff_from_student(student_id, staff_id, specialty, unassigned_by=request.user)
         
         if success:
             return Response({"message": "Staff member successfully unassigned."})
         else:
             return Response({"error": "Staff member is not assigned to this student or specialty."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ConfirmTeamView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only Admins can confirm teams."}, status=status.HTTP_403_FORBIDDEN)
+
+        specialist_assignments = request.data.get('specialists', [])
+        teacher_ids = request.data.get('teachers', [])
+        if not isinstance(specialist_assignments, list) or not isinstance(teacher_ids, list):
+            return Response({"error": "specialists and teachers must be lists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from .services.student_service import get_student_profile_data, update_student_team
+            student = update_student_team(
+                student_id,
+                specialist_assignments,
+                teacher_ids,
+                changed_by=request.user,
+            )
+            profile = get_student_profile_data(student, request.user)
+            return Response({
+                "message": "Team confirmed.",
+                "assigned_staff": profile.get("assigned_staff", []),
+            })
+        except ValidationError as ve:
+            detail = ve.detail
+            if isinstance(detail, list) and detail:
+                detail = detail[0]
+            return Response({"error": str(detail)}, status=status.HTTP_400_BAD_REQUEST)
+        except (User.DoesNotExist, Student.DoesNotExist):
+            return Response({"error": "Student or staff member not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class AssignParentView(APIView):
