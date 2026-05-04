@@ -36,6 +36,7 @@ pnpm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+.claude/
 
 # Ad-hoc repo files
 *.log
