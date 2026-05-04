@@ -232,7 +232,7 @@ function SpecialistAFormContent() {
     const [savingSection, setSavingSection] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState("");
     const [reportCycleId, setReportCycleId] = useState("1");
-    const [contributions, setContributions] = useState<Record<string, { status: "draft" | "submitted"; specialist_name: string; submitted_at?: string | null }>>({});
+    const [contributions, setContributions] = useState<Record<string, { status: "draft" | "submitted"; specialist_name: string; updated_at?: string | null; submitted_at?: string | null }>>({});
 
     // For Translation Toggle
     const [fullSubmission, setFullSubmission] = useState<any>(null);
@@ -286,7 +286,7 @@ function SpecialistAFormContent() {
             });
             const map: typeof contributions = {};
             for (const c of res.data || []) {
-                map[c.section_key] = { status: c.status, specialist_name: c.specialist_name, submitted_at: c.submitted_at };
+                map[c.section_key] = { status: c.status, specialist_name: c.specialist_name, updated_at: c.updated_at, submitted_at: c.submitted_at };
             }
             setContributions(map);
         } catch (err) {
@@ -528,7 +528,7 @@ function SpecialistAFormContent() {
         
         const draftInfo = contrib && contrib.status === "draft" ? (
             <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#64748b" }}>
-                Last edited by <strong>{contrib.specialist_name}</strong>{contrib.submitted_at ? ` on ${new Date(contrib.submitted_at).toLocaleString()}` : ""}
+                Last edited by <strong>{contrib.specialist_name}</strong>{contrib.updated_at ? ` on ${new Date(contrib.updated_at).toLocaleString()}` : ""}
             </div>
         ) : null;
         

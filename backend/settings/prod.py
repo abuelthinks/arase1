@@ -28,7 +28,7 @@ DATABASES = {
     )
 }
 
-# ─── CORS — loosened for testing to ensure errors are readable ─────────────────
+# ─── CORS — configured from production frontend origins ───────────────────────
 CORS_ALLOWED_ORIGINS = parse_csv_env('CORS_ALLOWED_ORIGINS')
 configured_frontend_url = os.environ.get('FRONTEND_URL', '').rstrip('/')
 if configured_frontend_url and configured_frontend_url not in CORS_ALLOWED_ORIGINS:
@@ -65,7 +65,7 @@ SECURE_HSTS_PRELOAD = True
 # --- Secure Proxy & Redirects ---
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_REDIRECT_EXEMPT = [r'^/api/', r'^/$']
-# CSRF and Allowed Hosts are handled via Render Environment Variables
+# CSRF and allowed hosts are handled by deployment environment variables.
 
 # ─── SMS — Production Configuration ──────────────────────────────────────────
 #
