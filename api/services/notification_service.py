@@ -51,7 +51,39 @@ def _broadcast_notification(notification):
 
 # ─── Core Dispatch ────────────────────────────────────────────────────────────
 
-def notify_admins_in_app(notification_type, title, message, link='', exclude_user=None, actor_name=''):
+def _create_notification(user, notification_type, title, message, link='', actor_name='', dedupe_key=''):
+    """Create one notification, optionally suppressing repeats for the same event."""
+    from django.db import IntegrityError
+    from api.models import Notification
+
+    defaults = {
+        'notification_type': notification_type,
+        'title': title,
+        'message': message,
+        'link': link,
+        'actor_name': actor_name,
+    }
+
+    if dedupe_key:
+        try:
+            notification, created = Notification.objects.get_or_create(
+                recipient=user,
+                dedupe_key=dedupe_key,
+                defaults=defaults,
+            )
+        except IntegrityError:
+            notification = Notification.objects.get(recipient=user, dedupe_key=dedupe_key)
+            created = False
+        if created:
+            _broadcast_notification(notification)
+        return notification
+
+    notification = Notification.objects.create(recipient=user, **defaults)
+    _broadcast_notification(notification)
+    return notification
+
+
+def notify_admins_in_app(notification_type, title, message, link='', exclude_user=None, actor_name='', dedupe_key=''):
     """
     Create an in-app notification for every admin user, optionally excluding
     the admin who triggered the action (to avoid self-notifications).
@@ -61,6 +93,19 @@ def notify_admins_in_app(notification_type, title, message, link='', exclude_use
     admins = User.objects.filter(role='ADMIN')
     if exclude_user and exclude_user.role == 'ADMIN':
         admins = admins.exclude(id=exclude_user.id)
+
+    if dedupe_key:
+        for admin in admins:
+            _create_notification(
+                admin,
+                notification_type,
+                title,
+                message,
+                link=link,
+                actor_name=actor_name,
+                dedupe_key=dedupe_key,
+            )
+        return
 
     notifications = [
         Notification(
@@ -79,25 +124,22 @@ def notify_admins_in_app(notification_type, title, message, link='', exclude_use
             _broadcast_notification(n)
 
 
-def notify_user_in_app(user, notification_type, title, message, link='', actor_name=''):
+def notify_user_in_app(user, notification_type, title, message, link='', actor_name='', dedupe_key=''):
     """Create an in-app notification for a specific user."""
-    from api.models import Notification
-
-    notification = Notification.objects.create(
-        recipient=user,
-        notification_type=notification_type,
-        title=title,
-        message=message,
+    return _create_notification(
+        user,
+        notification_type,
+        title,
+        message,
         link=link,
         actor_name=actor_name,
+        dedupe_key=dedupe_key,
     )
-    _broadcast_notification(notification)
-    return notification
 
 
 # ─── Form Submission Notifications ────────────────────────────────────────────
 
-def notify_form_submitted(user, student, form_label, link=''):
+def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
     """
     Notify admins when any user submits a form.
     Also notify relevant assigned users (specialists, teachers) about
@@ -116,6 +158,7 @@ def notify_form_submitted(user, student, form_label, link=''):
         link=link or f"/workspace?studentId={student.id}&workspace=forms",
         exclude_user=user,
         actor_name=actor,
+        dedupe_key=dedupe_key,
     )
 
     # Notify other assigned users for this student (not the submitter, not admins)
@@ -134,6 +177,7 @@ def notify_form_submitted(user, student, form_label, link=''):
             message=f"{actor} submitted the {form_label.lower()}.",
             link=link or f"/workspace?studentId={student.id}&workspace=forms",
             actor_name=actor,
+            dedupe_key=dedupe_key,
         )
 
 
@@ -159,6 +203,7 @@ def notify_tracker_progress(user, student, cycle, submitted_count):
         link=f"/workspace?studentId={student.id}&workspace=forms",
         exclude_user=user,
         actor_name=actor,
+        dedupe_key=f"tracker-progress:{student.id}:{cycle.id}:{submitted_count}",
     )
 
 
@@ -173,22 +218,8 @@ def notify_auto_report_ready(student, doc):
         message=f"All trackers submitted. Draft report auto-generated and awaiting review.",
         link=f"/workspace?studentId={student.id}&workspace=reports&view=monthly&docId={doc.id}",
         actor_name="System",
+        dedupe_key=f"monthly-report-generated:{doc.id}:admins",
     )
-
-    # Also notify assigned parents that progress tracking is complete
-    from api.models import StudentAccess
-    parents = StudentAccess.objects.filter(
-        student=student, user__role='PARENT'
-    ).select_related('user')
-    for sa in parents:
-        notify_user_in_app(
-            user=sa.user,
-            notification_type='REPORT_GENERATED',
-            title=f"Progress report in review for {student_name}",
-            message="All monthly trackers have been submitted. The report is being reviewed.",
-            link=f"/workspace?studentId={student.id}&workspace=reports",
-            actor_name="System",
-        )
 
 
 def notify_auto_iep_ready(student, doc):
@@ -200,6 +231,7 @@ def notify_auto_iep_ready(student, doc):
         message="Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize when ready.",
         link=f"/workspace?studentId={student.id}&workspace=reports&view=iep&docId={doc.id}",
         actor_name="System",
+        dedupe_key=f"iep-generated:{doc.id}:admins",
     )
 
 
@@ -270,7 +302,7 @@ def notify_student_status_change(student, new_status, changed_by=None):
         )
 
 
-def notify_staff_assigned(student, staff_user, role_label, assigned_by=None):
+def notify_staff_assigned(student, staff_user, role_label, assigned_by=None, dedupe_key=''):
     """Notify the assigned staff member that they've been assigned to a student."""
     student_name = f"{student.first_name} {student.last_name}"
     actor = _user_display_name(assigned_by) if assigned_by else "Admin"
@@ -289,7 +321,109 @@ def notify_staff_assigned(student, staff_user, role_label, assigned_by=None):
         message=f"{actor} assigned you as {role_label.lower()} for {student_name}.",
         link=link,
         actor_name=actor,
+        dedupe_key=dedupe_key,
     )
+
+
+def notify_parent_team_updated(student, staff_user, role_label, assigned_by=None, dedupe_key=''):
+    """Warm parent-facing notice when a specialist or teacher is added to the team."""
+    from api.models import StudentAccess
+
+    student_name = f"{student.first_name} {student.last_name}"
+    staff_name = _user_display_name(staff_user)
+    link = f"/workspace?studentId={student.id}&workspace=team"
+
+    parents = StudentAccess.objects.filter(
+        student=student,
+        user__role='PARENT',
+    ).select_related('user')
+    for sa in parents:
+        notify_user_in_app(
+            user=sa.user,
+            notification_type='SPECIALIST_ASSIGNED' if staff_user.role == 'SPECIALIST' else 'TEACHER_ASSIGNED',
+            title=f"{student_name}'s team was updated",
+            message=f"{staff_name} was added as {role_label.lower()} for {student_name}.",
+            link=link,
+            actor_name=_user_display_name(assigned_by) if assigned_by else "ARASE",
+            dedupe_key=dedupe_key,
+        )
+
+
+def notify_specialist_form_finalized(user, student, cycle, form_label):
+    """Notify admins once the full specialist-owned assessment/tracker is finalized."""
+    student_name = f"{student.first_name} {student.last_name}"
+    actor = _user_display_name(user) if user else "Specialist team"
+    notify_admins_in_app(
+        notification_type='FORM_SUBMITTED',
+        title=f"{form_label} finalized for {student_name}",
+        message=f"{actor} finalized the {form_label.lower()}.",
+        link=f"/workspace?studentId={student.id}&workspace=forms",
+        exclude_user=user,
+        actor_name=actor,
+        dedupe_key=f"specialist-form-finalized:{form_label}:{student.id}:{cycle.id}",
+    )
+
+
+def notify_iep_finalized(student, doc_id):
+    """Notify parents and assigned specialists when the finalized IEP is ready."""
+    from api.models import StudentAccess
+
+    student_name = f"{student.first_name} {student.last_name}"
+    link = f"/workspace?studentId={student.id}&workspace=reports&view=iep&docId={doc_id}"
+    access_entries = StudentAccess.objects.filter(
+        student=student,
+        user__role__in=['PARENT', 'SPECIALIST'],
+    ).select_related('user')
+
+    for access in access_entries:
+        user = access.user
+        if user.role == 'PARENT':
+            title = f"{student_name}'s IEP is ready"
+            message = f"The finalized IEP for {student_name} is ready to view."
+        else:
+            title = f"IEP finalized: {student_name}"
+            message = "The IEP has been finalized and is ready to view."
+
+        notify_user_in_app(
+            user=user,
+            notification_type='IEP_GENERATED',
+            title=title,
+            message=message,
+            link=link,
+            actor_name="ARASE",
+            dedupe_key=f"iep-finalized:{doc_id}",
+        )
+
+
+def notify_monthly_report_finalized(student, doc_id):
+    """Notify parents, specialists, and teachers when a monthly report is ready."""
+    from api.models import StudentAccess
+
+    student_name = f"{student.first_name} {student.last_name}"
+    link = f"/workspace?studentId={student.id}&workspace=reports&view=monthly&docId={doc_id}"
+    access_entries = StudentAccess.objects.filter(
+        student=student,
+        user__role__in=['PARENT', 'SPECIALIST', 'TEACHER'],
+    ).select_related('user')
+
+    for access in access_entries:
+        user = access.user
+        if user.role == 'PARENT':
+            title = f"{student_name}'s monthly report is ready"
+            message = f"The finalized monthly progress report for {student_name} is ready to view."
+        else:
+            title = f"Monthly report finalized: {student_name}"
+            message = "The monthly progress report has been finalized and is ready to view."
+
+        notify_user_in_app(
+            user=user,
+            notification_type='REPORT_FINALIZED',
+            title=title,
+            message=message,
+            link=link,
+            actor_name="ARASE",
+            dedupe_key=f"monthly-report-finalized:{doc_id}",
+        )
 
 
 def notify_new_user_registered(new_user):

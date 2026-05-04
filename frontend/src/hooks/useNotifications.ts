@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api, { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
-import Cookies from 'js-cookie';
 
 export interface Notification {
     id: number;
@@ -45,7 +44,7 @@ export function useNotifications() {
             await api.post(`/api/notifications/${id}/read/`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
-        } catch (error) {
+        } catch {
             toast.error("Failed to mark notification as read.");
         }
     };
@@ -55,7 +54,7 @@ export function useNotifications() {
             await api.post('/api/notifications/read-all/');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
-        } catch (error) {
+        } catch {
             toast.error("Failed to mark all as read.");
         }
     };
@@ -70,7 +69,7 @@ export function useNotifications() {
                 }
                 return prev.filter(n => n.id !== id);
             });
-        } catch (error) {
+        } catch {
             toast.error("Failed to delete notification.");
         }
     };
@@ -79,11 +78,8 @@ export function useNotifications() {
     const connectWs = useCallback(() => {
         if (typeof window === 'undefined') return;
 
-        const token = Cookies.get('access_token');
-        if (!token) return;
-
         try {
-            const url = `${getWsUrl()}?token=${token}`;
+            const url = getWsUrl();
             const ws = new WebSocket(url);
 
             ws.onopen = () => {
@@ -98,9 +94,11 @@ export function useNotifications() {
                         setNotifications(prev => {
                             // Prevent duplicates
                             if (prev.some(n => n.id === incoming.id)) return prev;
+                            if (!incoming.is_read) {
+                                setUnreadCount(c => c + 1);
+                            }
                             return [incoming, ...prev].slice(0, 50);
                         });
-                        setUnreadCount(c => c + 1);
                     }
                 } catch (e) {
                     console.error('[WS] Failed to parse message:', e);

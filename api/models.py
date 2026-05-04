@@ -343,11 +343,19 @@ class Notification(models.Model):
     message = models.TextField(blank=True, default='')
     link = models.CharField(max_length=500, blank=True, default='')
     actor_name = models.CharField(max_length=200, blank=True, default='', help_text="Display name of the user who triggered this notification.")
+    dedupe_key = models.CharField(max_length=255, blank=True, default='', db_index=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['recipient', 'dedupe_key'],
+                condition=~models.Q(dedupe_key=''),
+                name='unique_notification_recipient_dedupe_key',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.notification_type} -> {self.recipient.email}"

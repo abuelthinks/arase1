@@ -315,7 +315,12 @@ class ParentAssessmentViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
-        notify_form_submitted(self.request.user, instance.student, 'Parent Assessment')
+        notify_form_submitted(
+            self.request.user,
+            instance.student,
+            'Parent Assessment',
+            dedupe_key=f"form-submitted:parent-assessment:{instance.id}",
+        )
         from .services.cycle_service import check_and_trigger_assessment_generation
         check_and_trigger_assessment_generation(instance.student, instance.report_cycle)
 
@@ -337,7 +342,12 @@ class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
-        notify_form_submitted(self.request.user, instance.student, 'Specialist Assessment')
+        notify_form_submitted(
+            self.request.user,
+            instance.student,
+            'Specialist Assessment',
+            dedupe_key=f"form-submitted:specialist-assessment:{instance.id}",
+        )
         from .services.collaboration_service import broadcast_section_saved
         from django.db import transaction
         v2 = (instance.form_data or {}).get('v2') if isinstance(instance.form_data, dict) else None
@@ -427,7 +437,12 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
-        notify_form_submitted(self.request.user, instance.student, 'Parent Progress Tracker')
+        notify_form_submitted(
+            self.request.user,
+            instance.student,
+            'Parent Progress Tracker',
+            dedupe_key=f"form-submitted:parent-tracker:{instance.id}",
+        )
         parent_done = True  # just submitted
         multi_done = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
         sped_done = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
@@ -508,7 +523,13 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
             instance.submitted_by = user
             instance.save(update_fields=['form_data', 'submitted_by'])
 
-        notify_form_submitted(user, instance.student, 'Specialist Progress Tracker')
+        if instance.finalized_at:
+            notify_form_submitted(
+                user,
+                instance.student,
+                'Specialist Progress Tracker',
+                dedupe_key=f"form-submitted:specialist-tracker:{instance.id}",
+            )
         parent_done = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
         multi_done = True  # just submitted
         sped_done = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
@@ -543,7 +564,12 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(submitted_by=self.request.user)
-        notify_form_submitted(self.request.user, instance.student, 'Teacher Progress Tracker')
+        notify_form_submitted(
+            self.request.user,
+            instance.student,
+            'Teacher Progress Tracker',
+            dedupe_key=f"form-submitted:teacher-tracker:{instance.id}",
+        )
         parent_done = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
         multi_done = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
         sped_done = True  # just submitted
@@ -806,6 +832,16 @@ class ParentOnboardView(APIView):
         try:
             from .services.student_service import onboard_parent_student
             student, is_new = onboard_parent_student(user, student_data, form_data, student_id)
+            try:
+                assessment = ParentAssessment.objects.filter(student=student).order_by('-created_at').first()
+                notify_form_submitted(
+                    user,
+                    student,
+                    'Parent Assessment',
+                    dedupe_key=f"form-submitted:parent-assessment:{assessment.id if assessment else student.id}",
+                )
+            except Exception:
+                logger.warning("Failed to notify admins for parent assessment submission", exc_info=True)
 
             if is_new:
                 return Response({
@@ -1023,7 +1059,13 @@ class AssignSpecialistView(APIView):
         try:
             from .services.student_service import assign_staff_to_student
             from rest_framework.exceptions import ValidationError
-            staff, student = assign_staff_to_student(student_id, specialist_id, 'SPECIALIST', specialties=specialties)
+            staff, student = assign_staff_to_student(
+                student_id,
+                specialist_id,
+                'SPECIALIST',
+                specialties=specialties,
+                assigned_by=request.user,
+            )
             return Response({"message": f"Specialist {staff.email} assigned."})
         except ValidationError as ve:
             detail = ve.detail
@@ -1047,7 +1089,12 @@ class AssignTeacherView(APIView):
 
         try:
             from .services.student_service import assign_staff_to_student
-            staff, student = assign_staff_to_student(student_id, teacher_id, 'TEACHER')
+            staff, student = assign_staff_to_student(
+                student_id,
+                teacher_id,
+                'TEACHER',
+                assigned_by=request.user,
+            )
             return Response({"message": f"Teacher {staff.email} assigned to {student.first_name}."})
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Teacher or Student not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -1605,6 +1652,13 @@ class IEPDetailView(APIView):
         action_label = 'FINALIZED' if new_status == 'FINAL' else 'EDITED_DRAFT'
         record_document_version(doc, request.user, action_label)
 
+        if new_status == 'FINAL':
+            try:
+                from .services.notification_service import notify_iep_finalized
+                notify_iep_finalized(doc.student, doc.id)
+            except Exception:
+                logger.warning("Failed to notify users for finalized IEP", exc_info=True)
+
         return Response({"message": "IEP updated.", "iep_data": doc.iep_data, "status": doc.status})
 
 
@@ -1858,7 +1912,7 @@ class MonthlyReportDetailView(APIView):
         action_label = 'FINALIZED' if new_status == 'FINAL' else 'EDITED_DRAFT'
         record_document_version(doc, request.user, action_label)
 
-        # When finalizing, complete the cycle and notify parents
+        # When finalizing, complete the cycle and notify the assigned team
         if new_status == 'FINAL':
             try:
                 from .services.cycle_service import complete_cycle
@@ -1866,13 +1920,8 @@ class MonthlyReportDetailView(APIView):
             except Exception:
                 pass  # Don't block finalization if cycle update fails
             try:
-                from .services.notification_service import notify_parent_report_finalized
-                from .models import StudentAccess
-                parents = StudentAccess.objects.filter(
-                    student=doc.student, user__role='PARENT'
-                ).select_related('user')
-                for sa in parents:
-                    notify_parent_report_finalized(sa.user, doc.student, doc.id)
+                from .services.notification_service import notify_monthly_report_finalized
+                notify_monthly_report_finalized(doc.student, doc.id)
             except Exception:
                 pass  # Don't block finalization if notification fails
 

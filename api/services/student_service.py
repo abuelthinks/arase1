@@ -293,7 +293,7 @@ def get_student_profile_data(student, user=None):
     }
 
 
-def assign_staff_to_student(student_id, staff_id, expected_role, specialties=None):
+def assign_staff_to_student(student_id, staff_id, expected_role, specialties=None, assigned_by=None):
     """
     Assigns a user (specialist/teacher/parent) to a student.
 
@@ -355,7 +355,9 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
         if student.status not in ('ENROLLED', 'INTEGRATED'):
             raise ValidationError("Cannot assign a Teacher until the student is ENROLLED or INTEGRATED.")
             
-    access, _ = StudentAccess.objects.get_or_create(user=staff, student=student)
+    existing_access = StudentAccess.objects.filter(user=staff, student=student).first()
+    old_specialties = existing_access.specialty_list() if existing_access else []
+    access, created = StudentAccess.objects.get_or_create(user=staff, student=student)
     if expected_role == 'SPECIALIST':
         access.assigned_specialties = assigned_specialties
         access.save(update_fields=['assigned_specialties'])
@@ -365,6 +367,38 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
         student.status = 'ASSESSMENT_SCHEDULED'
         student.save()
     # Removed observation status update because teacher is assigned post-enrollment
+
+    assignment_changed = created
+    if expected_role == 'SPECIALIST':
+        assignment_changed = created or old_specialties != assigned_specialties
+
+    if assignment_changed and expected_role in ('SPECIALIST', 'TEACHER'):
+        from api.services.notification_service import (
+            notify_parent_team_updated,
+            notify_staff_assigned,
+        )
+        if expected_role == 'SPECIALIST':
+            specialty_label = ', '.join(assigned_specialties)
+            role_label = f"{specialty_label} specialist" if specialty_label else "Specialist"
+            dedupe_key = f"staff-assigned:{student.id}:{staff.id}:SPECIALIST:{'|'.join(assigned_specialties)}"
+        else:
+            role_label = "Teacher"
+            dedupe_key = f"staff-assigned:{student.id}:{staff.id}:TEACHER"
+
+        notify_staff_assigned(
+            student,
+            staff,
+            role_label,
+            assigned_by=assigned_by,
+            dedupe_key=dedupe_key,
+        )
+        notify_parent_team_updated(
+            student,
+            staff,
+            role_label,
+            assigned_by=assigned_by,
+            dedupe_key=dedupe_key,
+        )
 
     return staff, student
 

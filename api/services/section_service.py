@@ -319,6 +319,17 @@ def _maybe_finalize(form_type: str, instance, user):
             instance.submitted_by = finalizing_user
         instance.save(update_fields=["finalized_at", "finalized_by", "submitted_by"])
 
+        try:
+            from .notification_service import notify_specialist_form_finalized
+            notify_specialist_form_finalized(
+                finalizing_user,
+                instance.student,
+                instance.report_cycle,
+                "Specialist Assessment" if form_type == "assessment" else "Specialist Progress Tracker",
+            )
+        except Exception:
+            pass
+
         if form_type == "assessment":
             from .cycle_service import check_and_trigger_iep_generation
             student = instance.student
