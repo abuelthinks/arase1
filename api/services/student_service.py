@@ -293,7 +293,7 @@ def get_student_profile_data(student, user=None):
     }
 
 
-def assign_staff_to_student(student_id, staff_id, expected_role, specialties=None, assigned_by=None):
+def assign_staff_to_student(student_id, staff_id, expected_role, specialties=None, assigned_by=None, send_notifications=True):
     """
     Assigns a user (specialist/teacher/parent) to a student.
 
@@ -372,31 +372,42 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
     if expected_role == 'SPECIALIST':
         assignment_changed = created or old_specialties != assigned_specialties
 
-    if assignment_changed and expected_role in ('SPECIALIST', 'TEACHER'):
-        from api.services.notification_service import (
-            notify_parent_team_updated,
-            notify_staff_assigned,
-        )
-        if expected_role == 'SPECIALIST':
-            specialty_label = ', '.join(assigned_specialties)
-            role_label = f"{specialty_label} specialist" if specialty_label else "Specialist"
-        else:
-            role_label = "Teacher"
-
-        notify_staff_assigned(
+    if send_notifications and assignment_changed and expected_role in ('SPECIALIST', 'TEACHER'):
+        _notify_staff_added_to_team(
             student,
             staff,
-            role_label,
-            assigned_by=assigned_by,
-        )
-        notify_parent_team_updated(
-            student,
-            staff,
-            role_label,
+            assigned_specialties if expected_role == 'SPECIALIST' else [],
             assigned_by=assigned_by,
         )
 
     return staff, student
+
+
+def _notify_staff_added_to_team(student, staff, assigned_specialties=None, assigned_by=None):
+    if staff.role not in ('SPECIALIST', 'TEACHER'):
+        return
+    from api.services.notification_service import (
+        notify_parent_team_updated,
+        notify_staff_assigned,
+    )
+    if staff.role == 'SPECIALIST':
+        specialty_label = ', '.join(assigned_specialties or [])
+        role_label = f"{specialty_label} specialist" if specialty_label else "Specialist"
+    else:
+        role_label = "Teacher"
+
+    notify_staff_assigned(
+        student,
+        staff,
+        role_label,
+        assigned_by=assigned_by,
+    )
+    notify_parent_team_updated(
+        student,
+        staff,
+        role_label,
+        assigned_by=assigned_by,
+    )
 
 
 def unassign_staff_from_student(student_id, staff_id, specialty=None, unassigned_by=None):
@@ -491,45 +502,81 @@ def update_student_team(student_id, specialist_assignments, teacher_ids, changed
     )
     existing_specialists = {access.user_id: access for access in existing_access if access.user.role == 'SPECIALIST'}
     existing_teachers = {access.user_id: access for access in existing_access if access.user.role == 'TEACHER'}
+    staff_added = []
+    staff_partially_removed = []
+    removed_specialties_detected = False
 
     for staff_id, specialties in desired_specialists.items():
         current = existing_specialists.get(staff_id)
-        if current and current.specialty_list() == specialties:
+        current_specialties = current.specialty_list() if current else []
+        if current and current_specialties == specialties:
             continue
-        assign_staff_to_student(
+        current_specialty_set = set(current_specialties)
+        desired_specialty_set = set(specialties)
+        added_specialties = [
+            specialty for specialty in specialties
+            if specialty not in current_specialty_set
+        ]
+        removed_specialties = [
+            specialty for specialty in current_specialties
+            if specialty not in desired_specialty_set
+        ]
+        staff, _ = assign_staff_to_student(
             student_id,
             staff_id,
             'SPECIALIST',
             specialties=specialties,
             assigned_by=changed_by,
+            send_notifications=False,
         )
+        if added_specialties:
+            staff_added.append((staff, specialties))
+        if removed_specialties:
+            removed_specialties_detected = True
+            staff_partially_removed.append((staff, removed_specialties))
 
     for staff_id in desired_teachers:
         if staff_id in existing_teachers:
             continue
-        assign_staff_to_student(
+        staff, _ = assign_staff_to_student(
             student_id,
             staff_id,
             'TEACHER',
             assigned_by=changed_by,
+            send_notifications=False,
         )
+        staff_added.append((staff, []))
 
-    for staff_id, access in existing_specialists.items():
-        desired_specialties = desired_specialists.get(staff_id)
-        if desired_specialties is None:
+    for staff_id in existing_specialists:
+        if staff_id not in desired_specialists:
             unassign_staff_from_student(student_id, staff_id, unassigned_by=changed_by)
-            continue
-
-        for specialty in set(access.specialty_list()) - set(desired_specialties):
-            unassign_staff_from_student(
-                student_id,
-                staff_id,
-                specialty=specialty,
-                unassigned_by=changed_by,
-            )
 
     for staff_id in set(existing_teachers) - desired_teachers:
         unassign_staff_from_student(student_id, staff_id, unassigned_by=changed_by)
+
+    if removed_specialties_detected:
+        from api.services.section_service import re_evaluate_finalization
+        re_evaluate_finalization(student_id)
+
+    notified_staff_ids = set()
+    for staff, specialties in staff_added:
+        if staff.id in notified_staff_ids:
+            continue
+        notified_staff_ids.add(staff.id)
+        _notify_staff_added_to_team(
+            student,
+            staff,
+            specialties,
+            assigned_by=changed_by,
+        )
+    for staff, removed_specialties in staff_partially_removed:
+        _notify_staff_removed_from_team(
+            student,
+            staff,
+            removed_specialties,
+            False,
+            changed_by,
+        )
 
     return student
 

@@ -462,7 +462,6 @@ function UnifiedWorkspaceContent() {
             } else {
                 setStagedAssignedStaff((prev) => prev.filter((member) => member.id !== unassigningStaff.id));
             }
-            toast.success("Team selection updated.");
         } catch {
             toast.error("Failed to update team selection.");
         } finally {
@@ -481,7 +480,6 @@ function UnifiedWorkspaceContent() {
             } else {
                 stageTeacher(staff);
             }
-            toast.success("Team selection updated.");
         } catch {
             toast.error("Team change failed.");
         } finally {
