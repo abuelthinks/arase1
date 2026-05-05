@@ -318,7 +318,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             <span style={{ marginRight: "8px" }}>📊</span>Monthly Progress Report
                         </h3>
                         <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px", marginBottom: "14px" }}>
-                            Generates the AI monthly tracking document from all 3 submitted progress tracker forms. Also updates IEP Section 10.
+                            Generates the AI monthly tracking document from all required progress tracker forms. Also updates IEP Section 10.
                         </p>
 
                         {/* Progress Tracker Status Pills */}

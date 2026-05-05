@@ -301,6 +301,8 @@ class SecurityHardeningTests(APITestCase):
             report_cycle=self.active_cycle,
             submitted_by=self.specialist,
             form_data={'progress': 'specialist submitted'},
+            finalized_at=timezone.now(),
+            finalized_by=self.specialist,
         )
         SpedProgressTracker.objects.create(
             student=self.student,

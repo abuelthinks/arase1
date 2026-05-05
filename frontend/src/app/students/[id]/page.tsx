@@ -660,11 +660,11 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
 
                     <div style={{ marginBottom: "1rem" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#64748b", marginBottom: "6px" }}>
-                            <span>Progress ({cycle_status.trackers.submitted_count}/3 trackers)</span>
-                            <span>{Math.round((cycle_status.trackers.submitted_count/3)*100)}%</span>
+                            <span>Progress ({cycle_status.trackers.submitted_count}/{cycle_status.trackers.total} trackers)</span>
+                            <span>{Math.round((cycle_status.trackers.submitted_count/cycle_status.trackers.total)*100)}%</span>
                         </div>
                         <div style={{ height: "6px", background: "#e2e8f0", borderRadius: "3px", overflow: "hidden" }}>
-                            <div style={{ width: `${(cycle_status.trackers.submitted_count/3)*100}%`, height: "100%", background: "#0ea5e9", transition: "width 0.5s ease" }}></div>
+                            <div style={{ width: `${(cycle_status.trackers.submitted_count/cycle_status.trackers.total)*100}%`, height: "100%", background: "#0ea5e9", transition: "width 0.5s ease" }}></div>
                         </div>
                     </div>
 

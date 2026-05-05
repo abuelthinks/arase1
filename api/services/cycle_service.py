@@ -125,7 +125,7 @@ def ensure_current_cycle(student):
 
 def check_and_trigger_auto_generation(student, cycle):
     """
-    Called after every tracker submission.  If all 3 trackers exist for this
+    Called after every tracker submission. If all required trackers exist for this
     cycle, triggers monthly report generation (sync — no Celery dependency).
 
     The generated report is saved as DRAFT so the admin can review before
@@ -229,9 +229,15 @@ def get_cycle_status_summary(student, cycle):
     grace_deadline = cycle.end_date + timedelta(days=GRACE_PERIOD_DAYS)
 
     p = ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-    m = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-    s = SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
+    m = MultidisciplinaryProgressTracker.objects.filter(
+        student=student,
+        report_cycle=cycle,
+        finalized_at__isnull=False,
+    ).exists()
+    teacher_required = student.status == 'INTEGRATED'
+    s = teacher_required and SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
     submitted_count = sum([p, m, s])
+    total_required = 3 if teacher_required else 2
 
     # Check if a monthly report already exists for this cycle
     report = GeneratedDocument.objects.filter(
@@ -251,7 +257,7 @@ def get_cycle_status_summary(student, cycle):
             'specialist': m,
             'teacher': s,
             'submitted_count': submitted_count,
-            'total': 3,
+            'total': total_required,
         },
         'report': {
             'exists': bool(report),

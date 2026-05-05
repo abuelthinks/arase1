@@ -443,10 +443,7 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
             'Parent Progress Tracker',
             dedupe_key=f"form-submitted:parent-tracker:{instance.id}",
         )
-        parent_done = True  # just submitted
-        multi_done = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        sped_done = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([parent_done, multi_done, sped_done]))
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle)
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -470,7 +467,8 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
         merge only the fields this user is allowed to write to.
         """
         from .services.collaboration_service import broadcast_section_saved
-        from .specialties import TRACKER_FIELD_OWNERS, normalize_specialty
+        from .specialties import TRACKER_DISCIPLINE_SECTIONS, TRACKER_FIELD_OWNERS, normalize_specialty
+        from .services.section_service import _maybe_finalize
         from django.db import transaction
 
         serializer = self.get_serializer(data=request.data)
@@ -482,8 +480,10 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
         incoming_form_data = serializer.validated_data.get('form_data') or {}
 
         user = request.user
+        access = StudentAccess.objects.filter(user=user, student=student).first()
         user_specialties = {
-            normalize_specialty(s) for s in (user.specialty_list() if hasattr(user, 'specialty_list') else [])
+            normalize_specialty(s)
+            for s in (access.specialty_list() if access else user.specialty_list())
             if s
         }
 
@@ -523,17 +523,24 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
             instance.submitted_by = user
             instance.save(update_fields=['form_data', 'submitted_by'])
 
-        if instance.finalized_at:
-            notify_form_submitted(
-                user,
-                instance.student,
-                'Specialist Progress Tracker',
-                dedupe_key=f"form-submitted:specialist-tracker:{instance.id}",
-            )
-        parent_done = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        multi_done = True  # just submitted
-        sped_done = SpedProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        notify_tracker_progress(user, instance.student, instance.report_cycle, sum([parent_done, multi_done, sped_done]))
+            if user.role == 'SPECIALIST':
+                for specialty in user_specialties:
+                    section_key = TRACKER_DISCIPLINE_SECTIONS.get(specialty)
+                    if not section_key:
+                        continue
+                    SectionContribution.objects.update_or_create(
+                        defaults={
+                            'form_type': 'tracker',
+                            'specialist': user,
+                            'specialty': specialty,
+                            'status': 'submitted',
+                            'submitted_at': timezone.now(),
+                        },
+                        tracker=instance,
+                        section_key=section_key,
+                    )
+                _maybe_finalize('tracker', instance, user)
+
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -570,10 +577,7 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
             'Teacher Progress Tracker',
             dedupe_key=f"form-submitted:teacher-tracker:{instance.id}",
         )
-        parent_done = ParentProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        multi_done = MultidisciplinaryProgressTracker.objects.filter(student=instance.student, report_cycle=instance.report_cycle).exists()
-        sped_done = True  # just submitted
-        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle, sum([parent_done, multi_done, sped_done]))
+        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle)
         from .services.cycle_service import check_and_trigger_auto_generation
         check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
@@ -912,7 +916,7 @@ class AdminDashboardActionsView(APIView):
             )
             multi_done_cycle_ids = set(
                 MultidisciplinaryProgressTracker.objects
-                .filter(report_cycle_id__in=cycle_ids)
+                .filter(report_cycle_id__in=cycle_ids, finalized_at__isnull=False)
                 .values_list('report_cycle_id', flat=True)
             )
             sped_done_cycle_ids = set(

@@ -339,6 +339,11 @@ def _maybe_finalize(form_type: str, instance, user):
             check_and_trigger_iep_generation(student, instance.report_cycle)
         else:
             from .cycle_service import check_and_trigger_auto_generation
+            try:
+                from .notification_service import notify_tracker_progress
+                notify_tracker_progress(finalizing_user, instance.student, instance.report_cycle)
+            except Exception:
+                pass
             check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
 

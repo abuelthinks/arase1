@@ -181,19 +181,44 @@ def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
         )
 
 
-def notify_tracker_progress(user, student, cycle, submitted_count):
+def _tracker_progress_counts(student, cycle):
+    from api.models import (
+        ParentProgressTracker,
+        MultidisciplinaryProgressTracker,
+        SpedProgressTracker,
+    )
+    parent_done = ParentProgressTracker.objects.filter(
+        student=student,
+        report_cycle=cycle,
+    ).exists()
+    specialist_done = MultidisciplinaryProgressTracker.objects.filter(
+        student=student,
+        report_cycle=cycle,
+        finalized_at__isnull=False,
+    ).exists()
+    teacher_required = student.status == 'INTEGRATED'
+    teacher_done = teacher_required and SpedProgressTracker.objects.filter(
+        student=student,
+        report_cycle=cycle,
+    ).exists()
+    return sum([parent_done, specialist_done, teacher_done]), 3 if teacher_required else 2
+
+
+def notify_tracker_progress(user, student, cycle, submitted_count=None, total_required=None):
     """
-    Notify admins about tracker progress (e.g., "2/3 trackers submitted").
+    Notify admins about tracker progress (e.g., "2/2 trackers submitted").
     """
     student_name = f"{student.first_name} {student.last_name}"
-    actor = _user_display_name(user)
+    actor = _user_display_name(user) if user else "ARASE"
     label = cycle.label or "the active cycle"
+    if submitted_count is None or total_required is None:
+        submitted_count, total_required = _tracker_progress_counts(student, cycle)
 
-    if submitted_count >= 3:
+    if submitted_count >= total_required:
         title = f"All trackers submitted for {student_name}"
-        message = f"All 3 progress trackers are in for {label}. Report auto-generation will begin."
+        message = f"All {total_required} progress trackers are in for {label}. Report auto-generation will begin."
     else:
-        title = f"Tracker progress: {student_name} ({submitted_count}/3)"
+        title = f"Tracker progress: {student_name} ({submitted_count}/{total_required})"
         message = f"{actor} submitted a tracker for {label}."
 
     notify_admins_in_app(
@@ -201,9 +226,9 @@ def notify_tracker_progress(user, student, cycle, submitted_count):
         title=title,
         message=message,
         link=f"/workspace?studentId={student.id}&workspace=forms",
-        exclude_user=user,
+        exclude_user=user if user else None,
         actor_name=actor,
-        dedupe_key=f"tracker-progress:{student.id}:{cycle.id}:{submitted_count}",
+        dedupe_key=f"tracker-progress:{student.id}:{cycle.id}:{submitted_count}:{total_required}",
     )
 
 
@@ -590,10 +615,11 @@ def notify_report_ready(admin_user, student, report_id):
     student_name = f"{student.first_name} {student.last_name}"
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
     report_url = f"{frontend_url}/workspace?studentId={student.id}&workspace=reports"
+    total_required = 3 if student.status == 'INTEGRATED' else 2
     subject = f"Monthly report auto-generated for {student_name}"
     message = (
         f"Hi {admin_user.first_name or 'Admin'},\n\n"
-        f"All 3 progress trackers have been submitted for {student_name}. "
+        f"All {total_required} progress trackers have been submitted for {student_name}. "
         f"The monthly progress report has been automatically generated and saved as a DRAFT.\n\n"
         f"Please review and finalize it here:\n"
         f"{report_url}\n\n"
