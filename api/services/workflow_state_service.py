@@ -43,6 +43,21 @@ def has_finalized_multidisciplinary_assessment(student: Student, cycle=None) -> 
     return get_latest_finalized_assessment(student, cycle) is not None
 
 
+def get_latest_finalized_iep(student: Student, cycle=None):
+    qs = GeneratedDocument.objects.filter(
+        student=student,
+        document_type="IEP",
+        status="FINAL",
+    )
+    if cycle is not None:
+        qs = qs.filter(report_cycle=cycle)
+    return qs.order_by("-created_at").first()
+
+
+def has_finalized_iep(student: Student, cycle=None) -> bool:
+    return get_latest_finalized_iep(student, cycle) is not None
+
+
 def expected_assessment_status(student: Student) -> str:
     if has_finalized_multidisciplinary_assessment(student):
         return "ASSESSED"

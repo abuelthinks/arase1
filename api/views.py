@@ -27,7 +27,7 @@ from .services.notification_service import (
     notify_student_status_change, notify_new_user_registered,
     notify_assessment_scheduled, notify_assessment_cancelled,
 )
-from .services.workflow_state_service import has_finalized_multidisciplinary_assessment
+from .services.workflow_state_service import has_finalized_iep, has_finalized_multidisciplinary_assessment
 from .serializers import (
     StudentSerializer,
     ParentAssessmentSerializer, MultidisciplinaryAssessmentSerializer,
@@ -987,24 +987,48 @@ class AdminDashboardActionsView(APIView):
                     })
 
         # 2. Auto-generated IEP drafts waiting for admin review.
+        draft_iep_student_ids = set()
         for doc in GeneratedDocument.objects.filter(
             document_type='IEP', status='DRAFT'
         ).select_related('student').order_by('-created_at'):
+            draft_iep_student_ids.add(doc.student_id)
             actions.append({
                 "id": f"review_iep_{doc.id}",
-                "title": f"Review IEP Draft: {doc.student.first_name} {doc.student.last_name}",
+                "title": f"Finalize IEP Draft: {doc.student.first_name} {doc.student.last_name}",
                 "description": "Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize.",
                 "action_text": "Review →",
+                "description": "IEP draft auto-generated from finalized assessment inputs. Review, edit if needed, then finalize.",
+                "action_text": "Finalize ->",
                 "link": f"/workspace?studentId={doc.student_id}&workspace=reports&view=iep&docId={doc.id}",
                 "type": "positive",
             })
 
         # 3. Ready for Enrollment Review
         for s in Student.objects.filter(status='ASSESSED'):
+            if s.id in draft_iep_student_ids:
+                continue
+            cycle = ReportCycle.objects.filter(student=s, is_active=True).first()
+            latest_iep = GeneratedDocument.objects.filter(
+                student=s,
+                document_type='IEP',
+            ).order_by('-created_at').first()
+            has_parent_assessment = ParentAssessment.objects.filter(student=s, report_cycle=cycle).exists()
+            if not latest_iep and has_parent_assessment and has_finalized_multidisciplinary_assessment(s, cycle):
+                actions.append({
+                    "id": f"generate_iep_{s.id}",
+                    "title": f"Generate IEP Draft: {s.first_name} {s.last_name}",
+                    "description": "Specialist assessment is finalized, but no IEP draft exists yet.",
+                    "action_text": "Generate ->",
+                    "link": f"/workspace?studentId={s.id}&workspace=reports&view=generator",
+                    "type": "warning",
+                })
+                continue
+            if not has_finalized_iep(s, cycle):
+                continue
             actions.append({
                 "id": f"review_{s.id}",
                 "title": f"Ready for Enrollment Review: {s.first_name} {s.last_name}",
-                "description": "Specialist assessment complete. Awaiting admin placement decision.",
+                "description": "Specialist assessment and IEP are finalized. Awaiting admin placement decision.",
                 "action_text": "Review →",
                 "link": f"/workspace?studentId={s.id}",
                 "type": "info"
@@ -1257,9 +1281,15 @@ class EnrollStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
+            cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
             if not has_finalized_multidisciplinary_assessment(student):
                 return Response(
                     {"error": "A finalized multidisciplinary assessment is required before enrollment."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not has_finalized_iep(student, cycle):
+                return Response(
+                    {"error": "A finalized IEP is required before enrollment."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             student.status = 'ENROLLED'
@@ -1283,9 +1313,15 @@ class IntegrateStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
+            cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
             if not has_finalized_multidisciplinary_assessment(student):
                 return Response(
                     {"error": "A finalized multidisciplinary assessment is required before integration."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not has_finalized_iep(student, cycle):
+                return Response(
+                    {"error": "A finalized IEP is required before integration."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             student.status = 'INTEGRATED'

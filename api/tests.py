@@ -9,6 +9,8 @@ from api.models import (
     Invitation,
     ParentAssessment,
     ParentProgressTracker,
+    GeneratedDocument,
+    MultidisciplinaryAssessment,
     MultidisciplinaryProgressTracker,
     Notification,
     ReportCycle,
@@ -326,6 +328,85 @@ class SecurityHardeningTests(APITestCase):
         )
         self.assertEqual(monthly_action['link'], f'/workspace?studentId={self.student.id}&workspace=reports&view=generator')
         self.assertEqual(monthly_action['type'], 'positive')
+
+    def test_admin_actions_include_finalize_iep_draft_before_enrollment_review(self):
+        self.student.status = 'ASSESSED'
+        self.student.save(update_fields=['status'])
+        doc = GeneratedDocument.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            document_type='IEP',
+            status='DRAFT',
+            iep_data={'section1_student_info': {}},
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get('/api/dashboard/actions/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        actions = response.data['actions']
+        finalize_action = next(
+            action for action in actions
+            if action['id'] == f'review_iep_{doc.id}'
+        )
+        self.assertEqual(finalize_action['title'], 'Finalize IEP Draft: Jamie Doe')
+        self.assertEqual(finalize_action['action_text'], 'Finalize ->')
+        self.assertFalse(any(action['id'] == f'review_{self.student.id}' for action in actions))
+
+    def test_admin_actions_include_generate_iep_fallback_when_auto_generation_missing(self):
+        self.student.status = 'ASSESSED'
+        self.student.save(update_fields=['status'])
+        ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'parent submitted'},
+        )
+        MultidisciplinaryAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.specialist,
+            form_data={'notes': 'specialist submitted'},
+            finalized_at=timezone.now(),
+            finalized_by=self.specialist,
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get('/api/dashboard/actions/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        actions = response.data['actions']
+        generate_action = next(
+            action for action in actions
+            if action['id'] == f'generate_iep_{self.student.id}'
+        )
+        self.assertEqual(generate_action['title'], 'Generate IEP Draft: Jamie Doe')
+        self.assertEqual(generate_action['link'], f'/workspace?studentId={self.student.id}&workspace=reports&view=generator')
+
+    def test_enrollment_requires_finalized_iep(self):
+        self.student.status = 'ASSESSED'
+        self.student.save(update_fields=['status'])
+        MultidisciplinaryAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.specialist,
+            form_data={'notes': 'specialist submitted'},
+            finalized_at=timezone.now(),
+            finalized_by=self.specialist,
+        )
+        GeneratedDocument.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            document_type='IEP',
+            status='DRAFT',
+            iep_data={'section1_student_info': {}},
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(f'/api/students/{self.student.id}/enroll/')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'A finalized IEP is required before enrollment.')
 
     def test_cookie_authenticated_mutation_requires_csrf(self):
         client = self.login_cookie_client('adminuser@example.com', self.admin_password)

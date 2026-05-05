@@ -728,6 +728,7 @@ function UnifiedWorkspaceContent() {
         const specialists = assignedStaff.filter(s => s.role === "SPECIALIST");
         const teachers = assignedStaff.filter(s => s.role === "TEACHER");
         const latestIep = docs.find(d => d.type === "IEP");
+        const latestIepFinalized = latestIep?.status === "FINAL";
         const latestMonthlyReport = docs.find(d => d.type === "MONTHLY");
         const trackerTabs = normalizedStudentStatus === "INTEGRATED" ? TABS.slice(2) : TABS.slice(2, 4);
         const pendingTrackers = trackerTabs.filter(tab => !formStatuses?.[tab.id]?.submitted);
@@ -742,15 +743,18 @@ function UnifiedWorkspaceContent() {
         if (formStatuses?.parent_assessment?.submitted && specialists.length === 0) {
             actions.push({ title: "Assign specialist", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST"), Icon: UserPlus });
         }
-        if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized) {
+        if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized && latestIepFinalized) {
             actions.push({ title: `Enroll ${compactStudentName()} (Therapy)?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive", Icon: CheckCircle2 });
             actions.push({ title: `Integrate ${compactStudentName()} (Mainstream)?`, label: "Integrate", onClick: () => setShowIntegrateConfirm(true), tone: "positive", Icon: GraduationCap });
         }
-        if (normalizedStudentStatus === "ENROLLED" && assessmentFinalized) {
+        if (normalizedStudentStatus === "ENROLLED" && assessmentFinalized && latestIepFinalized) {
             actions.push({ title: `Integrate ${compactStudentName()} (Mainstream)?`, label: "Integrate", onClick: () => setShowIntegrateConfirm(true), tone: "positive", Icon: GraduationCap });
         }
+        if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && assessmentFinalized && latestIep && !latestIepFinalized) {
+            actions.push({ title: "Finalize IEP Draft", label: "Open IEP", onClick: () => handleReportMenuChange("iep", latestIep.id.toString()), tone: "positive", Icon: FileText });
+        }
         if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && assessmentFinalized && !latestIep) {
-            actions.push({ title: "Generate IEP", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), Icon: FileText });
+            actions.push({ title: "Generate IEP Draft", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), Icon: FileText });
         }
         if (canGenerateMonthlyReport) {
             actions.push({ title: "Generate Monthly Progress Report", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), tone: "positive", Icon: Sparkles });
@@ -2409,7 +2413,7 @@ function UnifiedWorkspaceContent() {
                             </div>
                             <h2 className="mb-2 text-xl font-bold text-slate-900">Enroll {studentName}?</h2>
                             <p className="mb-6 text-sm leading-6 text-slate-500">
-                                This will mark the student as enrolled and unlock post-enrollment work such as progress trackers, teacher assignment, IEP, and monthly reporting.
+                                This will mark the student as enrolled and unlock post-enrollment work such as progress trackers, teacher assignment, and monthly reporting. A finalized IEP is required first.
                             </p>
                             <div className="flex justify-end gap-3">
                                 <button
