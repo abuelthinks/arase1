@@ -26,6 +26,7 @@ export function useNotifications() {
     const [loading, setLoading] = useState(true);
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const toastedIds = useRef<Set<number>>(new Set());
 
     const fetchNotifications = useCallback(async () => {
         try {
@@ -91,18 +92,22 @@ export function useNotifications() {
                     const data = JSON.parse(event.data);
                     if (data.type === 'notification' && data.notification) {
                         const incoming: Notification = data.notification;
+
+                        // Fire toast BEFORE the state updater (side-effect stays outside)
+                        if (!incoming.is_read && !toastedIds.current.has(incoming.id)) {
+                            toastedIds.current.add(incoming.id);
+                            toast(incoming.title || 'New notification', {
+                                description: incoming.message || undefined,
+                                action: incoming.link
+                                    ? { label: 'View', onClick: () => window.location.assign(incoming.link) }
+                                    : undefined,
+                            });
+                        }
+
                         setNotifications(prev => {
-                            // Prevent duplicates
                             if (prev.some(n => n.id === incoming.id)) return prev;
                             if (!incoming.is_read) {
                                 setUnreadCount(c => c + 1);
-                                // Surface the notification as a toast for real-time visibility
-                                toast(incoming.title || 'New notification', {
-                                    description: incoming.message || undefined,
-                                    action: incoming.link
-                                        ? { label: 'View', onClick: () => window.location.assign(incoming.link) }
-                                        : undefined,
-                                });
                             }
                             return [incoming, ...prev].slice(0, 50);
                         });
