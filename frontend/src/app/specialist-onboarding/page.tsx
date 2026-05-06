@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { LANGUAGE_OPTIONS, normalizeLanguages } from '@/lib/languages';
 import { SPECIALIST_SPECIALTIES } from '@/lib/specialties';
 import { toast } from 'sonner';
+import { extractApiError } from '@/lib/toast-utils';
 import {
   AlertCircle,
   ArrowRight,
@@ -331,7 +332,7 @@ export default function SpecialistOnboardingPage() {
                               setSpecialtyRequestNote('');
                               toast.success('Specialty change request sent.');
                             } catch (err: any) {
-                              toast.error(err.response?.data?.error || 'Could not send specialty request.');
+                              toast.error(extractApiError(err, 'Could not send specialty request.'));
                             } finally {
                               setSpecialtyRequestLoading(false);
                             }

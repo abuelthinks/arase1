@@ -12,6 +12,7 @@ import {
     Sparkles, AlertCircle, CheckCircle2, Lock, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
@@ -74,6 +75,28 @@ const getStaffName = (staff: any) =>
         : staff?.email || "Unknown Staff";
 
 const getStaffSpecialties = (staff: any): string[] => userSpecialtyList(staff?.specialties, staff?.specialty);
+
+const nextActionClass = (tone?: string, isCurrent?: boolean) => {
+    if (tone === "positive") {
+        return isCurrent ? "bg-emerald-100 text-emerald-800" : "bg-emerald-50 text-emerald-700";
+    }
+    if (tone === "warning") {
+        return isCurrent ? "bg-amber-100 text-amber-800" : "bg-amber-50 text-amber-700";
+    }
+    return isCurrent ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-600";
+};
+
+const buildWorkspaceStudentHref = (student: any, fallbackWorkspace: string) => {
+    const params = new URLSearchParams();
+    params.set("studentId", student.id.toString());
+    const action = student.next_action;
+    params.set("workspace", action?.workspace || fallbackWorkspace);
+    if (action?.tab) params.set("tab", action.tab);
+    if (action?.view) params.set("view", action.view);
+    if (action?.docId) params.set("docId", action.docId);
+    if (action?.teamRole) params.set("teamRole", action.teamRole);
+    return `/workspace?${params.toString()}`;
+};
 
 function UnifiedWorkspaceContent() {
     const router = useRouter();
@@ -392,7 +415,7 @@ function UnifiedWorkspaceContent() {
             toast.success("Team confirmed.");
             return true;
         } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to confirm team.");
+            toast.error(extractApiError(err, "Failed to confirm team."));
             return false;
         } finally {
             setConfirmingTeam(false);
@@ -533,10 +556,15 @@ function UnifiedWorkspaceContent() {
         if (!studentId || sendingParentReminder) return;
         setSendingParentReminder(true);
         try {
-            const res = await api.post(`/api/students/${studentId}/parent-assessment-reminder/`);
-            toast.success(res.data.message || "Reminder sent.");
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to send reminder.");
+            const promise = api.post(`/api/students/${studentId}/parent-assessment-reminder/`);
+            toast.promise(promise, {
+                loading: 'Sending reminder…',
+                success: (res) => res.data.message || 'Reminder sent.',
+                error: (err) => extractApiError(err, 'Failed to send reminder.'),
+            });
+            await promise;
+        } catch {
+            // Error already handled by toast.promise
         } finally {
             setSendingParentReminder(false);
         }
@@ -551,7 +579,13 @@ function UnifiedWorkspaceContent() {
         if (!studentId || enrollingStudent) return;
         setEnrollingStudent(true);
         try {
-            const res = await api.post(`/api/students/${studentId}/enroll/`);
+            const enrollPromise = api.post(`/api/students/${studentId}/enroll/`);
+            toast.promise(enrollPromise, {
+                loading: 'Enrolling student…',
+                success: (res) => res.data.message || 'Student enrolled.',
+                error: (err) => extractApiError(err, 'Failed to enroll student.'),
+            });
+            await enrollPromise;
             const profileRes = await api.get(`/api/students/${studentId}/profile/`);
             const data = profileRes.data;
             setStudentStatus(data.student.status);
@@ -562,9 +596,8 @@ function UnifiedWorkspaceContent() {
             generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setDocs(generatedDocs);
             setShowEnrollConfirm(false);
-            toast.success(res.data.message || "Student enrolled.");
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to enroll student.");
+        } catch {
+            // Error already handled by toast.promise
         } finally {
             setEnrollingStudent(false);
         }
@@ -574,7 +607,13 @@ function UnifiedWorkspaceContent() {
         if (!studentId || integratingStudent) return;
         setIntegratingStudent(true);
         try {
-            const res = await api.post(`/api/students/${studentId}/integrate/`);
+            const integratePromise = api.post(`/api/students/${studentId}/integrate/`);
+            toast.promise(integratePromise, {
+                loading: 'Processing integration…',
+                success: (res) => res.data.message || 'Student integrated into mainstream school.',
+                error: (err) => extractApiError(err, 'Failed to integrate student.'),
+            });
+            await integratePromise;
             const profileRes = await api.get(`/api/students/${studentId}/profile/`);
             const data = profileRes.data;
             setStudentStatus(data.student.status);
@@ -585,9 +624,8 @@ function UnifiedWorkspaceContent() {
             generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setDocs(generatedDocs);
             setShowIntegrateConfirm(false);
-            toast.success(res.data.message || "Student integrated into mainstream school.");
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to integrate student.");
+        } catch {
+            // Error already handled by toast.promise
         } finally {
             setIntegratingStudent(false);
         }
@@ -2208,11 +2246,12 @@ function UnifiedWorkspaceContent() {
                                             const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", INTEGRATED: "#7c3aed", ARCHIVED: "#94a3b8" };
                                             const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
                                             const statusLabel = STATUS_COLORS[s.status?.toUpperCase()]?.label || s.status?.replace(/_/g, ' ');
+                                            const nextAction = user?.role === "ADMIN" ? s.next_action : null;
                                             return (
                                                 <button
                                                     key={s.id}
-                                                    onClick={() => !isCurrent && navigateWithTeamGuard(`/workspace?studentId=${s.id}&workspace=${workspace}`)}
-                                                    className={`w-full relative flex items-center gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
+                                                    onClick={() => !isCurrent && navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace))}
+                                                    className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
                                                         isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-slate-50'
                                                     }`}
                                                     style={{ cursor: isCurrent ? 'default' : 'pointer' }}
@@ -2228,8 +2267,13 @@ function UnifiedWorkspaceContent() {
                                                         <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-slate-700'}`}>
                                                             {s.first_name} {s.last_name}
                                                         </span>
+                                                        {nextAction && (
+                                                            <span className={`mt-1 inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-[0.58rem] font-bold ${nextActionClass(nextAction.tone, isCurrent)}`}>
+                                                                {nextAction.label}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={statusLabel}></span>
+                                                    <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={statusLabel}></span>
                                                 </button>
                                             );
                                         })

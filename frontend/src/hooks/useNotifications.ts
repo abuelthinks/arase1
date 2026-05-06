@@ -96,6 +96,13 @@ export function useNotifications() {
                             if (prev.some(n => n.id === incoming.id)) return prev;
                             if (!incoming.is_read) {
                                 setUnreadCount(c => c + 1);
+                                // Surface the notification as a toast for real-time visibility
+                                toast(incoming.title || 'New notification', {
+                                    description: incoming.message || undefined,
+                                    action: incoming.link
+                                        ? { label: 'View', onClick: () => window.location.assign(incoming.link) }
+                                        : undefined,
+                                });
                             }
                             return [incoming, ...prev].slice(0, 50);
                         });

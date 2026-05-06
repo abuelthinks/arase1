@@ -29,6 +29,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { extractApiError } from '@/lib/toast-utils';
 import { normalizeLanguages } from '@/lib/languages';
 import { getPractitionerTitle } from '@/lib/specialties';
 
@@ -252,7 +253,7 @@ function SpecialistsContent() {
       router.push('/dashboard');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to save preferences.');
+      toast.error(extractApiError(error, 'Failed to save preferences.'));
     } finally {
       setSaving(false);
     }

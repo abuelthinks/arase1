@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import AppShell from "@/components/AppShell";
-import { Toaster } from "sonner";
+import AppToaster from "@/components/AppToaster";
 
 export const metadata: Metadata = {
   title: "ARASE",
@@ -19,16 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased" suppressHydrationWarning>
         <AuthProvider>
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton
-            toastOptions={{
-              style: {
-                marginTop: "56px",
-              },
-            }}
-          />
+          <AppToaster />
           <div className="flex flex-col h-screen overflow-hidden w-full">
             <div className="shrink-0">
               <Navbar />

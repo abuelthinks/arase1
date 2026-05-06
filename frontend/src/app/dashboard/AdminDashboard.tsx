@@ -9,6 +9,7 @@ import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, 
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
 import { roleColorHex, statusColorHex } from "@/lib/role-colors";
 import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
@@ -431,13 +432,7 @@ export default function AdminDashboard() {
             fetchData();
             toast.success("User created successfully");
         } catch (err: any) {
-            toast.error(
-                err.response?.data?.specialties
-                || err.response?.data?.specialty?.[0]
-                || err.response?.data?.email
-                || err.response?.data?.detail
-                || "Failed to create user"
-            );
+            toast.error(extractApiError(err, "Failed to create user"));
         } finally {
             setCreatingUser(false);
         }
@@ -457,7 +452,7 @@ export default function AdminDashboard() {
                 setCreatedInvite({ email: issuedEmail, token: response.data.token });
             }
         } catch (err: any) {
-            toast.error(err.response?.data?.email?.[0] || err.response?.data?.error || "Failed to send invite");
+            toast.error(extractApiError(err, "Failed to send invite"));
         }
     };
 
@@ -479,7 +474,7 @@ export default function AdminDashboard() {
             fetchData();
             toast.success("Student registered successfully");
         } catch (err: any) {
-            toast.error(err.response?.data?.detail || "Failed to register student");
+            toast.error(extractApiError(err, "Failed to register student"));
         } finally {
             setCreatingStudent(false);
         }
@@ -512,7 +507,7 @@ export default function AdminDashboard() {
             setInviteToRevoke(null);
             fetchData();
         } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to delete invitation.");
+            toast.error(extractApiError(err, "Failed to delete invitation."));
         } finally {
             setInviteActionLoading(false);
         }
@@ -532,7 +527,7 @@ export default function AdminDashboard() {
             }
             fetchData();
         } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to resend invitation.");
+            toast.error(extractApiError(err, "Failed to resend invitation."));
         } finally {
             setInviteActionLoading(false);
         }
