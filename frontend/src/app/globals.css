@@ -740,18 +740,44 @@ body {
 }
 
 /* ── Sonner Toast Overrides ──────────────────────────────────────────────── */
+/*
+ * Sonner's built-in styles.css uses [data-sonner-toast][data-styled='true']
+ * (2 attribute selectors) — we must match that specificity on all overrides.
+ * We also override the CSS custom properties on the theme selector where
+ * sonner defines --normal-bg, --normal-border, --normal-text.
+ */
 
-/* Container-level: ensure toasts don't get clipped */
+/* Override sonner's light theme CSS variables */
+[data-sonner-toaster][data-sonner-theme='light'] {
+  --normal-bg: rgba(255, 255, 255, 0.92);
+  --normal-border: rgba(226, 232, 240, 0.7);
+  --normal-text: #0f172a;
+
+  --success-bg: rgba(240, 253, 244, 0.95);
+  --success-border: rgba(187, 247, 208, 0.7);
+  --success-text: #14532d;
+
+  --error-bg: rgba(254, 242, 242, 0.95);
+  --error-border: rgba(254, 202, 202, 0.7);
+  --error-text: #7f1d1d;
+
+  --info-bg: rgba(239, 246, 255, 0.95);
+  --info-border: rgba(191, 219, 254, 0.7);
+  --info-text: #1e3a5f;
+
+  --warning-bg: rgba(255, 251, 235, 0.95);
+  --warning-border: rgba(253, 230, 138, 0.7);
+  --warning-text: #78350f;
+}
+
+/* Container-level */
 [data-sonner-toaster] {
   --width: 380px;
   font-family: var(--font-sans) !important;
 }
 
-/* Base toast card */
-[data-sonner-toast] {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(226, 232, 240, 0.7) !important;
-  color: #0f172a !important;
+/* Base toast card — match sonner's specificity with [data-styled='true'] */
+[data-sonner-toast][data-styled='true'] {
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-radius: 14px !important;
@@ -760,30 +786,26 @@ body {
     0 2px 8px rgba(15, 23, 42, 0.04) !important;
   padding: 14px 16px !important;
   gap: 12px !important;
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.25s ease !important;
 }
 
 /* Toast title */
-[data-sonner-toast] [data-title] {
+[data-sonner-toast][data-styled='true'] [data-title] {
   font-weight: 700 !important;
   font-size: 0.875rem !important;
   line-height: 1.4 !important;
   letter-spacing: -0.01em;
-  color: inherit !important;
 }
 
 /* Toast description */
-[data-sonner-toast] [data-description] {
+[data-sonner-toast][data-styled='true'] [data-description] {
   font-weight: 500 !important;
   font-size: 0.8125rem !important;
   line-height: 1.45 !important;
   opacity: 0.78;
-  color: inherit !important;
 }
 
 /* Close button */
-[data-sonner-toast] [data-close-button] {
+[data-sonner-toast][data-styled='true'] [data-close-button] {
   border-radius: 8px !important;
   border: 1px solid rgba(226, 232, 240, 0.6) !important;
   background: rgba(248, 250, 252, 0.85) !important;
@@ -795,14 +817,14 @@ body {
   right: 8px !important;
 }
 
-[data-sonner-toast] [data-close-button]:hover {
+[data-sonner-toast][data-styled='true'] [data-close-button]:hover {
   background: #f1f5f9 !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
 
 /* Action button (e.g. "View" on WebSocket notifications) */
-[data-sonner-toast] [data-button] {
+[data-sonner-toast][data-styled='true'] [data-button] {
   background: #3b82f6 !important;
   color: white !important;
   border: none !important;
@@ -813,66 +835,35 @@ body {
   transition: background 0.15s ease, transform 0.1s ease !important;
 }
 
-[data-sonner-toast] [data-button]:hover {
+[data-sonner-toast][data-styled='true'] [data-button]:hover {
   background: #2563eb !important;
   transform: translateY(-1px);
 }
 
-[data-sonner-toast] [data-button]:active {
+[data-sonner-toast][data-styled='true'] [data-button]:active {
   transform: translateY(0);
 }
 
 /* ── Type-specific color variants ────────────────────────────────────────── */
 
 /* Success */
-[data-sonner-toast][data-type="success"] {
-  background: rgba(240, 253, 244, 0.95) !important;
-  border-color: rgba(187, 247, 208, 0.7) !important;
-  color: #14532d !important;
-}
-
-[data-sonner-toast][data-type="success"] [data-icon] svg {
+[data-sonner-toast][data-styled='true'][data-type="success"] [data-icon] svg {
   color: #16a34a !important;
 }
 
 /* Error */
-[data-sonner-toast][data-type="error"] {
-  background: rgba(254, 242, 242, 0.95) !important;
-  border-color: rgba(254, 202, 202, 0.7) !important;
-  color: #7f1d1d !important;
-}
-
-[data-sonner-toast][data-type="error"] [data-icon] svg {
+[data-sonner-toast][data-styled='true'][data-type="error"] [data-icon] svg {
   color: #dc2626 !important;
 }
 
 /* Info */
-[data-sonner-toast][data-type="info"] {
-  background: rgba(239, 246, 255, 0.95) !important;
-  border-color: rgba(191, 219, 254, 0.7) !important;
-  color: #1e3a5f !important;
-}
-
-[data-sonner-toast][data-type="info"] [data-icon] svg {
+[data-sonner-toast][data-styled='true'][data-type="info"] [data-icon] svg {
   color: #2563eb !important;
 }
 
 /* Warning */
-[data-sonner-toast][data-type="warning"] {
-  background: rgba(255, 251, 235, 0.95) !important;
-  border-color: rgba(253, 230, 138, 0.7) !important;
-  color: #78350f !important;
-}
-
-[data-sonner-toast][data-type="warning"] [data-icon] svg {
+[data-sonner-toast][data-styled='true'][data-type="warning"] [data-icon] svg {
   color: #d97706 !important;
-}
-
-/* Loading */
-[data-sonner-toast][data-type="loading"] {
-  background: rgba(248, 250, 252, 0.95) !important;
-  border-color: rgba(226, 232, 240, 0.7) !important;
-  color: #334155 !important;
 }
 
 /* ── Mobile adjustments ──────────────────────────────────────────────────── */
@@ -882,7 +873,7 @@ body {
     --width: calc(100vw - 32px) !important;
   }
 
-  [data-sonner-toast] {
+  [data-sonner-toast][data-styled='true'] {
     border-radius: 12px !important;
     padding: 12px 14px !important;
     box-shadow:
@@ -890,5 +881,6 @@ body {
       0 -1px 6px rgba(15, 23, 42, 0.04) !important;
   }
 }
+
 
 

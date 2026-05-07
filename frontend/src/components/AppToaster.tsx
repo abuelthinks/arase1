@@ -32,6 +32,7 @@ export default function AppToaster() {
     return (
         <Toaster
             position={isMobile ? "bottom-center" : "top-right"}
+            richColors
             closeButton
             gap={8}
             toastOptions={{
