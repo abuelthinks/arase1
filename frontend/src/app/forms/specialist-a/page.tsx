@@ -14,6 +14,7 @@ import {
     userSpecialtyList,
 } from "@/lib/sectionOwners";
 import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
 import { useFormCollaboration } from "@/hooks/useFormCollaboration";
 
 const getWorkspaceFormUrl = (studentId: string) =>
@@ -444,7 +445,7 @@ function SpecialistAFormContent() {
             // Free the soft lock so other specialists can pick this section up.
             collab.releaseLock(sectionKey);
         } catch (err: any) {
-            const msg = err.response?.data?.error || err.response?.data?.detail || "Save failed.";
+            const msg = extractApiError(err, "Save failed.");
             setErrorMsg(msg);
             toast.error(msg);
         } finally {
@@ -476,7 +477,7 @@ function SpecialistAFormContent() {
             toast.success(`Section ${sectionKey} reopened.`);
             await refreshContributions();
         } catch (err: any) {
-            const msg = err.response?.data?.error || err.response?.data?.detail || "Reopen failed.";
+            const msg = extractApiError(err, "Reopen failed.");
             setErrorMsg(msg);
             toast.error(msg);
         } finally {

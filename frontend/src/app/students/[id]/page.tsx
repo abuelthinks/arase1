@@ -8,6 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
 import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 interface FormStatus {
     submitted: boolean;
@@ -128,12 +130,20 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
         window.localStorage.setItem("arase:last-parent-student-id", id);
     }, [id, user?.role]);
 
+    useRealtimeRefresh({
+        targets: ['student', 'workspace', 'reports', 'schedule'],
+        studentId: id,
+        disabled: propEmbedded,
+        isEditing: showDeleteModal,
+        onRefresh: fetchProfile,
+    });
+
     const handleAction = async (endpoint: string, payload: any = {}) => {
         try {
             await api.post(`/api/students/${id}/${endpoint}/`, payload);
             fetchProfile();
         } catch (err: any) {
-            toast.error(err.response?.data?.error || "Action failed.");
+            toast.error(extractApiError(err, "Action failed."));
         }
     };
 

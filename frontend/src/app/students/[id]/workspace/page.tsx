@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
@@ -9,6 +9,8 @@ import { Search, Check, Plus, AlertCircle, X } from "lucide-react";
 import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -28,6 +30,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
     "ASSESSED":     { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
     "ASSESSED (AWAITING ENROLLMENT)": { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
     "ENROLLED":     { bg: "#dcfce7", color: "#14532d", label: "Enrolled" },
+    "INTEGRATED":   { bg: "#ede9fe", color: "#5b21b6", label: "Integrated" },
     "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b", label: "Archived" },
 };
 
@@ -57,6 +60,27 @@ const getStaffName = (staff: any) =>
 
 const getStaffSpecialties = (staff: any): string[] => userSpecialtyList(staff?.specialties, staff?.specialty);
 
+const nextActionClass = (tone?: string, isCurrent?: boolean) => {
+    if (tone === "positive") {
+        return isCurrent ? "bg-emerald-100 text-emerald-800" : "bg-emerald-50 text-emerald-700";
+    }
+    if (tone === "warning") {
+        return isCurrent ? "bg-amber-100 text-amber-800" : "bg-amber-50 text-amber-700";
+    }
+    return isCurrent ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-600";
+};
+
+const buildStudentWorkspaceHref = (student: any, fallbackWorkspace: string) => {
+    const action = student.next_action;
+    const params = new URLSearchParams();
+    params.set("workspace", action?.workspace || fallbackWorkspace);
+    if (action?.tab) params.set("tab", action.tab);
+    if (action?.view) params.set("view", action.view);
+    if (action?.docId) params.set("docId", action.docId);
+    if (action?.teamRole) params.set("teamRole", action.teamRole);
+    return `/students/${student.id}/workspace?${params.toString()}`;
+};
+
 function UnifiedWorkspaceContent() {
     const params = useParams();
     const router = useRouter();
@@ -73,6 +97,7 @@ function UnifiedWorkspaceContent() {
     const showStudentSidebar = user?.role !== "PARENT";
     const [loading, setLoading] = useState(true);
     const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+    const [activityEvents, setActivityEvents] = useState<any[]>([]);
 
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
@@ -134,6 +159,9 @@ function UnifiedWorkspaceContent() {
                 const generatedDocs = data.generated_documents || [];
                 generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 setDocs(generatedDocs);
+                api.get(`/api/activity/?student_id=${studentId}&limit=8`)
+                    .then(activityRes => setActivityEvents(activityRes.data?.events || []))
+                    .catch(() => setActivityEvents([]));
                 
                 setLoading(false);
             })
@@ -159,6 +187,40 @@ function UnifiedWorkspaceContent() {
         .sort((a, b) => `${a.role}-${a.id}`.localeCompare(`${b.role}-${b.id}`));
 
     const teamHasChanges = JSON.stringify(normalizeTeam(assignedStaff)) !== JSON.stringify(normalizeTeam(stagedAssignedStaff));
+    const refreshWorkspaceData = useCallback(async () => {
+        const studentsRes = await api.get("/api/students/");
+        setAllStudents(studentsRes.data);
+
+        if (studentId) {
+            const profileRes = await api.get(`/api/students/${studentId}/profile/`);
+            const data = profileRes.data;
+            setStudentName(`${data.student.first_name} ${data.student.last_name}`);
+            setStudentStatus(data.student.status);
+            setStudentDetails(data.student);
+            setFormStatuses(data.form_statuses);
+            setAssignedStaff(data.assigned_staff || []);
+            if (!teamHasChanges) {
+                setStagedAssignedStaff(data.assigned_staff || []);
+            }
+            const generatedDocs = data.generated_documents || [];
+            generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setDocs(generatedDocs);
+            const activityRes = await api.get(`/api/activity/?student_id=${studentId}&limit=8`);
+            setActivityEvents(activityRes.data?.events || []);
+        }
+
+        if (studentId && user?.role === "ADMIN") {
+            const staffRes = await api.get(`/api/staff/?student_id=${studentId}`);
+            setStaffList(staffRes.data);
+        }
+    }, [studentId, teamHasChanges, user?.role]);
+
+    useRealtimeRefresh({
+        targets: ['workspace', 'student', 'staff', 'reports', 'schedule'],
+        studentId,
+        isEditing: teamHasChanges || Boolean(unassigningStaff) || confirmingTeam || showEnrollConfirm || enrollingStudent,
+        onRefresh: refreshWorkspaceData,
+    });
     const getTeamUnits = (staff: any[]) => staff.flatMap((member) => {
         if (member.role === "SPECIALIST") {
             return getStaffSpecialties(member).map((specialty) => ({
@@ -225,7 +287,7 @@ function UnifiedWorkspaceContent() {
             toast.success("Team confirmed.");
             return true;
         } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to confirm team.");
+            toast.error(extractApiError(err, "Failed to confirm team."));
             return false;
         } finally {
             setConfirmingTeam(false);
@@ -361,7 +423,7 @@ function UnifiedWorkspaceContent() {
             const res = await api.post(`/api/students/${studentId}/parent-assessment-reminder/`);
             toast.success(res.data.message || "Reminder sent.");
         } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to send reminder.");
+            toast.error(extractApiError(err, "Failed to send reminder."));
         } finally {
             setSendingParentReminder(false);
         }
@@ -389,7 +451,7 @@ function UnifiedWorkspaceContent() {
             setShowEnrollConfirm(false);
             toast.success(res.data.message || "Student enrolled.");
         } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to enroll student.");
+            toast.error(extractApiError(err, "Failed to enroll student."));
         } finally {
             setEnrollingStudent(false);
         }
@@ -450,6 +512,18 @@ function UnifiedWorkspaceContent() {
         return `${submittedBy.name || "User"} • ${role}`;
     };
 
+    const formatActivityEventTitle = (event: any) => {
+        const staffName = event.message;
+        if (event.event_type !== "TEAM_UPDATED" || !staffName || event.title?.includes(staffName)) {
+            return event.title;
+        }
+        const rawRole = event.metadata?.role || "Team member";
+        const roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
+        const action = event.title?.toLowerCase().includes("removed") ? "removed from" : "assigned to";
+        const studentLabel = event.student_name || studentName;
+        return `${roleLabel} ${staffName} ${action} ${studentLabel}`;
+    };
+
     const buildRecentActivity = () => {
         const formActivities = TABS
             .map(tab => {
@@ -475,7 +549,16 @@ function UnifiedWorkspaceContent() {
                 tone: "document",
             }));
 
-        // TODO: Replace this derived timeline with a backend audit trail that records every user action.
+        if (activityEvents.length > 0) {
+            return activityEvents.map(event => ({
+                id: `activity-${event.id}`,
+                title: formatActivityEventTitle(event),
+                meta: event.actor_name || event.message || "Activity",
+                timestamp: event.created_at,
+                tone: event.event_type?.startsWith("REPORT") ? "document" : event.event_type?.startsWith("FORM") ? "form" : "team",
+            }));
+        }
+
         return [...formActivities, ...documentActivities]
             .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             .slice(0, 8);
@@ -845,9 +928,11 @@ function UnifiedWorkspaceContent() {
             : activeReportView === "generator"
                 ? (hasDocs ? (docs[0].type === "MONTHLY" ? "monthly" : "iep") : "empty")
                 : activeReportView;
-        const selectedDocId = reportView === "iep" || reportView === "monthly"
-            ? (activeDocId || docs[0]?.id?.toString())
-            : undefined;
+        const selectedDocId = reportView === "iep"
+            ? (activeDocId || iepDocs[0]?.id?.toString())
+            : reportView === "monthly"
+                ? (activeDocId || monthlyDocs[0]?.id?.toString())
+                : undefined;
         const isGenerator = reportView === "generator";
         const isEmptyState = reportView === "empty";
 
@@ -1417,7 +1502,7 @@ function UnifiedWorkspaceContent() {
 
     return (
         <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
-            <div className="flex h-full w-full overflow-hidden">
+            <div className="flex h-full w-full overflow-hidden relative">
                 {showStudentSidebar && (
                     <div className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 shrink-0 h-full">
                         <div className="p-4 border-b border-slate-200">
@@ -1440,13 +1525,14 @@ function UnifiedWorkspaceContent() {
                                 ) : (
                                     filteredStudents.map(s => {
                                         const isCurrent = s.id.toString() === studentId;
-                                        const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", ARCHIVED: "#94a3b8" };
+                                        const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", INTEGRATED: "#7c3aed", ARCHIVED: "#94a3b8" };
                                         const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
+                                        const nextAction = user?.role === "ADMIN" ? s.next_action : null;
                                         return (
                                             <button
                                                 key={s.id}
-                                                onClick={() => !isCurrent && navigateWithTeamGuard(`/students/${s.id}/workspace?workspace=${workspace}`)}
-                                                className={`w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
+                                                onClick={() => !isCurrent && navigateWithTeamGuard(buildStudentWorkspaceHref(s, workspace))}
+                                                className={`w-full flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
                                                     isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm' : 'border border-transparent hover:bg-slate-50'
                                                 }`}
                                                 style={{ cursor: isCurrent ? 'default' : 'pointer' }}
@@ -1458,8 +1544,13 @@ function UnifiedWorkspaceContent() {
                                                     <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-slate-700'}`}>
                                                         {s.first_name} {s.last_name}
                                                     </span>
+                                                    {nextAction && (
+                                                        <span className={`mt-1 inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-[0.58rem] font-bold ${nextActionClass(nextAction.tone, isCurrent)}`}>
+                                                            {nextAction.label}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={s.status?.replace(/_/g, ' ')}></span>
+                                                <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={s.status?.replace(/_/g, ' ')}></span>
                                             </button>
                                         );
                                     })

@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
 import {
     TRACKER_SECTION_OWNERS,
     canEditSection,
@@ -431,7 +432,7 @@ function SpecialistBFormContent() {
             toast.success(`Section ${sectionKey} reopened.`);
             await refreshContributions();
         } catch (err: any) {
-            const msg = err.response?.data?.error || err.response?.data?.detail || "Reopen failed.";
+            const msg = extractApiError(err, "Reopen failed.");
             setErrorMsg(msg);
             toast.error(msg);
         } finally {
@@ -464,7 +465,7 @@ function SpecialistBFormContent() {
             await refreshContributions();
             collab.releaseLock(sectionKey);
         } catch (err: any) {
-            const msg = err.response?.data?.error || err.response?.data?.detail || "Save failed.";
+            const msg = extractApiError(err, "Save failed.");
             setErrorMsg(msg);
             toast.error(msg);
         } finally {

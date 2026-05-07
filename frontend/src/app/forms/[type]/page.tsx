@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense, useMemo, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
@@ -637,6 +638,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const isViewMode = propMode === "view" || searchParams.get("mode") === "view";
     const formIdStr = propSubmissionId || searchParams.get("submissionId") || searchParams.get("formId");
 
+    useEffect(() => {
+        if (!propHideNavigation || !successMsg) return;
+        const timeoutId = setTimeout(() => setSuccessMsg(""), 2500);
+        return () => clearTimeout(timeoutId);
+    }, [propHideNavigation, successMsg]);
+
     const isAdmin = user?.role === "ADMIN";
     const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
     const specialistOnboardingLocked = specialistOnboardingIncomplete && ["multidisciplinary-assessment", "multidisciplinary-tracker"].includes(formType);
@@ -1175,7 +1182,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             }
             return saveRes.data;
         } catch (err: any) {
-            const message = err.response?.data?.error || err.response?.data?.detail || "Failed to save section. Please try again.";
+            const message = extractApiError(err, "Failed to save section. Please try again.");
             setErrorMsg(message);
             if (!silent) {
                 toast.error(message);
@@ -1207,7 +1214,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             toast.success(`Section ${sectionKey} reopened for editing.`);
             await refreshSectionContributions(reportCycleId);
         } catch (err: any) {
-            toast.error(err.response?.data?.error || `Failed to reopen Section ${sectionKey}.`);
+            toast.error(extractApiError(err, `Failed to reopen Section ${sectionKey}.`));
         } finally {
             setIsReopening(null);
         }
