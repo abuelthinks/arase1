@@ -782,35 +782,38 @@ body {
   font-family: var(--font-sans) !important;
 }
 
-/* Base toast card — match sonner's specificity with [data-styled='true'] */
+/* Base toast card — left accent bar slot, neutral content, soft glassmorphism */
 [data-sonner-toast][data-styled='true'] {
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-radius: 14px !important;
+  border-left: 3px solid transparent !important;
   box-shadow:
     0 8px 32px rgba(15, 23, 42, 0.08),
     0 2px 8px rgba(15, 23, 42, 0.04) !important;
-  padding: 14px 16px !important;
+  padding: 14px 16px 14px 18px !important;
   gap: 12px !important;
 }
 
-/* Toast title */
+/* Toast title — neutral dark across all types for consistent legibility */
 [data-sonner-toast][data-styled='true'] [data-title] {
   font-weight: 700 !important;
   font-size: 0.875rem !important;
   line-height: 1.4 !important;
   letter-spacing: -0.01em;
+  color: #0f172a !important;
 }
 
-/* Toast description */
+/* Toast description — neutral muted, no opacity dimming */
 [data-sonner-toast][data-styled='true'] [data-description] {
   font-weight: 500 !important;
   font-size: 0.8125rem !important;
   line-height: 1.45 !important;
-  opacity: 0.78;
+  color: #475569 !important;
+  opacity: 1 !important;
 }
 
-/* Close button */
+/* Close button — pinned inside the top-right corner of the toast */
 [data-sonner-toast][data-styled='true'] [data-close-button] {
   border-radius: 8px !important;
   border: 1px solid rgba(226, 232, 240, 0.6) !important;
@@ -820,7 +823,9 @@ body {
   width: 22px !important;
   height: 22px !important;
   top: 8px !important;
+  left: auto !important;
   right: 8px !important;
+  transform: none !important;
 }
 
 [data-sonner-toast][data-styled='true'] [data-close-button]:hover {
@@ -853,21 +858,33 @@ body {
 /* ── Type-specific color variants ────────────────────────────────────────── */
 
 /* Success */
+[data-sonner-toast][data-styled='true'][data-type="success"] {
+  border-left-color: #16a34a !important;
+}
 [data-sonner-toast][data-styled='true'][data-type="success"] [data-icon] svg {
   color: #16a34a !important;
 }
 
 /* Error */
+[data-sonner-toast][data-styled='true'][data-type="error"] {
+  border-left-color: #dc2626 !important;
+}
 [data-sonner-toast][data-styled='true'][data-type="error"] [data-icon] svg {
   color: #dc2626 !important;
 }
 
 /* Info */
+[data-sonner-toast][data-styled='true'][data-type="info"] {
+  border-left-color: #2563eb !important;
+}
 [data-sonner-toast][data-styled='true'][data-type="info"] [data-icon] svg {
   color: #2563eb !important;
 }
 
 /* Warning */
+[data-sonner-toast][data-styled='true'][data-type="warning"] {
+  border-left-color: #d97706 !important;
+}
 [data-sonner-toast][data-styled='true'][data-type="warning"] [data-icon] svg {
   color: #d97706 !important;
 }
@@ -881,7 +898,7 @@ body {
 
   [data-sonner-toast][data-styled='true'] {
     border-radius: 12px !important;
-    padding: 12px 14px !important;
+    padding: 12px 14px 12px 16px !important;
     box-shadow:
       0 -4px 24px rgba(15, 23, 42, 0.1),
       0 -1px 6px rgba(15, 23, 42, 0.04) !important;

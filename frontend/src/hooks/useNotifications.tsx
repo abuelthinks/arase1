@@ -14,6 +14,24 @@ export interface Notification {
     created_at: string;
 }
 
+function getInitials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase();
+    return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
+}
+
+function ActorAvatar({ name }: { name: string }) {
+    return (
+        <span
+            aria-hidden
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-[11px] font-bold shrink-0"
+        >
+            {getInitials(name)}
+        </span>
+    );
+}
+
 function getWsUrl(): string {
     const httpBase = API_BASE_URL || window.location.origin;
     const wsProtocol = httpBase.startsWith('https') ? 'wss' : 'ws';
@@ -102,6 +120,9 @@ export function useNotifications() {
                             }
                             toast(incoming.title || 'New notification', {
                                 description: incoming.message || undefined,
+                                icon: incoming.actor_name
+                                    ? <ActorAvatar name={incoming.actor_name} />
+                                    : undefined,
                                 action: incoming.link
                                     ? { label: 'View', onClick: () => window.location.assign(incoming.link) }
                                     : undefined,
