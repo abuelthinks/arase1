@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
@@ -12,10 +12,11 @@ import {
     Sparkles, AlertCircle, CheckCircle2, Lock, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { extractApiError } from "@/lib/toast-utils";
+import { extractApiError, toastPromise } from "@/lib/toast-utils";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -116,6 +117,7 @@ function UnifiedWorkspaceContent() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+    const [activityEvents, setActivityEvents] = useState<any[]>([]);
 
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
@@ -273,6 +275,9 @@ function UnifiedWorkspaceContent() {
                 const generatedDocs = data.generated_documents || [];
                 generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 setDocs(generatedDocs);
+                api.get(`/api/activity/?student_id=${studentId}&limit=8`)
+                    .then(activityRes => setActivityEvents(activityRes.data?.events || []))
+                    .catch(() => setActivityEvents([]));
                 
                 setLoading(false);
             })
@@ -349,6 +354,41 @@ function UnifiedWorkspaceContent() {
         .sort((a, b) => `${a.role}-${a.id}`.localeCompare(`${b.role}-${b.id}`));
 
     const teamHasChanges = JSON.stringify(normalizeTeam(assignedStaff)) !== JSON.stringify(normalizeTeam(stagedAssignedStaff));
+    const refreshWorkspaceData = useCallback(async () => {
+        if (!isAuthorized) return;
+        const studentsRes = await api.get("/api/students/");
+        setAllStudents(studentsRes.data);
+
+        if (studentId) {
+            const profileRes = await api.get(`/api/students/${studentId}/profile/`);
+            const data = profileRes.data;
+            setStudentName(`${data.student.first_name} ${data.student.last_name}`);
+            setStudentStatus(data.student.status);
+            setStudentDetails(data.student);
+            setFormStatuses(data.form_statuses);
+            setAssignedStaff(data.assigned_staff || []);
+            if (!teamHasChanges) {
+                setStagedAssignedStaff(data.assigned_staff || []);
+            }
+            const generatedDocs = data.generated_documents || [];
+            generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setDocs(generatedDocs);
+            const activityRes = await api.get(`/api/activity/?student_id=${studentId}&limit=8`);
+            setActivityEvents(activityRes.data?.events || []);
+        }
+
+        if (studentId && user?.role === "ADMIN") {
+            const staffRes = await api.get(`/api/staff/?student_id=${studentId}`);
+            setStaffList(staffRes.data);
+        }
+    }, [isAuthorized, studentId, teamHasChanges, user?.role]);
+
+    useRealtimeRefresh({
+        targets: ['workspace', 'student', 'staff', 'reports', 'schedule'],
+        studentId,
+        isEditing: teamHasChanges || Boolean(unassigningStaff) || confirmingTeam || showEnrollConfirm || enrollingStudent || showIntegrateConfirm || integratingStudent,
+        onRefresh: refreshWorkspaceData,
+    });
     const getTeamUnits = (staff: any[]) => staff.flatMap((member) => {
         if (member.role === "SPECIALIST") {
             return getStaffSpecialties(member).map((specialty) => ({
@@ -556,15 +596,13 @@ function UnifiedWorkspaceContent() {
         if (!studentId || sendingParentReminder) return;
         setSendingParentReminder(true);
         try {
-            const promise = api.post(`/api/students/${studentId}/parent-assessment-reminder/`);
-            toast.promise(promise, {
+            await toastPromise(api.post(`/api/students/${studentId}/parent-assessment-reminder/`), {
                 loading: 'Sending reminder…',
-                success: (res) => res.data.message || 'Reminder sent.',
-                error: (err) => extractApiError(err, 'Failed to send reminder.'),
+                success: (res: any) => res.data.message || 'Reminder sent.',
+                error: (err: any) => extractApiError(err, 'Failed to send reminder.'),
             });
-            await promise;
         } catch {
-            // Error already handled by toast.promise
+            // Error already handled by toastPromise
         } finally {
             setSendingParentReminder(false);
         }
@@ -579,13 +617,11 @@ function UnifiedWorkspaceContent() {
         if (!studentId || enrollingStudent) return;
         setEnrollingStudent(true);
         try {
-            const enrollPromise = api.post(`/api/students/${studentId}/enroll/`);
-            toast.promise(enrollPromise, {
+            await toastPromise(api.post(`/api/students/${studentId}/enroll/`), {
                 loading: 'Enrolling student…',
-                success: (res) => res.data.message || 'Student enrolled.',
-                error: (err) => extractApiError(err, 'Failed to enroll student.'),
+                success: (res: any) => res.data.message || 'Student enrolled.',
+                error: (err: any) => extractApiError(err, 'Failed to enroll student.'),
             });
-            await enrollPromise;
             const profileRes = await api.get(`/api/students/${studentId}/profile/`);
             const data = profileRes.data;
             setStudentStatus(data.student.status);
@@ -597,7 +633,7 @@ function UnifiedWorkspaceContent() {
             setDocs(generatedDocs);
             setShowEnrollConfirm(false);
         } catch {
-            // Error already handled by toast.promise
+            // Error already handled by toastPromise
         } finally {
             setEnrollingStudent(false);
         }
@@ -607,13 +643,11 @@ function UnifiedWorkspaceContent() {
         if (!studentId || integratingStudent) return;
         setIntegratingStudent(true);
         try {
-            const integratePromise = api.post(`/api/students/${studentId}/integrate/`);
-            toast.promise(integratePromise, {
+            await toastPromise(api.post(`/api/students/${studentId}/integrate/`), {
                 loading: 'Processing integration…',
-                success: (res) => res.data.message || 'Student integrated into mainstream school.',
-                error: (err) => extractApiError(err, 'Failed to integrate student.'),
+                success: (res: any) => res.data.message || 'Student integrated into mainstream school.',
+                error: (err: any) => extractApiError(err, 'Failed to integrate student.'),
             });
-            await integratePromise;
             const profileRes = await api.get(`/api/students/${studentId}/profile/`);
             const data = profileRes.data;
             setStudentStatus(data.student.status);
@@ -625,7 +659,7 @@ function UnifiedWorkspaceContent() {
             setDocs(generatedDocs);
             setShowIntegrateConfirm(false);
         } catch {
-            // Error already handled by toast.promise
+            // Error already handled by toastPromise
         } finally {
             setIntegratingStudent(false);
         }
@@ -731,6 +765,18 @@ function UnifiedWorkspaceContent() {
         return `${submittedBy.name || "User"} • ${role}`;
     };
 
+    const formatActivityEventTitle = (event: any) => {
+        const staffName = event.message;
+        if (event.event_type !== "TEAM_UPDATED" || !staffName || event.title?.includes(staffName)) {
+            return event.title;
+        }
+        const rawRole = event.metadata?.role || "Team member";
+        const roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
+        const action = event.title?.toLowerCase().includes("removed") ? "removed from" : "assigned to";
+        const studentLabel = event.student_name || studentName;
+        return `${roleLabel} ${staffName} ${action} ${studentLabel}`;
+    };
+
     const buildRecentActivity = () => {
         const formActivities = TABS
             .map(tab => {
@@ -756,7 +802,16 @@ function UnifiedWorkspaceContent() {
                 tone: "document",
             }));
 
-        // TODO: Replace this derived timeline with a backend audit trail that records every user action.
+        if (activityEvents.length > 0) {
+            return activityEvents.map(event => ({
+                id: `activity-${event.id}`,
+                title: formatActivityEventTitle(event),
+                meta: event.actor_name || event.message || "Activity",
+                timestamp: event.created_at,
+                tone: event.event_type?.startsWith("REPORT") ? "document" : event.event_type?.startsWith("FORM") ? "form" : "team",
+            }));
+        }
+
         return [...formActivities, ...documentActivities]
             .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             .slice(0, 8);
@@ -1342,9 +1397,11 @@ function UnifiedWorkspaceContent() {
             : activeReportView === "generator"
                 ? (hasDocs ? (docs[0].type === "MONTHLY" ? "monthly" : "iep") : "empty")
                 : activeReportView;
-        const selectedDocId = reportView === "iep" || reportView === "monthly"
-            ? (activeDocId || docs[0]?.id?.toString())
-            : undefined;
+        const selectedDocId = reportView === "iep"
+            ? (activeDocId || iepDocs[0]?.id?.toString())
+            : reportView === "monthly"
+                ? (activeDocId || monthlyDocs[0]?.id?.toString())
+                : undefined;
         const isGenerator = reportView === "generator";
         const isEmptyState = reportView === "empty";
         const reportsStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: studentStatus };

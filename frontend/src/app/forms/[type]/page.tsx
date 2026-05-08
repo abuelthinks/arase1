@@ -1185,7 +1185,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             const message = extractApiError(err, "Failed to save section. Please try again.");
             setErrorMsg(message);
             if (!silent) {
-                toast.error(message);
+                toast.error(message, { id: `save-error-${apiKey}`, duration: 7000 });
             }
             return null;
         }
@@ -1214,7 +1214,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             toast.success(`Section ${sectionKey} reopened for editing.`);
             await refreshSectionContributions(reportCycleId);
         } catch (err: any) {
-            toast.error(extractApiError(err, `Failed to reopen Section ${sectionKey}.`));
+            toast.error(extractApiError(err, `Failed to reopen Section ${sectionKey}.`), {
+                id: `reopen-error-${sectionKey}`,
+                duration: 7000,
+            });
         } finally {
             setIsReopening(null);
         }

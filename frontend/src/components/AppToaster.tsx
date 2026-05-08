@@ -29,20 +29,19 @@ export default function AppToaster() {
         return () => mql.removeEventListener("change", onChange);
     }, []);
 
+    const showNavbarOffset = !isMobile && !hideNavbar;
+
     return (
         <Toaster
             position={isMobile ? "bottom-center" : "top-right"}
+            theme="light"
             richColors
             closeButton
             gap={8}
+            offset={showNavbarOffset ? { top: 'var(--navbar-h)' } : undefined}
             toastOptions={{
                 className: "app-toast",
-                style: {
-                    // Offset below navbar only on desktop when navbar is visible
-                    ...((!isMobile && !hideNavbar)
-                        ? { marginTop: "52px" }
-                        : {}),
-                },
+                duration: 5000,
             }}
         />
     );

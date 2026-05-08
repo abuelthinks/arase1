@@ -267,7 +267,9 @@ function SpecialistAFormContent() {
                 return next;
             });
             refreshContributions();
-            toast.info(`${event.by.user_name} updated Section ${event.section_key}`);
+            toast.info(`${event.by.user_name} updated Section ${event.section_key}`, {
+                id: `section-edit-${event.section_key}`,
+            });
         },
         onSectionSubmitted: (event) => {
             refreshContributions();
@@ -447,7 +449,7 @@ function SpecialistAFormContent() {
         } catch (err: any) {
             const msg = extractApiError(err, "Save failed.");
             setErrorMsg(msg);
-            toast.error(msg);
+            toast.error(msg, { id: `save-error-${sectionKey}`, duration: 7000 });
         } finally {
             setSavingSection(null);
         }
@@ -479,7 +481,7 @@ function SpecialistAFormContent() {
         } catch (err: any) {
             const msg = extractApiError(err, "Reopen failed.");
             setErrorMsg(msg);
-            toast.error(msg);
+            toast.error(msg, { id: `reopen-error-${sectionKey}`, duration: 7000 });
         } finally {
             setSavingSection(null);
         }

@@ -357,7 +357,9 @@ function SpecialistBFormContent() {
                 [event.section_key]: { ...(prev as any)[event.section_key], ...sectionPayload },
             } as any));
             refreshContributions();
-            toast.info(`${event.by.user_name} updated ${event.section_key.replace("section_", "Section ").toUpperCase()}`);
+            toast.info(`${event.by.user_name} updated ${event.section_key.replace("section_", "Section ").toUpperCase()}`, {
+                id: `section-edit-${event.section_key}`,
+            });
         },
         onSectionSubmitted: (event) => {
             refreshContributions();
@@ -434,7 +436,7 @@ function SpecialistBFormContent() {
         } catch (err: any) {
             const msg = extractApiError(err, "Reopen failed.");
             setErrorMsg(msg);
-            toast.error(msg);
+            toast.error(msg, { id: `reopen-error-${sectionKey}`, duration: 7000 });
         } finally {
             setSavingSection(null);
         }
@@ -467,7 +469,7 @@ function SpecialistBFormContent() {
         } catch (err: any) {
             const msg = extractApiError(err, "Save failed.");
             setErrorMsg(msg);
-            toast.error(msg);
+            toast.error(msg, { id: `save-error-${sectionKey}`, duration: 7000 });
         } finally {
             setSavingSection(null);
         }

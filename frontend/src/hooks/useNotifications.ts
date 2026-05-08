@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api, { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
+import { extractApiError } from '@/lib/toast-utils';
 
 export interface Notification {
     id: number;
@@ -45,8 +46,8 @@ export function useNotifications() {
             await api.post(`/api/notifications/${id}/read/`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
-        } catch {
-            toast.error("Failed to mark notification as read.");
+        } catch (err) {
+            toast.error(extractApiError(err, "Failed to mark notification as read."));
         }
     };
 
@@ -55,8 +56,8 @@ export function useNotifications() {
             await api.post('/api/notifications/read-all/');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
-        } catch {
-            toast.error("Failed to mark all as read.");
+        } catch (err) {
+            toast.error(extractApiError(err, "Failed to mark all as read."));
         }
     };
 
@@ -70,8 +71,8 @@ export function useNotifications() {
                 }
                 return prev.filter(n => n.id !== id);
             });
-        } catch {
-            toast.error("Failed to delete notification.");
+        } catch (err) {
+            toast.error(extractApiError(err, "Failed to delete notification."));
         }
     };
 
@@ -96,6 +97,9 @@ export function useNotifications() {
                         // Fire toast BEFORE the state updater (side-effect stays outside)
                         if (!incoming.is_read && !toastedIds.current.has(incoming.id)) {
                             toastedIds.current.add(incoming.id);
+                            if (toastedIds.current.size > 250) {
+                                toastedIds.current = new Set(Array.from(toastedIds.current).slice(-150));
+                            }
                             toast(incoming.title || 'New notification', {
                                 description: incoming.message || undefined,
                                 action: incoming.link
