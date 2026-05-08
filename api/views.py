@@ -1281,13 +1281,12 @@ class EnrollStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
-            cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
             if not has_finalized_multidisciplinary_assessment(student):
                 return Response(
                     {"error": "A finalized multidisciplinary assessment is required before enrollment."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            if not has_finalized_iep(student, cycle):
+            if not has_finalized_iep(student):
                 return Response(
                     {"error": "A finalized IEP is required before enrollment."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1313,13 +1312,12 @@ class IntegrateStudentView(APIView):
 
         try:
             student = Student.objects.get(id=student_id)
-            cycle = ReportCycle.objects.filter(student=student, is_active=True).first()
             if not has_finalized_multidisciplinary_assessment(student):
                 return Response(
                     {"error": "A finalized multidisciplinary assessment is required before integration."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            if not has_finalized_iep(student, cycle):
+            if not has_finalized_iep(student):
                 return Response(
                     {"error": "A finalized IEP is required before integration."},
                     status=status.HTTP_400_BAD_REQUEST,

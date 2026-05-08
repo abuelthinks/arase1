@@ -44,9 +44,11 @@ export function toastPromise<T>(
         loading: string;
         success: string | ((data: T) => string);
         error?: string | ((err: any) => string);
+        id?: string;
     },
 ): Promise<T> {
     toast.promise(promise, {
+        id: messages.id,
         loading: messages.loading,
         success: typeof messages.success === 'function'
             ? (data: T) => (messages.success as (data: T) => string)(data)

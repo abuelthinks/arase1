@@ -597,6 +597,7 @@ function UnifiedWorkspaceContent() {
         setSendingParentReminder(true);
         try {
             await toastPromise(api.post(`/api/students/${studentId}/parent-assessment-reminder/`), {
+                id: `parent-reminder-${studentId}`,
                 loading: 'Sending reminder…',
                 success: (res: any) => res.data.message || 'Reminder sent.',
                 error: (err: any) => extractApiError(err, 'Failed to send reminder.'),
@@ -618,6 +619,7 @@ function UnifiedWorkspaceContent() {
         setEnrollingStudent(true);
         try {
             await toastPromise(api.post(`/api/students/${studentId}/enroll/`), {
+                id: `enroll-${studentId}`,
                 loading: 'Enrolling student…',
                 success: (res: any) => res.data.message || 'Student enrolled.',
                 error: (err: any) => extractApiError(err, 'Failed to enroll student.'),
@@ -644,6 +646,7 @@ function UnifiedWorkspaceContent() {
         setIntegratingStudent(true);
         try {
             await toastPromise(api.post(`/api/students/${studentId}/integrate/`), {
+                id: `integrate-${studentId}`,
                 loading: 'Processing integration…',
                 success: (res: any) => res.data.message || 'Student integrated into mainstream school.',
                 error: (err: any) => extractApiError(err, 'Failed to integrate student.'),
