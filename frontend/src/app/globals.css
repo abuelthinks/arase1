@@ -750,27 +750,30 @@ body {
  * sonner defines --normal-bg, --normal-border, --normal-text.
  */
 
-/* Override sonner's light theme CSS variables */
+/* Override sonner's light theme CSS variables.
+ * !important is required because sonner injects its own stylesheet at runtime
+ * with the same selector — without !important, sonner's defaults win the
+ * cascade and the custom palette never applies to typed toasts. */
 [data-sonner-toaster][data-sonner-theme='light'] {
-  --normal-bg: rgba(255, 255, 255, 0.92);
-  --normal-border: rgba(226, 232, 240, 0.7);
-  --normal-text: #0f172a;
+  --normal-bg: rgba(255, 255, 255, 0.92) !important;
+  --normal-border: rgba(226, 232, 240, 0.7) !important;
+  --normal-text: #0f172a !important;
 
-  --success-bg: rgba(240, 253, 244, 0.95);
-  --success-border: rgba(187, 247, 208, 0.7);
-  --success-text: #14532d;
+  --success-bg: rgba(240, 253, 244, 0.95) !important;
+  --success-border: rgba(187, 247, 208, 0.7) !important;
+  --success-text: #14532d !important;
 
-  --error-bg: rgba(254, 242, 242, 0.95);
-  --error-border: rgba(254, 202, 202, 0.7);
-  --error-text: #7f1d1d;
+  --error-bg: rgba(254, 242, 242, 0.95) !important;
+  --error-border: rgba(254, 202, 202, 0.7) !important;
+  --error-text: #7f1d1d !important;
 
-  --info-bg: rgba(239, 246, 255, 0.95);
-  --info-border: rgba(191, 219, 254, 0.7);
-  --info-text: #1e3a5f;
+  --info-bg: rgba(239, 246, 255, 0.95) !important;
+  --info-border: rgba(191, 219, 254, 0.7) !important;
+  --info-text: #1e3a5f !important;
 
-  --warning-bg: rgba(255, 251, 235, 0.95);
-  --warning-border: rgba(253, 230, 138, 0.7);
-  --warning-text: #78350f;
+  --warning-bg: rgba(255, 251, 235, 0.95) !important;
+  --warning-border: rgba(253, 230, 138, 0.7) !important;
+  --warning-text: #78350f !important;
 }
 
 /* Container-level */
