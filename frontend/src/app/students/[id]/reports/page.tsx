@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 import { IEPViewerContent } from "@/app/admin/iep/page";
 import { MonthlyReportContent } from "@/app/admin/monthly-report/page";
@@ -34,25 +35,31 @@ function UnifiedReportsViewer() {
     const activeView = searchParams.get("view") || "generator";
     const activeDocId = searchParams.get("docId");
 
-    useEffect(() => {
+    const fetchReportsProfile = useCallback(async () => {
         if (!studentId) return;
-        
-        api.get(`/api/students/${studentId}/profile/`)
-            .then(res => {
-                const data = res.data;
-                setStudentName(`${data.student.first_name} ${data.student.last_name}`);
-                
-                const generatedDocs = data.generated_documents?.filter((d: any) => d.has_iep_data) || [];
-                // Sort docs descending by created_at
-                generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-                setDocs(generatedDocs);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error("Failed to load profile for reports viewer", err);
-                setLoading(false);
-            });
+        try {
+            const res = await api.get(`/api/students/${studentId}/profile/`);
+            const data = res.data;
+            setStudentName(`${data.student.first_name} ${data.student.last_name}`);
+            const generatedDocs = data.generated_documents?.filter((d: any) => d.has_iep_data) || [];
+            generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setDocs(generatedDocs);
+        } catch (err) {
+            console.error("Failed to load profile for reports viewer", err);
+        } finally {
+            setLoading(false);
+        }
     }, [studentId]);
+
+    useEffect(() => {
+        fetchReportsProfile();
+    }, [fetchReportsProfile]);
+
+    useRealtimeRefresh({
+        targets: ['reports', 'student', 'workspace'],
+        studentId,
+        onRefresh: fetchReportsProfile,
+    });
 
     const handleMenuClick = (view: string, docId?: string) => {
         const url = new URL(window.location.href);

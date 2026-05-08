@@ -20,7 +20,7 @@ from .models import (
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     User, Invitation, PhoneVerification, Notification, SpecialistPreference,
     SectionContribution, SpecialistAvailabilitySlot, AssessmentAppointment,
-    DiagnosticReport,
+    DiagnosticReport, ActivityEvent,
 )
 from .services.notification_service import (
     notify_admins_in_app, notify_form_submitted, notify_tracker_progress,
@@ -35,9 +35,14 @@ from .serializers import (
     AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer,
     SpecialistPreferenceSerializer, SpecialistAvailabilitySlotSerializer,
     AssessmentAppointmentSerializer, DiagnosticReportSerializer,
+    ActivityEventSerializer,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _student_name(student):
+    return f"{student.first_name} {student.last_name}".strip()
 
 # ─── Students ────────────────────────────────────────────────────────────────
 
@@ -95,6 +100,15 @@ class StudentViewSet(viewsets.ModelViewSet):
         response_data = StudentSerializer(student).data
         response_data['invitation_token'] = str(invitation.token)
         headers = self.get_success_headers(response_data)
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='STUDENT_CREATED',
+            title=f"Student registered: {_student_name(student)}",
+            message="A parent invitation was created for the new student.",
+            actor=request.user,
+            student=student,
+            metadata={'refresh': ['invitations']},
+        )
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
     def destroy(self, request, *args, **kwargs):
@@ -150,7 +164,19 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         self._require_admin(request)
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+        if response.status_code == status.HTTP_201_CREATED:
+            from .services.realtime_service import create_activity_event
+            role = response.data.get('role', 'user')
+            name = f"{response.data.get('first_name', '')} {response.data.get('last_name', '')}".strip() or response.data.get('email', 'User')
+            create_activity_event(
+                event_type='USER_REGISTERED',
+                title=f"{role.title()} account created: {name}",
+                actor=request.user,
+                visibility='ADMINS',
+                metadata={'refresh': ['users']},
+            )
+        return response
 
     def update(self, request, *args, **kwargs):
         if request.user.role != 'ADMIN':
@@ -158,7 +184,16 @@ class UserViewSet(viewsets.ModelViewSet):
             requested_fields = set(request.data.keys())
             if instance.id != request.user.id or requested_fields - {'first_name', 'last_name', 'languages'}:
                 raise PermissionDenied("Only admins can manage users.")
-        return super().update(request, *args, **kwargs)
+        response = super().update(request, *args, **kwargs)
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='ONBOARDING_COMPLETED',
+            title="User profile updated",
+            actor=request.user,
+            visibility='ADMINS',
+            metadata={'refresh': ['users']},
+        )
+        return response
 
     def partial_update(self, request, *args, **kwargs):
         if request.user.role != 'ADMIN':
@@ -166,7 +201,16 @@ class UserViewSet(viewsets.ModelViewSet):
             requested_fields = set(request.data.keys())
             if instance.id != request.user.id or requested_fields - {'first_name', 'last_name', 'languages'}:
                 raise PermissionDenied("Only admins can manage users.")
-        return super().partial_update(request, *args, **kwargs)
+        response = super().partial_update(request, *args, **kwargs)
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='ONBOARDING_COMPLETED',
+            title="User profile updated",
+            actor=request.user,
+            visibility='ADMINS',
+            metadata={'refresh': ['users']},
+        )
+        return response
 
     def destroy(self, request, *args, **kwargs):
         self._require_admin(request)
@@ -274,6 +318,17 @@ class BaseInputViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self._validate_submission(serializer.validated_data)
         self.perform_create(serializer)
+        instance = getattr(serializer, 'instance', None)
+        if instance and getattr(instance, 'student', None):
+            from .services.realtime_service import create_activity_event
+            form_label = instance._meta.verbose_name.title()
+            create_activity_event(
+                event_type='FORM_SUBMITTED',
+                title=f"{form_label} submitted for {_student_name(instance.student)}",
+                actor=request.user,
+                student=instance.student,
+                metadata={'form_model': instance._meta.model_name},
+            )
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -414,6 +469,16 @@ class DiagnosticReportViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.warning("Diagnostic extraction failed: %s", e)
 
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='DIAGNOSTIC_UPLOADED',
+            title=f"Diagnostic report uploaded for {_student_name(instance.student)}",
+            message=instance.original_filename,
+            actor=request.user,
+            student=instance.student,
+            metadata={'document_id': instance.id},
+        )
+
         return Response(
             DiagnosticReportSerializer(instance).data,
             status=status.HTTP_201_CREATED,
@@ -548,6 +613,14 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
             form_type='tracker', instance=instance, section_key='*',
             user=user, form_data_v2=instance.form_data,
         ))
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='FORM_SUBMITTED',
+            title=f"Specialist tracker updated for {_student_name(instance.student)}",
+            actor=user,
+            student=instance.student,
+            metadata={'form_model': 'multidisciplinaryprogresstracker'},
+        )
 
         out_serializer = self.get_serializer(instance)
         return Response(
@@ -847,6 +920,15 @@ class ParentOnboardView(APIView):
             except Exception:
                 logger.warning("Failed to notify admins for parent assessment submission", exc_info=True)
 
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='STUDENT_CREATED' if is_new else 'STUDENT_UPDATED',
+                title=f"Parent onboarding completed for {_student_name(student)}",
+                actor=user,
+                student=student,
+                metadata={'refresh': ['forms']},
+            )
+
             if is_new:
                 return Response({
                     "message": "Student profile created and initial input submitted successfully.",
@@ -1067,6 +1149,14 @@ class RequestAssessmentView(APIView):
             student = Student.objects.get(id=student_id)
             student.status = 'ASSESSMENT_SCHEDULED'
             student.save()
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='STUDENT_STATUS_CHANGED',
+                title=f"Assessment scheduled for {_student_name(student)}",
+                actor=request.user,
+                student=student,
+                metadata={'status': student.status},
+            )
             return Response({"message": "Evaluation requested successfully."})
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -1197,7 +1287,7 @@ class AssignParentView(APIView):
 
         try:
             from .services.student_service import assign_staff_to_student
-            staff, student = assign_staff_to_student(student_id, parent_id, 'PARENT')
+            staff, student = assign_staff_to_student(student_id, parent_id, 'PARENT', assigned_by=request.user)
             return Response({"message": f"Parent {staff.email} assigned to {student.first_name}."})
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Parent or Student not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -1296,6 +1386,14 @@ class EnrollStudentView(APIView):
             
             # Notify admins and assigned users of enrollment
             notify_student_status_change(student, 'ENROLLED', changed_by=request.user)
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='STUDENT_STATUS_CHANGED',
+                title=f"{_student_name(student)} enrolled",
+                actor=request.user,
+                student=student,
+                metadata={'status': student.status},
+            )
 
             
             return Response({"message": "Student successfully enrolled and set to Active."})
@@ -1326,6 +1424,14 @@ class IntegrateStudentView(APIView):
             student.save()
             
             notify_student_status_change(student, 'INTEGRATED', changed_by=request.user)
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='STUDENT_STATUS_CHANGED',
+                title=f"{_student_name(student)} integrated",
+                actor=request.user,
+                student=student,
+                metadata={'status': student.status},
+            )
 
             return Response({"message": "Student successfully integrated into mainstream."})
         except Student.DoesNotExist:
@@ -1343,6 +1449,14 @@ class ArchiveStudentView(APIView):
             student = Student.objects.get(id=student_id)
             student.status = 'ARCHIVED'
             student.save()
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='STUDENT_STATUS_CHANGED',
+                title=f"{_student_name(student)} archived",
+                actor=request.user,
+                student=student,
+                metadata={'status': student.status},
+            )
             return Response({"message": "Student archived successfully."})
         except Student.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -1410,6 +1524,14 @@ class GenerateReportFinalView(APIView):
         try:
             # Dispatch to Celery for async processing
             from .tasks import generate_report_final_task
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_QUEUED',
+                title=f"{doc_type} report queued for {_student_name(student)}",
+                actor=request.user,
+                student=student,
+                metadata={'document_type': doc_type},
+            )
             task = generate_report_final_task.delay(student_id, report_cycle_id, doc_type, draft_data)
             return Response({
                 "message": f"{doc_type} report generation started.",
@@ -1420,6 +1542,14 @@ class GenerateReportFinalView(APIView):
             try:
                 from .services.report_service import generate_final_pdf
                 doc = generate_final_pdf(student, cycle, doc_type, draft_data)
+                from .services.realtime_service import create_activity_event
+                create_activity_event(
+                    event_type='REPORT_READY',
+                    title=f"{doc_type} report ready for {_student_name(student)}",
+                    actor=request.user,
+                    student=student,
+                    metadata={'document_id': doc.id, 'document_type': doc_type},
+                )
                 file_url = request.build_absolute_uri(doc.file.url)
                 return Response({
                     "message": f"{doc_type} report generated successfully.",
@@ -1544,6 +1674,17 @@ class AcceptInvitationView(APIView):
 
             # Notify admins of new user registration
             notify_new_user_registered(user)
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='USER_REGISTERED',
+                title=f"New {user.role.title().lower()} registered",
+                message=f"{user.first_name} {user.last_name}".strip() or user.email,
+                actor=user,
+                student=invitation.student,
+                visibility='STUDENT_TEAM' if invitation.student else 'ADMINS',
+                metadata={'refresh': ['users', 'invitations']},
+                direct_user_ids=[user.id],
+            )
 
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1661,9 +1802,24 @@ class GenerateIEPView(APIView):
                 )
 
             from .services.iep_service import run_iep_generation
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_GENERATING',
+                title=f"IEP generation started for {_student_name(student)}",
+                actor=request.user,
+                student=student,
+                metadata={'document_type': 'IEP'},
+            )
             doc, _ = run_iep_generation(student_id, report_cycle_id)
             from .services.document_service import record_document_version
             record_document_version(doc, request.user, 'GENERATED')
+            create_activity_event(
+                event_type='REPORT_READY',
+                title=f"IEP draft ready for {_student_name(student)}",
+                actor=request.user,
+                student=student,
+                metadata={'document_id': doc.id, 'document_type': 'IEP'},
+            )
 
         return Response({
             "message": "IEP generated.",
@@ -1730,6 +1886,23 @@ class IEPDetailView(APIView):
                 notify_iep_finalized(doc.student, doc.id)
             except Exception:
                 logger.warning("Failed to notify users for finalized IEP", exc_info=True)
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_FINALIZED',
+                title=f"IEP finalized for {_student_name(doc.student)}",
+                actor=request.user,
+                student=doc.student,
+                metadata={'document_id': doc.id, 'document_type': 'IEP'},
+            )
+        else:
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_READY',
+                title=f"IEP draft updated for {_student_name(doc.student)}",
+                actor=request.user,
+                student=doc.student,
+                metadata={'document_id': doc.id, 'document_type': 'IEP'},
+            )
 
         return Response({"message": "IEP updated.", "iep_data": doc.iep_data, "status": doc.status})
 
@@ -1921,9 +2094,24 @@ class GenerateMonthlyReportView(APIView):
                 }, status=status.HTTP_200_OK)
 
             from .services.iep_service import run_monthly_report_generation
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_GENERATING',
+                title=f"Monthly report generation started for {_student_name(student)}",
+                actor=request.user,
+                student=student,
+                metadata={'document_type': 'MONTHLY'},
+            )
             doc, _ = run_monthly_report_generation(student_id, report_cycle_id)
             from .services.document_service import record_document_version
             record_document_version(doc, request.user, 'GENERATED')
+            create_activity_event(
+                event_type='REPORT_READY',
+                title=f"Monthly report draft ready for {_student_name(student)}",
+                actor=request.user,
+                student=student,
+                metadata={'document_id': doc.id, 'document_type': 'MONTHLY'},
+            )
 
         return Response({
             "message": "Monthly report generated.",
@@ -1996,6 +2184,23 @@ class MonthlyReportDetailView(APIView):
                 notify_monthly_report_finalized(doc.student, doc.id)
             except Exception:
                 pass  # Don't block finalization if notification fails
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_FINALIZED',
+                title=f"Monthly report finalized for {_student_name(doc.student)}",
+                actor=request.user,
+                student=doc.student,
+                metadata={'document_id': doc.id, 'document_type': 'MONTHLY'},
+            )
+        else:
+            from .services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_READY',
+                title=f"Monthly report draft updated for {_student_name(doc.student)}",
+                actor=request.user,
+                student=doc.student,
+                metadata={'document_id': doc.id, 'document_type': 'MONTHLY'},
+            )
 
         return Response({"message": "Monthly Report updated.", "report_data": doc.iep_data, "status": doc.status})
 
@@ -2323,6 +2528,29 @@ class NotificationDeleteView(APIView):
         return Response({'status': 'ok'}, status=status.HTTP_204_NO_CONTENT)
 
 
+class ActivityEventListView(APIView):
+    """GET: Recent activity visible to the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        limit = min(int(request.query_params.get('limit', 50)), 100)
+        student_id = request.query_params.get('student_id')
+
+        qs = ActivityEvent.objects.select_related('student', 'actor')
+        if user.role == 'ADMIN':
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+        else:
+            student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
+            qs = qs.filter(visibility='STUDENT_TEAM', student_id__in=student_ids)
+            if student_id:
+                qs = qs.filter(student_id=student_id)
+
+        serializer = ActivityEventSerializer(qs[:limit], many=True)
+        return Response({'events': serializer.data})
+
+
 def _user_can_access_student(user, student_id):
     return user.role == 'ADMIN' or StudentAccess.objects.filter(user=user, student_id=student_id).exists()
 
@@ -2504,6 +2732,14 @@ class AssessmentAppointmentView(APIView):
                 student.save(update_fields=['status'])
 
         notify_assessment_scheduled(appointment, booked_by=user)
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='SCHEDULE_UPDATED',
+            title=f"Assessment scheduled for {_student_name(student)}",
+            actor=user,
+            student=student,
+            metadata={'appointment_id': appointment.id},
+        )
         return Response(AssessmentAppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
 
 
@@ -2537,6 +2773,14 @@ class AssessmentAppointmentDetailView(APIView):
 
         if next_status == 'CANCELLED':
             notify_assessment_cancelled(appointment, cancelled_by=user)
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='SCHEDULE_UPDATED',
+            title=f"Assessment {next_status.lower().replace('_', ' ')} for {_student_name(appointment.student)}",
+            actor=user,
+            student=appointment.student,
+            metadata={'appointment_id': appointment.id, 'status': next_status},
+        )
 
         return Response(AssessmentAppointmentSerializer(appointment).data)
 

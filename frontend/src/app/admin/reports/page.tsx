@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useCallback, useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 interface FormStatus {
     submitted: boolean;
@@ -57,10 +58,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     const [iepHovered, setIepHovered] = useState(false);
     const [monthlyHovered, setMonthlyHovered] = useState(false);
 
-    useEffect(() => {
-        if (studentId) {
-            api.get(`/api/students/${studentId}/profile/`)
-                .then(res => {
+    const fetchReportProfile = useCallback(async () => {
+        if (!studentId) return;
+        try {
+            const res = await api.get(`/api/students/${studentId}/profile/`);
                     setStudentStatus(res.data.student.status);
                     setStudentName(`${res.data.student.first_name} ${res.data.student.last_name}`);
                     if (res.data.active_cycle) {
@@ -86,10 +87,21 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                     setExistingIepStatus(iepDoc?.status ?? null);
                     setExistingMonthlyId(monthlyDoc?.id ?? null);
                     setExistingMonthlyStatus(monthlyDoc?.status ?? null);
-                })
-                .catch(() => {});
+        } catch {
+            // Embedded generator surfaces its own action-level errors.
         }
     }, [studentId]);
+
+    useEffect(() => {
+        fetchReportProfile();
+    }, [fetchReportProfile]);
+
+    useRealtimeRefresh({
+        targets: ['reports', 'workspace', 'student'],
+        studentId,
+        isEditing: loading || monthlyLoading,
+        onRefresh: fetchReportProfile,
+    });
 
     const pollTaskStatus = (taskId: string, onSuccess: (result: any) => void, onError: (err: string) => void) => {
         const interval = setInterval(async () => {
@@ -224,11 +236,11 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         <span style={{ 
                             fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", 
                             padding: "2px 8px", borderRadius: "6px", 
-                            background: cycleStatus.status === "OPEN" ? "#dcfce7" : cycleStatus.status === "GRACE" ? "#fee2e2" : "#f1f5f9",
-                            color: cycleStatus.status === "OPEN" ? "#166534" : cycleStatus.status === "GRACE" ? "#991b1b" : "#475569",
+                            background: cycleStatus.status === "OPEN" ? "#dcfce7" : cycleStatus.status === "GRACE" ? "#fee2e2" : cycleStatus.status === "GENERATING" ? "#dbeafe" : "#f1f5f9",
+                            color: cycleStatus.status === "OPEN" ? "#166534" : cycleStatus.status === "GRACE" ? "#991b1b" : cycleStatus.status === "GENERATING" ? "#1d4ed8" : "#475569",
                             marginLeft: "4px"
                         }}>
-                            {cycleStatus.status}
+                            {cycleStatus.status === "GENERATING" ? "Generating" : cycleStatus.status}
                         </span>
                         <span style={{ marginLeft: "auto", fontSize: "0.75rem", fontWeight: 600, color: cycleStatus.days_remaining <= 5 ? "#dc2626" : "#64748b" }}>
                             {cycleStatus.days_remaining} days left

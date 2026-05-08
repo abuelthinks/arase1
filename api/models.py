@@ -360,6 +360,52 @@ class Notification(models.Model):
     def __str__(self):
         return f"{self.notification_type} -> {self.recipient.email}"
 
+
+class ActivityEvent(models.Model):
+    EVENT_TYPES = (
+        ('STUDENT_CREATED', 'Student Created'),
+        ('STUDENT_UPDATED', 'Student Updated'),
+        ('STUDENT_STATUS_CHANGED', 'Student Status Changed'),
+        ('TEAM_UPDATED', 'Team Updated'),
+        ('FORM_SUBMITTED', 'Form Submitted'),
+        ('FORM_FINALIZED', 'Form Finalized'),
+        ('REPORT_QUEUED', 'Report Queued'),
+        ('REPORT_GENERATING', 'Report Generating'),
+        ('REPORT_READY', 'Report Ready'),
+        ('REPORT_FAILED', 'Report Failed'),
+        ('REPORT_FINALIZED', 'Report Finalized'),
+        ('SCHEDULE_UPDATED', 'Schedule Updated'),
+        ('DIAGNOSTIC_UPLOADED', 'Diagnostic Uploaded'),
+        ('USER_REGISTERED', 'User Registered'),
+        ('ONBOARDING_COMPLETED', 'Onboarding Completed'),
+        ('SYSTEM', 'System'),
+    )
+    VISIBILITY_CHOICES = (
+        ('ADMINS', 'Admins'),
+        ('STUDENT_TEAM', 'Student Team'),
+    )
+
+    event_type = models.CharField(max_length=40, choices=EVENT_TYPES)
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='STUDENT_TEAM')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True, related_name='activity_events')
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='activity_events')
+    actor_name = models.CharField(max_length=200, blank=True, default='')
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default='')
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['visibility', '-created_at']),
+            models.Index(fields=['student', '-created_at']),
+            models.Index(fields=['event_type', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.event_type}: {self.title}"
+
 class SpecialistPreference(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='specialist_preferences')
     specialty = models.CharField(max_length=100)

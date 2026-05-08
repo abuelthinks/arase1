@@ -65,8 +65,28 @@ def generate_report_final_task(self, student_id, cycle_id, doc_type, draft_data)
         student = Student.objects.get(id=student_id)
         cycle = ReportCycle.objects.get(id=cycle_id)
         doc = generate_final_pdf(student, cycle, doc_type, draft_data)
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_READY',
+            title=f"{doc_type} report ready for {student}",
+            student=student,
+            metadata={'document_id': doc.id, 'document_type': doc_type},
+        )
         return {'doc_id': doc.id, 'file_url': doc.file.url if doc.file else '', 'status': 'completed'}
     except Exception as exc:
+        try:
+            from api.models import Student
+            from api.services.realtime_service import create_activity_event
+            student = Student.objects.filter(id=student_id).first()
+            create_activity_event(
+                event_type='REPORT_FAILED',
+                title=f"{doc_type} report failed",
+                message=str(exc),
+                student=student,
+                metadata={'document_type': doc_type, 'toast': 'error'},
+            )
+        except Exception:
+            pass
         raise self.retry(exc=exc)
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def translate_form_data_task(self, model_name, instance_id):

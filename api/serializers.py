@@ -9,7 +9,8 @@ from .models import (
     ParentAssessment, MultidisciplinaryAssessment, SpedAssessment,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     Invitation, Notification, SpecialistPreference, SectionContribution,
-    SpecialistAvailabilitySlot, AssessmentAppointment, DiagnosticReport
+    SpecialistAvailabilitySlot, AssessmentAppointment, DiagnosticReport,
+    ActivityEvent,
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -191,6 +192,7 @@ class StudentSerializer(serializers.ModelSerializer):
     active_cycle_label = serializers.SerializerMethodField()
     latest_final_monthly_report_id = serializers.SerializerMethodField()
     recent_activity_at = serializers.SerializerMethodField()
+    next_action = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
@@ -252,6 +254,84 @@ class StudentSerializer(serializers.ModelSerializer):
                 timestamps.append(latest)
 
         return max(timestamps) if timestamps else None
+
+    def get_next_action(self, obj):
+        cycle = self._get_active_cycle(obj)
+        status = (obj.status or "").upper()
+        has_parent = ParentAssessment.objects.filter(student=obj, report_cycle=cycle).exists() if cycle else ParentAssessment.objects.filter(student=obj).exists()
+        has_specialist = StudentAccess.objects.filter(student=obj, user__role='SPECIALIST').exists()
+        has_teacher = StudentAccess.objects.filter(student=obj, user__role='TEACHER').exists()
+        has_finalized_multi = MultidisciplinaryAssessment.objects.filter(
+            student=obj,
+            finalized_at__isnull=False,
+            **({'report_cycle': cycle} if cycle else {}),
+        ).exists()
+        latest_iep = GeneratedDocument.objects.filter(
+            student=obj,
+            document_type='IEP',
+            **({'report_cycle': cycle} if cycle else {}),
+        ).order_by('-created_at').first()
+        latest_monthly = GeneratedDocument.objects.filter(
+            student=obj,
+            document_type='MONTHLY',
+            **({'report_cycle': cycle} if cycle else {}),
+        ).order_by('-created_at').first()
+
+        def action(label, tone='info', workspace='overview', tab=None, view=None, doc_id=None, team_role=None, priority=50):
+            return {
+                'label': label,
+                'tone': tone,
+                'workspace': workspace,
+                'tab': tab,
+                'view': view,
+                'docId': str(doc_id) if doc_id else None,
+                'teamRole': team_role,
+                'priority': priority,
+            }
+
+        if status in ('PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED'):
+            if not has_parent:
+                return action('Parent assessment', 'warning', 'forms', 'parent_assessment', priority=10)
+            if not has_specialist:
+                return action('Assign specialist', 'warning', 'team', team_role='SPECIALIST', priority=20)
+            if not has_finalized_multi:
+                return action('Specialist assessment', 'warning', 'forms', 'multi_assessment', priority=30)
+
+        if status == 'ASSESSED':
+            if latest_iep and latest_iep.status != 'FINAL':
+                return action('Finalize IEP', 'positive', 'reports', view='iep', doc_id=latest_iep.id, priority=10)
+            if not latest_iep and has_parent and has_finalized_multi:
+                return action('Generate IEP draft', 'warning', 'reports', view='generator', priority=20)
+            if latest_iep and latest_iep.status == 'FINAL':
+                return action('Ready for placement', 'positive', 'overview', priority=30)
+
+        if status == 'ENROLLED':
+            if latest_iep and latest_iep.status != 'FINAL':
+                return action('Finalize IEP', 'positive', 'reports', view='iep', doc_id=latest_iep.id, priority=10)
+            if not latest_iep and has_parent and has_finalized_multi:
+                return action('Generate IEP draft', 'warning', 'reports', view='generator', priority=20)
+
+        if status == 'INTEGRATED' and not has_teacher:
+            return action('Assign teacher', 'warning', 'team', team_role='TEACHER', priority=20)
+
+        if status in ('ENROLLED', 'INTEGRATED') and cycle:
+            parent_done = ParentProgressTracker.objects.filter(student=obj, report_cycle=cycle).exists()
+            specialist_done = MultidisciplinaryProgressTracker.objects.filter(student=obj, report_cycle=cycle, finalized_at__isnull=False).exists()
+            teacher_required = status == 'INTEGRATED'
+            teacher_done = not teacher_required or SpedProgressTracker.objects.filter(student=obj, report_cycle=cycle).exists()
+            if latest_monthly and latest_monthly.status == 'DRAFT':
+                return action('Review monthly', 'positive', 'reports', view='monthly', doc_id=latest_monthly.id, priority=10)
+            if not (parent_done and specialist_done and teacher_done):
+                next_tab = 'parent_tracker'
+                if parent_done and not specialist_done:
+                    next_tab = 'multi_tracker'
+                elif parent_done and specialist_done and not teacher_done:
+                    next_tab = 'sped_tracker'
+                return action('Trackers pending', 'warning', 'forms', next_tab, priority=40)
+            if not latest_monthly:
+                return action('Generate monthly', 'positive', 'reports', view='generator', priority=30)
+
+        return None
 
 class StudentAccessSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)
@@ -358,6 +438,23 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'notification_type', 'title', 'message', 'link', 'actor_name', 'is_read', 'created_at']
         read_only_fields = ['id', 'notification_type', 'title', 'message', 'link', 'actor_name', 'created_at']
+
+
+class ActivityEventSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ActivityEvent
+        fields = [
+            'id', 'event_type', 'visibility', 'student', 'student_name',
+            'actor', 'actor_name', 'title', 'message', 'metadata', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_student_name(self, obj):
+        if not obj.student:
+            return ''
+        return f"{obj.student.first_name} {obj.student.last_name}".strip()
 
 class SpecialistPreferenceSerializer(serializers.ModelSerializer):
     # Include basic details of the specialist for display purposes

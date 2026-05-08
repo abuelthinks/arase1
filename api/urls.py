@@ -18,6 +18,7 @@ from .views import (
     SendVerificationSMSView, VerifySMSView,
     CreateCycleView, SendRemindersView, TaskStatusView,
     NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView, NotificationDeleteView,
+    ActivityEventListView,
     SpecialistPreferenceViewSet, SpecialistListView,
     AssessmentSectionWriteView, AssessmentSectionSubmitView, AssessmentSectionReopenView,
     TrackerSectionWriteView, TrackerSectionSubmitView, TrackerSectionReopenView,
@@ -109,6 +110,7 @@ urlpatterns = [
     path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
     path('notifications/<int:pk>/delete/', NotificationDeleteView.as_view(), name='notification-delete'),
     path('notifications/read-all/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
+    path('activity/', ActivityEventListView.as_view(), name='activity-list'),
 
     # Assessment scheduling
     path('assessment/availability/', AssessmentAvailabilityView.as_view(), name='assessment-availability'),

@@ -380,6 +380,20 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
             assigned_by=assigned_by,
         )
 
+    if assignment_changed:
+        from api.services.realtime_service import create_activity_event
+        staff_name = f"{staff.first_name} {staff.last_name}".strip() or staff.email
+        role_label = expected_role.title()
+        create_activity_event(
+            event_type='TEAM_UPDATED',
+            title=f"{role_label} {staff_name} assigned to {student}",
+            message=staff_name,
+            actor=assigned_by,
+            student=student,
+            metadata={'staff_id': staff.id, 'role': expected_role, 'refresh': ['users']},
+            direct_user_ids=[staff.id],
+        )
+
     return staff, student
 
 
@@ -445,6 +459,18 @@ def unassign_staff_from_student(student_id, staff_id, specialty=None, unassigned
                 removed_all,
                 unassigned_by,
             )
+            from api.services.realtime_service import create_activity_event
+            staff_name = f"{staff.first_name} {staff.last_name}".strip() or staff.email
+            role_label = staff.role.title()
+            create_activity_event(
+                event_type='TEAM_UPDATED',
+                title=f"{role_label} {staff_name} removed from {student}",
+                message=staff_name,
+                actor=unassigned_by,
+                student=student,
+                metadata={'staff_id': staff.id, 'role': staff.role, 'refresh': ['users']},
+                direct_user_ids=[staff.id],
+            )
             return True
         return False
         
@@ -462,6 +488,18 @@ def unassign_staff_from_student(student_id, staff_id, specialty=None, unassigned
         removed_specialties,
         removed_all,
         unassigned_by,
+    )
+    from api.services.realtime_service import create_activity_event
+    staff_name = f"{staff.first_name} {staff.last_name}".strip() or staff.email
+    role_label = staff.role.title()
+    create_activity_event(
+        event_type='TEAM_UPDATED',
+        title=f"{role_label} {staff_name} removed from {student}",
+        message=staff_name,
+        actor=unassigned_by,
+        student=student,
+        metadata={'staff_id': staff.id, 'role': staff.role, 'refresh': ['users']},
+        direct_user_ids=[staff.id],
     )
     return True
 

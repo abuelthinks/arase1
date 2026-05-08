@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -10,6 +10,7 @@ import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialt
 import { roleColorHex, statusColorHex } from "@/lib/role-colors";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
     const [createdInvite, setCreatedInvite] = useState<{ email: string; token: string } | null>(null);
 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [studentRes, userRes, inviteRes, actionsRes] = await Promise.all([
@@ -205,11 +206,20 @@ export default function AdminDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
+
+    const dashboardEditing =
+        showUserModal || showInviteModal || showStudentModal ||
+        !!userToDelete || !!inviteToRevoke || !!inviteToResend || !!createdInvite;
+    useRealtimeRefresh({
+        targets: ['dashboard', 'users', 'staff', 'invitations'],
+        isEditing: dashboardEditing,
+        onRefresh: fetchData,
+    });
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -625,7 +635,6 @@ export default function AdminDashboard() {
                     {activeTab === "invitations" && `Track and revoke pending invitations. Showing ${processedInvitations.length} of ${pendingInvitations.length}.`}
                 </p>
             </div>
-
                 {/* Desktop only: card wrapper. Mobile: px-4 content padding */}
                 <div className="p-4 sm:p-6 md:p-8 md:glass-panel md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] md:min-h-[60vh]">
                     {/* Mobile-only title */}

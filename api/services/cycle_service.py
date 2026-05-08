@@ -43,8 +43,21 @@ def check_and_trigger_iep_generation(student, cycle):
 
     try:
         from api.services.iep_service import run_iep_generation
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_GENERATING',
+            title=f"IEP generation started for {student}",
+            student=student,
+            metadata={'document_type': 'IEP'},
+        )
         doc, _ = run_iep_generation(student.id, cycle.id)
         logger.info("IEP auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
+        create_activity_event(
+            event_type='REPORT_READY',
+            title=f"IEP draft ready for {student}",
+            student=student,
+            metadata={'document_id': doc.id, 'document_type': 'IEP'},
+        )
         try:
             from api.services.notification_service import notify_auto_iep_ready
             notify_auto_iep_ready(student, doc)
@@ -53,6 +66,17 @@ def check_and_trigger_iep_generation(student, cycle):
         return True, doc
     except Exception as exc:
         logger.error("Failed to auto-generate IEP for student=%s cycle=%s: %s", student.id, cycle.id, exc)
+        try:
+            from api.services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_FAILED',
+                title=f"IEP generation failed for {student}",
+                message=str(exc),
+                student=student,
+                metadata={'document_type': 'IEP', 'toast': 'error'},
+            )
+        except Exception:
+            pass
         return False, None
 
 
@@ -118,6 +142,16 @@ def ensure_current_cycle(student):
         status='OPEN',
     )
     logger.info("Created new cycle '%s' for student=%s", label, student.id)
+    try:
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='STUDENT_UPDATED',
+            title=f"New cycle opened for {student}",
+            student=student,
+            metadata={'cycle_id': cycle.id},
+        )
+    except Exception:
+        pass
     return cycle
 
 
@@ -159,11 +193,25 @@ def check_and_trigger_auto_generation(student, cycle):
 
         cycle.status = 'GENERATING'
         cycle.save(update_fields=['status'])
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_GENERATING',
+            title=f"Monthly report generation started for {student}",
+            student=student,
+            metadata={'cycle_id': cycle.id, 'document_type': 'MONTHLY'},
+        )
 
     try:
         from api.services.iep_service import run_monthly_report_generation
         doc, _ = run_monthly_report_generation(student.id, cycle.id)
         logger.info("Monthly report auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_READY',
+            title=f"Monthly report draft ready for {student}",
+            student=student,
+            metadata={'document_id': doc.id, 'cycle_id': cycle.id, 'document_type': 'MONTHLY'},
+        )
         try:
             from api.services.notification_service import notify_auto_report_ready
             notify_auto_report_ready(student, doc)
@@ -174,6 +222,17 @@ def check_and_trigger_auto_generation(student, cycle):
         logger.error("Failed to auto-generate monthly report for student=%s cycle=%s: %s", student.id, cycle.id, exc)
         cycle.status = 'OPEN'  # Reset so it can be retried
         cycle.save(update_fields=['status'])
+        try:
+            from api.services.realtime_service import create_activity_event
+            create_activity_event(
+                event_type='REPORT_FAILED',
+                title=f"Monthly report generation failed for {student}",
+                message=str(exc),
+                student=student,
+                metadata={'cycle_id': cycle.id, 'document_type': 'MONTHLY', 'toast': 'error'},
+            )
+        except Exception:
+            pass
         return False, None
 
 
@@ -290,3 +349,13 @@ def complete_cycle(cycle):
     cycle.is_active = False
     cycle.save(update_fields=['status', 'is_active'])
     logger.info("Cycle %s completed for student=%s", cycle.id, cycle.student_id)
+    try:
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='STUDENT_UPDATED',
+            title=f"Cycle completed for {cycle.student}",
+            student=cycle.student,
+            metadata={'cycle_id': cycle.id},
+        )
+    except Exception:
+        pass

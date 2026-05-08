@@ -241,6 +241,15 @@ def submit_section(
             ),
             broadcast_lock_changed(form_type, instance.id),
         ))
+        from .realtime_service import create_activity_event
+        label = "Specialist assessment" if form_type == "assessment" else "Specialist tracker"
+        create_activity_event(
+            event_type="FORM_FINALIZED" if finalized else "FORM_SUBMITTED",
+            title=f"{label} section {section_key} submitted for {instance.student}",
+            actor=user,
+            student=instance.student,
+            metadata={"form_type": form_type, "section_key": section_key},
+        )
         return instance, contribution
 
 
@@ -281,6 +290,14 @@ def reopen_section(
         
         from .collaboration_service import broadcast_lock_changed
         transaction.on_commit(lambda: broadcast_lock_changed(form_type, instance.id))
+        from .realtime_service import create_activity_event
+        create_activity_event(
+            event_type="FORM_SUBMITTED",
+            title=f"Section {section_key} reopened for {instance.student}",
+            actor=user,
+            student=instance.student,
+            metadata={"form_type": form_type, "section_key": section_key},
+        )
         
         return instance, contribution
 

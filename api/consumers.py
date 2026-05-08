@@ -102,6 +102,46 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
 # ─── Multidisciplinary Form Collaboration ────────────────────────────────────
 
+class RealtimeConsumer(AsyncWebsocketConsumer):
+    """
+    Site-wide real-time signal channel.
+
+    The socket carries lightweight activity events. REST remains the source of
+    truth; clients refetch affected surfaces when an event arrives.
+    """
+
+    async def connect(self):
+        self.user = await self._authenticate()
+        if self.user is None:
+            await self.close()
+            return
+
+        self.groups = [f"realtime_user_{self.user.id}"]
+        if self.user.role == "ADMIN":
+            self.groups.append("realtime_admins")
+
+        for group in self.groups:
+            await self.channel_layer.group_add(group, self.channel_name)
+
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        for group in getattr(self, "groups", []):
+            await self.channel_layer.group_discard(group, self.channel_name)
+
+    async def receive(self, text_data=None, bytes_data=None):
+        pass
+
+    async def realtime_event(self, event):
+        await self.send(text_data=json.dumps(event.get("payload") or {}))
+
+    async def _authenticate(self):
+        token = _extract_jwt(self.scope)
+        if not token:
+            return None
+        return await _user_from_jwt(token)
+
+
 class CollaborationConsumer(AsyncWebsocketConsumer):
     """
     WebSocket endpoint:

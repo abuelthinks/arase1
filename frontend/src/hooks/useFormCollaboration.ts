@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import Cookies from "js-cookie";
 import { API_BASE_URL } from "@/lib/api";
 
 export interface PresenceLock {
@@ -116,12 +115,7 @@ export function useFormCollaboration({
         const connect = () => {
             if (cancelled) return;
             if (typeof window === "undefined") return;
-            const token = Cookies.get("access_token");
-            if (!token) {
-                reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
-                return;
-            }
-            const url = `${getWsBase()}/ws/collab/${formType}/${id}/?token=${token}`;
+            const url = `${getWsBase()}/ws/collab/${formType}/${id}/`;
             let ws: WebSocket;
             try {
                 ws = new WebSocket(url);
