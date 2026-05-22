@@ -1244,31 +1244,28 @@ function UnifiedWorkspaceContent() {
                     {reportView === "iep" && selectedDocId && (
                         <div className="flex flex-col h-full flex-1">
                             {iepDocs.length > 1 && (
-                                <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                        <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2 shrink-0">
+                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                        <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-semibold text-slate-500">Select Version:</span>
-                                        <select
-                                            value={selectedDocId}
-                                            onChange={(e) => handleReportMenuChange("iep", e.target.value)}
-                                            className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                                                backgroundPosition: "right 0.5rem center",
-                                                backgroundSize: "1.25rem",
-                                                backgroundRepeat: "no-repeat",
-                                            }}
-                                        >
-                                            {iepDocs.map((doc, idx) => (
-                                                <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version — " : "Previous Version — "} {formatDocumentDateTime(doc.created_at)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <select
+                                        value={selectedDocId}
+                                        onChange={(e) => handleReportMenuChange("iep", e.target.value)}
+                                        className="text-[0.75rem] font-bold text-slate-700 bg-white border border-slate-200 rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                        style={{
+                                            backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
+                                            backgroundPosition: "right 0.4rem center",
+                                            backgroundSize: "1rem",
+                                            backgroundRepeat: "no-repeat",
+                                        }}
+                                    >
+                                        {iepDocs.map((doc, idx) => (
+                                            <option key={doc.id} value={doc.id.toString()}>
+                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
                             <div className="flex-1 overflow-y-auto">
@@ -1279,31 +1276,28 @@ function UnifiedWorkspaceContent() {
                     {reportView === "monthly" && selectedDocId && (
                         <div className="flex flex-col h-full flex-1">
                             {monthlyDocs.length > 1 && (
-                                <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                        <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                <div className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2 shrink-0">
+                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                        <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-semibold text-slate-500">Select Version:</span>
-                                        <select
-                                            value={selectedDocId}
-                                            onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
-                                            className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                                                backgroundPosition: "right 0.5rem center",
-                                                backgroundSize: "1.25rem",
-                                                backgroundRepeat: "no-repeat",
-                                            }}
-                                        >
-                                            {monthlyDocs.map((doc, idx) => (
-                                                <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version — " : "Previous Version — "} {formatDocumentDateTime(doc.created_at)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <select
+                                        value={selectedDocId}
+                                        onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
+                                        className="text-[0.75rem] font-bold text-slate-700 bg-white border border-slate-200 rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                        style={{
+                                            backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
+                                            backgroundPosition: "right 0.4rem center",
+                                            backgroundSize: "1rem",
+                                            backgroundRepeat: "no-repeat",
+                                        }}
+                                    >
+                                        {monthlyDocs.map((doc, idx) => (
+                                            <option key={doc.id} value={doc.id.toString()}>
+                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
                             <div className="flex-1 overflow-y-auto">
