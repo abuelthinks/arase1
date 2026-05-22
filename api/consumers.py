@@ -275,9 +275,11 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             }))
             return
 
-        await database_sync_to_async(broadcast_lock_changed)(
-            self.form_type, self.instance_id,
-        )
+        # Skip broadcast on TTL refresh — nothing actually changed for peers.
+        if not result.get("refreshed"):
+            await database_sync_to_async(broadcast_lock_changed)(
+                self.form_type, self.instance_id,
+            )
 
     async def _handle_release(self, section_key):
         if not section_key:

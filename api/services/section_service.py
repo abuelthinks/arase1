@@ -55,6 +55,91 @@ def _is_shared_locked(form_type: str, instance, section_key: str) -> bool:
     return data.get("a2_verification") == "matches"
 
 
+# Per-section field IDs for emptiness checks. Two frontends write to the
+# section-scoped endpoints with DIFFERENT field name conventions, so we keep
+# the union of both. A section is "non-empty" if any of these fields holds
+# real content.
+#   * Schema-driven workspace form (frontend/.../[type]/page.tsx + JSON schema)
+#   * Legacy bespoke form           (frontend/.../specialist-a/page.tsx)
+ASSESSMENT_SECTION_FIELDS: dict[str, list[str]] = {
+    "A": [
+        # specialist-a/page.tsx
+        "therapist_name", "date",
+        "a2_verification", "a2_correction_notes",
+        "a3_reports_reviewed", "a3_notes",
+        # JSON schema (workspace [type]/page.tsx)
+        "parent_provided_information", "therapist_verification",
+        "correction_notes", "clinical_notes", "additional_clinical_notes",
+    ],
+    "B": [
+        "b1_milestones", "b2_developmental_concerns",
+        "developmental_milestones", "developmental_concerns",
+    ],
+    "C": [
+        "c1_expressive", "c2_receptive", "c3_articulation", "c4_pragmatics", "c_notes",
+        "expressive_language", "receptive_language", "speech_sound", "pragmatics", "slp_notes",
+    ],
+    "D": [
+        "d1_fine_motor", "d2_sensory", "d3_adls", "d4_regulation", "d_notes",
+        "fine_motor_skills", "sensory_processing", "adls",
+        "ot_emotional_regulation", "ot_notes",
+    ],
+    "E": [
+        "e1_gross_motor", "e2_strength", "e3_posture", "e4_motor_planning", "e_notes",
+        "gross_motor_skills", "strength_endurance", "posture_alignment",
+        "motor_planning", "pt_notes",
+    ],
+    "F1": [
+        "f1_behavior", "f2_emotional", "f_aba_notes",
+        "behavioral_observations", "psych_emotional_functioning", "psych_notes",
+    ],
+    "F2": [
+        "f3_cognitive", "f4_autism", "f_dev_psych_notes",
+        "cognitive_play_skills", "autism_characteristics",
+    ],
+    "G": [
+        "g1_slp_summary", "g1_ot_summary", "g1_pt_summary", "g1_aba_summary",
+        "g1_developmental_psychology_summary",
+        "g2_strengths", "g3_needs", "g4_frequency", "g5_follow_up",
+        "slp_summary", "ot_summary", "pt_summary", "aba_summary",
+        "developmental_psychology_summary",
+        "unified_strengths", "unified_needs",
+        "recommended_therapy_frequency", "follow_up_plan",
+    ],
+}
+
+
+def _is_value_blank(value) -> bool:
+    """A field is "blank" if the user hasn't put real content in it."""
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == "" or value.strip() == "0"
+    if isinstance(value, (list, tuple, dict, set)):
+        return len(value) == 0
+    if isinstance(value, bool):
+        return value is False
+    if isinstance(value, (int, float)):
+        return value == 0
+    return False
+
+
+def _section_has_content(form_type: str, instance, section_key: str) -> bool:
+    """True if the section has at least one non-blank field value persisted."""
+    if form_type == "assessment":
+        v2 = (instance.form_data or {}).get("v2", {}) or {}
+        fields = ASSESSMENT_SECTION_FIELDS.get(section_key, [])
+        if not fields:
+            # Unknown section — fall back to permissive (don't block).
+            return True
+        return any(not _is_value_blank(v2.get(f)) for f in fields)
+    # Tracker form: section data is namespaced under form_data[section_key].
+    section_data = (instance.form_data or {}).get(section_key)
+    if not isinstance(section_data, dict):
+        return False
+    return any(not _is_value_blank(v) for v in section_data.values())
+
+
 def _get_or_create_form(form_type: str, user, student_id, report_cycle_id):
     Model = FORM_MODELS[form_type]
     instance = Model.objects.filter(
@@ -211,6 +296,15 @@ def submit_section(
         specialty = "" if owner == SHARED_SECTION else owner
         fallback_specialties = access.specialty_list() if access else user.specialty_list()
 
+        # Specialty-owned sections must have at least one filled field before
+        # they can be submitted. Shared sections are allowed to submit empty
+        # (whoever opts in is signaling "nothing to add here").
+        if owner != SHARED_SECTION and user.role != "ADMIN":
+            if not _section_has_content(form_type, instance, section_key):
+                raise SectionValidationError(
+                    f"Section {section_key} is empty. Please fill out the section before submitting."
+                )
+
         contribution, _created = SectionContribution.objects.update_or_create(
             defaults={
                 "form_type": form_type,
@@ -257,26 +351,45 @@ def reopen_section(
     *, form_type: str, user, student_id: int, report_cycle_id: int,
     section_key: str,
 ):
-    """Revert a submitted shared section back to draft status."""
+    """Revert a submitted section back to draft status.
+
+    Rules:
+      - Form must NOT be finalized. Once finalized, only admin can reopen
+        through admin tools.
+      - Shared sections (Section A, B, G, etc.): any specialist with student
+        access may reopen — they're taking over collaborative editing.
+      - Owned (specialty-specific) sections: only a specialist whose specialty
+        owns the section may reopen — they're correcting their own work.
+    """
     with transaction.atomic():
         instance, _ = _get_or_create_form(
             form_type, user, student_id, report_cycle_id
         )
-        
+
         if instance.finalized_at:
             raise SectionLockedError("This form is finalized and cannot be reopened.")
-            
+
         owners = get_section_owners(form_type)
-        if owners.get(section_key) != SHARED_SECTION:
-            raise SectionPermissionError("Only shared sections can be explicitly reopened.")
-            
+        owner = owners.get(section_key)
+        if owner is None:
+            raise SectionValidationError(f"Unknown section: {section_key}")
+
         access = _get_student_access(user, instance)
         if user.role != "SPECIALIST" and user.role != "ADMIN":
             raise SectionPermissionError("Only specialists or admins can reopen sections.")
-            
+
+        # Owned-section reopens are restricted to the owning specialty (admins
+        # always allowed). Shared sections stay open to any team member.
+        if owner != SHARED_SECTION and user.role != "ADMIN":
+            user_specialties = access.specialty_list() if access else user.specialty_list()
+            if not can_edit_section(form_type, section_key, user_specialties):
+                raise SectionPermissionError(
+                    "Only the assigned specialist may reopen this section."
+                )
+
         if _is_shared_locked(form_type, instance, section_key):
             raise SectionLockedError(f"Section {section_key} is locked (verified) and cannot be reopened.")
-            
+
         contribution = SectionContribution.objects.filter(
             **{_fk_field(form_type): instance}, section_key=section_key
         ).first()
@@ -300,6 +413,88 @@ def reopen_section(
         )
         
         return instance, contribution
+
+
+def submit_all_sections(
+    *, form_type: str, user, student_id: int, report_cycle_id: int,
+):
+    """Bulk-submit every draft section the user has contributed to.
+
+    All-or-nothing: if any section fails the submit checks, nothing changes.
+
+    Validation:
+      - User's *assigned* specialty sections must each have an existing
+        contribution (drafted or submitted). Missing ones block the submit.
+      - Shared sections with no contribution are not required.
+
+    Returns: {"submitted": [keys], "finalized": bool, "instance": instance}.
+    """
+    if user.role not in ("SPECIALIST", "ADMIN"):
+        raise SectionPermissionError("Only specialists may submit form sections.")
+    if user.role == "SPECIALIST" and not user.is_specialist_onboarding_complete():
+        raise SectionPermissionError("Complete your profile setup before submitting work.")
+
+    with transaction.atomic():
+        instance, _ = _get_or_create_form(
+            form_type, user, student_id, report_cycle_id
+        )
+        access = _get_student_access(user, instance)
+
+        if instance.finalized_at:
+            raise SectionLockedError("This form is finalized.")
+
+        user_specialties = (
+            access.specialty_list() if access else user.specialty_list()
+        )
+
+        # Required sections for *this* user (their owned-specialty sections).
+        my_required = required_owner_sections(form_type, user_specialties)
+
+        # A required section is only "ready" if it has a contribution AND that
+        # contribution's persisted form_data actually contains something.
+        existing = {
+            c.section_key: c
+            for c in SectionContribution.objects.filter(
+                **{_fk_field(form_type): instance},
+                section_key__in=my_required,
+            )
+        }
+
+        missing = [
+            key for key in my_required
+            if key not in existing or not _section_has_content(form_type, instance, key)
+        ]
+        if missing:
+            label = ", ".join(missing)
+            raise SectionValidationError(
+                f"Please fill out your assigned section(s) before submitting: {label}"
+            )
+
+        # Submit every draft contribution where this user is the latest editor.
+        my_drafts = SectionContribution.objects.filter(
+            **{_fk_field(form_type): instance},
+            specialist=user,
+            status="draft",
+        ).order_by("section_key")
+
+        submitted_keys: list[str] = []
+        for contrib in my_drafts:
+            submit_section(
+                form_type=form_type,
+                user=user,
+                student_id=student_id,
+                report_cycle_id=report_cycle_id,
+                section_key=contrib.section_key,
+            )
+            submitted_keys.append(contrib.section_key)
+
+    instance.refresh_from_db()
+    return {
+        "submitted": submitted_keys,
+        "finalized": bool(instance.finalized_at),
+        "finalized_at": instance.finalized_at,
+        "instance": instance,
+    }
 
 
 def _maybe_finalize(form_type: str, instance, user):

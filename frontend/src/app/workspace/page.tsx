@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { extractApiError, toastPromise } from "@/lib/toast-utils";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
-import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
+import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
@@ -117,6 +117,8 @@ function UnifiedWorkspaceContent() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+    const [activeCycle, setActiveCycle] = useState<any>(null);
+    const [sectionContributions, setSectionContributions] = useState<any[]>([]);
     const [activityEvents, setActivityEvents] = useState<any[]>([]);
 
     // -- Forms State --
@@ -137,7 +139,7 @@ function UnifiedWorkspaceContent() {
     const workspaceParam = searchParams.get("workspace");
     const activeViewParam = searchParams.get("view");
     const activeTeamRoleParam = searchParams.get("teamRole");
-    const normalizedStudentStatus = studentStatus?.toUpperCase();
+    const normalizedStudentStatus = studentStatus?.toUpperCase().replace(/\s+/g, "_");
 
     // -- Team State --
     const [assignedStaff, setAssignedStaff] = useState<any[]>([]);
@@ -268,6 +270,7 @@ function UnifiedWorkspaceContent() {
                 setStudentName(`${data.student.first_name} ${data.student.last_name}`);
                 setStudentStatus(data.student.status);
                 setStudentDetails(data.student);
+                setActiveCycle(data.active_cycle);
                 setFormStatuses(data.form_statuses);
                 setAssignedStaff(data.assigned_staff || []);
                 setStagedAssignedStaff(data.assigned_staff || []);
@@ -290,6 +293,29 @@ function UnifiedWorkspaceContent() {
             isActive = false;
         };
     }, [studentId, isAuthorized, profileRefreshKey]);
+
+    const fetchSectionContributions = useCallback(async (currentStudentId: string, currentCycleId: number) => {
+        try {
+            const res = await api.get('/api/inputs/multidisciplinary-assessment/contributions/', {
+                params: {
+                    student: currentStudentId,
+                    report_cycle: currentCycleId
+                }
+            });
+            setSectionContributions(res.data || []);
+        } catch (err) {
+            console.error("Failed to fetch section contributions:", err);
+            setSectionContributions([]);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (studentId && activeCycle?.id && normalizedStudentStatus === "ASSESSMENT_SCHEDULED") {
+            fetchSectionContributions(studentId, activeCycle.id);
+        } else {
+            setSectionContributions([]);
+        }
+    }, [studentId, activeCycle?.id, normalizedStudentStatus, fetchSectionContributions]);
 
     useEffect(() => {
         if (!isAuthorized || !studentId || !formStatuses || workspace !== "forms" || requestedFormTab || typeof window === "undefined") {
@@ -365,6 +391,7 @@ function UnifiedWorkspaceContent() {
             setStudentName(`${data.student.first_name} ${data.student.last_name}`);
             setStudentStatus(data.student.status);
             setStudentDetails(data.student);
+            setActiveCycle(data.active_cycle);
             setFormStatuses(data.form_statuses);
             setAssignedStaff(data.assigned_staff || []);
             if (!teamHasChanges) {
@@ -375,13 +402,17 @@ function UnifiedWorkspaceContent() {
             setDocs(generatedDocs);
             const activityRes = await api.get(`/api/activity/?student_id=${studentId}&limit=8`);
             setActivityEvents(activityRes.data?.events || []);
+            
+            if (data.active_cycle?.id && data.student.status?.toUpperCase().replace(/\s+/g, "_") === "ASSESSMENT_SCHEDULED") {
+                fetchSectionContributions(studentId, data.active_cycle.id);
+            }
         }
 
         if (studentId && user?.role === "ADMIN") {
             const staffRes = await api.get(`/api/staff/?student_id=${studentId}`);
             setStaffList(staffRes.data);
         }
-    }, [isAuthorized, studentId, teamHasChanges, user?.role]);
+    }, [isAuthorized, studentId, teamHasChanges, user?.role, fetchSectionContributions]);
 
     useRealtimeRefresh({
         targets: ['workspace', 'student', 'staff', 'reports', 'schedule'],
@@ -820,6 +851,44 @@ function UnifiedWorkspaceContent() {
             .slice(0, 8);
     };
 
+    const SPECIALIST_SECTIONS = [
+        { key: "C", specialty: SLP, label: "Speech-Language Pathology (SLP)" },
+        { key: "D", specialty: OT, label: "Occupational Therapy (OT)" },
+        { key: "E", specialty: PT, label: "Physical Therapy (PT)" },
+        { key: "F1", specialty: ABA, label: "Applied Behavior Analysis (ABA)" },
+        { key: "F2", specialty: DEV_PSY, label: "Developmental Psychology (Psych)" },
+    ];
+
+    const isSectionReopened = (sectionKey: string) => {
+        return activityEvents.some(e => {
+            const titleText = e.title || "";
+            const isReopen = titleText.toLowerCase().includes("reopened");
+            const keyMatch = e.metadata?.section_key === sectionKey || titleText.includes(`Section ${sectionKey} `) || titleText.includes(`Section ${sectionKey} reopened`);
+            return isReopen && keyMatch;
+        });
+    };
+
+    const getSpecialtyStatus = (sectionKey: string) => {
+        const contrib = sectionContributions.find(c => c.section_key === sectionKey);
+        if (!contrib) {
+            return { status: "not_started", label: "Not Started", bg: "bg-slate-50 border-slate-200 text-slate-500", dot: "bg-slate-400" };
+        }
+        if (contrib.status === "submitted") {
+            return { status: "submitted", label: "Submitted", bg: "bg-emerald-50 border-emerald-200 text-emerald-700", dot: "bg-emerald-500" };
+        }
+        if (isSectionReopened(sectionKey)) {
+            return { status: "reopened", label: "Reopened", bg: "bg-rose-50 border-rose-200 text-rose-700 animate-pulse", dot: "bg-rose-500" };
+        }
+        return { status: "draft", label: "Draft", bg: "bg-amber-50 border-amber-200 text-amber-700", dot: "bg-amber-500" };
+    };
+
+    const getAssignedSpecialist = (specialtyLabel: string) => {
+        return assignedStaff.find(s => 
+            s.role === "SPECIALIST" && 
+            getStaffSpecialties(s).includes(specialtyLabel)
+        );
+    };
+
     const buildAdminActions = () => {
         const specialists = assignedStaff.filter(s => s.role === "SPECIALIST");
         const teachers = assignedStaff.filter(s => s.role === "TEACHER");
@@ -831,13 +900,16 @@ function UnifiedWorkspaceContent() {
         const allTrackersSubmitted = trackerTabs.length > 0 && trackerTabs.every(tab => formStatuses?.[tab.id]?.submitted);
         const assessmentFinalized = !!formStatuses?.multi_assessment?.submitted;
         const canGenerateMonthlyReport = ["ENROLLED", "INTEGRATED"].includes(normalizedStudentStatus || "") && allTrackersSubmitted && !latestMonthlyReport;
-        const actions: { title: string; label: string; onClick: () => void; tone?: "warning" | "positive"; Icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
+        const actions: { id?: string; title: string; label: string; onClick: () => void; tone?: "warning" | "positive"; Icon?: React.ComponentType<{ size?: number; className?: string }> }[] = [];
 
         if (!formStatuses?.parent_assessment?.submitted) {
             actions.push({ title: "Parent assessment missing", label: sendingParentReminder ? "Sending..." : "Remind", onClick: handleParentAssessmentReminder, tone: "warning", Icon: Mail });
         }
         if (formStatuses?.parent_assessment?.submitted && specialists.length === 0) {
             actions.push({ title: "Assign specialist", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST"), Icon: UserPlus });
+        }
+        if (normalizedStudentStatus === "ASSESSMENT_SCHEDULED" && !formStatuses?.multi_assessment?.submitted) {
+            actions.push({ id: "specialist_assessment", title: "Specialist Assessment in progress", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST"), Icon: Users });
         }
         if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized && latestIepFinalized) {
             actions.push({ title: `Enroll ${compactStudentName()} (Therapy)?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive", Icon: CheckCircle2 });
@@ -863,6 +935,78 @@ function UnifiedWorkspaceContent() {
         }
 
         return actions;
+    };
+
+    const renderAdminWorkspaceSidebarActions = (containerType: "reports" | "forms" | "team" | "overview") => {
+        if (user?.role !== "ADMIN") return null;
+
+        const actions = buildAdminActions();
+        if (actions.length === 0) return null;
+
+        const wrapperClass = containerType === "overview"
+            ? "w-full mb-4 shrink-0 flex flex-col gap-2"
+            : containerType === "team"
+                ? "px-3 mb-6 shrink-0 flex flex-col gap-2"
+                : "px-4 mb-6 shrink-0 flex flex-col gap-2";
+
+        return (
+            <div className={wrapperClass}>
+                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1 px-1">Actions</p>
+                {actions.map((action, idx) => {
+                    const Icon = action.Icon || ClipboardList;
+                    const isPositive = action.tone === "positive";
+                    const isWarning = action.tone === "warning";
+                    
+                    const btnClass = isPositive
+                        ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300"
+                        : isWarning
+                            ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
+                            : "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-indigo-50/50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300";
+
+                    if (action.id === "specialist_assessment") {
+                        return (
+                            <button key={idx} onClick={action.onClick} className={`${btnClass} flex-col items-stretch gap-2.5 py-2.5 w-full`}>
+                                <div className="flex items-center gap-2.5 w-full">
+                                    <Icon size={14} className="shrink-0 text-indigo-600 animate-pulse" />
+                                    <span className="flex-1 text-left truncate text-xs font-bold text-indigo-900" title={action.title}>{action.title}</span>
+                                    <span className="text-[0.55rem] font-extrabold uppercase tracking-wider shrink-0 bg-white/60 px-1 rounded border border-indigo-200 text-indigo-700">{action.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1 justify-start px-0.5">
+                                    {SPECIALIST_SECTIONS.map(sec => {
+                                        const statusInfo = getSpecialtyStatus(sec.key);
+                                        const shortName = sec.key === "C" ? "S" : sec.key === "D" ? "O" : sec.key === "E" ? "P" : sec.key === "F1" ? "A" : "Y";
+                                        const labelText = sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych";
+                                        
+                                        let bgStyle = "bg-slate-200 text-slate-500 border border-slate-350";
+                                        if (statusInfo.status === "submitted") bgStyle = "bg-emerald-500 text-white border border-emerald-600";
+                                        else if (statusInfo.status === "reopened") bgStyle = "bg-rose-500 text-white animate-pulse border border-rose-600";
+                                        else if (statusInfo.status === "draft") bgStyle = "bg-amber-500 text-white border border-amber-600";
+
+                                        return (
+                                            <div 
+                                                key={sec.key} 
+                                                className={`w-5 h-5 rounded-full flex items-center justify-center text-[0.55rem] font-extrabold ${bgStyle}`}
+                                                title={`${labelText}: ${statusInfo.label}`}
+                                            >
+                                                {shortName}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <button key={idx} onClick={action.onClick} className={btnClass}>
+                            <Icon size={14} className={`shrink-0 ${isPositive ? 'animate-pulse text-emerald-600' : ''}`} />
+                            <span className="flex-1 text-left truncate" title={action.title}>{action.title}</span>
+                            <span className="text-[0.55rem] font-bold uppercase tracking-wider opacity-85 shrink-0 bg-white/60 px-1 rounded border border-current/10">{action.label}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        );
     };
 
     const renderOverviewWorkspace = () => {
@@ -910,6 +1054,7 @@ function UnifiedWorkspaceContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar flex flex-col gap-3">
+                        {renderAdminWorkspaceSidebarActions("overview")}
                         <button onClick={() => navigateWithTeamGuard(`/students/${studentId}`)} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center gap-2 shadow-sm">
                             <FolderOpen size={14} />
                             Open Full Profile
@@ -998,6 +1143,55 @@ function UnifiedWorkspaceContent() {
                                             action.tone === "warning" ? { border: "border-amber-200", bg: "bg-amber-50", stripe: "bg-amber-400", iconBg: "bg-amber-100", iconColor: "text-amber-700", btn: "bg-amber-600 hover:bg-amber-700 text-white" } :
                                             action.tone === "positive" ? { border: "border-emerald-200", bg: "bg-emerald-50", stripe: "bg-emerald-500", iconBg: "bg-emerald-100", iconColor: "text-emerald-700", btn: "bg-emerald-600 hover:bg-emerald-700 text-white" } :
                                                                           { border: "border-indigo-200", bg: "bg-indigo-50/40", stripe: "bg-indigo-500", iconBg: "bg-indigo-100", iconColor: "text-indigo-700", btn: "bg-indigo-600 hover:bg-indigo-700 text-white" };
+                                        if (action.id === "specialist_assessment") {
+                                            return (
+                                                <div key={action.title} className="relative flex flex-col gap-4 rounded-xl border border-indigo-200 bg-indigo-50/20 p-4 overflow-hidden shadow-sm">
+                                                    <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500" />
+                                                    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <span className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 shadow-sm">
+                                                                <Icon size={16} />
+                                                            </span>
+                                                            <div>
+                                                                <p className="text-sm font-extrabold text-slate-950 m-0">{action.title}</p>
+                                                                <p className="text-[0.7rem] font-medium text-slate-500 m-0">Specialist tracking is updated in real-time</p>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={action.onClick} className="shrink-0 text-xs font-extrabold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow transition-colors flex items-center gap-1.5">
+                                                            <Users size={12} />
+                                                            {action.label}
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-1">
+                                                        {SPECIALIST_SECTIONS.map(sec => {
+                                                            const statusInfo = getSpecialtyStatus(sec.key);
+                                                            const specialist = getAssignedSpecialist(sec.specialty);
+                                                            const specialistName = specialist ? getStaffName(specialist) : "Unassigned";
+
+                                                            return (
+                                                                <div key={sec.key} className="flex flex-col justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-slate-350 transition-all shadow-xs relative">
+                                                                    <div className="mb-2">
+                                                                        <span className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Section {sec.key}</span>
+                                                                        <h4 className="text-xs font-bold text-slate-900 line-clamp-1 leading-snug" title={sec.label}>
+                                                                            {sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych"}
+                                                                        </h4>
+                                                                        <p className="text-[0.7rem] font-semibold text-slate-500 mt-1 truncate" title={specialistName}>
+                                                                            👤 {specialistName}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className={`mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[0.65rem] font-bold w-fit ${statusInfo.bg}`}>
+                                                                        <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
+                                                                        {statusInfo.label}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
                                         return (
                                             <div key={action.title} className={`relative flex items-center justify-between gap-3 rounded-lg border ${accent.border} ${accent.bg} pl-4 pr-3 py-2.5 overflow-hidden`}>
                                                 <span className={`absolute left-0 top-0 bottom-0 w-1 ${accent.stripe}`} />
@@ -1248,6 +1442,7 @@ function UnifiedWorkspaceContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+                        {renderAdminWorkspaceSidebarActions("forms")}
                         {assessmentTabs.length > 0 && (
                             <div className="px-3 mb-4">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Your Input" : "Assessments"}</p>
@@ -1435,9 +1630,11 @@ function UnifiedWorkspaceContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+                        {renderAdminWorkspaceSidebarActions("reports")}
+
                         {user?.role === "ADMIN" && (
                             <div className="px-4 mb-6">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3">Actions</p>
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">Tools</p>
                                 <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'}`}>
                                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                     Report Generator
@@ -1860,6 +2057,7 @@ function UnifiedWorkspaceContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+                        {renderAdminWorkspaceSidebarActions("team")}
                         <div className="px-3">
                             <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Clinical Team</p>
                             <div className="flex flex-col gap-1">

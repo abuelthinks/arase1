@@ -107,20 +107,21 @@ def acquire_lock(*, form_type: str, instance_id: int, section_key: str, user) ->
         "expires_at": now + LOCK_TTL_SECONDS,
     }
 
-    # Attempt set-if-not-exists
-    raw = cache.get(key)
-    if raw:
-        try:
-            current = json.loads(raw) if isinstance(raw, str) else raw
-        except (TypeError, ValueError):
-            current = None
-        if current and current.get("user_id") == user.id:
-            cache.set(key, json.dumps(payload), timeout=LOCK_TTL_SECONDS)
-            return {"ok": True, "lock": payload, "refreshed": True}
-        return {"ok": False, "held_by": current, "lock": None}
+    # Atomic check-and-set. cache.add() returns True only if the key did not
+    # already exist, so two simultaneous acquire attempts cannot both win.
+    if cache.add(key, json.dumps(payload), timeout=LOCK_TTL_SECONDS):
+        return {"ok": True, "lock": payload, "refreshed": False}
 
-    cache.set(key, json.dumps(payload), timeout=LOCK_TTL_SECONDS)
-    return {"ok": True, "lock": payload, "refreshed": False}
+    # Key already held — same user can refresh, otherwise denied.
+    raw = cache.get(key)
+    try:
+        current = json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, ValueError):
+        current = None
+    if current and current.get("user_id") == user.id:
+        cache.set(key, json.dumps(payload), timeout=LOCK_TTL_SECONDS)
+        return {"ok": True, "lock": payload, "refreshed": True}
+    return {"ok": False, "held_by": current, "lock": None}
 
 
 def release_lock(*, form_type: str, instance_id: int, section_key: str, user) -> bool:

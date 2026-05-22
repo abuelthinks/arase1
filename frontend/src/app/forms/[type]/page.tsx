@@ -630,6 +630,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [submittingOwnedSections, setSubmittingOwnedSections] = useState(false);
     const [teamSubmission, setTeamSubmission] = useState<any>(null);
     const [isReopening, setIsReopening] = useState<string | null>(null);
+    // Last-known server values per (sectionId, fieldId). Used by the peer
+    // merge logic to detect which local fields the user has edited since the
+    // last sync (those stay; clean fields get peer changes merged in).
+    const serverSnapshot = useRef<Record<string, Record<string, any>>>({});
 
     const toggleDescription = (fieldId: string) => {
         setShowDescriptions(prev => ({ ...prev, [fieldId]: !prev[fieldId] }));
@@ -688,6 +692,18 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
     const draftKey = `draft_${formType}_${studentId}`;
 
+    // Reset per-student state when switching students inside the workspace
+    // shell. Without this, a previous student's teamSubmission (incl. its
+    // finalized_at) bleeds into the new student's view.
+    useEffect(() => {
+        setTeamSubmission(null);
+        setFullSubmission(null);
+        setFormData({});
+        setSectionContributions({});
+        setPendingSectionSaves({});
+        serverSnapshot.current = {};
+    }, [studentId, reportCycleId, formType]);
+
     // ─── Real-time collaboration ────────────────────────────────────────────
     const collabFormType: "assessment" | "tracker" | null =
         formType === "multidisciplinary-assessment"
@@ -697,6 +713,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 : null;
     const collabInstanceId = !isViewMode && collabFormType ? (teamSubmission?.id ?? null) : null;
 
+    // Full refetch — pulls latest form_data into local state. Used when the
+    // user *explicitly* asks to update (e.g. clicks Update on a peer's draft).
     const refetchTeamSubmission = useCallback(async () => {
         if (!collabInstanceId || !collabFormType) return;
         try {
@@ -710,21 +728,62 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }
     }, [collabFormType, collabInstanceId, formType, schema]);
 
+    // Selective merge — pulls peer changes for fields the local user hasn't
+    // touched since the last sync. Local dirty fields are preserved.
+    const mergePeerChangesIfClean = useCallback(async () => {
+        if (!collabInstanceId || !collabFormType) return;
+        try {
+            const res = await api.get(`/api/inputs/${formType}/${collabInstanceId}/`);
+            setTeamSubmission(res.data);
+            const serverData = res.data?.form_data;
+            if (!serverData || !schema) return;
+            setFormData((prev: any) => {
+                const next: any = { ...prev };
+                for (const section of schema.sections || []) {
+                    const dataKey = section.__dataSection || section.id;
+                    const incoming = serverData[dataKey];
+                    if (!incoming || typeof incoming !== "object") continue;
+                    const localSection = next[dataKey] || {};
+                    const snapshotSection = serverSnapshot.current[dataKey] || {};
+                    const mergedSection: any = { ...localSection };
+                    for (const fieldId of Object.keys(incoming)) {
+                        const incomingVal = incoming[fieldId];
+                        const localVal = localSection[fieldId];
+                        const snapshotVal = snapshotSection[fieldId];
+                        // Field is dirty (locally edited since last sync) if
+                        // local diverges from the snapshot. Skip merge in
+                        // that case — never overwrite in-progress typing.
+                        const isDirty = JSON.stringify(localVal) !== JSON.stringify(snapshotVal);
+                        if (!isDirty) {
+                            mergedSection[fieldId] = incomingVal;
+                        }
+                    }
+                    next[dataKey] = mergedSection;
+                    serverSnapshot.current[dataKey] = { ...(serverSnapshot.current[dataKey] || {}), ...incoming };
+                }
+                return next;
+            });
+        } catch (err) {
+            console.debug("collab merge failed:", err);
+        }
+    }, [collabFormType, collabInstanceId, formType, schema]);
+
     const collab = useFormCollaboration({
         formType: collabFormType ?? "assessment",
         instanceId: collabFormType ? collabInstanceId : null,
         currentUserId: user?.user_id,
-        onSectionSaved: () => {
-            // Some other specialist saved a section. Pull the latest so our
-            // local form state reflects their changes — without overwriting
-            // anything the local user is currently typing into.
-            refetchTeamSubmission();
+        onSectionSaved: (event) => {
+            // Skip own echoes.
+            if (event.by.user_id === user?.user_id) return;
+            // Merge peer changes for fields the user hasn't dirtied locally.
+            mergePeerChangesIfClean();
             if (collabFormType === "assessment" && reportCycleId) {
                 refreshSectionContributions(reportCycleId);
             }
         },
-        onSectionSubmitted: () => {
-            refetchTeamSubmission();
+        onSectionSubmitted: (event) => {
+            if (event.by.user_id === user?.user_id) return;
+            mergePeerChangesIfClean();
             if (collabFormType === "assessment" && reportCycleId) {
                 refreshSectionContributions(reportCycleId);
             }
@@ -748,6 +807,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     setTeamSubmission(res.data);
                     if (res.data.form_data && schema) {
                         setFormData((prev: any) => mergeSavedFormData(prev, schema, res.data.form_data));
+                        // Seed snapshot with initial server values so future
+                        // peer merges can detect what the user has changed.
+                        serverSnapshot.current = JSON.parse(JSON.stringify(res.data.form_data || {}));
                     }
                 }
             })
@@ -1078,11 +1140,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             const contribution = apiKey ? sectionContributions[apiKey] : null;
             const sectionOwner = getSectionOwner(formType, section.id);
             const isVerificationLocked = apiKey === "A" && formData.section_a?.a2_verification === "matches";
+            const isFinalized = !!teamSubmission?.finalized_at;
+            const isSubmitted = contribution?.status === "submitted";
+
             const canEditSection = !isViewMode
                 && !specialistOnboardingLocked
-                && !teamSubmission?.finalized_at
+                && !isFinalized
                 && !isVerificationLocked
-                && contribution?.status !== "submitted"
+                && !isSubmitted
                 && canEditOwner(
                     sectionOwner === "MIXED" ? SHARED : sectionOwner,
                     editableSpecialties,
@@ -1093,7 +1158,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 apiKey,
                 contribution,
                 isVerificationLocked,
-                isLocked: !!teamSubmission?.finalized_at || contribution?.status === "submitted" || isVerificationLocked,
+                isLocked: isFinalized || isSubmitted || isVerificationLocked,
                 canEditSection,
             };
         });
@@ -1143,6 +1208,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 section_data: sectionPayload,
             });
             setTeamSubmission(saveRes.data);
+            // Mark these fields as in-sync with the server so future peer
+            // merges can tell them apart from in-progress local edits.
+            const snapshotSection = serverSnapshot.current[dataKey] || {};
+            serverSnapshot.current[dataKey] = { ...snapshotSection, ...sectionPayload };
 
             if (submit) {
                 const submitRes = await api.post(`/api/inputs/multidisciplinary-assessment/sections/${apiKey}/submit/`, {
@@ -1241,6 +1310,21 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         [ownedAssessmentSections],
     );
 
+    // Draft contributions the current user owns (includes both their assigned
+    // sections AND shared sections where they're the latest editor).
+    const myDraftContributionCount = useMemo(() => {
+        if (!user?.user_id) return 0;
+        return Object.values(sectionContributions || {}).filter(
+            (c: any) => c?.status === "draft" && c?.specialist === user.user_id
+        ).length;
+    }, [sectionContributions, user?.user_id]);
+
+    // The submit button should be active whenever the user has something to
+    // submit — either an editable assigned section (filled or not) or a
+    // draft contribution on any section (including shared sections they've
+    // touched after submitting their assigned work).
+    const hasSomethingToSubmit = submittableOwnedSections.length > 0 || myDraftContributionCount > 0;
+
     const flushPendingAssessmentAutosaves = useCallback(async () => {
         const pendingEntries = Object.entries(pendingSectionSaves);
         if (pendingEntries.length === 0) return true;
@@ -1270,8 +1354,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             toast.error(message);
             return;
         }
-        if (submittableOwnedSections.length === 0) {
-            setSuccessMsg("All of your assigned sections are already submitted.");
+        if (!hasSomethingToSubmit) {
+            setSuccessMsg("Nothing to submit — no draft sections.");
             return;
         }
 
@@ -1285,35 +1369,59 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 return;
             }
 
-            let finalized = false;
-            for (const { section } of submittableOwnedSections) {
-                const submitted = await saveAssessmentSection(section, true, { silent: true });
-                if (!submitted) {
-                    return;
-                }
-                if (submitted.finalized_at) {
-                    finalized = true;
-                }
+            // Single backend call submits every draft contribution (owned +
+            // shared sections the user has authored). Validates owned-section
+            // content + finalizes the form when all assigned sections done.
+            const res = await api.post(
+                "/api/inputs/multidisciplinary-assessment/submit-all/",
+                {
+                    student: parseInt(studentId || "0"),
+                    report_cycle: parseInt(reportCycleId),
+                },
+            );
+            const data = res.data || {};
+            const submitted: string[] = data.submitted || [];
+            const finalized = !!data.finalized;
+            if (data.form) {
+                setTeamSubmission(data.form);
             }
+            await refreshSectionContributions(reportCycleId);
 
             const message = finalized
                 ? `${schema.title || "Form"} finalized successfully.`
-                : "Your assigned assessment sections were submitted.";
+                : submitted.length === 0
+                    ? "Nothing to submit — no draft sections."
+                    : `Submitted ${submitted.length} section${submitted.length === 1 ? "" : "s"}.`;
             setSuccessMsg(message);
+            toast.success(message);
             await propOnSubmitted?.(message);
+
+            if (finalized && !propHideNavigation) {
+                const workspaceUrl = getWorkspaceFormUrl(studentId || "", formType);
+                setTimeout(() => router.replace(workspaceUrl || "/dashboard"), 1200);
+            }
+        } catch (err: any) {
+            const message = extractApiError(err, "Submit failed.");
+            setErrorMsg(message);
+            toast.error(message, { id: "submit-all-error", duration: 7000 });
         } finally {
             setSubmittingOwnedSections(false);
         }
     }, [
         flushPendingAssessmentAutosaves,
+        formType,
+        hasSomethingToSubmit,
         isAdmin,
         isSectionScopedAssessment,
         isViewMode,
+        propHideNavigation,
         propOnSubmitted,
-        saveAssessmentSection,
+        refreshSectionContributions,
+        reportCycleId,
+        router,
         schema,
         specialistOnboardingLocked,
-        submittableOwnedSections,
+        studentId,
         user?.specialist_onboarding_missing,
     ]);
 
@@ -1717,7 +1825,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                                         <>This section is locked.</>
                                                     )}
                                                 </div>
-                                                {!teamSubmission?.finalized_at && sectionOwner === SHARED && (
+                                                {!teamSubmission?.finalized_at && (sectionOwner === SHARED || isMySection) && (
                                                     <button
                                                         type="button"
                                                         onClick={() => reopenSection(sectionState.apiKey)}
@@ -1754,16 +1862,16 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     Submit My Assessment
                                 </p>
                                 <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-                                    {submittableOwnedSections.length > 0
-                                        ? `Your assigned ${submittableOwnedSections.length === 1 ? "section is" : `${submittableOwnedSections.length} sections are`} ready to submit. Draft changes save automatically while you work.`
-                                        : "All of your assigned sections are already submitted."}
+                                    {hasSomethingToSubmit
+                                        ? "You have draft changes ready to submit. Drafts save automatically while you work."
+                                        : "All of your sections are already submitted. Add or edit content to enable submitting again."}
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 onClick={submitOwnedAssessmentSections}
-                                disabled={specialistOnboardingLocked || submittingOwnedSections || submittableOwnedSections.length === 0}
-                                style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: specialistOnboardingLocked || submittingOwnedSections || submittableOwnedSections.length === 0 ? "#cbd5f5" : "#4f46e5", color: "white", fontWeight: 700, cursor: specialistOnboardingLocked || submittingOwnedSections || submittableOwnedSections.length === 0 ? "not-allowed" : "pointer", fontSize: "0.9rem", minWidth: "190px" }}
+                                disabled={specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit}
+                                style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "#cbd5f5" : "#4f46e5", color: "white", fontWeight: 700, cursor: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "not-allowed" : "pointer", fontSize: "0.9rem", minWidth: "190px" }}
                             >
                                 {submittingOwnedSections ? "Submitting..." : "Submit My Assessment"}
                             </button>

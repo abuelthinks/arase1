@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -84,7 +85,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
 
     const [iep, setIep] = useState<IEPData | null>(null);
     const [iepStatus, setIepStatus] = useState<string>("DRAFT");
-    const [meta, setMeta] = useState<{ student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
+    const [meta, setMeta] = useState<{ student_id: number; student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -102,7 +103,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             .then(res => {
                 setIep(res.data.iep_data);
                 loadedIepStr.current = JSON.stringify(res.data.iep_data);
-                setMeta({ student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
+                setMeta({ student_id: res.data.student_id, student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
                 setIepStatus(res.data.status);
                 if (res.data.status === "DRAFT") {
                     setEditing(true);
@@ -158,6 +159,15 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             setIepStatus(res.data.status);
             if (newStatus === "FINAL") {
                 setEditing(false);
+                // Nudge the admin toward the next step (enroll / integrate).
+                const studentId = meta?.student_id;
+                toast.success("IEP finalized. Ready to place this student.", {
+                    duration: 8000,
+                    action: studentId ? {
+                        label: "Go to actions",
+                        onClick: () => router.push(`/workspace?studentId=${studentId}&workspace=overview`),
+                    } : undefined,
+                });
             }
         } catch { setErrorMsg("Failed to save."); }
         finally { setSaving(false); }

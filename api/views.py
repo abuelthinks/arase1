@@ -796,6 +796,68 @@ class TrackerSectionReopenView(SectionReopenView):
     form_type = 'tracker'
 
 
+class SectionSubmitAllView(APIView):
+    """POST: bulk-submit every draft section the current user has contributed
+    to on the given form (assessment or tracker). All-or-nothing."""
+    permission_classes = [permissions.IsAuthenticated]
+    form_type = ''
+
+    def post(self, request):
+        from .services.section_service import (
+            submit_all_sections,
+            SectionPermissionError, SectionLockedError, SectionValidationError,
+        )
+        from .serializers import (
+            MultidisciplinaryAssessmentSerializer,
+            MultidisciplinaryProgressTrackerSerializer,
+        )
+
+        student_id = request.data.get('student')
+        report_cycle_id = request.data.get('report_cycle')
+
+        if not student_id or not report_cycle_id:
+            return Response(
+                {"error": "student and report_cycle are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = submit_all_sections(
+                form_type=self.form_type,
+                user=request.user,
+                student_id=student_id,
+                report_cycle_id=report_cycle_id,
+            )
+        except SectionPermissionError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except SectionLockedError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except SectionValidationError as exc:
+            return Response(
+                {"error": str(exc), "missing_sections": True},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer_cls = (
+            MultidisciplinaryAssessmentSerializer
+            if self.form_type == 'assessment'
+            else MultidisciplinaryProgressTrackerSerializer
+        )
+        return Response({
+            "submitted": result["submitted"],
+            "finalized": result["finalized"],
+            "form": serializer_cls(result["instance"]).data,
+        }, status=status.HTTP_200_OK)
+
+
+class AssessmentSubmitAllView(SectionSubmitAllView):
+    form_type = 'assessment'
+
+
+class TrackerSubmitAllView(SectionSubmitAllView):
+    form_type = 'tracker'
+
+
 class SectionContributionsListView(APIView):
     """Return all section contributions for a given student/report_cycle."""
     permission_classes = [permissions.IsAuthenticated]

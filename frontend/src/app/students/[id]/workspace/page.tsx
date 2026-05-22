@@ -5,8 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Search, Check, Plus, AlertCircle, X } from "lucide-react";
-import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
+import { Search, Check, Plus, AlertCircle, X, Users, CheckCircle2, ClipboardList } from "lucide-react";
+import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY } from "@/lib/sectionOwners";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
@@ -98,6 +98,8 @@ function UnifiedWorkspaceContent() {
     const [loading, setLoading] = useState(true);
     const [profileRefreshKey, setProfileRefreshKey] = useState(0);
     const [activityEvents, setActivityEvents] = useState<any[]>([]);
+    const [activeCycle, setActiveCycle] = useState<any>(null);
+    const [sectionContributions, setSectionContributions] = useState<any[]>([]);
 
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
@@ -132,7 +134,7 @@ function UnifiedWorkspaceContent() {
     const [showEnrollConfirm, setShowEnrollConfirm] = useState(false);
     const [enrollingStudent, setEnrollingStudent] = useState(false);
     const activeTeamRole = searchParams.get("teamRole") || "SPECIALIST";
-    const normalizedStudentStatus = studentStatus?.toUpperCase();
+    const normalizedStudentStatus = studentStatus?.toUpperCase().replace(/\s+/g, "_");
 
     // -- Master Tab Switcher --
     // Tracks whether we are rendering the forms workspace or reports workspace
@@ -152,6 +154,7 @@ function UnifiedWorkspaceContent() {
                 setStudentName(`${data.student.first_name} ${data.student.last_name}`);
                 setStudentStatus(data.student.status);
                 setStudentDetails(data.student);
+                setActiveCycle(data.active_cycle);
                 setFormStatuses(data.form_statuses);
                 setAssignedStaff(data.assigned_staff || []);
                 setStagedAssignedStaff(data.assigned_staff || []);
@@ -170,6 +173,29 @@ function UnifiedWorkspaceContent() {
                 setLoading(false);
             });
     }, [studentId, profileRefreshKey]);
+
+    const fetchSectionContributions = useCallback(async (currentStudentId: string, currentCycleId: number) => {
+        try {
+            const res = await api.get('/api/inputs/multidisciplinary-assessment/contributions/', {
+                params: {
+                    student: currentStudentId,
+                    report_cycle: currentCycleId
+                }
+            });
+            setSectionContributions(res.data || []);
+        } catch (err) {
+            console.error("Failed to fetch section contributions:", err);
+            setSectionContributions([]);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (studentId && activeCycle?.id && normalizedStudentStatus === "ASSESSMENT_SCHEDULED") {
+            fetchSectionContributions(studentId, activeCycle.id);
+        } else {
+            setSectionContributions([]);
+        }
+    }, [studentId, activeCycle?.id, normalizedStudentStatus, fetchSectionContributions]);
 
     useEffect(() => {
         if (!studentId || user?.role !== "ADMIN") return;
@@ -198,6 +224,7 @@ function UnifiedWorkspaceContent() {
             setStudentStatus(data.student.status);
             setStudentDetails(data.student);
             setFormStatuses(data.form_statuses);
+            setActiveCycle(data.active_cycle);
             setAssignedStaff(data.assigned_staff || []);
             if (!teamHasChanges) {
                 setStagedAssignedStaff(data.assigned_staff || []);
@@ -207,13 +234,17 @@ function UnifiedWorkspaceContent() {
             setDocs(generatedDocs);
             const activityRes = await api.get(`/api/activity/?student_id=${studentId}&limit=8`);
             setActivityEvents(activityRes.data?.events || []);
+
+            if (data.active_cycle?.id && data.student.status?.toUpperCase().replace(/\s+/g, "_") === "ASSESSMENT_SCHEDULED") {
+                fetchSectionContributions(studentId, data.active_cycle.id);
+            }
         }
 
         if (studentId && user?.role === "ADMIN") {
             const staffRes = await api.get(`/api/staff/?student_id=${studentId}`);
             setStaffList(staffRes.data);
         }
-    }, [studentId, teamHasChanges, user?.role]);
+    }, [studentId, teamHasChanges, user?.role, fetchSectionContributions]);
 
     useRealtimeRefresh({
         targets: ['workspace', 'student', 'staff', 'reports', 'schedule'],
@@ -564,6 +595,44 @@ function UnifiedWorkspaceContent() {
             .slice(0, 8);
     };
 
+    const SPECIALIST_SECTIONS = [
+        { key: "C", specialty: SLP, label: "Speech-Language Pathology (SLP)" },
+        { key: "D", specialty: OT, label: "Occupational Therapy (OT)" },
+        { key: "E", specialty: PT, label: "Physical Therapy (PT)" },
+        { key: "F1", specialty: ABA, label: "Applied Behavior Analysis (ABA)" },
+        { key: "F2", specialty: DEV_PSY, label: "Developmental Psychology (Psych)" },
+    ];
+
+    const isSectionReopened = (sectionKey: string) => {
+        return activityEvents.some(e => {
+            const titleText = e.title || "";
+            const isReopen = titleText.toLowerCase().includes("reopened");
+            const keyMatch = e.metadata?.section_key === sectionKey || titleText.includes(`Section ${sectionKey} `) || titleText.includes(`Section ${sectionKey} reopened`);
+            return isReopen && keyMatch;
+        });
+    };
+
+    const getSpecialtyStatus = (sectionKey: string) => {
+        const contrib = sectionContributions.find(c => c.section_key === sectionKey);
+        if (!contrib) {
+            return { status: "not_started", label: "Not Started", bg: "bg-slate-50 border-slate-200 text-slate-500", dot: "bg-slate-400" };
+        }
+        if (contrib.status === "submitted") {
+            return { status: "submitted", label: "Submitted", bg: "bg-emerald-50 border-emerald-200 text-emerald-700", dot: "bg-emerald-500" };
+        }
+        if (isSectionReopened(sectionKey)) {
+            return { status: "reopened", label: "Reopened", bg: "bg-rose-50 border-rose-200 text-rose-700 animate-pulse", dot: "bg-rose-500" };
+        }
+        return { status: "draft", label: "Draft", bg: "bg-amber-50 border-amber-200 text-amber-700", dot: "bg-amber-500" };
+    };
+
+    const getAssignedSpecialist = (specialtyLabel: string) => {
+        return assignedStaff.find(s => 
+            s.role === "SPECIALIST" && 
+            getStaffSpecialties(s).includes(specialtyLabel)
+        );
+    };
+
     const buildAdminActions = () => {
         const specialists = assignedStaff.filter(s => s.role === "SPECIALIST");
         const teachers = assignedStaff.filter(s => s.role === "TEACHER");
@@ -575,13 +644,16 @@ function UnifiedWorkspaceContent() {
         const allTrackersSubmitted = trackerTabs.every(tab => formStatuses?.[tab.id]?.submitted);
         const assessmentFinalized = !!formStatuses?.multi_assessment?.submitted;
         const canGenerateMonthlyReport = normalizedStudentStatus === "ENROLLED" && allTrackersSubmitted && !latestMonthlyReport;
-        const actions: { title: string; label: string; onClick: () => void; tone?: "warning" | "positive" }[] = [];
+        const actions: { id?: string; title: string; label: string; onClick: () => void; tone?: "warning" | "positive"; Icon?: any }[] = [];
 
         if (!formStatuses?.parent_assessment?.submitted) {
             actions.push({ title: "Parent assessment missing", label: sendingParentReminder ? "Sending..." : "Remind", onClick: handleParentAssessmentReminder, tone: "warning" });
         }
         if (formStatuses?.parent_assessment?.submitted && specialists.length === 0) {
             actions.push({ title: "Assign specialist", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST") });
+        }
+        if (normalizedStudentStatus === "ASSESSMENT_SCHEDULED" && !formStatuses?.multi_assessment?.submitted) {
+            actions.push({ id: "specialist_assessment", title: "Specialist Assessment in progress", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST"), Icon: Users });
         }
         if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized && latestIepFinalized) {
             actions.push({ title: `Enroll ${compactStudentName()}?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive" });
@@ -681,14 +753,66 @@ function UnifiedWorkspaceContent() {
                                 <p className="text-sm text-slate-500">No urgent admin follow-ups.</p>
                             ) : (
                                 <div className="flex flex-col gap-1.5">
-                                    {actions.map(action => (
-                                        <div key={action.title} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${action.tone === "warning" ? "border-amber-200 bg-amber-50" : action.tone === "positive" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
-                                            <p className="text-sm font-bold text-slate-800">{action.title}</p>
-                                            <button onClick={action.onClick} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
-                                                {action.label}
-                                            </button>
-                                        </div>
-                                    ))}
+                                    {actions.map(action => {
+                                        const Icon = action.Icon || ClipboardList;
+                                        if (action.id === "specialist_assessment") {
+                                            return (
+                                                <div key={action.title} className="relative flex flex-col gap-4 rounded-xl border border-indigo-200 bg-indigo-50/20 p-4 overflow-hidden shadow-sm">
+                                                    <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500" />
+                                                    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <span className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 shadow-sm">
+                                                                <Icon size={16} />
+                                                            </span>
+                                                            <div>
+                                                                <p className="text-sm font-extrabold text-slate-950 m-0">{action.title}</p>
+                                                                <p className="text-[0.7rem] font-medium text-slate-500 m-0">Specialist tracking is updated in real-time</p>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={action.onClick} className="shrink-0 text-xs font-extrabold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow transition-colors flex items-center gap-1.5">
+                                                            <Users size={12} />
+                                                            {action.label}
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-1">
+                                                        {SPECIALIST_SECTIONS.map(sec => {
+                                                            const statusInfo = getSpecialtyStatus(sec.key);
+                                                            const specialist = getAssignedSpecialist(sec.specialty);
+                                                            const specialistName = specialist ? getStaffName(specialist) : "Unassigned";
+
+                                                            return (
+                                                                <div key={sec.key} className="flex flex-col justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-slate-350 transition-all shadow-xs relative">
+                                                                    <div className="mb-2">
+                                                                        <span className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Section {sec.key}</span>
+                                                                        <h4 className="text-xs font-bold text-slate-900 line-clamp-1 leading-snug" title={sec.label}>
+                                                                            {sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych"}
+                                                                        </h4>
+                                                                        <p className="text-[0.7rem] font-semibold text-slate-500 mt-1 truncate" title={specialistName}>
+                                                                            👤 {specialistName}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className={`mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[0.65rem] font-bold w-fit ${statusInfo.bg}`}>
+                                                                        <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
+                                                                        {statusInfo.label}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={action.title} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${action.tone === "warning" ? "border-amber-200 bg-amber-50" : action.tone === "positive" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+                                                <p className="text-sm font-bold text-slate-800">{action.title}</p>
+                                                <button onClick={action.onClick} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                                                    {action.label}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </section>
