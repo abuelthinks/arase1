@@ -1689,48 +1689,48 @@ function UnifiedWorkspaceContent() {
                             <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Learning Plans" : "IEP Documents"}</p>
                             {iepDocs.length === 0 ? (
                                 <p className="text-xs text-slate-400 italic px-2">No IEPs generated yet.</p>
-                            ) : (
-                                <div className="flex flex-col gap-1">
-                                    {iepDocs.map((doc, idx) => {
-                                        const isActive = reportView === "iep" && selectedDocId === doc.id.toString();
-                                        const isLatest = idx === 0;
-                                        return (
-                                            <button key={doc.id} onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
-                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                                <div className="flex justify-between items-center w-full">
-                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Current IEP" : "IEP Master"}</span>
-                                                    {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Current</span>}
-                                                </div>
-                                                <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            ) : (() => {
+                                const doc = iepDocs[0];
+                                const isActive = reportView === "iep";
+                                return (
+                                    <div className="flex flex-col gap-1">
+                                        <button onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                            <div className="flex justify-between items-center w-full">
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Current IEP" : "IEP Master"}</span>
+                                                {iepDocs.length > 1 && (
+                                                    <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{iepDocs.length} versions</span>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-slate-500 truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
+                                        </button>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         <div className="px-3 pb-4">
                             <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Monthly Reports" : "Monthly Progress"}</p>
                             {monthlyDocs.length === 0 ? (
                                 <p className="text-xs text-slate-400 italic px-2">No monthly reports yet.</p>
-                            ) : (
-                                <div className="flex flex-col gap-1">
-                                    {monthlyDocs.map((doc, idx) => {
-                                        const isActive = reportView === "monthly" && selectedDocId === doc.id.toString();
-                                        const isLatest = idx === 0;
-                                        return (
-                                            <button key={doc.id} onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
-                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                                <div className="flex justify-between items-center w-full">
-                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Monthly Report" : "Progress Report"}</span>
-                                                    {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
-                                                </div>
-                                                <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            ) : (() => {
+                                const doc = monthlyDocs[0];
+                                const isActive = reportView === "monthly";
+                                return (
+                                    <div className="flex flex-col gap-1">
+                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                            <div className="flex justify-between items-center w-full">
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Monthly Report" : "Progress Reports"}</span>
+                                                {monthlyDocs.length > 1 && (
+                                                    <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{monthlyDocs.length} versions</span>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-slate-500 truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
+                                        </button>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -1790,10 +1790,74 @@ function UnifiedWorkspaceContent() {
                             );
                         })()}
                         {reportView === "iep" && selectedDocId && (
-                            <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
+                            <div className="flex flex-col h-full flex-1">
+                                {iepDocs.length > 1 && (
+                                    <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
+                                        <div className="flex items-center gap-2 text-slate-600">
+                                            <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-semibold text-slate-500">Select Version:</span>
+                                            <select
+                                                value={selectedDocId}
+                                                onChange={(e) => handleReportMenuChange("iep", e.target.value)}
+                                                className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                                style={{
+                                                    backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
+                                                    backgroundPosition: "right 0.5rem center",
+                                                    backgroundSize: "1.25rem",
+                                                    backgroundRepeat: "no-repeat",
+                                                }}
+                                            >
+                                                {iepDocs.map((doc, idx) => (
+                                                    <option key={doc.id} value={doc.id.toString()}>
+                                                        {idx === 0 ? "Latest Version — " : "Previous Version — "} {formatDocumentDateTime(doc.created_at)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex-1 overflow-y-auto">
+                                    <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
+                                </div>
+                            </div>
                         )}
                         {reportView === "monthly" && selectedDocId && (
-                            <MonthlyReportContent propId={selectedDocId} propHideNavigation={true} />
+                            <div className="flex flex-col h-full flex-1">
+                                {monthlyDocs.length > 1 && (
+                                    <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
+                                        <div className="flex items-center gap-2 text-slate-600">
+                                            <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-semibold text-slate-500">Select Version:</span>
+                                            <select
+                                                value={selectedDocId}
+                                                onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
+                                                className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                                style={{
+                                                    backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
+                                                    backgroundPosition: "right 0.5rem center",
+                                                    backgroundSize: "1.25rem",
+                                                    backgroundRepeat: "no-repeat",
+                                                }}
+                                            >
+                                                {monthlyDocs.map((doc, idx) => (
+                                                    <option key={doc.id} value={doc.id.toString()}>
+                                                        {idx === 0 ? "Latest Version — " : "Previous Version — "} {formatDocumentDateTime(doc.created_at)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex-1 overflow-y-auto">
+                                    <MonthlyReportContent propId={selectedDocId} propHideNavigation={true} />
+                                </div>
+                            </div>
                         )}
                         {isEmptyState && (
                             <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
