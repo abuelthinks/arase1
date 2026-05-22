@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Search, Check, Plus, AlertCircle, X, Users, CheckCircle2, ClipboardList } from "lucide-react";
+import { Search, Check, Plus, AlertCircle, X, Users, CheckCircle2, ClipboardList, Lock } from "lucide-react";
 import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY } from "@/lib/sectionOwners";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { toast } from "sonner";
@@ -117,7 +117,7 @@ function UnifiedWorkspaceContent() {
     
     // -- Reports State --
     const [docs, setDocs] = useState<any[]>([]);
-    const activeReportView = searchParams.get("view") || "generator";
+    const activeReportView = searchParams.get("view") || searchParams.get("tab") || "generator";
     const activeDocId = searchParams.get("docId");
 
     // -- Team State --
@@ -136,9 +136,8 @@ function UnifiedWorkspaceContent() {
     const activeTeamRole = searchParams.get("teamRole") || "SPECIALIST";
     const normalizedStudentStatus = studentStatus?.toUpperCase().replace(/\s+/g, "_");
 
-    // -- Master Tab Switcher --
-    // Tracks whether we are rendering the forms workspace or reports workspace
-    const workspace = searchParams.get("workspace") || (user?.role === "ADMIN" ? "overview" : "forms");
+    const rawWorkspace = searchParams.get("workspace") || (user?.role === "ADMIN" ? "overview" : "forms");
+    const workspace = (user?.role === "ADMIN" && rawWorkspace === "forms") ? "reports" : rawWorkspace;
 
 
     useEffect(() => {
@@ -671,7 +670,14 @@ function UnifiedWorkspaceContent() {
             actions.push({ title: "Assign teacher", label: "Open Team", onClick: () => handleTeamMenuChange("TEACHER"), tone: "warning" });
         }
         if (normalizedStudentStatus === "ENROLLED" && pendingTrackers.length > 0) {
-            actions.push({ title: `${pendingTrackers.length} tracker${pendingTrackers.length === 1 ? "" : "s"} pending`, label: "Open Forms", onClick: () => setWorkspace("forms") });
+            actions.push({ title: `${pendingTrackers.length} tracker${pendingTrackers.length === 1 ? "" : "s"} pending`, label: "Open Forms", onClick: () => {
+                const firstPending = pendingTrackers[0]?.id;
+                if (firstPending) {
+                    handleReportMenuChange(firstPending);
+                } else {
+                    setWorkspace("reports");
+                }
+            } });
         }
 
         return actions;
@@ -1047,6 +1053,7 @@ function UnifiedWorkspaceContent() {
         const hasDocs = docs.length > 0;
         const iepDocs = docs.filter(d => d.type === "IEP");
         const monthlyDocs = docs.filter(d => d.type === "MONTHLY");
+        const isStudentCurrentlyEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
         const reportView = user?.role === "ADMIN"
             ? activeReportView
             : activeReportView === "generator"
@@ -1089,6 +1096,45 @@ function UnifiedWorkspaceContent() {
                                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                     Report Generator
                                 </button>
+                            </div>
+                        )}
+
+                        {user?.role === "ADMIN" && (
+                            <div className="px-5 mb-8">
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Input Forms</p>
+                                <div className="flex flex-col gap-1">
+                                    {TABS.map((tab) => {
+                                        const isSub = formStatuses?.[tab.id]?.submitted;
+                                        const isActive = reportView === tab.id;
+                                        const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker") 
+                                            ? !isStudentCurrentlyEnrolled 
+                                            : (tab.id === "sped_tracker") 
+                                                ? studentStatus?.toUpperCase() !== "INTEGRATED" 
+                                                : false;
+
+                                        return (
+                                            <button
+                                                key={tab.id}
+                                                disabled={isLocked}
+                                                onClick={() => handleReportMenuChange(tab.id)}
+                                                className={`w-full flex items-center justify-between text-left px-4 py-2.5 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-60' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
+                                                title={isLocked ? "Available after enrollment/integration" : undefined}
+                                            >
+                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                                    {tab.label}
+                                                </span>
+                                                {isLocked ? (
+                                                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                                                ) : isSub ? (
+                                                    <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} />
+                                                ) : (
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0 ml-2 animate-pulse" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
 
@@ -1142,10 +1188,59 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto">
+                <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
+                    <div className="flex-1 overflow-y-auto">
                     {isGenerator && (
                         <AdminReportsContent propStudentId={studentId} propHideNavigation={true} propWorkspacePath={`/students/${studentId}/workspace`} />
                     )}
+                    {TABS.some(t => t.id === reportView) && (() => {
+                        const tab = TABS.find(t => t.id === reportView)!;
+                        const isSub = formStatuses?.[tab.id]?.submitted;
+                        const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker") 
+                            ? !isStudentCurrentlyEnrolled 
+                            : (tab.id === "sped_tracker") 
+                                ? studentStatus?.toUpperCase() !== "INTEGRATED" 
+                                : false;
+                        const currentStatus = formStatuses?.[tab.id];
+
+                        if (isLocked) {
+                            return (
+                                <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                                    <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                        <Lock className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-700 mb-1">Form Locked</h3>
+                                    <p className="text-sm text-slate-500 max-w-sm">
+                                        This form is locked for Admin review until the student is {tab.id === "sped_tracker" ? "integrated" : "enrolled"}.
+                                    </p>
+                                </div>
+                            );
+                        }
+
+                        if (!isSub) {
+                            return (
+                                <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                                    <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-700 mb-1">Awaiting Submission</h3>
+                                    <p className="text-sm text-slate-500 max-w-sm">
+                                        This form has not been submitted by the clinical team or parent yet.
+                                    </p>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="w-full">
+                                {tab.id === "parent_assessment" ? (
+                                    <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus?.id?.toString()} />
+                                ) : (
+                                    <FormEntryContent propType={tab.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus?.id?.toString()} />
+                                )}
+                            </div>
+                        );
+                    })()}
                     {reportView === "iep" && selectedDocId && (
                         <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
                     )}
@@ -1162,9 +1257,10 @@ function UnifiedWorkspaceContent() {
                         </div>
                     )}
                 </div>
-            </>
-        );
-    };
+            </div>
+        </>
+    );
+};
 
     // 3. TEAM WORKSPACE RENDERER
     const renderTeamWorkspace = () => {
@@ -1697,10 +1793,12 @@ function UnifiedWorkspaceContent() {
                                     Overview
                                 </button>
                             )}
-                            <button onClick={() => setWorkspace("forms")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                                <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                Forms
-                            </button>
+                            {user?.role !== "ADMIN" && (
+                                <button onClick={() => setWorkspace("forms")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                    <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    Forms
+                                </button>
+                            )}
                             <button onClick={() => setWorkspace("reports")} className={`px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                                 <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                                 Reports

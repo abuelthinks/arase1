@@ -134,7 +134,7 @@ function UnifiedWorkspaceContent() {
     
     // -- Reports State --
     const [docs, setDocs] = useState<any[]>([]);
-    const activeReportView = searchParams.get("view") || (docs.some(d => d.type === "IEP") ? "iep" : "generator");
+    const activeReportView = searchParams.get("view") || searchParams.get("tab") || (docs.some(d => d.type === "IEP") ? "iep" : "generator");
     const activeDocId = searchParams.get("docId");
     const workspaceParam = searchParams.get("workspace");
     const activeViewParam = searchParams.get("view");
@@ -171,7 +171,11 @@ function UnifiedWorkspaceContent() {
     // -- Master Tab Switcher --
     // Parents can only access the "forms" workspace (ignore any URL tampering)
     const rawWorkspace = workspaceParam || (user?.role === "ADMIN" ? "overview" : "forms");
-    const workspace = user?.role === "PARENT" ? "forms" : rawWorkspace;
+    const workspace = user?.role === "PARENT" 
+        ? "forms" 
+        : (user?.role === "ADMIN" && rawWorkspace === "forms") 
+            ? "reports" 
+            : rawWorkspace;
     const isStudentCurrentlyEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
     const defaultFormTab = user?.role === "PARENT"
         ? (formStatuses?.parent_assessment?.submitted
@@ -1062,7 +1066,7 @@ function UnifiedWorkspaceContent() {
                         <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                             <p className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Quick links</p>
                             <div className="flex flex-col gap-0.5">
-                                <button onClick={() => setWorkspace("forms")} className="w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-700 transition-colors">
+                                <button onClick={() => setWorkspace("reports")} className="w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-700 transition-colors">
                                     <span className="flex items-center gap-2"><ClipboardList size={13} /> Forms</span>
                                     <span className="text-[0.65rem] font-bold text-slate-400">{submittedForms}/5</span>
                                 </button>
@@ -1093,7 +1097,7 @@ function UnifiedWorkspaceContent() {
                                 </div>
                                 <AlertCircle size={16} className={actions.length > 0 ? "text-amber-500" : "text-slate-300"} />
                             </div>
-                            <button onClick={() => setWorkspace("forms")} className="rounded-lg bg-white px-3 py-2 flex items-center justify-between border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left">
+                            <button onClick={() => setWorkspace("reports")} className="rounded-lg bg-white px-3 py-2 flex items-center justify-between border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left">
                                 <div>
                                     <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0">Forms</p>
                                     <p className="text-base font-bold text-slate-900 m-0 leading-tight">{submittedForms}/5</p>
@@ -1231,7 +1235,7 @@ function UnifiedWorkspaceContent() {
                                 </div>
                             </div>
                             <div className="border-t border-slate-100 pt-3">
-                                <button onClick={() => setWorkspace("forms")} className="w-full text-left">
+                                <button onClick={() => setWorkspace("reports")} className="w-full text-left">
                                     <div className="flex items-center justify-between mb-1.5">
                                         <p className="text-xs font-bold text-slate-600 m-0">Form completion</p>
                                         <span className="text-xs font-bold text-indigo-600">{submittedForms}/5</span>
@@ -1642,6 +1646,45 @@ function UnifiedWorkspaceContent() {
                             </div>
                         )}
 
+                        {user?.role === "ADMIN" && (
+                            <div className="px-3 mb-6">
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Input Forms</p>
+                                <div className="flex flex-col gap-1">
+                                    {TABS.map((tab) => {
+                                        const isSub = formStatuses?.[tab.id]?.submitted;
+                                        const isActive = reportView === tab.id;
+                                        const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker") 
+                                            ? !isStudentCurrentlyEnrolled 
+                                            : (tab.id === "sped_tracker") 
+                                                ? studentStatus?.toUpperCase() !== "INTEGRATED" 
+                                                : false;
+
+                                        return (
+                                            <button
+                                                key={tab.id}
+                                                disabled={isLocked}
+                                                onClick={() => handleReportMenuChange(tab.id)}
+                                                className={`w-full flex items-center justify-between text-left px-4 py-2.5 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-60' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
+                                                title={isLocked ? "Available after enrollment/integration" : undefined}
+                                            >
+                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                                    {tab.label}
+                                                </span>
+                                                {isLocked ? (
+                                                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                                                ) : isSub ? (
+                                                    <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} />
+                                                ) : (
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0 ml-2 animate-pulse" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="px-3 mb-6">
                             <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Learning Plans" : "IEP Documents"}</p>
                             {iepDocs.length === 0 ? (
@@ -1698,6 +1741,54 @@ function UnifiedWorkspaceContent() {
                         {isGenerator && (
                             <AdminReportsContent propStudentId={studentId as string} propHideNavigation={true} propWorkspacePath="/workspace" />
                         )}
+                        {TABS.some(t => t.id === reportView) && (() => {
+                            const tab = TABS.find(t => t.id === reportView)!;
+                            const isSub = formStatuses?.[tab.id]?.submitted;
+                            const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker") 
+                                ? !isStudentCurrentlyEnrolled 
+                                : (tab.id === "sped_tracker") 
+                                    ? studentStatus?.toUpperCase() !== "INTEGRATED" 
+                                    : false;
+                            const currentStatus = formStatuses?.[tab.id];
+
+                            if (isLocked) {
+                                return (
+                                    <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                                        <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                            <Lock className="w-8 h-8" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-700 mb-1">Form Locked</h3>
+                                        <p className="text-sm text-slate-500 max-w-sm">
+                                            This form is locked for Admin review until the student is {tab.id === "sped_tracker" ? "integrated" : "enrolled"}.
+                                        </p>
+                                    </div>
+                                );
+                            }
+
+                            if (!isSub) {
+                                return (
+                                    <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
+                                        <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-700 mb-1">Awaiting Submission</h3>
+                                        <p className="text-sm text-slate-500 max-w-sm">
+                                            This form has not been submitted by the clinical team or parent yet.
+                                        </p>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="w-full">
+                                    {tab.id === "parent_assessment" ? (
+                                        <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus?.id?.toString()} />
+                                    ) : (
+                                        <FormEntryContent propType={tab.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus?.id?.toString()} />
+                                    )}
+                                </div>
+                            );
+                        })()}
                         {reportView === "iep" && selectedDocId && (
                             <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
                         )}
@@ -2428,10 +2519,12 @@ function UnifiedWorkspaceContent() {
                         Overview
                     </button>
                 )}
-                <button onClick={() => setWorkspace("forms")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                    <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Forms
-                </button>
+                {user?.role !== "ADMIN" && (
+                    <button onClick={() => setWorkspace("forms")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                        <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Forms
+                    </button>
+                )}
                 <button onClick={() => setWorkspace("reports")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                     <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                     Reports
