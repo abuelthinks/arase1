@@ -1242,9 +1242,9 @@ function UnifiedWorkspaceContent() {
                         );
                     })()}
                     {reportView === "iep" && selectedDocId && (
-                        <div className="flex flex-col h-full flex-1">
+                        <div className="flex-1 overflow-y-auto">
                             {iepDocs.length > 1 && (
-                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2 shrink-0">
+                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5 text-slate-500">
                                         <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
@@ -1268,15 +1268,13 @@ function UnifiedWorkspaceContent() {
                                     </select>
                                 </div>
                             )}
-                            <div className="flex-1 overflow-y-auto">
-                                <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
-                            </div>
+                            <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
                         </div>
                     )}
                     {reportView === "monthly" && selectedDocId && (
-                        <div className="flex flex-col h-full flex-1">
+                        <div className="flex-1 overflow-y-auto">
                             {monthlyDocs.length > 1 && (
-                                <div className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2 shrink-0">
+                                <div className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5 text-slate-500">
                                         <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
@@ -1300,9 +1298,7 @@ function UnifiedWorkspaceContent() {
                                     </select>
                                 </div>
                             )}
-                            <div className="flex-1 overflow-y-auto">
-                                <MonthlyReportContent propId={selectedDocId} propHideNavigation={true} />
-                            </div>
+                            <MonthlyReportContent propId={selectedDocId} propHideNavigation={true} />
                         </div>
                     )}
                     {isEmptyState && (
