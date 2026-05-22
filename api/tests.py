@@ -694,3 +694,74 @@ class InvitationFlowTests(APITestCase):
         self.client.post('/api/invitations/accept/', payload, format='json')
         response = self.client.post('/api/invitations/accept/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# ─── Document Version Audit trail debouncing ──────────────────────────────────
+
+@override_settings(ROOT_URLCONF='backend.urls')
+class DocumentVersionDebouncingTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email='admin_deb@example.com', password='Pass123!', role='ADMIN',
+        )
+        self.student = Student.objects.create(
+            first_name='Debounce', last_name='Kid',
+            date_of_birth=date(2018, 1, 1), grade='Kinder',
+            status='ENROLLED',
+        )
+        self.cycle = ReportCycle.objects.create(
+            student=self.student,
+            label='Test Cycle',
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 30),
+            is_active=True,
+            status='OPEN',
+        )
+        self.doc = GeneratedDocument.objects.create(
+            student=self.student,
+            report_cycle=self.cycle,
+            document_type='IEP',
+            status='DRAFT',
+            iep_data={'goals': ['Initial Goal']},
+        )
+
+    def test_record_document_version_debounces_within_5_minutes(self):
+        from api.services.document_service import record_document_version
+        
+        # 1. First save triggers a version creation
+        v1 = record_document_version(self.doc, self.admin, 'EDITED_DRAFT')
+        self.assertEqual(self.doc.versions.count(), 1)
+        self.assertEqual(v1.iep_data, {'goals': ['Initial Goal']})
+        
+        # 2. Modify data and save again immediately (within 5 minutes)
+        self.doc.iep_data = {'goals': ['Goal 2']}
+        self.doc.save()
+        v2 = record_document_version(self.doc, self.admin, 'EDITED_DRAFT')
+        
+        # Should not create a new row, but update the old one
+        self.assertEqual(self.doc.versions.count(), 1)
+        v1.refresh_from_db()
+        self.assertEqual(v1.iep_data, {'goals': ['Goal 2']})
+        self.assertEqual(v1.id, v2.id)
+
+    def test_record_document_version_does_not_debounce_different_actions_or_users(self):
+        from api.services.document_service import record_document_version
+        
+        # 1. Save as EDITED_DRAFT
+        v1 = record_document_version(self.doc, self.admin, 'EDITED_DRAFT')
+        
+        # 2. Save as FINALIZED immediately
+        v2 = record_document_version(self.doc, self.admin, 'FINALIZED')
+        
+        # Should create a new row since action is different
+        self.assertEqual(self.doc.versions.count(), 2)
+        
+        # 3. Save by a different user
+        other_admin = User.objects.create_user(
+            email='other_admin_deb@example.com', password='Pass123!', role='ADMIN',
+        )
+        v3 = record_document_version(self.doc, other_admin, 'EDITED_DRAFT')
+        
+        # Should create a new row since user is different
+        self.assertEqual(self.doc.versions.count(), 3)
+
