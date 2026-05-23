@@ -2862,7 +2862,7 @@ function UnifiedWorkspaceContent() {
                             </div>
                             <h2 className="mb-2 text-xl font-bold text-slate-900">Enroll {studentName}?</h2>
                             <p className="mb-6 text-sm leading-6 text-slate-500">
-                                This will mark the student as enrolled, unlocking post-enrollment specialist work such as specialist progress trackers and monthly reporting. Since this is the therapy phase, no classroom teacher is assigned or involved yet. A finalized IEP is required first.
+                                This will mark the student as enrolled and unlock specialist progress trackers and monthly reports. Since this is the therapy phase, no classroom teacher is involved yet. A finalized IEP is required.
                             </p>
                             <div className="flex justify-end gap-3">
                                 <button
@@ -2894,7 +2894,7 @@ function UnifiedWorkspaceContent() {
                             </div>
                             <h2 className="mb-2 text-xl font-bold text-slate-900">Integrate {studentName}?</h2>
                             <p className="mb-6 text-sm leading-6 text-slate-500">
-                                This will transition the student into the mainstream school program, officially involving the classroom teacher. This unlocks SPED Teacher assignment and the SPED Teacher tracker required for classroom-based monthly progress reports.
+                                This will transition the student into the mainstream school program, officially involving the classroom teacher. This unlocks SPED teacher assignment and classroom progress trackers.
                             </p>
                             <div className="flex justify-end gap-3">
                                 <button
