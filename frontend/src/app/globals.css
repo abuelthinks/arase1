@@ -72,18 +72,22 @@
   color: var(--text-primary) !important;
 }
 
+.dark-theme .text-slate-950,
 .dark-theme .text-slate-900,
 .dark-theme .text-slate-800,
 .dark-theme .text-slate-700,
+.dark-theme .text-gray-950,
 .dark-theme .text-gray-900,
 .dark-theme .text-gray-800,
 .dark-theme .text-gray-700,
 .dark-theme .text-indigo-800,
 .dark-theme .text-blue-600,
 .dark-theme .text-indigo-600,
+.dark-theme [class*="text-slate-950"],
 .dark-theme [class*="text-slate-900"],
 .dark-theme [class*="text-slate-800"],
 .dark-theme [class*="text-slate-700"],
+.dark-theme [class*="text-gray-950"],
 .dark-theme [class*="text-gray-900"],
 .dark-theme [class*="text-gray-800"],
 .dark-theme [class*="text-gray-700"],
@@ -168,8 +172,9 @@
 }
 
 .dark-theme [class*="bg-indigo-50"] {
-  background-color: #1e1b4b !important;
-  color: #a5b4fc !important;
+  background-color: rgba(99, 102, 241, 0.08) !important;
+  color: #c7d2fe !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
 }
 
 .dark-theme [class*="bg-orange-50"],
