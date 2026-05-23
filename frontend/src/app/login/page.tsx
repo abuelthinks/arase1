@@ -23,9 +23,11 @@ export default function LoginPage() {
             const authenticatedUser = await login(email, password);
             const landingRoute = authenticatedUser.role === "SPECIALIST" && authenticatedUser.specialist_onboarding_complete === false
                 ? "/specialist-onboarding"
-                : ["ADMIN", "TEACHER", "SPECIALIST"].includes(authenticatedUser.role)
-                    ? "/workspace"
-                    : "/dashboard";
+                : authenticatedUser.role === "ADMIN"
+                    ? "/dashboard"
+                    : ["TEACHER", "SPECIALIST"].includes(authenticatedUser.role)
+                        ? "/workspace"
+                        : "/dashboard";
             router.push(landingRoute);
         } catch (err: any) {
             const status = err.response?.status;

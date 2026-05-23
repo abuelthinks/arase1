@@ -531,7 +531,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     )}                    {/* ── STEP 1 (Section A) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 0) && !hideBackgroundSection && (
                     <div className="space-y-10 animate-fadeIn">
-                        <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                             <SectionHeader title={isViewMode ? "Section A — Let's start with the basics" : "Let's start with the basics"} description="Help us understand your child's basic background details so we can set up their profile." />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -616,7 +616,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── STEP 2 (Section B) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 1) && (
                     <div className="space-y-10 animate-fadeIn">
-                        <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                        <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                             <SectionHeader title={isViewMode ? "Section B — Your child's milestones & history" : "Your child's milestones & history"} description="Share a snapshot of your child's developmental milestones and past services." />
 
                         <div className="space-y-4">
@@ -697,7 +697,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── STEP 5 (Section C, F, H) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section C — Your Goals & Concerns" : "Your Goals & Concerns"} description="Tell us what you want to focus on and your main worries." />
 
                         <Field label="Primary Concerns" required isInvalid={isFieldInvalid("primary_concerns", 4)}>
@@ -738,7 +738,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── STEP 3 (Sections D & E) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 2) && (
                     <div className="space-y-10 animate-fadeIn">
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section D — How does your child interact with the world?" : "How does your child interact with the world?"} description="Help us understand what triggers them and how they relate to others." />
 
                         <Field label="Difficulties" required isInvalid={isFieldInvalid("difficulties", 2)}>
@@ -790,7 +790,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                         </Field>
                     </section>
 
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section E — Sensory & Physical Needs" : "Sensory & Physical Needs"} description="Let us know their physical needs and any sensory sensitivities we should accommodate." />
 
                         <Field label="Sensory Sensitivities" required isInvalid={isFieldInvalid("sensitivities", 2)}>
@@ -826,7 +826,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── SECTION F ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section F — Goals & Expectations" : "Goals & Expectations"} description="What are your short-term and long-term hopes for your child?" />
 
                         <Field label="Goals for This Year" required isInvalid={isFieldInvalid("goals_this_year", 4)}>
@@ -859,7 +859,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── SECTION G ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 3) && (
                     <div className="space-y-10 animate-fadeIn">
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section G — Routines & Support" : "Routines & Support"} description="Tell us about the structure, routines, and strategies that work for them at home." />
 
                         <Field label="Home Strategies" required isInvalid={isFieldInvalid("home_strategies", 3)}>
@@ -888,7 +888,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── SECTION H ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section H — What makes your child shine?" : "What makes your child shine?"} description="Every child has superpowers! Tell us what your child excels at." />
 
                         <Field label="My Child's Strengths" required isInvalid={isFieldInvalid("strengths", 4)}>
@@ -909,7 +909,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── DIAGNOSTIC REPORT UPLOAD (Step 5) ────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-5 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-5 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Diagnostic Report" : "Upload Diagnostic Report (Optional)"} description={isViewMode ? "Uploaded diagnostic document." : "If you have an existing diagnostic report (PDF or Word document), you can upload it here. This helps our team understand your child's clinical background. You can also upload this later from your dashboard."} />
 
                         {isViewMode ? (
@@ -987,7 +987,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {/* ── SECTION I ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 3) && (
                     <div className="space-y-10 animate-fadeIn">
-                    <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
+                    <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section I — Daily Living Skills" : "Daily Living Skills"} description="Help us understand how independent they are with daily self-care tasks." />
 
                         {[

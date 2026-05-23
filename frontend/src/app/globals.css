@@ -6,7 +6,7 @@
   /* Core Colors */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
-  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-card: #ffffff;
 
   --text-primary: #0f172a;
   --text-secondary: #475569;
@@ -21,7 +21,7 @@
   --danger: #ef4444;
 
   /* Borders & Shadows */
-  --border-light: rgba(226, 232, 240, 0.8);
+  --border-light: #e2e8f0;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
@@ -39,6 +39,441 @@
   --form-line-height: 1.5;
 }
 
+/* Accessibility & Theme Support */
+.dark-theme {
+  --bg-primary: #0f172a;      /* Deep dark slate */
+  --bg-secondary: #1e293b;    /* Card/Sidebar dark slate */
+  --bg-card: #1e293b;
+  --text-primary: #f8fafc;    /* Clean white/slate text */
+  --text-secondary: #cbd5e1;  /* Slate text */
+  --text-muted: #94a3b8;      /* Muted text */
+  --border-light: #334155;    /* Border color */
+}
+
+/* Global Overrides for Dark Theme to override hardcoded white/slate classes */
+.dark-theme body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-theme .bg-white,
+.dark-theme .bg-slate-50,
+.dark-theme .bg-gray-50,
+.dark-theme .bg-indigo-50\/30,
+.dark-theme .glass-panel,
+.dark-theme [class*="bg-white"],
+.dark-theme [class*="bg-slate-50"],
+.dark-theme [class*="bg-gray-50"],
+.dark-theme [class*="bg-indigo-50\/30"],
+.dark-theme [class*="glass-panel"],
+.dark-theme aside,
+.dark-theme nav {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-theme .text-slate-900,
+.dark-theme .text-slate-800,
+.dark-theme .text-slate-700,
+.dark-theme .text-gray-900,
+.dark-theme .text-gray-800,
+.dark-theme .text-gray-700,
+.dark-theme .text-indigo-800,
+.dark-theme .text-blue-600,
+.dark-theme .text-indigo-600,
+.dark-theme [class*="text-slate-900"],
+.dark-theme [class*="text-slate-800"],
+.dark-theme [class*="text-slate-700"],
+.dark-theme [class*="text-gray-900"],
+.dark-theme [class*="text-gray-800"],
+.dark-theme [class*="text-gray-700"],
+.dark-theme [class*="text-indigo-800"],
+.dark-theme [class*="text-blue-600"],
+.dark-theme [class*="text-indigo-600"] {
+  color: var(--text-primary) !important;
+}
+
+.dark-theme .text-slate-500,
+.dark-theme .text-slate-600,
+.dark-theme .text-gray-500,
+.dark-theme .text-slate-400,
+.dark-theme [class*="text-slate-500"],
+.dark-theme [class*="text-slate-600"],
+.dark-theme [class*="text-gray-500"],
+.dark-theme [class*="text-slate-400"] {
+  color: var(--text-secondary) !important;
+}
+
+.dark-theme .border-slate-200,
+.dark-theme .border-slate-100,
+.dark-theme .border-gray-200,
+.dark-theme .border-slate-300,
+.dark-theme [class*="border-slate-200"],
+.dark-theme [class*="border-slate-100"],
+.dark-theme [class*="border-gray-200"],
+.dark-theme [class*="border-slate-300"] {
+  border-color: var(--border-light) !important;
+}
+
+.dark-theme input,
+.dark-theme select,
+.dark-theme textarea,
+.dark-theme .form-input {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dark-theme input::placeholder,
+.dark-theme textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+.dark-theme .hover\:bg-slate-50:hover,
+.dark-theme .hover\:bg-slate-100:hover,
+.dark-theme .hover\:bg-indigo-50\/30:hover {
+  background-color: #334155 !important;
+}
+
+.dark-theme th,
+.dark-theme .bg-slate-100 {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-theme .bg-indigo-100 {
+  background-color: #312e81 !important;
+  color: #c7d2fe !important;
+}
+
+.dark-theme .bg-amber-100 {
+  background-color: #78350f !important;
+  color: #fde68a !important;
+}
+
+.dark-theme .shadow-lg,
+.dark-theme .shadow-2xl {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark-theme svg text {
+  fill: var(--text-primary) !important;
+}
+
+/* User Profile Page Bottom Part Overrides */
+.dark-theme [class*="bg-gradient-to-b"] {
+  background: var(--bg-primary) !important;
+}
+
+.dark-theme [class*="bg-indigo-50"] {
+  background-color: #1e1b4b !important;
+  color: #a5b4fc !important;
+}
+
+.dark-theme [class*="bg-orange-50"],
+.dark-theme [class*="bg-amber-50"],
+.dark-theme [class*="bg-amber-100"] {
+  background-color: #2a1b0c !important;
+}
+
+.dark-theme [class*="border-orange-200"],
+.dark-theme [class*="border-orange-300"],
+.dark-theme [class*="border-amber-200"] {
+  border-color: #7c2d12 !important;
+}
+
+.dark-theme [class*="text-orange-900"],
+.dark-theme [class*="text-orange-800"],
+.dark-theme [class*="text-amber-900"],
+.dark-theme [class*="text-amber-800"] {
+  color: #fdba74 !important;
+}
+
+.high-contrast-theme {
+  --bg-primary: #ffffff !important;
+  --bg-secondary: #ffffff !important;
+  --bg-card: #ffffff !important;
+  --text-primary: #000000 !important;
+  --text-secondary: #000000 !important;
+  --text-muted: #000000 !important;
+  --border-light: #000000 !important;
+}
+
+.dark-theme.high-contrast-theme {
+  --bg-primary: #000000 !important;
+  --bg-secondary: #000000 !important;
+  --bg-card: #000000 !important;
+  --text-primary: #ffffff !important;
+  --text-secondary: #ffffff !important;
+  --text-muted: #ffffff !important;
+  --border-light: #ffffff !important;
+}
+
+/* Enforce absolute background and text colors globally */
+.high-contrast-theme *,
+.high-contrast-theme body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Enforce cards, sidebar, navbar backgrounds */
+.high-contrast-theme section,
+.high-contrast-theme aside,
+.high-contrast-theme nav,
+.high-contrast-theme header,
+.high-contrast-theme input,
+.high-contrast-theme select,
+.high-contrast-theme textarea,
+.high-contrast-theme .glass-panel,
+.high-contrast-theme .profile-panel,
+.high-contrast-theme .profile-stat-card,
+.high-contrast-theme .profile-context-card,
+.high-contrast-theme [class*="bg-white"],
+.high-contrast-theme [class*="bg-slate-"],
+.high-contrast-theme [class*="bg-gray-"],
+.high-contrast-theme [class*="bg-indigo-"],
+.high-contrast-theme [class*="bg-orange-"],
+.high-contrast-theme [class*="bg-amber-"] {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Strip all background gradients */
+.high-contrast-theme [class*="bg-gradient-"] {
+  background-image: none !important;
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Full 2px borders on specific structural elements only.
+   th/td handled separately below for clean table corners. */
+.high-contrast-theme section,
+.high-contrast-theme input,
+.high-contrast-theme select,
+.high-contrast-theme textarea,
+.high-contrast-theme button,
+.high-contrast-theme .glass-panel,
+.high-contrast-theme .profile-context-card,
+.high-contrast-theme .profile-stat-card,
+.high-contrast-theme [class*="btn-"] {
+  border: 2px solid #000000 !important;
+}
+
+/* For elements with Tailwind border classes (border-b, border-t, border, etc.):
+   only change the color to black — don't force a full box border.
+   This preserves directional borders like border-b on SectionHeaders. */
+.high-contrast-theme .border,
+.high-contrast-theme [class*="border-"] {
+  border-color: #000000 !important;
+}
+
+
+
+/* Preserve border-radius on card-like containers in high contrast. */
+.high-contrast-theme section,
+.high-contrast-theme .glass-panel,
+.high-contrast-theme .profile-context-card,
+.high-contrast-theme .profile-stat-card,
+.high-contrast-theme [class*="rounded-2xl"],
+.high-contrast-theme [class*="rounded-xl"] {
+  border-radius: 16px !important;
+}
+
+/* Specific styling for workspace tabs in High Contrast */
+.high-contrast-theme .workspace-tab {
+  border-radius: 12px 12px 0 0 !important;
+}
+.high-contrast-theme .workspace-tab-active {
+  border-bottom: none !important;
+}
+
+.high-contrast-theme [class*="rounded-lg"] {
+  border-radius: 8px !important;
+}
+
+.high-contrast-theme [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+
+.high-contrast-theme input,
+.high-contrast-theme select,
+.high-contrast-theme textarea {
+  border-radius: 8px !important;
+}
+
+/* Dark theme variants */
+.dark-theme.high-contrast-theme section,
+.dark-theme.high-contrast-theme input,
+.dark-theme.high-contrast-theme select,
+.dark-theme.high-contrast-theme textarea,
+.dark-theme.high-contrast-theme button,
+.dark-theme.high-contrast-theme .glass-panel,
+.dark-theme.high-contrast-theme .profile-context-card,
+.dark-theme.high-contrast-theme .profile-stat-card,
+.dark-theme.high-contrast-theme [class*="btn-"] {
+  border: 2px solid #ffffff !important;
+}
+
+.dark-theme.high-contrast-theme .border,
+.dark-theme.high-contrast-theme [class*="border-"] {
+  border-color: #ffffff !important;
+}
+
+
+
+/* Prevent nav and sidebar links from getting box borders (they stack/overlap) */
+.high-contrast-theme aside a,
+.high-contrast-theme nav a {
+  border: none !important;
+}
+
+.dark-theme.high-contrast-theme aside a,
+.dark-theme.high-contrast-theme nav a {
+  border: none !important;
+}
+
+/* ── Table cell borders: internal grid only ──────────────────────────────── */
+/* Draw only bottom + right borders on cells so they form an internal grid.
+   The wrapper div's rounded border handles the outer perimeter cleanly. */
+.high-contrast-theme table {
+  border-collapse: collapse !important;
+}
+
+.high-contrast-theme th,
+.high-contrast-theme td {
+  border: none !important;
+  border-bottom: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+}
+
+/* Remove right border on last column */
+.high-contrast-theme th:last-child,
+.high-contrast-theme td:last-child {
+  border-right: none !important;
+}
+
+/* Remove bottom border on last row (both td and tr — tr has inline borderBottom) */
+.high-contrast-theme tbody tr:last-child,
+.high-contrast-theme tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Dark theme table cells */
+.dark-theme.high-contrast-theme th,
+.dark-theme.high-contrast-theme td {
+  border: none !important;
+  border-bottom: 2px solid #ffffff !important;
+  border-right: 2px solid #ffffff !important;
+}
+
+.dark-theme.high-contrast-theme th:last-child,
+.dark-theme.high-contrast-theme td:last-child {
+  border-right: none !important;
+}
+
+.dark-theme.high-contrast-theme tbody tr:last-child,
+.dark-theme.high-contrast-theme tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Keep structural headers in high contrast */
+.high-contrast-theme nav {
+  border-bottom: 2px solid #000000 !important;
+}
+
+.high-contrast-theme aside,
+.high-contrast-theme aside[class*="border-"] {
+  border-right: 2px solid #000000 !important;
+  border-top: none !important;
+}
+
+.dark-theme.high-contrast-theme nav {
+  border-bottom: 2px solid #ffffff !important;
+}
+
+.dark-theme.high-contrast-theme aside,
+.dark-theme.high-contrast-theme aside[class*="border-"] {
+  border-right: 2px solid #ffffff !important;
+  border-top: none !important;
+}
+
+/* Force Lucide icons to align to high-contrast absolute black/white */
+.high-contrast-theme svg {
+  stroke: var(--text-primary) !important;
+}
+
+.high-contrast-theme svg path {
+  stroke: var(--text-primary) !important;
+}
+
+/* ── Keyboard Focus Indicators (WCAG 2.4.7) ─────────────────────────────── */
+/* Visible focus ring for all interactive elements when using keyboard */
+*:focus-visible {
+  outline: 3px solid var(--accent-primary, #3b82f6) !important;
+  outline-offset: 2px !important;
+}
+
+/* High contrast: use absolute black/white for maximum focus visibility */
+.high-contrast-theme *:focus-visible {
+  outline: 3px solid #000000 !important;
+  outline-offset: 2px !important;
+}
+
+.dark-theme.high-contrast-theme *:focus-visible {
+  outline: 3px solid #ffffff !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Link Underlines in High Contrast (WCAG 1.4.1) ──────────────────────── */
+/* Links must be identifiable without relying on color alone */
+.high-contrast-theme a {
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+
+/* Exclude nav links and buttons styled as links from underline */
+.high-contrast-theme nav a,
+.high-contrast-theme aside a,
+.high-contrast-theme [class*="btn-"] {
+  text-decoration: none !important;
+}
+
+/* ── Active Sidebar Indicator in High Contrast ───────────────────────────── */
+/* Active nav link gets a bold left border so it's visible without color */
+.high-contrast-theme aside a[aria-current="page"],
+.high-contrast-theme aside a.hc-active {
+  border-left: 4px solid #000000 !important;
+  font-weight: 900 !important;
+}
+
+.dark-theme.high-contrast-theme aside a[aria-current="page"],
+.dark-theme.high-contrast-theme aside a.hc-active {
+  border-left: 4px solid #ffffff !important;
+  font-weight: 900 !important;
+}
+
+/* ── Role Badge Borders in High Contrast ─────────────────────────────────── */
+/* Ensure role badges keep visible borders when colors collapse */
+.high-contrast-theme [data-role-badge] {
+  border: 2px solid #000000 !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+.dark-theme.high-contrast-theme [data-role-badge] {
+  border: 2px solid #ffffff !important;
+}
+
+.font-scale-large {
+  font-size: 112% !important;
+}
+
+.font-scale-xlarge {
+  font-size: 125% !important;
+}
+
 /* Global Reset */
 * {
   box-sizing: border-box;
@@ -54,14 +489,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Glassmorphism Classes */
+/* Clean & Simple Card Panels (replacing Glassmorphism) */
 .glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 16px;
-  box-shadow: var(--shadow-glass);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
@@ -755,24 +1188,24 @@ body {
  * with the same selector — without !important, sonner's defaults win the
  * cascade and the custom palette never applies to typed toasts. */
 [data-sonner-toaster][data-sonner-theme='light'] {
-  --normal-bg: rgba(255, 255, 255, 0.92) !important;
-  --normal-border: rgba(226, 232, 240, 0.7) !important;
+  --normal-bg: #ffffff !important;
+  --normal-border: #e2e8f0 !important;
   --normal-text: #0f172a !important;
 
-  --success-bg: rgba(240, 253, 244, 0.95) !important;
-  --success-border: rgba(187, 247, 208, 0.7) !important;
+  --success-bg: #f0fdf4 !important;
+  --success-border: #bbf7d0 !important;
   --success-text: #14532d !important;
 
-  --error-bg: rgba(254, 242, 242, 0.95) !important;
-  --error-border: rgba(254, 202, 202, 0.7) !important;
+  --error-bg: #fef2f2 !important;
+  --error-border: #fca5a5 !important;
   --error-text: #7f1d1d !important;
 
-  --info-bg: rgba(239, 246, 255, 0.95) !important;
-  --info-border: rgba(191, 219, 254, 0.7) !important;
+  --info-bg: #eff6ff !important;
+  --info-border: #bfdbfe !important;
   --info-text: #1e3a5f !important;
 
-  --warning-bg: rgba(255, 251, 235, 0.95) !important;
-  --warning-border: rgba(253, 230, 138, 0.7) !important;
+  --warning-bg: #fffbeb !important;
+  --warning-border: #fde68a !important;
   --warning-text: #78350f !important;
 }
 
@@ -782,15 +1215,11 @@ body {
   font-family: var(--font-sans) !important;
 }
 
-/* Base toast card — left accent bar slot, neutral content, soft glassmorphism */
+/* Base toast card — solid, clean, simple layout */
 [data-sonner-toast][data-styled='true'] {
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-radius: 14px !important;
-  border-left: 3px solid transparent !important;
-  box-shadow:
-    0 8px 32px rgba(15, 23, 42, 0.08),
-    0 2px 8px rgba(15, 23, 42, 0.04) !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: var(--shadow-md) !important;
   padding: 14px 16px 14px 18px !important;
   gap: 12px !important;
 }

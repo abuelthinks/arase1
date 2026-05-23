@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, ChevronDown } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import AccessibilityToolbar from "@/components/AccessibilityToolbar";
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -30,6 +31,7 @@ export default function Navbar() {
 
             {/* Avatar dropdown & Notifications */}
             <div className="flex items-center gap-1.5 relative">
+                <AccessibilityToolbar />
                 <NotificationBell />
 
                 <div className="relative group">

@@ -256,7 +256,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             )}
 
             {/* IEP Card */}
-            <div style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1.25rem", marginBottom: "1rem", background: "white" }}>
+            <div className="border border-slate-200 rounded-xl p-5 mb-4 bg-white">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
                         <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
@@ -320,10 +320,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             </div>
 
             {/* Monthly Progress Card */}
-            <div style={{
-                border: `1px solid ${monthlyEnabled ? "#bbf7d0" : "#e2e8f0"}`,
-                borderRadius: "12px", padding: "1.25rem", background: "white",
-            }}>
+            <div className={`border rounded-xl p-5 bg-white ${monthlyEnabled ? "border-green-200" : "border-slate-200"}`}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
                         <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>

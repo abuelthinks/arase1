@@ -5,6 +5,8 @@ import Navbar from "@/components/Navbar";
 import AppShell from "@/components/AppShell";
 import AppToaster from "@/components/AppToaster";
 import RealtimeProvider from "@/components/RealtimeProvider";
+import SkipToContent from "@/components/SkipToContent";
+import AccessibilityLoader from "@/components/AccessibilityLoader";
 
 export const metadata: Metadata = {
   title: "ARASE",
@@ -21,7 +23,9 @@ export default function RootLayout({
       <body className="antialiased" suppressHydrationWarning>
         <AuthProvider>
           <AppToaster />
+          <AccessibilityLoader />
           <RealtimeProvider>
+            <SkipToContent />
             <div className="flex flex-col h-screen overflow-hidden w-full">
               <div className="shrink-0">
                 <Navbar />

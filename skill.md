@@ -29,3 +29,11 @@ This document contains distilled knowledge, architectural rules, and context acc
 ## 5. Deployment / Tooling Health
 - Continuously scrub database artifacts (e.g., removing static/default admin accounts post-initial deployment).
 - When integrating Celery/Redis background jobs, properly tie external Railway host environment variables to your Django setting modules.
+
+## 6. Testing & Vibe-Checking Guidelines (Playwright)
+- **The Vibe-Checking Workflow**: When building or updating a feature, immediately write a lightweight verification script/test in `frontend/src/e2e/` (or a dedicated `vibe-checks/` folder) to interact with that feature and save visual screenshots.
+- **Session State Caching (Bypassing Login)**: To prevent logging in on every test run, utilize Playwright's `storageState` to save authenticated cookies for each role (e.g. `teacher.json`, `parent.json`, `specialist.json`) inside `frontend/playwright/.auth/`. Load these session states to load dashboard views in under 2 seconds.
+- **Visual verification**: Save captured screenshots directly to `frontend/playwright-screenshots/`. Embed these absolute path file links in developer communications/walkthroughs so they can instantly "vibe check" the UI correctness without running local browsers.
+- **Run Commands**:
+  - Run all E2E checks: `npm run test:e2e`
+  - Run interactive UI mode (time-travel debugging): `npm run test:e2e:ui`

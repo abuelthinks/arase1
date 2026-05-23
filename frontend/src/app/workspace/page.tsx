@@ -120,6 +120,7 @@ function UnifiedWorkspaceContent() {
     const [activeCycle, setActiveCycle] = useState<any>(null);
     const [sectionContributions, setSectionContributions] = useState<any[]>([]);
     const [activityEvents, setActivityEvents] = useState<any[]>([]);
+    const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false);
 
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
@@ -1068,40 +1069,7 @@ function UnifiedWorkspaceContent() {
                 <div className="flex-1 bg-white relative flex flex-col overflow-hidden">
                     {tabBar}
                     <div className="flex-1 overflow-y-auto p-5 md:p-6">
-                    {/* Header: breadcrumb + name + status chip + horizontal stat strip */}
-                    <div className="mb-5">
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-sm">
-                            <div className="rounded-lg bg-white px-3 py-2 flex items-center justify-between border border-slate-100">
-                                <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0">Actions</p>
-                                    <p className="text-base font-bold text-slate-900 m-0 leading-tight">{actions.length}</p>
-                                </div>
-                                <AlertCircle size={16} className={actions.length > 0 ? "text-amber-500" : "text-slate-300"} />
-                            </div>
-                            <button onClick={() => setWorkspace("reports")} className="rounded-lg bg-white px-3 py-2 flex items-center justify-between border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left">
-                                <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0">Forms</p>
-                                    <p className="text-base font-bold text-slate-900 m-0 leading-tight">{submittedForms}/5</p>
-                                </div>
-                                <ClipboardList size={16} className="text-slate-400" />
-                            </button>
-                            <button onClick={() => handleReportMenuChange("history")} className="rounded-lg bg-white px-3 py-2 flex items-center justify-between border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left">
-                                <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0">Docs</p>
-                                    <p className="text-base font-bold text-slate-900 m-0 leading-tight">{docs.length}</p>
-                                </div>
-                                <FileText size={16} className="text-slate-400" />
-                            </button>
-                            <button onClick={() => handleTeamMenuChange("SPECIALIST")} className="rounded-lg bg-white px-3 py-2 flex items-center justify-between border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left">
-                                <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0">Team</p>
-                                    <p className="text-base font-bold text-slate-900 m-0 leading-tight">{assignedStaff.length}</p>
-                                </div>
-                                <Users size={16} className="text-slate-400" />
-                            </button>
-                        </div>
-                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Action Queue */}
@@ -1197,6 +1165,7 @@ function UnifiedWorkspaceContent() {
                             )}
                         </section>
 
+
                         {/* Student Snapshot */}
                         <section className="rounded-xl border border-slate-200 shadow-sm p-4 bg-white">
                             <h2 className="text-base font-bold text-slate-900 mb-3 m-0">Student Snapshot</h2>
@@ -1217,7 +1186,7 @@ function UnifiedWorkspaceContent() {
                                 </div>
                             </div>
                             <div className="border-t border-slate-100 pt-3">
-                                <button onClick={() => setWorkspace("reports")} className="w-full text-left">
+                                <button onClick={() => setWorkspace("reports")} className="w-full text-left rounded-lg p-1 -m-1">
                                     <div className="flex items-center justify-between mb-1.5">
                                         <p className="text-xs font-bold text-slate-600 m-0">Form completion</p>
                                         <span className="text-xs font-bold text-indigo-600">{submittedForms}/5</span>
@@ -1233,7 +1202,7 @@ function UnifiedWorkspaceContent() {
                         <section className="rounded-xl border border-slate-200 shadow-sm p-4 lg:col-span-2 bg-white">
                             <div className="flex items-center justify-between mb-3">
                                 <h2 className="text-base font-bold text-slate-900 m-0">Recent Activity</h2>
-                                <button onClick={() => handleReportMenuChange("history")} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                                <button onClick={() => setIsActivityDrawerOpen(true)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 rounded-lg p-1 -m-1">
                                     View all →
                                 </button>
                             </div>
@@ -1295,7 +1264,7 @@ function UnifiedWorkspaceContent() {
                                         <Users size={11} /> Specialists
                                     </p>
                                     {specialists.length === 0 ? (
-                                        <button onClick={() => handleTeamMenuChange("SPECIALIST")} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                        <button onClick={() => handleTeamMenuChange("SPECIALIST")} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 rounded-lg p-1 -m-1">
                                             <Plus size={12} /> Assign specialist
                                         </button>
                                     ) : (
@@ -1331,7 +1300,7 @@ function UnifiedWorkspaceContent() {
                                         <GraduationCap size={11} /> Teachers
                                     </p>
                                     {teachers.length === 0 ? (
-                                        <button onClick={() => handleTeamMenuChange("TEACHER")} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                        <button onClick={() => handleTeamMenuChange("TEACHER")} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 rounded-lg p-1 -m-1">
                                             <Plus size={12} /> Assign teacher
                                         </button>
                                     ) : (
@@ -1354,11 +1323,11 @@ function UnifiedWorkspaceContent() {
                                         <FileCheck2 size={11} /> Latest document
                                     </p>
                                     {!latestDoc ? (
-                                        <button onClick={() => handleReportMenuChange("generator")} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                        <button onClick={() => handleReportMenuChange("generator")} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 rounded-lg p-1 -m-1">
                                             <Plus size={12} /> Generate document
                                         </button>
                                     ) : (
-                                        <button onClick={() => handleReportMenuChange("history")} className="text-left">
+                                        <button onClick={() => handleReportMenuChange("history")} className="text-left rounded-lg p-1 -m-1">
                                             <p className="text-sm font-bold text-slate-800 m-0">{latestDoc.type}</p>
                                             <p className="text-[0.7rem] font-semibold text-slate-500 m-0">{formatDocumentDateTime(latestDoc.created_at)}</p>
                                         </button>
@@ -1369,6 +1338,101 @@ function UnifiedWorkspaceContent() {
                     </div>
                     </div>
                 </div>
+
+                {/* Sliding Activity History Drawer */}
+                {isActivityDrawerOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs transition-opacity" 
+                      style={{ zIndex: 99998 }}
+                      onClick={() => setIsActivityDrawerOpen(false)} 
+                    />
+                    <div 
+                      className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200"
+                      style={{ 
+                        zIndex: 99999, 
+                        backgroundColor: "var(--bg-secondary, #ffffff)",
+                        color: "var(--text-primary, #0f172a)",
+                        borderLeftColor: "var(--border-light, #e2e8f0)"
+                      }}
+                    >
+                      <div 
+                        className="flex items-center justify-between border-b px-6 py-4"
+                        style={{ borderBottomColor: "var(--border-light, #e2e8f0)" }}
+                      >
+                        <div>
+                          <h3 className="text-base font-extrabold m-0" style={{ color: "var(--text-primary, #0f172a)" }}>
+                            Activity History
+                          </h3>
+                          <p className="text-[0.7rem] font-semibold text-slate-400 m-0">
+                            {studentName}'s complete operational logs
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => setIsActivityDrawerOpen(false)} 
+                          className="p-1.5 rounded-lg border-none cursor-pointer flex items-center justify-center transition-colors"
+                          style={{
+                            backgroundColor: "var(--bg-primary, #f8fafc)",
+                            color: "var(--text-secondary, #475569)"
+                          }}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                        {activityEvents.length === 0 ? (
+                          <p className="text-sm text-slate-400 text-center py-12">
+                            No recorded timeline events for this student.
+                          </p>
+                        ) : (
+                          <div className="relative pl-3">
+                            <span 
+                              className="absolute left-[7px] top-2 bottom-2 w-px" 
+                              style={{ backgroundColor: "var(--border-light, #e2e8f0)" }}
+                              aria-hidden 
+                            />
+                            <div className="flex flex-col gap-6">
+                              {activityEvents.map((event) => {
+                                const isDoc = event.event_type?.toLowerCase().includes("document") || 
+                                              event.message?.toLowerCase().includes("report") || 
+                                              event.message?.toLowerCase().includes("iep");
+                                return (
+                                  <div key={event.id} className="relative flex flex-col gap-1 pl-4 group">
+                                    <span 
+                                      className={`absolute left-[-13px] top-1.5 h-3 w-3 rounded-full ring-4`}
+                                      style={{
+                                        backgroundColor: isDoc ? "var(--accent-primary, #3b82f6)" : "var(--success, #10b981)",
+                                        // Uses the background secondary variable for the ring color to blend with the drawer background
+                                        boxShadow: "0 0 0 4px var(--bg-secondary, #ffffff)"
+                                      }}
+                                    />
+                                    <div className="flex items-start justify-between gap-3">
+                                      <p className="text-xs font-bold m-0 leading-snug" style={{ color: "var(--text-primary, #0f172a)" }}>
+                                        {event.message}
+                                      </p>
+                                      <span className="text-[0.6rem] font-mono font-semibold text-slate-400 whitespace-nowrap">
+                                        {formatRelativeTime(event.created_at || event.timestamp)}
+                                      </span>
+                                    </div>
+                                    {event.actor_email && (
+                                      <p className="text-[0.65rem] text-slate-400 m-0 font-medium">
+                                        👤 Performed by: {event.actor_email}
+                                      </p>
+                                    )}
+                                    <span className="text-[0.65rem] text-slate-400 font-mono" title={formatActivityTime(event.created_at || event.timestamp)}>
+                                      {formatActivityTime(event.created_at || event.timestamp)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
             </>
         );
     };
@@ -1804,7 +1868,7 @@ function UnifiedWorkspaceContent() {
                         {reportView === "monthly" && selectedDocId && (
                             <div className="flex-1 overflow-y-auto">
                                 {monthlyDocs.length > 1 && (
-                                    <div className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
+                                    <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1.5 text-slate-500">
                                             <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
@@ -2240,7 +2304,7 @@ function UnifiedWorkspaceContent() {
                             </div>
 
                             {isLocked && (
-                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 shadow-sm">
+                                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 shadow-sm">
                                     <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                     <div>
                                         <p className="text-sm font-bold text-red-800">Assignment Locked</p>
@@ -2551,22 +2615,22 @@ function UnifiedWorkspaceContent() {
         <div className="flex border-b border-slate-200 shrink-0 bg-white relative z-10">
             <div className="flex-1 px-4 md:px-6 flex items-end gap-1 overflow-x-auto custom-scrollbar pt-1.5">
                 {user?.role === "ADMIN" && (
-                    <button onClick={() => setWorkspace("overview")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                    <button onClick={() => setWorkspace("overview")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                         Overview
                     </button>
                 )}
                 {user?.role !== "ADMIN" && (
-                    <button onClick={() => setWorkspace("forms")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                    <button onClick={() => setWorkspace("forms")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                         <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         Forms
                     </button>
                 )}
-                <button onClick={() => setWorkspace("reports")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                <button onClick={() => setWorkspace("reports")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                     <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                     Reports
                 </button>
                 {user?.role === "ADMIN" && (
-                    <button onClick={() => setWorkspace("team")} className={`px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                    <button onClick={() => setWorkspace("team")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
                         <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         Team
                     </button>

@@ -63,15 +63,15 @@ export default function AdminSidebar() {
                 {/* Logo */}
                 <button
                     type="button"
-                    className="mb-8 cursor-pointer px-1 text-left"
+                    className="mb-8 cursor-pointer px-1 text-left rounded-lg"
                     onClick={() => router.push("/dashboard")}
                 >
                     <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 leading-tight truncate">Admin Portal</h1>
                 </button>
 
                 {/* Nav */}
-                <nav className="flex flex-col gap-1 w-full">
-                    <Link href="/workspace" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                <nav className="flex flex-col gap-1 w-full" aria-label="Admin navigation">
+                    <Link href="/workspace" aria-current={activeTab === 'workspace' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
                         <LayoutTemplate size={18} />
                         <span className="truncate">Workspace</span>
                     </Link>
@@ -80,11 +80,11 @@ export default function AdminSidebar() {
                         System Data
                     </div>
                     
-                    <Link href="/dashboard?tab=analytics" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=analytics" aria-current={activeTab === 'analytics' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
                         <BarChart3 size={18} />
                         <span className="truncate">Analytics</span>
                     </Link>
-                    <Link href="/dashboard?tab=students" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=students" aria-current={activeTab === 'students' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
                         <GraduationCap size={18} />
                         <span className="truncate">Student Roster</span>
                         <Badge count={awaitingReviewCount} tone="indigo" />
@@ -94,11 +94,11 @@ export default function AdminSidebar() {
                         Organization
                     </div>
 
-                    <Link href="/dashboard?tab=users" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=users" aria-current={activeTab === 'users' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
                         <UsersRound size={18} />
                         <span className="truncate">System Users</span>
                     </Link>
-                    <Link href="/dashboard?tab=invitations" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=invitations" aria-current={activeTab === 'invitations' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
                         <Mail size={18} />
                         <span className="truncate">Pending Invites</span>
                         <Badge count={pendingInviteCount} tone="amber" />

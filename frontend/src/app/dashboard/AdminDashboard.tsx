@@ -48,6 +48,15 @@ interface InvitationData {
 }
 
 const ALLOWED_ACTION_PREFIXES = ["/dashboard", "/workspace", "/students", "/users", "/admin", "/specialists"];
+
+function getStudentProgress(status: string) {
+    const s = status?.toUpperCase() || "";
+    if (s === "INTEGRATED") return { value: 5, pct: 100, label: "5/5" };
+    if (s === "ENROLLED") return { value: 3, pct: 60, label: "3/5" };
+    if (s === "ASSESSED") return { value: 2, pct: 40, label: "2/5" };
+    if (s === "ASSESSMENT_SCHEDULED") return { value: 1, pct: 20, label: "1/5" };
+    return { value: 0, pct: 0, label: "0/5" };
+}
 function isSafeActionLink(link?: string): boolean {
     if (!link || typeof link !== "string") return false;
     if (!link.startsWith("/")) return false;
@@ -72,6 +81,11 @@ interface StudentData {
     last_name: string;
     grade: string;
     status: string;
+    next_action?: {
+        label: string;
+        tone: string;
+        workspace?: string;
+    };
 }
 
 interface DashboardAction {
@@ -1063,8 +1077,8 @@ export default function AdminDashboard() {
                                 </p>
                             ) : (
                                 <>
-                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                                        <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse", textAlign: "left" }}>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "2px solid var(--border-light)" }}>
+                                        <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
                                                     <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
@@ -1099,17 +1113,21 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>PROGRESS</th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>NEXT ACTION</th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>QUICK ACTIONS</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {paginatedStudents.map(s => {
                                                     const ss = getStatusStyle(s.status);
+                                                    const progress = getStudentProgress(s.status);
+                                                    const nextAction = s.next_action;
                                                     return (
-                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
                                                             <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <Link href={`/students/${s.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                <Link href={`/workspace?studentId=${s.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                     {s.first_name} {s.last_name}
                                                                 </Link>
                                                             </td>
@@ -1126,10 +1144,42 @@ export default function AdminDashboard() {
                                                                     letterSpacing: "0.3px",
                                                                 }}>{s.status.replace(/_/g, " ")}</span>
                                                             </td>
+                                                            <td style={{ padding: "12px" }}>
+                                                                <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "120px" }}>
+                                                                    <div style={{ flex: 1, height: "6px", background: "#e2e8f0", borderRadius: "999px", overflow: "hidden" }}>
+                                                                        <div style={{ height: "100%", width: `${progress.pct}%`, background: progress.pct === 100 ? "#10b981" : "#3b82f6", borderRadius: "999px" }}></div>
+                                                                    </div>
+                                                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b" }}>{progress.label}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ padding: "12px" }}>
+                                                                {nextAction ? (
+                                                                    <span style={{
+                                                                        fontSize: "0.72rem",
+                                                                        fontWeight: 650,
+                                                                        padding: "4px 8px",
+                                                                        borderRadius: "6px",
+                                                                        background: nextAction.tone === "warning" ? "#fffbeb" : nextAction.tone === "positive" ? "#f0fdf4" : "#f1f5f9",
+                                                                        color: nextAction.tone === "warning" ? "#b45309" : nextAction.tone === "positive" ? "#166534" : "#475569",
+                                                                        border: `1px solid ${nextAction.tone === "warning" ? "#fde68a" : nextAction.tone === "positive" ? "#bbf7d0" : "#e2e8f0"}`,
+                                                                    }}>{nextAction.label}</span>
+                                                                ) : (
+                                                                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontStyle: "italic" }}>None</span>
+                                                                )}
+                                                            </td>
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
-                                                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
-                                                                    <Link href={`/students/${s.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", alignItems: "center" }}>
+                                                                    <Link href={`/workspace?studentId=${s.id}`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
+                                                                        Overview
+                                                                    </Link>
+                                                                    <Link href={`/workspace?studentId=${s.id}&workspace=forms`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
+                                                                        Forms
+                                                                    </Link>
+                                                                    <Link href={`/workspace?studentId=${s.id}&workspace=team`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
+                                                                        Team
+                                                                    </Link>
+                                                                    <Link href={`/workspace?studentId=${s.id}&workspace=reports`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
+                                                                        Reports
                                                                     </Link>
                                                                 </div>
                                                             </td>
@@ -1142,12 +1192,14 @@ export default function AdminDashboard() {
                                     <div className="md:hidden flex flex-col gap-3">
                                         {paginatedStudents.map(s => {
                                             const ss = getStatusStyle(s.status);
+                                            const progress = getStudentProgress(s.status);
+                                            const nextAction = s.next_action;
                                             return (
                                                 <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
                                                             <span className="text-xs font-mono text-slate-400 mb-1">#{s.id}</span>
-                                                            <Link href={`/students/${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
+                                                            <Link href={`/workspace?studentId=${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                             <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>
@@ -1156,9 +1208,32 @@ export default function AdminDashboard() {
                                                             {s.status.replace(/_/g, " ")}
                                                         </span>
                                                     </div>
-                                                    <div className="border-t border-slate-100 pt-3 flex justify-end">
-                                                        <Link href={`/students/${s.id}`} className="btn-slate text-sm w-full text-center flex justify-center py-2" title="View Profile">
-                                                            View Profile
+
+                                                    <div className="flex flex-col gap-2 border-t border-slate-100 pt-3">
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-slate-400 font-semibold">Progress</span>
+                                                            <span className="text-slate-700 font-bold">{progress.pct}%</span>
+                                                        </div>
+                                                        {nextAction && (
+                                                            <div className="flex justify-between items-center text-xs">
+                                                                <span className="text-slate-400 font-semibold">Next Action</span>
+                                                                <span className="font-bold" style={{ color: nextAction.tone === "warning" ? "#b45309" : "#166534" }}>{nextAction.label}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="border-t border-slate-100 pt-3 flex flex-wrap gap-2 justify-end">
+                                                        <Link href={`/workspace?studentId=${s.id}`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Overview">
+                                                            Overview
+                                                        </Link>
+                                                        <Link href={`/workspace?studentId=${s.id}&workspace=forms`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Forms">
+                                                            Forms
+                                                        </Link>
+                                                        <Link href={`/workspace?studentId=${s.id}&workspace=team`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Team">
+                                                            Team
+                                                        </Link>
+                                                        <Link href={`/workspace?studentId=${s.id}&workspace=reports`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Reports">
+                                                            Reports
                                                         </Link>
                                                     </div>
                                                 </div>
@@ -1286,11 +1361,11 @@ export default function AdminDashboard() {
                                 </p>
                             ) : (
                                 <>
-                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "2px solid var(--border-light)" }}>
                                         <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleUserSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('name')} aria-sort={userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             NAME
                                                             <span style={{ opacity: userSortConfig.key === 'name' ? 1 : 0.3 }}>
@@ -1298,7 +1373,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleUserSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('role')} aria-sort={userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ROLE
                                                             <span style={{ opacity: userSortConfig.key === 'role' ? 1 : 0.3 }}>
@@ -1306,7 +1381,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleUserSort('kids')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('kids')} aria-sort={userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ASSIGNED KIDS
                                                             <span style={{ opacity: userSortConfig.key === 'kids' ? 1 : 0.3 }}>
@@ -1328,11 +1403,11 @@ export default function AdminDashboard() {
                                                                     <Link href={`/users/${u.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                         {displayName}
                                                                     </Link>
-                                                                    <span style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>{u.email}</span>
+                                                                    <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>{u.email}</span>
                                                                 </div>
                                                             </td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <span style={{ fontSize: "0.75rem", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "600", letterSpacing: "0.3px" }}>
+                                                                <span data-role-badge style={{ fontSize: "0.75rem", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "600", letterSpacing: "0.3px" }}>
                                                                     {u.role}
                                                                 </span>
                                                             </td>
@@ -1354,14 +1429,14 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
                                                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
-                                                                    <Link href={`/users/${u.id}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
+                                                                    <Link href={`/users/${u.id}`} aria-label={`View profile of ${displayName}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
                                                                     </Link>
                                                                     <button onClick={() => {
                                                                         setUserToDelete(u);
                                                                         setDeleteConfirmText("");
                                                                         setDeleteError("");
-                                                                    }} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
+                                                                    }} aria-label={`Delete user ${displayName}`} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                                     </button>
                                                                 </div>
@@ -1385,7 +1460,7 @@ export default function AdminDashboard() {
                                                             </Link>
                                                             <span className="text-sm text-slate-500 mt-1 truncate">{u.email}</span>
                                                         </div>
-                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, textAlign: "center", whiteSpace: "nowrap" }}>
+                                                        <span data-role-badge style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, textAlign: "center", whiteSpace: "nowrap" }}>
                                                             {u.role}
                                                         </span>
                                                     </div>
@@ -1537,7 +1612,7 @@ export default function AdminDashboard() {
                                 </p>
                             ) : (
                                 <>
-                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
+                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "2px solid var(--border-light)" }}>
                                         <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
@@ -1576,7 +1651,7 @@ export default function AdminDashboard() {
                                                     <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-slate-100 transition-colors duration-150">
                                                         <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)", textDecoration: expiry?.isExpired ? 'line-through' : 'none' }}>{inv.email}</td>
                                                         <td style={{ padding: "12px" }}>
-                                                            <span style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+                                                            <span data-role-badge style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
                                                                 {inv.role}
                                                             </span>
                                                         </td>
