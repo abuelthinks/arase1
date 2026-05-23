@@ -182,6 +182,51 @@
   color: var(--text-secondary) !important;
 }
 
+/* Override hardcoded inline styles in dark mode to guarantee text legibility site-wide */
+.dark-theme [style*="color: #0f172a"],
+.dark-theme [style*="color:#0f172a"],
+.dark-theme [style*="color: #0F172A"],
+.dark-theme [style*="color:#0F172A"],
+.dark-theme [style*="color: #1e293b"],
+.dark-theme [style*="color:#1e293b"],
+.dark-theme [style*="color: #1E293B"],
+.dark-theme [style*="color:#1E293B"],
+.dark-theme [style*="color: #111827"],
+.dark-theme [style*="color:#111827"],
+.dark-theme [style*="color: #1f2937"],
+.dark-theme [style*="color:#1f2937"],
+.dark-theme [style*="color: #1F2937"],
+.dark-theme [style*="color:#1F2937"],
+.dark-theme [style*="color: #374151"],
+.dark-theme [style*="color:#374151"],
+.dark-theme [style*="color: #4b5563"],
+.dark-theme [style*="color:#4b5563"],
+.dark-theme [style*="color: #4B5563"],
+.dark-theme [style*="color:#4B5563"],
+.dark-theme [style*="color: rgb(15, 23, 42)"],
+.dark-theme [style*="color: rgb(30, 41, 59)"],
+.dark-theme [style*="color: rgb(17, 24, 39)"] {
+  color: var(--text-primary) !important;
+}
+
+.dark-theme [style*="color: #64748b"],
+.dark-theme [style*="color:#64748b"],
+.dark-theme [style*="color: #64748B"],
+.dark-theme [style*="color:#64748B"],
+.dark-theme [style*="color: #475569"],
+.dark-theme [style*="color:#475569"],
+.dark-theme [style*="color: #475569"],
+.dark-theme [style*="color:#475569"],
+.dark-theme [style*="color: #94a3b8"],
+.dark-theme [style*="color:#94a3b8"],
+.dark-theme [style*="color: #94A3B8"],
+.dark-theme [style*="color:#94A3B8"],
+.dark-theme [style*="color: rgb(100, 116, 139)"],
+.dark-theme [style*="color: rgb(71, 85, 105)"],
+.dark-theme [style*="color: rgb(148, 163, 184)"] {
+  color: var(--text-secondary) !important;
+}
+
 .dark-theme .border-slate-200,
 .dark-theme .border-slate-100,
 .dark-theme .border-gray-200,
