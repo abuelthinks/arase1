@@ -669,7 +669,6 @@ function UnifiedWorkspaceContent() {
             generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setDocs(generatedDocs);
             setShowEnrollConfirm(false);
-            setWorkspace("team");
         } catch {
             // Error already handled by toastPromise
         } finally {
