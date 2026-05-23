@@ -177,6 +177,11 @@
   border-color: rgba(99, 102, 241, 0.3) !important;
 }
 
+.dark-theme [class*="text-indigo-900"],
+.dark-theme [class*="text-indigo-700"] {
+  color: #c7d2fe !important;
+}
+
 .dark-theme [class*="bg-orange-50"],
 .dark-theme [class*="bg-amber-50"],
 .dark-theme [class*="bg-amber-100"] {
@@ -192,8 +197,21 @@
 .dark-theme [class*="text-orange-900"],
 .dark-theme [class*="text-orange-800"],
 .dark-theme [class*="text-amber-900"],
-.dark-theme [class*="text-amber-800"] {
+.dark-theme [class*="text-amber-800"],
+.dark-theme [class*="text-amber-700"] {
   color: #fdba74 !important;
+}
+
+.dark-theme [class*="bg-emerald-50"] {
+  background-color: #064e3b !important;
+}
+
+.dark-theme [class*="border-emerald-200"] {
+  border-color: #047857 !important;
+}
+
+.dark-theme [class*="text-emerald-700"] {
+  color: #6ee7b7 !important;
 }
 
 .high-contrast-theme {
