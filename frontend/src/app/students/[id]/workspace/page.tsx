@@ -480,6 +480,7 @@ function UnifiedWorkspaceContent() {
             setDocs(generatedDocs);
             setShowEnrollConfirm(false);
             toast.success(res.data.message || "Student enrolled.");
+            setWorkspace("team");
         } catch (err: any) {
             toast.error(extractApiError(err, "Failed to enroll student."));
         } finally {
