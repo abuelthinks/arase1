@@ -679,7 +679,6 @@ function UnifiedWorkspaceContent() {
     const handleIntegrateStudent = async () => {
         if (!studentId || integratingStudent) return;
         setIntegratingStudent(true);
-        const wasAlreadyEnrolled = studentStatus?.toUpperCase() === "ENROLLED";
         try {
             await toastPromise(api.post(`/api/students/${studentId}/integrate/`), {
                 id: `integrate-${studentId}`,
@@ -697,9 +696,7 @@ function UnifiedWorkspaceContent() {
             generatedDocs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setDocs(generatedDocs);
             setShowIntegrateConfirm(false);
-            if (!wasAlreadyEnrolled) {
-                setWorkspace("team");
-            }
+            setWorkspace("team");
         } catch {
             // Error already handled by toastPromise
         } finally {
