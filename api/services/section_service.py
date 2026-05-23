@@ -281,7 +281,7 @@ def save_section(
 
 def submit_section(
     *, form_type: str, user, student_id: int, report_cycle_id: int,
-    section_key: str,
+    section_key: str, skip_finalize: bool = False,
 ):
     """Flip a section to submitted. Auto-finalize when all owner sections are submitted."""
     with transaction.atomic():
@@ -317,33 +317,37 @@ def submit_section(
             section_key=section_key,
         )
 
-        _maybe_finalize(form_type, instance, user)
-
-        # Drop any presence lock the user held on this section + tell peers.
-        from .collaboration_service import (
-            release_lock, broadcast_lock_changed, broadcast_section_submitted,
-        )
+        from .collaboration_service import release_lock
         release_lock(
             form_type=form_type, instance_id=instance.id,
             section_key=section_key, user=user,
         )
-        finalized = bool(instance.finalized_at)
-        transaction.on_commit(lambda: (
-            broadcast_section_submitted(
-                form_type=form_type, instance=instance, section_key=section_key,
-                user=user, finalized=finalized,
-            ),
-            broadcast_lock_changed(form_type, instance.id),
-        ))
-        from .realtime_service import create_activity_event
-        label = "Specialist assessment" if form_type == "assessment" else "Specialist tracker"
-        create_activity_event(
-            event_type="FORM_FINALIZED" if finalized else "FORM_SUBMITTED",
-            title=f"{label} section {section_key} submitted for {instance.student}",
-            actor=user,
-            student=instance.student,
-            metadata={"form_type": form_type, "section_key": section_key},
-        )
+
+        if not skip_finalize:
+            _maybe_finalize(form_type, instance, user)
+
+            # Drop any presence lock the user held on this section + tell peers.
+            from .collaboration_service import (
+                broadcast_lock_changed, broadcast_section_submitted,
+            )
+            finalized = bool(instance.finalized_at)
+            transaction.on_commit(lambda: (
+                broadcast_section_submitted(
+                    form_type=form_type, instance=instance, section_key=section_key,
+                    user=user, finalized=finalized,
+                ),
+                broadcast_lock_changed(form_type, instance.id),
+            ))
+            from .realtime_service import create_activity_event
+            label = "Specialist assessment" if form_type == "assessment" else "Specialist tracker"
+            create_activity_event(
+                event_type="FORM_FINALIZED" if finalized else "FORM_SUBMITTED",
+                title=f"{label} section {section_key} submitted for {instance.student}",
+                actor=user,
+                student=instance.student,
+                metadata={"form_type": form_type, "section_key": section_key},
+            )
+
         return instance, contribution
 
 
@@ -485,8 +489,39 @@ def submit_all_sections(
                 student_id=student_id,
                 report_cycle_id=report_cycle_id,
                 section_key=contrib.section_key,
+                skip_finalize=True,
             )
             submitted_keys.append(contrib.section_key)
+
+        _maybe_finalize(form_type, instance, user)
+
+        finalized = bool(instance.finalized_at)
+        from .collaboration_service import (
+            broadcast_lock_changed, broadcast_section_submitted,
+        )
+        from .realtime_service import create_activity_event
+
+        label = "Specialist assessment" if form_type == "assessment" else "Specialist tracker"
+
+        def make_broadcast_callback(s_key, is_final):
+            return lambda: (
+                broadcast_section_submitted(
+                    form_type=form_type, instance=instance, section_key=s_key,
+                    user=user, finalized=is_final,
+                ),
+                broadcast_lock_changed(form_type, instance.id),
+            )
+
+        for s_key in submitted_keys:
+            transaction.on_commit(make_broadcast_callback(s_key, finalized))
+
+            create_activity_event(
+                event_type="FORM_FINALIZED" if finalized else "FORM_SUBMITTED",
+                title=f"{label} section {s_key} submitted for {instance.student}",
+                actor=user,
+                student=instance.student,
+                metadata={"form_type": form_type, "section_key": s_key},
+            )
 
     instance.refresh_from_db()
     return {

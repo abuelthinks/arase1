@@ -257,10 +257,11 @@ function SectionCard({ title, children, isMySection }: { title: string; children
     );
 }
 
-function FieldLabel({ label }: { label: string }) {
+function FieldLabel({ label, required }: { label: string; required?: boolean }) {
     return (
         <p style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)", fontWeight: 650, color: "#334155", marginBottom: "6px" }}>
             {label}
+            {required && <span style={{ color: "#ef4444", marginLeft: "4px" }}>*</span>}
         </p>
     );
 }
@@ -606,6 +607,23 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
     );
 }
 
+function isFieldRequired(formType: string, field: any): boolean {
+    if (formType !== "parent-assessment") return false;
+    return field.type !== "text" && field.type !== "textarea" && field.type !== "readonly_parent_summary";
+}
+
+function isFieldEmpty(field: any, val: any): boolean {
+    if (field.type === "checkbox_group") {
+        return !Array.isArray(val) || val.length === 0;
+    }
+    if (field.type === "grid") {
+        if (!val || typeof val !== "object") return true;
+        const rowKeys = field.rows || [];
+        return rowKeys.some((row: string) => !val[row]);
+    }
+    return !val || String(val).trim() === "";
+}
+
 export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void> } = {}) {
     const params = useParams();
     const searchParams = useSearchParams();
@@ -630,6 +648,28 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [submittingOwnedSections, setSubmittingOwnedSections] = useState(false);
     const [teamSubmission, setTeamSubmission] = useState<any>(null);
     const [isReopening, setIsReopening] = useState<string | null>(null);
+    const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+    const invalidFields = useMemo(() => {
+        if (formType !== "parent-assessment") return new Set<string>();
+        const invalidSet = new Set<string>();
+        if (!schema?.sections) return invalidSet;
+
+        for (const section of schema.sections) {
+            const dataKey = section.__dataSection || section.id;
+            if (!section.fields) continue;
+            for (const field of section.fields) {
+                if (isFieldRequired(formType, field)) {
+                    const currentValue = formData[dataKey]?.[field.id];
+                    if (isFieldEmpty(field, currentValue)) {
+                        invalidSet.add(`${dataKey}_${field.id}`);
+                    }
+                }
+            }
+        }
+        return invalidSet;
+    }, [formType, schema, formData]);
+
     // Last-known server values per (sectionId, fieldId). Used by the peer
     // merge logic to detect which local fields the user has edited since the
     // last sync (those stay; clean fields get peer changes merged in).
@@ -1113,7 +1153,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             }
             return { ...prev, [sectionId]: { ...currentSection, [fieldId]: value } };
         });
-        queueAssessmentSectionAutosave(sectionId);
+        let autosaveSectionId = sectionId;
+        if (formType === "multidisciplinary-assessment" && sectionId === "section_f") {
+            autosaveSectionId = ASSESSMENT_F1_FIELDS.has(fieldId) ? "section_f1" : "section_f2";
+        }
+        queueAssessmentSectionAutosave(autosaveSectionId);
     };
 
     const handleGridChange = (sectionId: string, fieldId: string, rowKey: string, value: any) => {
@@ -1129,7 +1173,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 }
             };
         });
-        queueAssessmentSectionAutosave(sectionId);
+        let autosaveSectionId = sectionId;
+        if (formType === "multidisciplinary-assessment" && sectionId === "section_f") {
+            autosaveSectionId = ASSESSMENT_F1_FIELDS.has(fieldId) ? "section_f1" : "section_f2";
+        }
+        queueAssessmentSectionAutosave(autosaveSectionId);
     };
 
     const sectionStates = useMemo(() => {
@@ -1473,6 +1521,27 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             return;
         }
 
+        if (formType === "parent-assessment") {
+            setAttemptedSubmit(true);
+            if (invalidFields.size > 0) {
+                setErrorMsg("Please fill in all required fields.");
+                toast.error("Please fill in all required fields.", {
+                    id: "validation-error",
+                    duration: 4000
+                });
+                setLoading(false);
+
+                // Scroll beautifully to the first invalid field
+                setTimeout(() => {
+                    const firstInvalidElement = document.querySelector('[data-invalid="true"]');
+                    if (firstInvalidElement) {
+                        firstInvalidElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                }, 100);
+                return;
+            }
+        }
+
         try {
             if (specialistOnboardingLocked) {
                 setErrorMsg(specialistOnboardingMessage(user?.specialist_onboarding_missing));
@@ -1707,10 +1776,28 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                         || !!sectionState?.isLocked
                                         || (!isViewMode && !isFieldEditable(section.id, field.id));
 
+                                    const isRequired = isFieldRequired(formType, field);
+                                    const fieldKey = `${dataKey}_${field.id}`;
+                                    const isInvalid = attemptedSubmit && invalidFields.has(fieldKey);
+
                                     return (
-                                        <div key={field.id}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
-                                                <FieldLabel label={field.label} />
+                                        <div 
+                                            key={field.id}
+                                            data-invalid={isInvalid ? "true" : "false"}
+                                            style={{
+                                                padding: "10px 14px",
+                                                margin: "-10px -14px",
+                                                borderRadius: "12px",
+                                                border: isInvalid ? "1.5px solid #fee2e2" : "1.5px solid transparent",
+                                                background: isInvalid ? "#fef2f2" : "transparent",
+                                                transition: "all 0.2s",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "6px"
+                                            }}
+                                        >
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2px" }}>
+                                                <FieldLabel label={field.label} required={isRequired} />
                                                 {field.description && (
                                                     <button
                                                         type="button"
@@ -1726,6 +1813,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                                     </button>
                                                 )}
                                             </div>
+
+                                            {isInvalid && (
+                                                <p style={{ color: "#ef4444", fontSize: "0.75rem", fontWeight: 650, marginTop: "-4px", marginBottom: "4px" }}>
+                                                    * Please select an option or fill in the value
+                                                </p>
+                                            )}
 
                                             {field.description && showDescriptions[field.id] && (
                                                 <p style={{ fontSize: "var(--form-helper-font-size)", color: "#475569", marginBottom: "12px", marginTop: "0", lineHeight: "var(--form-line-height)" }}>

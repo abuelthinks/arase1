@@ -56,12 +56,17 @@ const SectionHeader = ({ title, description }: { title: string, description?: st
     </div>
 );
 
-const Field = ({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) => (
-    <div className="space-y-2">
-        <label className="block text-slate-700" style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)", fontWeight: 650 }}>
+const Field = ({ label, children, required, isInvalid }: { label: string; children: React.ReactNode; required?: boolean; isInvalid?: boolean }) => (
+    <div className={`space-y-2 p-3 -m-3 rounded-2xl border transition-all duration-200 ${isInvalid ? 'bg-red-50/70 border-red-200 shadow-[0_2px_10px_rgba(239,68,68,0.04)]' : 'border-transparent'}`} data-invalid={isInvalid ? "true" : "false"}>
+        <label className="block text-slate-700 font-semibold" style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)" }}>
             {label}{required && <span className="text-pink-500 ml-1 opacity-80">*</span>}
         </label>
         {children}
+        {isInvalid && (
+            <p className="text-xs font-semibold text-red-500 mt-1">
+                * This field is required
+            </p>
+        )}
     </div>
 );
 
@@ -143,6 +148,71 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     const totalSteps = 5;
     const isWizardMode = !isViewMode;
     const topRef = useRef<HTMLDivElement>(null);
+
+    const [stepsAttempted, setStepsAttempted] = useState<boolean[]>([false, false, false, false, false]);
+
+    const isFieldEmptyOnboarding = (key: keyof FormState, val: any): boolean => {
+        if (Array.isArray(val)) return val.length === 0;
+        return !val || String(val).trim() === "";
+    };
+
+    const getStepRequiredFields = (step: number): (keyof FormState)[] => {
+        switch (step) {
+            case 0:
+                return ["first_name", "last_name", "date_of_birth", "gender", "grade", "primary_language", "medical_alerts", "parent_name", "phone", "email"];
+            case 1:
+                return [
+                    "milestone_sitting",
+                    "milestone_crawling",
+                    "milestone_walking",
+                    "milestone_first_words",
+                    "milestone_phrases",
+                    "previous_services",
+                    "had_iep_before",
+                    "areas_of_concern"
+                ];
+            case 2:
+                return [
+                    "difficulties",
+                    "triggers",
+                    "calming_strategies",
+                    "communication",
+                    "social_interaction",
+                    "comfort_setting",
+                    "sensitivities",
+                    "motor_needs",
+                    "physical_accommodations"
+                ];
+            case 3:
+                return [
+                    "home_strategies",
+                    "support_needed",
+                    "eating",
+                    "dressing",
+                    "toilet",
+                    "sleep"
+                ];
+            case 4:
+                return [
+                    "primary_concerns",
+                    "goals_for_child",
+                    "strategies_home",
+                    "goals_this_year",
+                    "goals_3_5_years",
+                    "strengths"
+                ];
+            default:
+                return [];
+        }
+    };
+
+    const isFieldInvalid = (key: keyof FormState, step: number) => {
+        if (isViewMode) return false;
+        if (!stepsAttempted[step]) return false;
+        const required = getStepRequiredFields(step);
+        if (!required.includes(key)) return false;
+        return isFieldEmptyOnboarding(key, form[key]);
+    };
 
     // Diagnostic report upload state
     const [diagnosticFile, setDiagnosticFile] = useState<File | null>(null);
@@ -273,13 +343,30 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     };
 
     const handleNext = () => {
-        if (currentStep === 0) {
-            if (!form.first_name || !form.last_name || !form.date_of_birth || !form.grade) {
-                setErrorMsg("Please fill in the child's First Name, Last Name, Date of Birth, and Grade to continue.");
-                topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                return;
-            }
+        // Validate current step
+        const required = getStepRequiredFields(currentStep);
+        const invalid = required.filter(key => isFieldEmptyOnboarding(key, form[key]));
+
+        if (invalid.length > 0) {
+            // Track attempted submit for this step to highlight errors
+            setStepsAttempted(prev => {
+                const nextArr = [...prev];
+                nextArr[currentStep] = true;
+                return nextArr;
+            });
+            
+            setErrorMsg("Please complete all required fields on this step to continue.");
+            
+            // Smooth scroll to the first invalid field on the active page
+            setTimeout(() => {
+                const firstInvalid = document.querySelector('[data-invalid="true"]');
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }, 100);
+            return;
         }
+
         setErrorMsg("");
         setCurrentStep(prev => Math.min(prev + 1, totalSteps - 1));
         setTimeout(() => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -292,9 +379,31 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     };
 
     const handleSubmit = async () => {
-        if (!form.first_name || !form.last_name || !form.date_of_birth || !form.grade) {
-            setErrorMsg("Please fill in the child's First Name, Last Name, Date of Birth, and Grade.");
-            window.scrollTo(0, 0);
+        const allSteps = [0, 1, 2, 3, 4];
+        let firstInvalidStep = -1;
+        
+        // Mark all steps as attempted
+        setStepsAttempted([true, true, true, true, true]);
+
+        for (const s of allSteps) {
+            const required = getStepRequiredFields(s);
+            const invalid = required.filter(key => isFieldEmptyOnboarding(key, form[key]));
+            if (invalid.length > 0) {
+                firstInvalidStep = s;
+                break;
+            }
+        }
+
+        if (firstInvalidStep !== -1) {
+            setCurrentStep(firstInvalidStep);
+            setErrorMsg("Please complete all required fields before submitting.");
+            
+            setTimeout(() => {
+                const firstInvalid = document.querySelector('[data-invalid="true"]');
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }, 100);
             return;
         }
         setLoading(true);
@@ -426,27 +535,27 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             <SectionHeader title={isViewMode ? "Section A — Let's start with the basics" : "Let's start with the basics"} description="Help us understand your child's basic background details so we can set up their profile." />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <Field label="Child's First Name" required>
+                            <Field label="Child's First Name" required isInvalid={isFieldInvalid("first_name", 0)}>
                                 <input type="text" className={inputCls} value={form.first_name} onChange={e => set("first_name")(e.target.value)} />
                             </Field>
-                            <Field label="Child's Last Name" required>
+                            <Field label="Child's Last Name" required isInvalid={isFieldInvalid("last_name", 0)}>
                                 <input type="text" className={inputCls} value={form.last_name} onChange={e => set("last_name")(e.target.value)} />
                             </Field>
-                            <Field label="Date of Birth" required>
+                            <Field label="Date of Birth" required isInvalid={isFieldInvalid("date_of_birth", 0)}>
                                 <input type="date" className={inputCls} value={form.date_of_birth} onChange={e => set("date_of_birth")(e.target.value)} />
                             </Field>
-                            <Field label="Gender">
+                            <Field label="Gender" required isInvalid={isFieldInvalid("gender", 0)}>
                                 <div className="flex flex-wrap gap-3 pt-1">
-                                    {["Male", "Female", "Prefer not to say"].map(g => (
+                                    {["Male", "Female", "Prefer not to say", "Not sure"].map(g => (
                                         <Cb key={g} label={g} checked={form.gender === g} onChange={() => set("gender")(form.gender === g ? "" : g)} disabled={dis} />
                                     ))}
                                 </div>
                             </Field>
                         </div>
 
-                        <Field label="Grade / Level" required>
+                        <Field label="Grade / Level" required isInvalid={isFieldInvalid("grade", 0)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Nursery/Early Years", "Pre-K/Kinder", "Primary", "Not yet in school"].map(g => (
+                                {["Nursery/Early Years", "Pre-K/Kinder", "Primary", "Not yet in school", "Not sure"].map(g => (
                                     <Cb key={g} label={g} checked={form.grade === g} onChange={() => set("grade")(form.grade === g ? "" : g)} disabled={dis} />
                                 ))}
                             </div>
@@ -454,21 +563,21 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
 
                         {canViewPII && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <Field label="Parent/Guardian Name">
+                                <Field label="Parent/Guardian Name" required isInvalid={isFieldInvalid("parent_name", 0)}>
                                     <input type="text" className={inputCls} value={form.parent_name} onChange={e => set("parent_name")(e.target.value)} />
                                 </Field>
-                                <Field label="Phone">
+                                <Field label="Phone" required isInvalid={isFieldInvalid("phone", 0)}>
                                     <input type="text" className={inputCls} value={form.phone} onChange={e => set("phone")(e.target.value)} />
                                 </Field>
-                                <Field label="Email">
+                                <Field label="Email" required isInvalid={isFieldInvalid("email", 0)}>
                                     <input type="email" className={inputCls} value={form.email} onChange={e => set("email")(e.target.value)} />
                                 </Field>
                             </div>
                         )}
 
-                        <Field label="Primary Language(s)">
+                        <Field label="Primary Language(s)" required isInvalid={isFieldInvalid("primary_language", 0)}>
                             <div className="flex flex-wrap gap-3">
-                                {["English", "Arabic", "Japanese", "Tagalog", "Urdu", "Hindi"].map(l => (
+                                {["English", "Arabic", "Japanese", "Tagalog", "Urdu", "Hindi", "Not sure"].map(l => (
                                     <Cb key={l} label={l} checked={checked("primary_language", l)} onChange={() => setArr("primary_language")(l)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("primary_language", "Other")} onChange={() => setArr("primary_language")("Other")} disabled={dis} />
@@ -478,10 +587,11 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
 
-                        <Field label="Medical Alerts / Medications">
+                        <Field label="Medical Alerts / Medications" required isInvalid={isFieldInvalid("medical_alerts", 0)}>
                             <div className="flex gap-3 mb-2">
-                                <Cb label="None" checked={form.medical_alerts === "None"} onChange={() => set("medical_alerts")(form.medical_alerts === "None" ? "" : "None")} disabled={dis} />
-                                <Cb label="Yes (specify):" checked={form.medical_alerts === "Yes"} onChange={() => set("medical_alerts")(form.medical_alerts === "Yes" ? "" : "Yes")} disabled={dis} />
+                                {["None", "Yes", "Not sure"].map(val => (
+                                    <Cb key={val} label={val === "Yes" ? "Yes (specify):" : val} checked={form.medical_alerts === val} onChange={() => set("medical_alerts")(form.medical_alerts === val ? "" : val)} disabled={dis} />
+                                ))}
                             </div>
                             {form.medical_alerts === "Yes" && (
                                 <input className={inputCls} placeholder="Medication/alert details…" value={form.medical_alerts_detail} onChange={e => set("medical_alerts_detail")(e.target.value)} disabled={dis} />
@@ -509,32 +619,31 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                         <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
                             <SectionHeader title={isViewMode ? "Section B — Your child's milestones & history" : "Your child's milestones & history"} description="Share a snapshot of your child's developmental milestones and past services." />
 
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             <p className="text-sm font-semibold text-slate-700">Developmental Milestones</p>
                             {[
-                                { label: "Sitting",           key: "milestone_sitting" as keyof FormState,     opts: ["Early", "Typical", "Late"] },
-                                { label: "Crawling",          key: "milestone_crawling" as keyof FormState,    opts: ["Early", "Typical", "Late", "Did not crawl"] },
-                                { label: "Walking",           key: "milestone_walking" as keyof FormState,     opts: ["Early", "Typical", "Late"] },
-                                { label: "First Words",       key: "milestone_first_words" as keyof FormState, opts: ["Early", "Typical", "Late"] },
-                                { label: "Phrases/Sentences", key: "milestone_phrases" as keyof FormState,     opts: ["Early", "Typical", "Late"] },
+                                { label: "Sitting",           key: "milestone_sitting" as keyof FormState,     opts: ["Early", "Typical", "Late", "Not sure"] },
+                                { label: "Crawling",          key: "milestone_crawling" as keyof FormState,    opts: ["Early", "Typical", "Late", "Did not crawl", "Not sure"] },
+                                { label: "Walking",           key: "milestone_walking" as keyof FormState,     opts: ["Early", "Typical", "Late", "Not sure"] },
+                                { label: "First Words",       key: "milestone_first_words" as keyof FormState, opts: ["Early", "Typical", "Late", "Not sure"] },
+                                { label: "Phrases/Sentences", key: "milestone_phrases" as keyof FormState,     opts: ["Early", "Typical", "Late", "Not sure"] },
                             ].map(({ label, key, opts }) => (
-                                <div key={label} className="flex flex-wrap items-center gap-x-6 gap-y-1">
-                                    <span className="text-sm text-slate-600 w-36 shrink-0">{label}</span>
+                                <Field key={label} label={label} required isInvalid={isFieldInvalid(key, 1)}>
                                     <div className={milestoneCls}>
                                         {opts.map(o => (
                                             <Cb key={o} label={o} checked={form[key] === o} onChange={() => set(key)(form[key] === o ? "" : o)} disabled={dis} />
                                         ))}
                                     </div>
-                                </div>
+                                </Field>
                             ))}
                         </div>
 
-                        <Field label="Previous Services">
+                        <Field label="Previous Services" required isInvalid={isFieldInvalid("previous_services", 1)}>
                             <div className="flex flex-wrap gap-3">
                                 {["Schooling before", "Speech Therapy", "Occupational Therapy", "Behavioral Therapy"].map(s => (
                                     <Cb key={s} label={s} checked={checked("previous_services", s)} onChange={() => {
                                         const current = (form.previous_services as string[]) || [];
-                                        if (current.includes("N/A")) {
+                                        if (current.includes("N/A") || current.includes("Not sure")) {
                                             set("previous_services")([s]);
                                         } else {
                                             setArr("previous_services")(s);
@@ -549,22 +658,31 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                                         set("previous_services")(["N/A"]);
                                     }
                                 }} disabled={dis} />
+                                <Cb label="Not sure" checked={checked("previous_services", "Not sure")} onChange={() => {
+                                    const current = (form.previous_services as string[]) || [];
+                                    if (current.includes("Not sure")) {
+                                        set("previous_services")([]);
+                                    } else {
+                                        set("previous_services")(["Not sure"]);
+                                    }
+                                }} disabled={dis} />
                             </div>
                         </Field>
 
-                        <Field label="Has your child had an Individualized Education Program (IEP) before?">
+                        <Field label="Has your child had an Individualized Education Program (IEP) before?" required isInvalid={isFieldInvalid("had_iep_before", 1)}>
                             <div className="flex gap-4 pt-1 mb-2">
                                 <Cb label="No" checked={form.had_iep_before === "No"} onChange={() => set("had_iep_before")(form.had_iep_before === "No" ? "" : "No")} disabled={dis} />
                                 <Cb label="Yes" checked={form.had_iep_before === "Yes"} onChange={() => set("had_iep_before")(form.had_iep_before === "Yes" ? "" : "Yes")} disabled={dis} />
+                                <Cb label="Not sure" checked={form.had_iep_before === "Not sure"} onChange={() => set("had_iep_before")(form.had_iep_before === "Not sure" ? "" : "Not sure")} disabled={dis} />
                             </div>
                             {form.had_iep_before === "Yes" && (
                                 <input className={inputCls} placeholder="Please briefly provide details (e.g., date or school)..." value={form.iep_details} onChange={e => set("iep_details")(e.target.value)} disabled={dis} />
                             )}
                         </Field>
 
-                        <Field label="Areas of Concern">
+                        <Field label="Areas of Concern" required isInvalid={isFieldInvalid("areas_of_concern", 1)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Communication", "Learning", "Motor Skills", "Social", "Behavior", "Emotions", "Sensory", "Daily Living", "Safety", "Not sure"].map(c => (
+                                {["Communication", "Learning", "Motor Skills", "Social", "Behavior", "Emotions", "Sensory", "Daily Living", "Safety", "None", "Not sure"].map(c => (
                                     <Cb key={c} label={c} checked={checked("areas_of_concern", c)} onChange={() => setArr("areas_of_concern")(c)} disabled={dis} />
                                 ))}
                             </div>
@@ -582,17 +700,17 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section C — Your Goals & Concerns" : "Your Goals & Concerns"} description="Tell us what you want to focus on and your main worries." />
 
-                        <Field label="Primary Concerns">
+                        <Field label="Primary Concerns" required isInvalid={isFieldInvalid("primary_concerns", 4)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Speech", "Behavior", "Learning", "Social", "Sensory", "Motor", "Eating/Sleeping", "Safety", "Not sure"].map(c => (
+                                {["Speech", "Behavior", "Learning", "Social", "Sensory", "Motor", "Eating/Sleeping", "Safety", "None", "Not sure"].map(c => (
                                     <Cb key={c} label={c} checked={checked("primary_concerns", c)} onChange={() => setArr("primary_concerns")(c)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Goals for My Child">
+                        <Field label="Goals for My Child" required isInvalid={isFieldInvalid("goals_for_child", 4)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Communicate better", "Improve behavior", "Learn faster", "Improve social skills", "Be independent", "School readiness", "Motor improvements"].map(g => (
+                                {["Communicate better", "Improve behavior", "Learn faster", "Improve social skills", "Be independent", "School readiness", "Motor improvements", "Not sure"].map(g => (
                                     <Cb key={g} label={g} checked={checked("goals_for_child", g)} onChange={() => setArr("goals_for_child")(g)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("goals_for_child", "Other")} onChange={() => setArr("goals_for_child")("Other")} disabled={dis} />
@@ -602,7 +720,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
 
-                        <Field label="Strategies Used at Home">
+                        <Field label="Strategies Used at Home" required isInvalid={isFieldInvalid("strategies_home", 4)}>
                             <div className="flex flex-wrap gap-3">
                                 {["Schedules", "Routines", "Visual aids", "Rewards", "Quiet time", "Sensory tools", "Not sure"].map(s => (
                                     <Cb key={s} label={s} checked={checked("strategies_home", s)} onChange={() => setArr("strategies_home")(s)} disabled={dis} />
@@ -623,47 +741,47 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section D — How does your child interact with the world?" : "How does your child interact with the world?"} description="Help us understand what triggers them and how they relate to others." />
 
-                        <Field label="Difficulties">
+                        <Field label="Difficulties" required isInvalid={isFieldInvalid("difficulties", 2)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Transitions", "Waiting", "Focus", "Rules", "Playing with others", "Sharing", "Emotions", "Staying calm", "Not sure"].map(d => (
+                                {["Transitions", "Waiting", "Focus", "Rules", "Playing with others", "Sharing", "Emotions", "Staying calm", "None", "Not sure"].map(d => (
                                     <Cb key={d} label={d} checked={checked("difficulties", d)} onChange={() => setArr("difficulties")(d)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Triggers">
+                        <Field label="Triggers" required isInvalid={isFieldInvalid("triggers", 2)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Loud sounds", "Lights", "Being told no", "Changes", "Crowds", "Sharing", "Not sure"].map(t => (
+                                {["Loud sounds", "Lights", "Being told no", "Changes", "Crowds", "Sharing", "None", "Not sure"].map(t => (
                                     <Cb key={t} label={t} checked={checked("triggers", t)} onChange={() => setArr("triggers")(t)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Calming Strategies">
+                        <Field label="Calming Strategies" required isInvalid={isFieldInvalid("calming_strategies", 2)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Deep breathing", "Sensory tools", "Quiet space", "Hugs", "Distraction", "Tablet/music", "Not sure"].map(c => (
+                                {["Deep breathing", "Sensory tools", "Quiet space", "Hugs", "Distraction", "Tablet/music", "None", "Not sure"].map(c => (
                                     <Cb key={c} label={c} checked={checked("calming_strategies", c)} onChange={() => setArr("calming_strategies")(c)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Communication">
+                        <Field label="Communication" required isInvalid={isFieldInvalid("communication", 2)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Words", "Short phrases", "Sentences", "Gestures", "Sounds", "Not speaking"].map(c => (
+                                {["Words", "Short phrases", "Sentences", "Gestures", "Sounds", "Not speaking", "Not sure"].map(c => (
                                     <Cb key={c} label={c} checked={checked("communication", c)} onChange={() => setArr("communication")(c)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Social Interaction">
+                        <Field label="Social Interaction" required isInvalid={isFieldInvalid("social_interaction", 2)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Eye contact", "Responds to name", "Plays alone", "Plays with others", "Avoids interaction", "Prefers adults", "Overwhelmed in groups"].map(s => (
+                                {["Eye contact", "Responds to name", "Plays alone", "Plays with others", "Avoids interaction", "Prefers adults", "Overwhelmed in groups", "Not sure"].map(s => (
                                     <Cb key={s} label={s} checked={checked("social_interaction", s)} onChange={() => setArr("social_interaction")(s)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Comfort Setting">
+                        <Field label="Comfort Setting" required isInvalid={isFieldInvalid("comfort_setting", 2)}>
                             <div className="flex flex-wrap gap-3">
                                 {["Structured", "Unstructured", "One-on-one", "Small groups", "Not sure"].map(c => (
                                     <Cb key={c} label={c} checked={checked("comfort_setting", c)} onChange={() => setArr("comfort_setting")(c)} disabled={dis} />
@@ -675,26 +793,27 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section E — Sensory & Physical Needs" : "Sensory & Physical Needs"} description="Let us know their physical needs and any sensory sensitivities we should accommodate." />
 
-                        <Field label="Sensory Sensitivities">
+                        <Field label="Sensory Sensitivities" required isInvalid={isFieldInvalid("sensitivities", 2)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Sounds", "Lights", "Textures", "Food textures", "Crowds", "Movement", "Water", "Touch", "Smells", "None"].map(s => (
+                                {["Sounds", "Lights", "Textures", "Food textures", "Crowds", "Movement", "Water", "Touch", "Smells", "None", "Not sure"].map(s => (
                                     <Cb key={s} label={s} checked={checked("sensitivities", s)} onChange={() => setArr("sensitivities")(s)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Motor Needs">
+                        <Field label="Motor Needs" required isInvalid={isFieldInvalid("motor_needs", 2)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Fine motor difficulty", "Gross motor difficulty", "Weakness", "Easily tired", "None"].map(m => (
+                                {["Fine motor difficulty", "Gross motor difficulty", "Weakness", "Easily tired", "None", "Not sure"].map(m => (
                                     <Cb key={m} label={m} checked={checked("motor_needs", m)} onChange={() => setArr("motor_needs")(m)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Physical Accommodations Needed">
+                        <Field label="Physical Accommodations Needed" required isInvalid={isFieldInvalid("physical_accommodations", 2)}>
                             <div className="flex gap-3 mb-2">
                                 <Cb label="No" checked={form.physical_accommodations === "No"} onChange={() => set("physical_accommodations")(form.physical_accommodations === "No" ? "" : "No")} disabled={dis} />
                                 <Cb label="Yes" checked={form.physical_accommodations === "Yes"} onChange={() => set("physical_accommodations")(form.physical_accommodations === "Yes" ? "" : "Yes")} disabled={dis} />
+                                <Cb label="Not sure" checked={form.physical_accommodations === "Not sure"} onChange={() => set("physical_accommodations")(form.physical_accommodations === "Not sure" ? "" : "Not sure")} disabled={dis} />
                             </div>
                             {form.physical_accommodations === "Yes" && (
                                 <input className={inputCls} placeholder="Describe accommodation…" value={form.physical_accommodations_detail} onChange={e => set("physical_accommodations_detail")(e.target.value)} disabled={dis} />
@@ -710,9 +829,9 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section F — Goals & Expectations" : "Goals & Expectations"} description="What are your short-term and long-term hopes for your child?" />
 
-                        <Field label="Goals for This Year">
+                        <Field label="Goals for This Year" required isInvalid={isFieldInvalid("goals_this_year", 4)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Academic", "Speech", "Social", "Emotional", "Behavior", "Independence", "Motor"].map(g => (
+                                {["Academic", "Speech", "Social", "Emotional", "Behavior", "Independence", "Motor", "None", "Not sure"].map(g => (
                                     <Cb key={g} label={g} checked={checked("goals_this_year", g)} onChange={() => setArr("goals_this_year")(g)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("goals_this_year", "Other")} onChange={() => setArr("goals_this_year")("Other")} disabled={dis} />
@@ -722,9 +841,9 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                             </div>
                         </Field>
 
-                        <Field label="Goals for Next 3–5 Years">
+                        <Field label="Goals for Next 3–5 Years" required isInvalid={isFieldInvalid("goals_3_5_years", 4)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Independence", "Communication", "Behavior", "School readiness", "Friendships", "Learning", "Not sure"].map(g => (
+                                {["Independence", "Communication", "Behavior", "School readiness", "Friendships", "Learning", "None", "Not sure"].map(g => (
                                     <Cb key={g} label={g} checked={checked("goals_3_5_years", g)} onChange={() => setArr("goals_3_5_years")(g)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("goals_3_5_years", "Other")} onChange={() => setArr("goals_3_5_years")("Other")} disabled={dis} />
@@ -743,17 +862,17 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section G — Routines & Support" : "Routines & Support"} description="Tell us about the structure, routines, and strategies that work for them at home." />
 
-                        <Field label="Home Strategies">
+                        <Field label="Home Strategies" required isInvalid={isFieldInvalid("home_strategies", 3)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Schedules", "Rewards", "Visual supports", "Rules", "Calm corner", "Sensory play", "Outdoor time", "Not sure"].map(s => (
+                                {["Schedules", "Rewards", "Visual supports", "Rules", "Calm corner", "Sensory play", "Outdoor time", "None", "Not sure"].map(s => (
                                     <Cb key={s} label={s} checked={checked("home_strategies", s)} onChange={() => setArr("home_strategies")(s)} disabled={dis} />
                                 ))}
                             </div>
                         </Field>
 
-                        <Field label="Support Needed from School">
+                        <Field label="Support Needed from School" required isInvalid={isFieldInvalid("support_needed", 3)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Home activities", "Behavior guidance", "Speech guidance", "Routines help", "Social skills support", "Parent support"].map(s => (
+                                {["Home activities", "Behavior guidance", "Speech guidance", "Routines help", "Social skills support", "Parent support", "None", "Not sure"].map(s => (
                                     <Cb key={s} label={s} checked={checked("support_needed", s)} onChange={() => setArr("support_needed")(s)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("support_needed", "Other")} onChange={() => setArr("support_needed")("Other")} disabled={dis} />
@@ -772,9 +891,9 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     <section className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 p-5 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-7 relative overflow-hidden">
                         <SectionHeader title={isViewMode ? "Section H — What makes your child shine?" : "What makes your child shine?"} description="Every child has superpowers! Tell us what your child excels at." />
 
-                        <Field label="My Child's Strengths">
+                        <Field label="My Child's Strengths" required isInvalid={isFieldInvalid("strengths", 4)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Friendly", "Curious", "Good memory", "Loves routines", "Creative", "Enjoys music", "Enjoys numbers", "Helpful", "Hardworking", "Fast learner"].map(s => (
+                                {["Friendly", "Curious", "Good memory", "Loves routines", "Creative", "Enjoys music", "Enjoys numbers", "Helpful", "Hardworking", "Fast learner", "Not sure"].map(s => (
                                     <Cb key={s} label={s} checked={checked("strengths", s)} onChange={() => setArr("strengths")(s)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("strengths", "Other")} onChange={() => setArr("strengths")("Other")} disabled={dis} />
@@ -872,12 +991,12 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                         <SectionHeader title={isViewMode ? "Section I — Daily Living Skills" : "Daily Living Skills"} description="Help us understand how independent they are with daily self-care tasks." />
 
                         {[
-                            { label: "Eating",   key: "eating" as keyof FormState,   opts: ["Eats independently", "Needs some help", "Needs full help"] },
-                            { label: "Dressing", key: "dressing" as keyof FormState, opts: ["Dresses independently", "Needs some help", "Needs full help"] },
-                            { label: "Toilet",   key: "toilet" as keyof FormState,   opts: ["Fully trained", "Needs reminders", "Needs help", "Uses diapers"] },
-                            { label: "Sleep",    key: "sleep" as keyof FormState,    opts: ["Sleeps well", "Difficulty falling asleep", "Wakes often"] },
+                            { label: "Eating",   key: "eating" as keyof FormState,   opts: ["Eats independently", "Needs some help", "Needs full help", "Not sure"] },
+                            { label: "Dressing", key: "dressing" as keyof FormState, opts: ["Dresses independently", "Needs some help", "Needs full help", "Not sure"] },
+                            { label: "Toilet",   key: "toilet" as keyof FormState,   opts: ["Fully trained", "Needs reminders", "Needs help", "Uses diapers", "Not sure"] },
+                            { label: "Sleep",    key: "sleep" as keyof FormState,    opts: ["Sleeps well", "Difficulty falling asleep", "Wakes often", "Not sure"] },
                         ].map(({ label, key, opts }) => (
-                            <Field key={label} label={label}>
+                            <Field key={label} label={label} required isInvalid={isFieldInvalid(key, 3)}>
                                 <div className="flex flex-wrap gap-3">
                                     {opts.map(o => (
                                         <Cb key={o} label={o} checked={form[key] === o} onChange={() => set(key)(form[key] === o ? "" : o)} disabled={dis} />
