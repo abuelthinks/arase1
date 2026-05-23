@@ -219,30 +219,30 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     const renderContent = () => (
         <>
             {/* Status bar */}
-            <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "1.5rem", padding: "12px 16px", borderRadius: "10px", background: "#f1f5f9" }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748b" }}>Student Status:</span>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "1.5rem", padding: "12px 16px", borderRadius: "10px", background: "var(--bg-primary)" }}>
+                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Student Status:</span>
                 <span style={{
                     padding: "3px 12px", borderRadius: "999px", fontSize: "0.78rem", fontWeight: 700,
-                    background: studentStatus === "Enrolled" ? "#d1fae5" : "#fef3c7",
-                    color: studentStatus === "Enrolled" ? "#065f46" : "#92400e",
+                    background: ["enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "var(--bg-success-light)" : "var(--bg-danger-light)",
+                    color: ["enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "var(--text-success)" : "var(--text-danger)",
                 }}>
                     {studentStatus}
                 </span>
                 {cycleStatus && (
                     <>
-                        <span style={{ color: "#cbd5e1" }}>|</span>
-                        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748b" }}>Current Month:</span>
-                        <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.8rem" }}>{cycleStatus.label}</span>
+                        <span style={{ color: "var(--border-light)" }}>|</span>
+                        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Current Month:</span>
+                        <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8rem" }}>{cycleStatus.label}</span>
                         <span style={{ 
                             fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", 
                             padding: "2px 8px", borderRadius: "6px", 
-                            background: cycleStatus.status === "OPEN" ? "#dcfce7" : cycleStatus.status === "GRACE" ? "#fee2e2" : cycleStatus.status === "GENERATING" ? "#dbeafe" : "#f1f5f9",
-                            color: cycleStatus.status === "OPEN" ? "#166534" : cycleStatus.status === "GRACE" ? "#991b1b" : cycleStatus.status === "GENERATING" ? "#1d4ed8" : "#475569",
+                            background: cycleStatus.status === "OPEN" ? "var(--bg-success-light)" : cycleStatus.status === "GRACE" ? "var(--bg-danger-light)" : cycleStatus.status === "GENERATING" ? "var(--bg-info-light)" : "var(--bg-primary)",
+                            color: cycleStatus.status === "OPEN" ? "var(--text-success)" : cycleStatus.status === "GRACE" ? "var(--text-danger)" : cycleStatus.status === "GENERATING" ? "var(--text-info)" : "var(--text-secondary)",
                             marginLeft: "4px"
                         }}>
                             {cycleStatus.status === "GENERATING" ? "Generating" : cycleStatus.status}
                         </span>
-                        <span style={{ marginLeft: "auto", fontSize: "0.75rem", fontWeight: 600, color: cycleStatus.days_remaining <= 5 ? "#dc2626" : "#64748b" }}>
+                        <span style={{ marginLeft: "auto", fontSize: "0.75rem", fontWeight: 600, color: cycleStatus.days_remaining <= 5 ? "#dc2626" : "var(--text-secondary)" }}>
                             {cycleStatus.days_remaining} days left
                         </span>
                     </>
@@ -274,9 +274,9 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                     <span key={key} style={{
                                         display: "inline-flex", alignItems: "center", gap: "5px",
                                         padding: "4px 10px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700,
-                                        background: submitted ? "#dcfce7" : "#f1f5f9",
-                                        color: submitted ? "#166534" : "#94a3b8",
-                                        border: `1px solid ${submitted ? "#a7f3d0" : "#e2e8f0"}`,
+                                        background: submitted ? "var(--bg-success-light)" : "var(--bg-primary)",
+                                        color: submitted ? "var(--text-success)" : "var(--text-muted)",
+                                        border: `1px solid ${submitted ? "var(--border-success)" : "var(--border-light)"}`,
                                     }}>
                                         {submitted ? (
                                             <svg style={{ width: 12, height: 12 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -305,9 +305,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         onMouseLeave={() => setIepHovered(false)}
                         disabled={loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase())}
                         style={{
-                            padding: "10px 20px", borderRadius: "8px", border: "none",
-                            background: loading ? "#a5b4fc" : (existingIepId && existingIepStatus === "FINAL") ? (iepHovered ? "#1e293b" : "#0f172a") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "#e2e8f0",
-                            color: ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "white" : "#94a3b8",
+                            padding: "10px 20px", borderRadius: "8px",
+                            border: (existingIepId && existingIepStatus === "FINAL") ? "1px solid var(--border-light)" : "none",
+                            background: loading ? "var(--border-light)" : (existingIepId && existingIepStatus === "FINAL") ? (iepHovered ? "var(--border-light)" : "var(--bg-primary)") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "var(--bg-primary)",
+                            color: (existingIepId && existingIepStatus === "FINAL") ? "var(--text-primary)" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "white" : "var(--text-muted)",
                             fontWeight: 700, fontSize: "0.85rem",
                             cursor: loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
                             whiteSpace: "nowrap", flexShrink: 0, marginTop: "4px",
@@ -338,9 +339,9 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                     <span key={key} style={{
                                         display: "inline-flex", alignItems: "center", gap: "5px",
                                         padding: "4px 10px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700,
-                                        background: submitted ? "#dcfce7" : "#f1f5f9",
-                                        color: submitted ? "#166534" : "#94a3b8",
-                                        border: `1px solid ${submitted ? "#a7f3d0" : "#e2e8f0"}`,
+                                        background: submitted ? "var(--bg-success-light)" : "var(--bg-primary)",
+                                        color: submitted ? "var(--text-success)" : "var(--text-muted)",
+                                        border: `1px solid ${submitted ? "var(--border-success)" : "var(--border-light)"}`,
                                     }}>
                                         {submitted ? (
                                             <svg style={{ width: 12, height: 12 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -389,9 +390,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                 : "Generate monthly progress report"
                         }
                         style={{
-                            padding: "10px 20px", borderRadius: "8px", border: "none",
-                            background: monthlyLoading ? "#6ee7b7" : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? (monthlyHovered ? "#1e293b" : "#0f172a") : monthlyEnabled ? (monthlyHovered ? "#047857" : "#059669") : "#e2e8f0",
-                            color: existingMonthlyId || monthlyEnabled ? "white" : "#94a3b8",
+                            padding: "10px 20px", borderRadius: "8px",
+                            border: (existingMonthlyId && existingMonthlyStatus === "FINAL") ? "1px solid var(--border-light)" : "none",
+                            background: monthlyLoading ? "var(--border-light)" : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? (monthlyHovered ? "var(--border-light)" : "var(--bg-primary)") : monthlyEnabled ? (monthlyHovered ? "#047857" : "#059669") : "var(--bg-primary)",
+                            color: (existingMonthlyId && existingMonthlyStatus === "FINAL") ? "var(--text-primary)" : (existingMonthlyId || monthlyEnabled) ? "white" : "var(--text-muted)",
                             fontWeight: 700, fontSize: "0.85rem",
                             cursor: existingMonthlyId || monthlyEnabled ? "pointer" : "not-allowed",
                             whiteSpace: "nowrap", flexShrink: 0,
