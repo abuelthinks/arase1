@@ -1060,10 +1060,7 @@ function UnifiedWorkspaceContent() {
 
                     <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar flex flex-col gap-3">
                         {renderAdminWorkspaceSidebarActions("overview")}
-                        <button onClick={() => navigateWithTeamGuard(`/students/${studentId}`)} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                            <FolderOpen size={14} />
-                            Open Full Profile
-                        </button>
+
 
                     </div>
                 </div>
