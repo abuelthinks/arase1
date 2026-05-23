@@ -1064,23 +1064,7 @@ function UnifiedWorkspaceContent() {
                             <FolderOpen size={14} />
                             Open Full Profile
                         </button>
-                        <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                            <p className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Quick links</p>
-                            <div className="flex flex-col gap-0.5">
-                                <button onClick={() => setWorkspace("reports")} className="w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-700 transition-colors">
-                                    <span className="flex items-center gap-2"><ClipboardList size={13} /> Forms</span>
-                                    <span className="text-[0.65rem] font-bold text-slate-400">{submittedForms}/5</span>
-                                </button>
-                                <button onClick={() => handleReportMenuChange("history")} className="w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-700 transition-colors">
-                                    <span className="flex items-center gap-2"><FileText size={13} /> Documents</span>
-                                    <span className="text-[0.65rem] font-bold text-slate-400">{docs.length}</span>
-                                </button>
-                                <button onClick={() => handleTeamMenuChange("SPECIALIST")} className="w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-700 transition-colors">
-                                    <span className="flex items-center gap-2"><Users size={13} /> Team</span>
-                                    <span className="text-[0.65rem] font-bold text-slate-400">{assignedStaff.length}</span>
-                                </button>
-                            </div>
-                        </div>
+
                     </div>
                 </div>
 
