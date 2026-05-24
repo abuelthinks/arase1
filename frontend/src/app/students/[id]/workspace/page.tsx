@@ -1461,7 +1461,7 @@ function UnifiedWorkspaceContent() {
                                 type="button"
                                 onClick={confirmTeamChanges}
                                 disabled={!teamHasChanges || confirmingTeam}
-                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
                             >
                                 <Check size={16} />
                                 {confirmingTeam ? "Confirming..." : "Confirm Team"}

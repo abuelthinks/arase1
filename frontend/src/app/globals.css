@@ -333,6 +333,64 @@
   color: #6ee7b7 !important;
 }
 
+/* ─── Notification Dropdown Overrides in Dark Mode ─── */
+.dark-theme .bg-blue-50\/40 {
+  background-color: rgba(59, 130, 246, 0.1) !important; /* Subtle blue tint for unread items */
+}
+.dark-theme .hover\:bg-blue-50\/60:hover {
+  background-color: rgba(59, 130, 246, 0.18) !important; /* Lighter blue tint on hover */
+}
+.dark-theme .bg-white.hover\:bg-slate-50:hover,
+.dark-theme [class*="bg-white"].hover\:bg-slate-50:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important; /* Nice hover effect for read items */
+}
+
+/* Specific badge overrides for notification icon containers */
+.dark-theme .bg-emerald-100,
+.dark-theme [class*="bg-emerald-100"] {
+  background-color: #064e3b !important;
+  color: #6ee7b7 !important;
+}
+.dark-theme [class*="text-emerald-600"] {
+  color: #6ee7b7 !important;
+}
+
+.dark-theme .bg-blue-100,
+.dark-theme [class*="bg-blue-100"] {
+  background-color: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+.dark-theme [class*="text-blue-600"] {
+  color: #93c5fd !important;
+}
+
+.dark-theme .bg-pink-100,
+.dark-theme [class*="bg-pink-100"] {
+  background-color: #831843 !important;
+  color: #fbcfe8 !important;
+}
+.dark-theme [class*="text-pink-600"] {
+  color: #fbcfe8 !important;
+}
+
+.dark-theme [class*="text-indigo-600"] {
+  color: #c7d2fe !important;
+}
+
+.dark-theme [class*="text-amber-600"] {
+  color: #fde68a !important;
+}
+
+/* ─── Confirm Team Disabled State Override ─── */
+.dark-theme .disabled\:bg-slate-300:disabled,
+.dark-theme [class*="disabled:bg-slate-300"]:disabled {
+  background-color: #334155 !important;
+  color: var(--text-muted) !important;
+  border-color: #475569 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+}
+
 .high-contrast-theme {
   --bg-primary: #ffffff !important;
   --bg-secondary: #ffffff !important;
