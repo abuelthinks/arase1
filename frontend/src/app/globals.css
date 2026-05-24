@@ -381,6 +381,47 @@
   color: #fde68a !important;
 }
 
+/* ─── Premium Dashboard KPI Card Uniformity in Dark Mode ─── */
+.dark-theme [class*="bg-amber-50/50"],
+.dark-theme [class*="bg-blue-50/50"],
+.dark-theme [class*="bg-pink-50/50"],
+.dark-theme [class*="bg-amber-50\/50"],
+.dark-theme [class*="bg-blue-50\/50"],
+.dark-theme [class*="bg-pink-50\/50"] {
+  background-color: var(--bg-secondary) !important;
+  background: var(--bg-secondary) !important;
+}
+
+.dark-theme [class*="border-amber-100"],
+.dark-theme [class*="border-blue-100"],
+.dark-theme [class*="border-pink-100"] {
+  border-color: var(--border-light) !important;
+}
+
+/* Coordinated text accent colors to match their icons */
+.dark-theme [class*="text-amber-700"],
+.dark-theme [class*="text-amber-900"] {
+  color: #fdba74 !important; /* Gold */
+}
+
+.dark-theme [class*="text-blue-700"],
+.dark-theme [class*="text-blue-900"] {
+  color: #93c5fd !important; /* Soft blue */
+}
+
+.dark-theme [class*="text-pink-700"],
+.dark-theme [class*="text-pink-900"] {
+  color: #fda4af !important; /* Soft pink/rose */
+}
+
+/* Remove glow/halos around icon shadows for cleaner dark mode design */
+.dark-theme [class*="shadow-indigo-200"],
+.dark-theme [class*="shadow-amber-200"],
+.dark-theme [class*="shadow-blue-200"],
+.dark-theme [class*="shadow-pink-200"] {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2) !important;
+}
+
 /* ─── Confirm Team Disabled State Override ─── */
 .dark-theme .disabled\:bg-slate-300:disabled,
 .dark-theme [class*="disabled:bg-slate-300"]:disabled {
