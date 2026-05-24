@@ -11,11 +11,11 @@ import { useAuth } from "@/context/AuthContext";
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}>
-            <div style={{ padding: "0.875rem 1.5rem", borderBottom: "1px solid #e2e8f0", background: "#f0f9ff" }}>
-                <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{title}</h2>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden mb-5">
+            <div className="px-6 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-50 m-0">{title}</h2>
             </div>
-            <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>{children}</div>
+            <div className="p-6 flex flex-col gap-3">{children}</div>
         </div>
     );
 }
@@ -23,26 +23,26 @@ function SectionCard({ title, children }: { title: string; children: React.React
 function Field({ label, value, edit, onChange }: { label: string; value: string; edit: boolean; onChange?: (v: string) => void }) {
     return (
         <div>
-            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "3px" }}>{label}</p>
+            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">{label}</p>
             {edit ? (
                 <textarea
                     value={value}
                     onChange={e => onChange?.(e.target.value)}
                     rows={Math.max(2, (value || "").split("\n").length)}
-                    style={{ width: "100%", borderRadius: "8px", border: "1px solid #e2e8f0", padding: "8px 12px", fontSize: "0.85rem", resize: "vertical", boxSizing: "border-box" }}
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 text-xs text-slate-900 dark:text-slate-50 resize-y box-border focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
             ) : (
-                <p style={{ fontSize: "0.85rem", color: "#1e293b", whiteSpace: "pre-wrap", margin: 0, lineHeight: 1.5 }}>{value || "—"}</p>
+                <p className="text-xs text-slate-850 dark:text-slate-200 whitespace-pre-wrap m-0 leading-relaxed">{value || "—"}</p>
             )}
         </div>
     );
 }
 
 function PillList({ items }: { items: string[] }) {
-    if (!items || items.length === 0) return <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>—</span>;
+    if (!items || items.length === 0) return <span className="text-xs text-slate-400 dark:text-slate-400">—</span>;
     return (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-            {items.map(i => <span key={i} style={{ padding: "3px 10px", borderRadius: "999px", background: "#e0f2fe", color: "#0369a1", fontSize: "0.78rem", fontWeight: 600 }}>{i}</span>)}
+        <div className="flex flex-wrap gap-1.5">
+            {items.map(i => <span key={i} className="px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[0.7rem] font-semibold">{i}</span>)}
         </div>
     );
 }
@@ -207,12 +207,12 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
     const s9 = iep.section9_home_program || {};
 
     return (
-        <div style={{ maxWidth: propHideNavigation ? "1024px" : "900px", margin: "0 auto", padding: propHideNavigation ? "2rem 1.5rem 4rem" : "2rem 1rem 4rem" }}>
+        <div className={`mx-auto pb-16 ${propHideNavigation ? "max-w-5xl px-6 pt-8" : "max-w-4xl px-4 pt-8"}`}>
             {/* Breadcrumb Nav */}
             {!propHideNavigation && (
-                <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
+                <div className="hidden md:flex mb-6 items-center gap-2">
                 <button type="button" onClick={() => router.back()}
-                    className="btn-slate"
+                    className="btn-slate text-xs py-1.5 px-3"
                     style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
                 >
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
@@ -220,32 +220,36 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     </svg>
                     Back to Student Profile
                 </button>
-                <span style={{ color: "#cbd5e1" }}>›</span>
-                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
+                <span className="text-slate-350 dark:text-slate-650">›</span>
+                <span className="text-slate-900 dark:text-slate-50 text-xs font-bold">
                     IEP for {meta.student_name}
                 </span>
             </div>
             )}
             
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
+            <div className="flex justify-between items-start mb-6 flex-wrap gap-3">
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-slate-50 m-0 flex items-center gap-2.5 flex-wrap">
                         Comprehensive AI-Generated IEP
-                        <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: iepStatus === "FINAL" ? "#dcfce7" : "#fef3c7", color: iepStatus === "FINAL" ? "#166534" : "#92400e", border: `1px solid ${iepStatus === "FINAL" ? "#bbf7d0" : "#fde68a"}` }}>
+                        <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded border ${
+                            iepStatus === "FINAL" 
+                                ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" 
+                                : "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                        }`}>
                             {iepStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
                     </h1>
-                    <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         {meta.student_name} · Generated {formatDocumentDateTime(meta.created_at)}
                     </p>
                 </div>
                 {user?.role === "ADMIN" && (
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <button onClick={fetchAuditHistory} className="btn-slate" style={{ fontSize: "0.82rem" }}>⏱️ Audit History</button>
-                        <button onClick={handleDownload} className="btn-slate" style={{ fontSize: "0.82rem" }}>📥 Download PDF</button>
+                    <div className="flex gap-2 flex-wrap items-center">
+                        <button onClick={fetchAuditHistory} className="btn-slate text-xs py-1.5 px-3">⏱️ Audit History</button>
+                        <button onClick={handleDownload} className="btn-slate text-xs py-1.5 px-3">📥 Download PDF</button>
                         {editing ? (
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            <div className="flex gap-1.5 items-center">
                                 <button onClick={() => {
                                     const snapshot = editSnapshotStr.current;
                                     if (snapshot) {
@@ -259,16 +263,16 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                                             .finally(() => setSaving(false));
                                     }
                                     setEditing(false);
-                                }} className="btn-slate" style={{ fontSize: "0.82rem" }}>Cancel Edit</button>
-                                <button onClick={() => handleSave("FINAL")} disabled={saving} className="btn-green" style={{ fontSize: "0.82rem" }}>
+                                }} className="btn-slate text-xs py-1.5 px-3">Cancel Edit</button>
+                                <button onClick={() => handleSave("FINAL")} disabled={saving} className="btn-green text-xs py-1.5 px-3">
                                     ✅ Finalize
                                 </button>
-                                <span style={{ fontSize: "0.78rem", color: saving ? "#64748b" : "#10b981", fontStyle: "italic", marginLeft: "4px" }}>
+                                <span className="text-[0.7rem] text-slate-500 dark:text-slate-400 italic ml-1">
                                     {saving ? "Saving…" : "All changes saved"}
                                 </span>
                             </div>
                         ) : (
-                            <button onClick={() => { editSnapshotStr.current = JSON.stringify(iep); setEditing(true); }} className="btn-indigo" style={{ fontSize: "0.82rem" }}>✏️ Edit</button>
+                            <button onClick={() => { editSnapshotStr.current = JSON.stringify(iep); setEditing(true); }} className="btn-indigo text-xs py-1.5 px-3">✏️ Edit</button>
                         )}
                     </div>
                 )}
@@ -283,7 +287,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 </div>
                 {s1.team_members?.length > 0 && (
                     <div>
-                        <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "4px" }}>IEP Team Members</p>
+                        <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">IEP Team Members</p>
                         <PillList items={s1.team_members.map((m: any) => `${m.name} (${m.role})`)} />
                     </div>
                 )}
@@ -317,9 +321,9 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 }).map(([key, lbl]) => {
                     const domain = s4[key] || {};
                     return (
-                        <div key={key} style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "14px" }}>
-                            <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0ea5e9", marginBottom: "10px" }}>{lbl}</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                        <div key={key} className="py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                            <p className="text-xs font-bold text-sky-600 dark:text-sky-400 mb-2">{lbl}</p>
+                            <div className="flex flex-col gap-3">
                             {Object.entries(domain).map(([fk, fv]) => (
                                 <Field key={fk} label={fk.replace(/_/g, ' ')} value={String(fv)} edit={editing}
                                     onChange={v => set("section4_plop", [key, fk], v)} />
@@ -333,11 +337,11 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Section 5 — Long-Term Goals */}
             <SectionCard title="Section 5 — Long-Term IEP Goals (1 Year)">
                 {s5.map((ltg, i) => (
-                    <div key={ltg.id} style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px 16px", border: "1px solid #e2e8f0" }}>
-                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#4f46e5", margin: "0 0 4px" }}>{ltg.id} — {ltg.domain}</p>
+                    <div key={ltg.id} className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col gap-3 mb-3 last:mb-0">
+                        <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 m-0">{ltg.id} — {ltg.domain}</p>
                         <Field label="Goal" value={ltg.goal} edit={editing}
                             onChange={v => { const copy = [...s5]; copy[i] = { ...copy[i], goal: v }; setIep(prev => prev ? { ...prev, section5_ltg: copy } : prev); }} />
-                        <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}><em>Disciplines: {ltg.disciplines}</em></p>
+                        <p className="text-[0.7rem] text-slate-400 dark:text-slate-500 m-0 italic">Disciplines: {ltg.disciplines}</p>
                     </div>
                 ))}
             </SectionCard>
@@ -345,11 +349,11 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Section 6 — Short-Term Objectives */}
             <SectionCard title="Section 6 — Short-Term Objectives (3–4 months)">
                 {s6.map((sto, i) => (
-                    <div key={sto.id} style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px 16px", border: "1px solid #e2e8f0" }}>
-                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#059669", margin: "0 0 4px" }}>Objective {sto.id} → {sto.ltg_ref}</p>
+                    <div key={sto.id} className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col gap-3 mb-3 last:mb-0">
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 m-0">Objective {sto.id} → {sto.ltg_ref}</p>
                         <Field label="Objective" value={sto.objective} edit={editing}
                             onChange={v => { const c = [...s6]; c[i] = { ...c[i], objective: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-1">
                             <Field label="Target Skill" value={sto.target_skill} edit={editing}
                                 onChange={v => { const c = [...s6]; c[i] = { ...c[i], target_skill: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                             <Field label="Teaching Method" value={sto.teaching_method} edit={editing}
@@ -359,16 +363,16 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                             <Field label="Frequency" value={sto.frequency} edit={editing}
                                 onChange={v => { const c = [...s6]; c[i] = { ...c[i], frequency: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                         </div>
-                        <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>Responsible: {sto.responsible}</p>
+                        <p className="text-[0.7rem] text-slate-400 dark:text-slate-500 m-0">Responsible: {sto.responsible}</p>
                     </div>
                 ))}
             </SectionCard>
 
             {/* Section 7 — Accommodations */}
             <SectionCard title="Section 7 — Accommodations & Modifications">
-                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Classroom Accommodations</p><PillList items={s7.classroom} /></div>
-                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
-                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Communication Supports</p><PillList items={s7.communication_supports} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">Classroom Accommodations</p><PillList items={s7.classroom} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">Communication Supports</p><PillList items={s7.communication_supports} /></div>
             </SectionCard>
 
             {/* Section 8 — Therapies */}
@@ -385,12 +389,12 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 }).map(([key, lbl]) => {
                     const t = s8[key] || {};
                     return (
-                        <div key={key} style={{ padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
-                            <p style={{ fontWeight: 700, fontSize: "0.85rem", color: "#1e293b", margin: "0 0 2px" }}>{lbl}</p>
+                        <div key={key} className="py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 m-0 mb-1">{lbl}</p>
                             {key === "shadow_teacher" ? (
-                                <span style={{ fontSize: "0.85rem", color: "#475569" }}>Hours: {t.hours || "N/A"}</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">Hours: {t.hours || "N/A"}</span>
                             ) : (
-                                <span style={{ fontSize: "0.85rem", color: "#475569" }}>{t.frequency || "N/A"} — {t.focus_areas || "N/A"}</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">{t.frequency || "N/A"} — {t.focus_areas || "N/A"}</span>
                             )}
                         </div>
                     );
@@ -405,9 +409,9 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     behavioral_tasks: "Behavioral Tasks",
                     academic_tasks: "Academic Tasks"
                 }).map(([key, lbl]) => (
-                    <div key={key}>
-                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0ea5e9", marginBottom: "4px" }}>{lbl}</p>
-                        <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
+                    <div key={key} className="mb-3 last:mb-0">
+                        <p className="text-xs font-bold text-sky-600 dark:text-sky-400 mb-1">{lbl}</p>
+                        <ul className="m-0 pl-5 text-xs text-slate-800 dark:text-slate-250 leading-relaxed list-disc">
                             {(s9[key] || []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                         </ul>
                     </div>
@@ -417,37 +421,37 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Section 10 — Progress Monitoring */}
             <SectionCard title="Section 10 — Progress Monitoring & GAS Scores">
                 {iep.section10_progress && iep.section10_progress.gas_scores?.length > 0 ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <div className="flex flex-col gap-3">
                         {/* Last updated badge */}
                         {iep.section10_progress.last_updated && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "0.72rem", fontWeight: 700, background: "#dcfce7", color: "#166534", padding: "3px 10px", borderRadius: "999px" }}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[0.7rem] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full">
                                     📅 Last updated: Week of {iep.section10_progress.last_updated}
                                 </span>
                                 {iep.section10_progress.report_period && (
-                                    <span style={{ fontSize: "0.72rem", color: "#64748b" }}>({iep.section10_progress.report_period})</span>
+                                    <span className="text-[0.7rem] text-slate-500 dark:text-slate-400">({iep.section10_progress.report_period})</span>
                                 )}
                             </div>
                         )}
 
                         {/* GAS Score Table */}
                         <div>
-                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "8px" }}>Goal Achievement Scores</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2">Goal Achievement Scores</p>
+                            <div className="flex flex-col gap-2.5">
                                 {iep.section10_progress.gas_scores.map((g: any, i: number) => {
-                                    const sc = g.score >= 5 ? { bg: "#dcfce7", color: "#166534" }
-                                        : g.score >= 4 ? { bg: "#d1fae5", color: "#065f46" }
-                                        : g.score >= 3 ? { bg: "#dbeafe", color: "#1e40af" }
-                                        : g.score >= 2 ? { bg: "#fef3c7", color: "#92400e" }
-                                        : { bg: "#fee2e2", color: "#991b1b" };
+                                    const sc = g.score >= 5 ? { bg: "bg-emerald-100 dark:bg-emerald-950/40", color: "text-emerald-800 dark:text-emerald-300" }
+                                        : g.score >= 4 ? { bg: "bg-emerald-50 dark:bg-emerald-950/20", color: "text-emerald-700 dark:text-emerald-400" }
+                                        : g.score >= 3 ? { bg: "bg-blue-100 dark:bg-blue-950/40", color: "text-blue-800 dark:text-blue-300" }
+                                        : g.score >= 2 ? { bg: "bg-amber-100 dark:bg-amber-950/40", color: "text-amber-800 dark:text-amber-300" }
+                                        : { bg: "bg-rose-100 dark:bg-rose-950/40", color: "text-rose-800 dark:text-rose-300" };
                                     return (
-                                        <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                                            <div style={{ width: 34, height: 34, borderRadius: "8px", background: sc.bg, color: sc.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", fontWeight: 800, flexShrink: 0 }}>
+                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
+                                            <div className={`w-8.5 h-8.5 rounded-lg ${sc.bg} ${sc.color} flex items-center justify-center text-sm font-extrabold shrink-0`}>
                                                 {g.score}
                                             </div>
-                                            <div style={{ flex: 1 }}>
-                                                <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{g.goal_id} — {g.domain}</p>
-                                                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>{g.note}</p>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-slate-900 dark:text-slate-50 m-0 truncate">{g.goal_id} — {g.domain}</p>
+                                                <p className="text-[0.7rem] text-slate-500 dark:text-slate-400 m-0 mt-0.5 truncate">{g.note}</p>
                                             </div>
                                         </div>
                                     );
@@ -461,9 +465,9 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         )}
                         {/* Regression Indicators */}
                         {iep.section10_progress.regression_indicators && iep.section10_progress.regression_indicators !== "No regression indicators reported." && (
-                            <div style={{ padding: "10px 14px", borderRadius: "10px", background: "#fff1f2", border: "1px solid #fecdd3" }}>
-                                <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#be123c", marginBottom: "4px", textTransform: "uppercase" }}>⚠ Regression Indicators</p>
-                                <p style={{ fontSize: "0.82rem", color: "#9f1239", margin: 0 }}>{iep.section10_progress.regression_indicators}</p>
+                            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50">
+                                <p className="text-[0.7rem] font-bold text-rose-800 dark:text-rose-400 mb-1 uppercase tracking-wider">⚠ Regression Indicators</p>
+                                <p className="text-xs text-rose-900 dark:text-rose-300 m-0 leading-relaxed">{iep.section10_progress.regression_indicators}</p>
                             </div>
                         )}
                         {/* Attendance */}
@@ -472,42 +476,42 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         )}
                     </div>
                 ) : (
-                    <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Progress data will be populated automatically after the first monthly report is generated.</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-450 italic m-0">Progress data will be populated automatically after the first monthly report is generated.</p>
                 )}
             </SectionCard>
 
             {/* Section 11 — Review (placeholder) */}
             <SectionCard title="Section 11 — IEP Review Summary">
-                <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Quarterly review summary will be generated automatically.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-450 italic m-0">Quarterly review summary will be generated automatically.</p>
             </SectionCard>
 
             {/* Section 12 — Signatures */}
             <SectionCard title="Section 12 — Signatures">
-                <p style={{ fontSize: "0.85rem", color: "#94a3b8", fontStyle: "italic" }}>Signatures will be collected upon IEP approval.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-450 italic m-0">Signatures will be collected upon IEP approval.</p>
             </SectionCard>
 
             {/* Audit History Modal */}
             {showAuditModal && (
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => setShowAuditModal(false)}>
-                    <div style={{ background: "white", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "500px", position: "relative", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowAuditModal(false)} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#64748b" }}>×</button>
-                        <h2 style={{ margin: "0 0 1.5rem 0", fontSize: "1.25rem", color: "#0f172a", fontWeight: 800 }}>Document Audit History</h2>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxHeight: "60vh", overflowY: "auto", paddingRight: "0.5rem" }}>
+                <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 flex items-center justify-center z-[1000] p-4" onClick={() => setShowAuditModal(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-[500px] relative border border-slate-200 dark:border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 bg-transparent border-none text-xl cursor-pointer text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400">×</button>
+                        <h2 className="m-0 text-slate-900 dark:text-slate-50 text-xl font-extrabold mb-5">Document Audit History</h2>
+                        <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2">
                             {auditHistory.length === 0 ? (
-                                <p style={{ color: "#64748b", margin: 0, fontSize: "0.9rem" }}>No history found.</p>
+                                <p className="text-slate-500 dark:text-slate-400 m-0 text-sm">No history found.</p>
                             ) : (
                                 auditHistory.map((item, idx) => (
-                                    <div key={item.id} style={{ display: "flex", gap: "1rem", position: "relative" }}>
-                                        {idx !== auditHistory.length - 1 && <div style={{ position: "absolute", width: "2px", background: "#e2e8f0", top: "24px", bottom: "-16px", left: "11px" }} />}
-                                        <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#e0e7ff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
-                                            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4f46e5" }} />
+                                    <div key={item.id} className="flex gap-4 relative">
+                                        {idx !== auditHistory.length - 1 && <div className="absolute w-0.5 bg-slate-200 dark:bg-slate-750 top-6 bottom-[-16px] left-[11px]" />}
+                                        <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center z-10 shrink-0">
+                                            <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />
                                         </div>
                                         <div>
-                                            <p style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "#0f172a", fontWeight: 700 }}>
+                                            <p className="m-0 text-sm font-bold text-slate-900 dark:text-slate-50">
                                                 {item.action === "GENERATED" ? "AI Generated Draft" : item.action === "EDITED_DRAFT" ? "Draft Saved" : "Document Finalized"}
                                             </p>
-                                            <p style={{ margin: "0 0 2px 0", fontSize: "0.8rem", color: "#475569" }}>By {item.edited_by}</p>
-                                            <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>{new Date(item.created_at).toLocaleString()}</p>
+                                            <p className="m-0 text-xs text-slate-500 dark:text-slate-400">By {item.edited_by}</p>
+                                            <p className="m-0 text-[0.7rem] text-slate-400 dark:text-slate-500 mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 ))

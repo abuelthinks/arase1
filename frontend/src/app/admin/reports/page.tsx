@@ -250,7 +250,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             </div>
 
             {errorMsg && (
-                <div style={{ padding: "12px 16px", borderRadius: "10px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", marginBottom: "1rem", fontSize: "0.85rem" }}>
+                <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--bg-danger-light)", color: "var(--text-danger)", border: "1px solid var(--border-danger)", marginBottom: "1rem", fontSize: "0.85rem" }}>
                     {errorMsg}
                 </div>
             )}
@@ -259,10 +259,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             <div className="border border-slate-200 rounded-xl p-5 mb-4 bg-white">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                             <span style={{ marginRight: "8px" }}>📋</span>Comprehensive AI-Generated IEP
                         </h3>
-                        <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px", marginBottom: "14px" }}>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px", marginBottom: "14px" }}>
                             Compiles all assessment data and uses AI to generate goals, objectives, and recommendations.
                         </p>
 
@@ -324,10 +324,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             <div className={`border rounded-xl p-5 bg-white ${monthlyEnabled ? "border-green-200" : "border-slate-200"}`}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                             <span style={{ marginRight: "8px" }}>📊</span>Monthly Progress Report
                         </h3>
-                        <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px", marginBottom: "14px" }}>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px", marginBottom: "14px" }}>
                             Generates the AI monthly tracking document from all required progress tracker forms. Also updates IEP Section 10.
                         </p>
 
@@ -357,12 +357,12 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                 );
                             })}
                             {["enrolled", "active"].includes(studentStatus.toLowerCase()) && !allTrackersSubmitted && (
-                                <span style={{ fontSize: "0.75rem", color: "#92400e", fontStyle: "italic", alignSelf: "center" }}>
+                                <span style={{ fontSize: "0.75rem", color: "var(--text-danger)", fontStyle: "italic", alignSelf: "center" }}>
                                     All 2 trackers must be submitted first
                                 </span>
                             )}
                             {studentStatus.toLowerCase() === "integrated" && !allTrackersSubmitted && (
-                                <span style={{ fontSize: "0.75rem", color: "#92400e", fontStyle: "italic", alignSelf: "center" }}>
+                                <span style={{ fontSize: "0.75rem", color: "var(--text-danger)", fontStyle: "italic", alignSelf: "center" }}>
                                     All 3 trackers must be submitted first
                                 </span>
                             )}
@@ -414,7 +414,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
 
     return (
         <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <div style={propHideNavigation ? { padding: "2rem 1.5rem 4rem" } : { minHeight: "100vh", background: "#f8fafc", padding: "3rem 1rem" }}>
+            <div style={propHideNavigation ? { padding: "2rem 1.5rem 4rem" } : { minHeight: "100vh", background: "var(--bg-primary)", padding: "3rem 1rem" }}>
                 <div style={{ maxWidth: propHideNavigation ? "1024px" : "700px", margin: "0 auto" }}>
                     {/* Breadcrumb Nav */}
                     {!propHideNavigation && (
@@ -428,17 +428,17 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                 </svg>
                                 Back to Student Profile
                             </button>
-                            <span style={{ color: "#cbd5e1" }}>›</span>
-                            <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>Report Generator</span>
+                            <span style={{ color: "var(--border-light)" }}>›</span>
+                            <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>Report Generator</span>
                         </div>
                     )}
 
                     {/* Embedded mode — seamless, no card wrapper */}
                     {propHideNavigation ? (
                         <>
-                            <div style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: "1.25rem", marginBottom: "1.5rem" }}>
-                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Report Generator</h1>
-                                <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
+                            <div style={{ borderBottom: "1px solid var(--border-light)", paddingBottom: "1.25rem", marginBottom: "1.5rem" }}>
+                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Report Generator</h1>
+                                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
                                     Generate documents for <strong>{studentName || `Student #${studentId}`}</strong>
                                 </p>
                             </div>
@@ -446,10 +446,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         </>
                     ) : (
                         /* Standalone mode — wrapped in card */
-                        <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-                            <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid #e2e8f0" }}>
-                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Report Generator</h1>
-                                <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
+                        <div style={{ background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
+                            <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid var(--border-light)" }}>
+                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Report Generator</h1>
+                                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
                                     Generate documents for <strong>{studentName || `Student #${studentId}`}</strong>
                                 </p>
                             </div>
@@ -471,12 +471,12 @@ function AdminReportsRedirect() {
         const studentId = searchParams.get("studentId");
         router.replace(studentId ? `/workspace?studentId=${studentId}&workspace=reports&view=generator` : "/workspace");
     }, [searchParams, router]);
-    return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
+    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Redirecting to workspace…</div>;
 }
 
 export default function AdminReportsPage() {
     return (
-        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading…</div>}>
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading…</div>}>
             <AdminReportsRedirect />
         </Suspense>
     );
