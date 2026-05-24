@@ -492,7 +492,8 @@
   color: var(--text-primary) !important;
 }
 
-.dark-theme [class*="bg-pink-50"] {
+.dark-theme .bg-pink-50,
+.dark-theme [class~="bg-pink-50"] {
   background-color: #4c0519 !important; /* dark rose */
   color: #fbcfe8 !important;
 }
