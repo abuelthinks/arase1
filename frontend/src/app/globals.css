@@ -391,6 +391,147 @@
   opacity: 0.7 !important;
 }
 
+/* ─── Central overrides for inline backgrounds in dark mode ─── */
+.dark-theme [style*="background: white"],
+.dark-theme [style*="background:white"],
+.dark-theme [style*="background: #fff"],
+.dark-theme [style*="background:#fff"],
+.dark-theme [style*="background: #ffffff"],
+.dark-theme [style*="background:#ffffff"],
+.dark-theme [style*="background-color: white"],
+.dark-theme [style*="background-color:white"],
+.dark-theme [style*="background-color: #fff"],
+.dark-theme [style*="background-color:#fff"],
+.dark-theme [style*="background-color: #ffffff"],
+.dark-theme [style*="background-color:#ffffff"],
+.dark-theme [style*="background: rgb(255, 255, 255)"],
+.dark-theme [style*="background:rgb(255, 255, 255)"],
+.dark-theme [style*="background-color: rgb(255, 255, 255)"],
+.dark-theme [style*="background-color:rgb(255, 255, 255)"] {
+  background-color: var(--bg-secondary) !important;
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-theme [style*="background: #f8fafc"],
+.dark-theme [style*="background:#f8fafc"],
+.dark-theme [style*="background-color: #f8fafc"],
+.dark-theme [style*="background-color:#f8fafc"],
+.dark-theme [style*="background: rgb(248, 250, 252)"],
+.dark-theme [style*="background-color: rgb(248, 250, 252)"] {
+  background-color: var(--bg-primary) !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-theme [style*="background: #f1f5f9"],
+.dark-theme [style*="background:#f1f5f9"],
+.dark-theme [style*="background-color: #f1f5f9"],
+.dark-theme [style*="background-color:#f1f5f9"],
+.dark-theme [style*="background: rgb(241, 245, 249)"],
+.dark-theme [style*="background-color: rgb(241, 245, 249)"] {
+  background-color: var(--border-light) !important;
+  background: var(--border-light) !important;
+}
+
+.dark-theme [style*="background: #e2e8f0"],
+.dark-theme [style*="background:#e2e8f0"],
+.dark-theme [style*="background-color: #e2e8f0"],
+.dark-theme [style*="background-color:#e2e8f0"],
+.dark-theme [style*="background: rgb(226, 232, 240)"],
+.dark-theme [style*="background-color: rgb(226, 232, 240)"] {
+  background-color: var(--border-light) !important;
+  background: var(--border-light) !important;
+}
+
+/* Custom Text and Badge colors in dark mode */
+.dark-theme [style*="color: #334155"],
+.dark-theme [style*="color:#334155"],
+.dark-theme [style*="color: rgb(51, 65, 85)"] {
+  color: var(--text-primary) !important;
+}
+
+.dark-theme [class*="bg-pink-50"] {
+  background-color: #4c0519 !important; /* dark rose */
+  color: #fbcfe8 !important;
+}
+
+/* Warning / Orange / Amber status tags in inline style */
+.dark-theme [style*="background: #fffbeb"],
+.dark-theme [style*="background:#fffbeb"],
+.dark-theme [style*="background: #fef3c7"],
+.dark-theme [style*="background:#fef3c7"],
+.dark-theme [style*="background-color: #fffbeb"],
+.dark-theme [style*="background-color:#fffbeb"],
+.dark-theme [style*="background-color: #fef3c7"],
+.dark-theme [style*="background-color:#fef3c7"] {
+  background-color: #2a1b0c !important;
+  background: #2a1b0c !important;
+  color: #fdba74 !important;
+  border-color: #7c2d12 !important;
+}
+.dark-theme [style*="color: #b45309"],
+.dark-theme [style*="color:#b45309"],
+.dark-theme [style*="color: #92400e"],
+.dark-theme [style*="color:#92400e"] {
+  color: #fdba74 !important;
+}
+
+/* Info / Blue status tags in inline style */
+.dark-theme [style*="background: #eff6ff"],
+.dark-theme [style*="background:#eff6ff"],
+.dark-theme [style*="background: #e0f2fe"],
+.dark-theme [style*="background:#e0f2fe"],
+.dark-theme [style*="background-color: #eff6ff"],
+.dark-theme [style*="background-color:#eff6ff"],
+.dark-theme [style*="background-color: #e0f2fe"],
+.dark-theme [style*="background-color:#e0f2fe"] {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+  background: rgba(99, 102, 241, 0.08) !important;
+  color: #c7d2fe !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+.dark-theme [style*="color: #1d4ed8"],
+.dark-theme [style*="color:#1d4ed8"],
+.dark-theme [style*="color: #0369a1"],
+.dark-theme [style*="color:#0369a1"] {
+  color: #c7d2fe !important;
+}
+
+/* Success / Green status tags in inline style */
+.dark-theme [style*="background: #f0fdf4"],
+.dark-theme [style*="background:#f0fdf4"],
+.dark-theme [style*="background: #dcfce7"],
+.dark-theme [style*="background:#dcfce7"],
+.dark-theme [style*="background-color: #f0fdf4"],
+.dark-theme [style*="background-color:#f0fdf4"],
+.dark-theme [style*="background-color: #dcfce7"],
+.dark-theme [style*="background-color:#dcfce7"] {
+  background-color: #064e3b !important;
+  background: #064e3b !important;
+  color: #6ee7b7 !important;
+  border-color: #047857 !important;
+}
+.dark-theme [style*="color: #166534"],
+.dark-theme [style*="color:#166534"] {
+  color: #6ee7b7 !important;
+}
+
+/* Danger / Red status tags in inline style */
+.dark-theme [style*="background: #fee2e2"],
+.dark-theme [style*="background:#fee2e2"],
+.dark-theme [style*="background-color: #fee2e2"],
+.dark-theme [style*="background-color:#fee2e2"] {
+  background-color: #7f1d1d !important;
+  background: #7f1d1d !important;
+  color: #fca5a5 !important;
+  border-color: #b91c1c !important;
+}
+.dark-theme [style*="color: #991b1b"],
+.dark-theme [style*="color:#991b1b"] {
+  color: #fca5a5 !important;
+}
+
 .high-contrast-theme {
   --bg-primary: #ffffff !important;
   --bg-secondary: #ffffff !important;
