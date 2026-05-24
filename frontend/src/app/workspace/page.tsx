@@ -969,39 +969,7 @@ function UnifiedWorkspaceContent() {
                             ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
                             : "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-indigo-50/50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300";
 
-                    if (action.id === "specialist_assessment") {
-                        return (
-                            <button key={idx} onClick={action.onClick} className={`${btnClass} flex-col items-stretch gap-2.5 py-2.5 w-full`}>
-                                <div className="flex items-center gap-2.5 w-full">
-                                    <Icon size={14} className="shrink-0 text-indigo-600 animate-pulse" />
-                                    <span className="flex-1 text-left truncate text-xs font-bold text-indigo-900" title={action.title}>{action.title}</span>
-                                    <span className="text-[0.55rem] font-extrabold uppercase tracking-wider shrink-0 bg-white/60 px-1 rounded border border-indigo-200 text-indigo-700">{action.label}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-1 justify-start px-0.5">
-                                    {SPECIALIST_SECTIONS.map(sec => {
-                                        const statusInfo = getSpecialtyStatus(sec.key);
-                                        const shortName = sec.key === "C" ? "S" : sec.key === "D" ? "O" : sec.key === "E" ? "P" : sec.key === "F1" ? "A" : "Y";
-                                        const labelText = sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych";
-                                        
-                                        let bgStyle = "bg-slate-200 text-slate-500 border border-slate-350";
-                                        if (statusInfo.status === "submitted") bgStyle = "bg-emerald-500 text-white border border-emerald-600";
-                                        else if (statusInfo.status === "reopened") bgStyle = "bg-rose-500 text-white animate-pulse border border-rose-600";
-                                        else if (statusInfo.status === "draft") bgStyle = "bg-amber-500 text-white border border-amber-600";
 
-                                        return (
-                                            <div 
-                                                key={sec.key} 
-                                                className={`w-5 h-5 rounded-full flex items-center justify-center text-[0.55rem] font-extrabold ${bgStyle}`}
-                                                title={`${labelText}: ${statusInfo.label}`}
-                                            >
-                                                {shortName}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </button>
-                        );
-                    }
 
                     return (
                         <button key={idx} onClick={action.onClick} className={btnClass}>
