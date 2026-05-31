@@ -854,6 +854,93 @@ class AssessmentSubmitAllView(SectionSubmitAllView):
     form_type = 'assessment'
 
 
+class AssessmentRequestUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'SPECIALIST':
+            return Response({"error": "Only specialists can request to unlock an assessment."}, status=status.HTTP_403_FORBIDDEN)
+            
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+        
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        assessment = MultidisciplinaryAssessment.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id
+        ).first()
+        
+        if not assessment:
+            return Response({"error": "Assessment not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        if not assessment.finalized_at:
+            return Response({"error": "Assessment is not finalized."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Check if IEP is generated
+        from .models import GeneratedDocument
+        iep_generated = GeneratedDocument.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id, document_type='IEP'
+        ).exists()
+        
+        if iep_generated:
+            return Response({"error": "IEP is already generated. Unlock is no longer possible."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        assessment.unlock_requested = True
+        assessment.save(update_fields=['unlock_requested'])
+        
+        # Notify admins
+        from .models import User, Notification
+        admins = User.objects.filter(role='ADMIN')
+        student = assessment.student
+        for admin in admins:
+            Notification.objects.create(
+                recipient=admin,
+                notification_type='UNLOCK_REQUESTED',
+                title='Unlock Request',
+                message=f'{request.user.first_name} {request.user.last_name} has requested to unlock the specialist assessment for {student.first_name} {student.last_name}.',
+                link=f'/students/{student.id}/dashboard',
+                actor_name=f'{request.user.first_name} {request.user.last_name}'
+            )
+            
+        return Response({"status": "Unlock requested successfully."})
+
+
+class AssessmentUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can unlock an assessment."}, status=status.HTTP_403_FORBIDDEN)
+            
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+        
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        assessment = MultidisciplinaryAssessment.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id
+        ).first()
+        
+        if not assessment:
+            return Response({"error": "Assessment not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        if not assessment.finalized_at:
+            return Response({"error": "Assessment is not finalized."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        assessment.finalized_at = None
+        assessment.finalized_by = None
+        assessment.unlock_requested = False
+        assessment.save(update_fields=['finalized_at', 'finalized_by', 'unlock_requested'])
+        
+        from .services.collaboration_service import broadcast_lock_changed
+        broadcast_lock_changed("assessment", assessment.id)
+        
+        return Response({"status": "Assessment unlocked successfully."})
+
+
+
 class TrackerSubmitAllView(SectionSubmitAllView):
     form_type = 'tracker'
 

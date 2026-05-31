@@ -15,8 +15,7 @@
                     "options": [
                         "Early",
                         "Typical",
-                        "Late",
-                        "Not sure"
+                        "Late"
                     ]
                 },
                 {
@@ -27,8 +26,7 @@
                         "Early",
                         "Typical",
                         "Late",
-                        "Did not crawl",
-                        "Not sure"
+                        "Did not crawl"
                     ]
                 },
                 {
@@ -38,8 +36,7 @@
                     "options": [
                         "Early",
                         "Typical",
-                        "Late",
-                        "Not sure"
+                        "Late"
                     ]
                 },
                 {
@@ -49,8 +46,7 @@
                     "options": [
                         "Early",
                         "Typical",
-                        "Late",
-                        "Not sure"
+                        "Late"
                     ]
                 },
                 {
@@ -60,8 +56,7 @@
                     "options": [
                         "Early",
                         "Typical",
-                        "Late",
-                        "Not sure"
+                        "Late"
                     ]
                 },
                 {
@@ -73,7 +68,7 @@
                         "Speech Therapy",
                         "Occupational Therapy",
                         "Behavioral Therapy",
-                        "N/A"
+                        "None"
                     ]
                 },
                 {
@@ -82,8 +77,7 @@
                     "type": "radio",
                     "options": [
                         "Yes",
-                        "No",
-                        "Not sure"
+                        "No"
                     ]
                 },
                 {
@@ -105,6 +99,7 @@
                         "Sensory",
                         "Daily Living",
                         "Safety",
+                        "None",
                         "Not sure"
                     ]
                 }
@@ -127,6 +122,7 @@
                         "Motor",
                         "Eating/Sleeping",
                         "Safety",
+                        "None",
                         "Not sure"
                     ]
                 },
@@ -161,6 +157,7 @@
                         "Rewards",
                         "Quiet time",
                         "Sensory tools",
+                        "None",
                         "Not sure"
                     ]
                 },
@@ -188,6 +185,7 @@
                         "Sharing",
                         "Emotions",
                         "Staying calm",
+                        "None",
                         "Not sure"
                     ]
                 },
@@ -229,8 +227,7 @@
                         "Sentences",
                         "Gestures",
                         "Sounds",
-                        "Not speaking",
-                        "Not sure"
+                        "Not speaking"
                     ]
                 },
                 {
@@ -363,6 +360,7 @@
                         "Calm corner",
                         "Sensory play",
                         "Outdoor time",
+                        "None",
                         "Not sure"
                     ]
                 },
@@ -405,8 +403,7 @@
                         "Enjoys numbers",
                         "Helpful",
                         "Hardworking",
-                        "Fast learner",
-                        "Not sure"
+                        "Fast learner"
                     ]
                 },
                 {
@@ -427,8 +424,7 @@
                     "options": [
                         "Eats independently",
                         "Needs some help",
-                        "Needs full help",
-                        "Not sure"
+                        "Needs full help"
                     ]
                 },
                 {
@@ -438,8 +434,7 @@
                     "options": [
                         "Dresses independently",
                         "Needs some help",
-                        "Needs full help",
-                        "Not sure"
+                        "Needs full help"
                     ]
                 },
                 {
@@ -450,8 +445,7 @@
                         "Fully trained",
                         "Needs reminders",
                         "Needs help",
-                        "Uses diapers",
-                        "Not sure"
+                        "Uses diapers"
                     ]
                 },
                 {
@@ -461,13 +455,18 @@
                     "options": [
                         "Sleeps well",
                         "Difficulty falling asleep",
-                        "Wakes often",
-                        "Not sure"
+                        "Wakes often"
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "id": "section_j",
+            "title": "SECTION J. ANYTHING ELSE WE SHOULD KNOW?",
+            "fields": [
                 {
-                    "id": "daily_living_notes",
-                    "label": "Other Notes",
+                    "id": "other_notes",
+                    "label": "Additional Insights",
                     "type": "textarea"
                 }
             ]

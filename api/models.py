@@ -208,6 +208,7 @@ class MultidisciplinaryAssessment(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='finalized_multidisciplinary_assessments',
     )
+    unlock_requested = models.BooleanField(default=False)
 
 class SpedAssessment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
@@ -334,6 +335,7 @@ class Notification(models.Model):
         ('TEACHER_ASSIGNED', 'Teacher Assigned'),
         ('CYCLE_CREATED', 'Cycle Created'),
         ('REMINDER', 'Reminder'),
+        ('UNLOCK_REQUESTED', 'Unlock Requested'),
         ('SYSTEM', 'System'),
     )
 

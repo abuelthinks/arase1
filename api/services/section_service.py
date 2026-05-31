@@ -578,12 +578,12 @@ def _maybe_finalize(form_type: str, instance, user):
             pass
 
         if form_type == "assessment":
-            from .cycle_service import check_and_trigger_iep_generation
             student = instance.student
             if student.status in ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"]:
                 student.status = "ASSESSED"
                 student.save()
-            check_and_trigger_iep_generation(student, instance.report_cycle)
+            # We no longer auto-generate the IEP upon assessment finalization 
+            # to give specialists a chance to request an unlock of the form.
         else:
             from .cycle_service import check_and_trigger_auto_generation
             try:

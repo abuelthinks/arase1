@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
@@ -649,6 +650,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [teamSubmission, setTeamSubmission] = useState<any>(null);
     const [isReopening, setIsReopening] = useState<string | null>(null);
     const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        actionText: string;
+        actionVariant: "danger" | "primary" | "warning";
+        onConfirm: () => void;
+    } | null>(null);
 
     const invalidFields = useMemo(() => {
         if (formType !== "parent-assessment") return new Set<string>();
@@ -1146,9 +1155,15 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             const currentSection = prev[sectionId] || {};
             if (isCheckboxArray) {
                 const currentArr = currentSection[fieldId] || [];
-                const newArr = currentArr.includes(value)
+                const exclusive = ["None", "Not sure", "N/A"];
+                if (exclusive.includes(value)) {
+                    const newArr = currentArr.includes(value) ? [] : [value];
+                    return { ...prev, [sectionId]: { ...currentSection, [fieldId]: newArr } };
+                }
+                const tempArr = currentArr.includes(value)
                     ? currentArr.filter((item: string) => item !== value)
                     : [...currentArr, value];
+                const newArr = tempArr.filter((item: string) => !exclusive.includes(item));
                 return { ...prev, [sectionId]: { ...currentSection, [fieldId]: newArr } };
             }
             return { ...prev, [sectionId]: { ...currentSection, [fieldId]: value } };
@@ -1406,55 +1421,64 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             setSuccessMsg("Nothing to submit — no draft sections.");
             return;
         }
-
-        setSubmittingOwnedSections(true);
-        setSuccessMsg("");
-        setErrorMsg("");
-
-        try {
-            const draftsFlushed = await flushPendingAssessmentAutosaves();
-            if (!draftsFlushed) {
-                return;
+        
+        setConfirmModal({
+            isOpen: true,
+            title: "Submit Assessment Sections?",
+            message: "Are you sure you want to submit? Once all specialists submit their part, the form will be locked out and you won't be able to edit it anymore unless you request an admin to unlock it.",
+            actionText: "Submit Form",
+            actionVariant: "primary",
+            onConfirm: async () => {
+                setSubmittingOwnedSections(true);
+                setSuccessMsg("");
+                setErrorMsg("");
+        
+                try {
+                    const draftsFlushed = await flushPendingAssessmentAutosaves();
+                    if (!draftsFlushed) {
+                        return;
+                    }
+        
+                    // Single backend call submits every draft contribution (owned +
+                    // shared sections the user has authored). Validates owned-section
+                    // content + finalizes the form when all assigned sections done.
+                    const res = await api.post(
+                        "/api/inputs/multidisciplinary-assessment/submit-all/",
+                        {
+                            student: parseInt(studentId || "0"),
+                            report_cycle: parseInt(reportCycleId),
+                        },
+                    );
+                    const data = res.data || {};
+                    const submitted: string[] = data.submitted || [];
+                    const finalized = !!data.finalized;
+                    if (data.form) {
+                        setTeamSubmission(data.form);
+                    }
+                    await refreshSectionContributions(reportCycleId);
+        
+                    const message = finalized
+                        ? `${schema.title || "Form"} finalized successfully.`
+                        : submitted.length === 0
+                            ? "Nothing to submit — no draft sections."
+                            : `Submitted ${submitted.length} section${submitted.length === 1 ? "" : "s"}.`;
+                    setSuccessMsg(message);
+                    toast.success(message);
+                    await propOnSubmitted?.(message);
+        
+                    if (finalized && !propHideNavigation) {
+                        const workspaceUrl = getWorkspaceFormUrl(studentId || "", formType);
+                        setTimeout(() => router.replace(workspaceUrl || "/dashboard"), 1200);
+                    }
+                } catch (err: any) {
+                    const message = extractApiError(err, "Submit failed.");
+                    setErrorMsg(message);
+                    toast.error(message, { id: "submit-all-error", duration: 7000 });
+                } finally {
+                    setSubmittingOwnedSections(false);
+                }
             }
-
-            // Single backend call submits every draft contribution (owned +
-            // shared sections the user has authored). Validates owned-section
-            // content + finalizes the form when all assigned sections done.
-            const res = await api.post(
-                "/api/inputs/multidisciplinary-assessment/submit-all/",
-                {
-                    student: parseInt(studentId || "0"),
-                    report_cycle: parseInt(reportCycleId),
-                },
-            );
-            const data = res.data || {};
-            const submitted: string[] = data.submitted || [];
-            const finalized = !!data.finalized;
-            if (data.form) {
-                setTeamSubmission(data.form);
-            }
-            await refreshSectionContributions(reportCycleId);
-
-            const message = finalized
-                ? `${schema.title || "Form"} finalized successfully.`
-                : submitted.length === 0
-                    ? "Nothing to submit — no draft sections."
-                    : `Submitted ${submitted.length} section${submitted.length === 1 ? "" : "s"}.`;
-            setSuccessMsg(message);
-            toast.success(message);
-            await propOnSubmitted?.(message);
-
-            if (finalized && !propHideNavigation) {
-                const workspaceUrl = getWorkspaceFormUrl(studentId || "", formType);
-                setTimeout(() => router.replace(workspaceUrl || "/dashboard"), 1200);
-            }
-        } catch (err: any) {
-            const message = extractApiError(err, "Submit failed.");
-            setErrorMsg(message);
-            toast.error(message, { id: "submit-all-error", duration: 7000 });
-        } finally {
-            setSubmittingOwnedSections(false);
-        }
+        });
     }, [
         flushPendingAssessmentAutosaves,
         formType,
@@ -1577,6 +1601,50 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }
     };
 
+    const requestUnlock = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Request Unlock?",
+            message: "Are you sure you want to request an unlock from the admin?",
+            actionText: "Request Unlock",
+            actionVariant: "primary",
+            onConfirm: async () => {
+                try {
+                    await api.post("/api/inputs/multidisciplinary-assessment/request-unlock/", {
+                        student_id: parseInt(studentId || "0"),
+                        report_cycle_id: parseInt(reportCycleId)
+                    });
+                    toast.success("Unlock requested successfully.");
+                    await refetchTeamSubmission();
+                } catch (err: any) {
+                    toast.error(extractApiError(err));
+                }
+            }
+        });
+    };
+
+    const adminUnlockForm = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Unlock Form?",
+            message: "Are you sure you want to unlock this form? Specialists will be able to edit and re-submit their sections.",
+            actionText: "Unlock Form",
+            actionVariant: "warning",
+            onConfirm: async () => {
+                try {
+                    await api.post("/api/inputs/multidisciplinary-assessment/unlock/", {
+                        student_id: parseInt(studentId || "0"),
+                        report_cycle_id: parseInt(reportCycleId)
+                    });
+                    toast.success("Assessment unlocked successfully.");
+                    await refetchTeamSubmission();
+                } catch (err: any) {
+                    toast.error(extractApiError(err));
+                }
+            }
+        });
+    };
+
     if (!studentId) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing student context. Return to dashboard.</div>;
     if (!schema) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading form…</div>;
 
@@ -1646,6 +1714,49 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             {schema.title}
                         </h1>
                         <p className="text-sm text-slate-500 mt-1 mb-0 leading-relaxed">Fill out each section below.</p>
+                        
+                        {/* Unlock functionality banners */}
+                        {isSectionScopedAssessment && teamSubmission?.finalized_at && (
+                            <div className="mt-3">
+                                {isAdmin ? (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center justify-between">
+                                        <div className="text-amber-800 text-sm">
+                                            {teamSubmission?.unlock_requested ? (
+                                                <strong>A specialist has requested to unlock this form.</strong>
+                                            ) : (
+                                                <span>This form is finalized and locked.</span>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={adminUnlockForm}
+                                            className="bg-amber-100 hover:bg-amber-200 text-amber-900 text-sm font-semibold py-1.5 px-3 rounded-md transition-colors"
+                                        >
+                                            Unlock Form
+                                        </button>
+                                    </div>
+                                ) : (
+                                    user?.role === "SPECIALIST" && !studentProfile?.generated_documents?.some((doc: any) => doc.document_type === "IEP") && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between">
+                                            <div className="text-slate-700 text-sm">
+                                                {teamSubmission?.unlock_requested ? (
+                                                    <span>You have requested an admin to unlock this form.</span>
+                                                ) : (
+                                                    <span>Need to make changes?</span>
+                                                )}
+                                            </div>
+                                            {!teamSubmission?.unlock_requested && (
+                                                <button
+                                                    onClick={requestUnlock}
+                                                    className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold py-1.5 px-3 rounded-md transition-colors"
+                                                >
+                                                    Request Unlock
+                                                </button>
+                                            )}
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        )}
                         {!isViewMode && collabFormType && collabInstanceId && (
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: collab.connected ? "#dcfce7" : "#f1f5f9", color: collab.connected ? "#166534" : "#475569", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
@@ -1988,6 +2099,41 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     </>
                 )}
             </div>
+
+            {confirmModal?.isOpen && typeof document !== "undefined" && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
+                        <div className="p-6">
+                            <h3 className="m-0 text-lg font-bold text-slate-900">{confirmModal.title}</h3>
+                            <p className="mt-2 text-sm text-slate-500 leading-relaxed">{confirmModal.message}</p>
+                        </div>
+                        <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmModal(null)}
+                                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    confirmModal.onConfirm();
+                                    setConfirmModal(null);
+                                }}
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors ${
+                                    confirmModal.actionVariant === "danger" ? "bg-red-600 hover:bg-red-700" :
+                                    confirmModal.actionVariant === "warning" ? "bg-amber-600 hover:bg-amber-700" :
+                                    "bg-indigo-600 hover:bg-indigo-700"
+                                }`}
+                            >
+                                {confirmModal.actionText}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </ProtectedRoute>
     );
 }

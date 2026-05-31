@@ -374,7 +374,8 @@ export default function DashboardPage() {
 
                                         const getPrimaryCTA = () => {
                                             if (s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) {
-                                                return { label: "Start Assessment", href: `/parent-onboarding?studentId=${s.id}` };
+                                                const isDraft = typeof window !== "undefined" && window.localStorage.getItem(`parent_form_draft_v2_${s.id}`);
+                                                return { label: isDraft ? "Continue Assessment" : "Start Assessment", href: `/parent-onboarding?studentId=${s.id}` };
                                             }
                                             if (s.status === "ENROLLED" && !s.parent_current_tracker_submitted) {
                                                 return { label: "Submit Monthly Update", href: getStudentWorkspaceHref(s.id, "parent_tracker") };
@@ -386,7 +387,7 @@ export default function DashboardPage() {
                                         return (
                                             <div
                                                 key={s.id}
-                                                className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                                                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                                             >
                                                 {/* Child header */}
                                                 <div className="flex items-center gap-4 border-b border-indigo-100/60 p-5">
@@ -456,7 +457,7 @@ export default function DashboardPage() {
                                         return (
                                             <div
                                                 key={s.id}
-                                                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                                                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                                             >
                                                 <div className="flex items-center gap-3 border-b border-indigo-100/60 p-4">
                                                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-sm font-extrabold text-white shadow-sm">

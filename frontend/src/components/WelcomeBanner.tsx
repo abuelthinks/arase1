@@ -37,28 +37,28 @@ const toneStyles = {
         border: "#bfdbfe",
         labelBg: "#dbeafe",
         labelText: "#1d4ed8",
-        accent: "#2563eb",
+        buttonClass: "bg-indigo-600 hover:bg-indigo-700 text-white",
     },
     waiting: {
         bg: "linear-gradient(135deg, #fffbeb 0%, #f8fafc 100%)",
         border: "#fde68a",
         labelBg: "#fef3c7",
         labelText: "#92400e",
-        accent: "#d97706",
+        buttonClass: "bg-amber-600 hover:bg-amber-700 text-white",
     },
     ready: {
         bg: "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)",
         border: "#bbf7d0",
         labelBg: "#dcfce7",
         labelText: "#166534",
-        accent: "#16a34a",
+        buttonClass: "bg-emerald-600 hover:bg-emerald-700 text-white",
     },
     neutral: {
         bg: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)",
         border: "#e2e8f0",
         labelBg: "#f1f5f9",
         labelText: "#475569",
-        accent: "#64748b",
+        buttonClass: "bg-slate-600 hover:bg-slate-700 text-white",
     },
 };
 
@@ -79,6 +79,7 @@ function getBannerContent(student: Student): BannerContent | null {
     const firstName = student.first_name;
 
     if (student.status === "PENDING_ASSESSMENT" && !student.has_parent_assessment) {
+        const isDraft = typeof window !== "undefined" && window.localStorage.getItem(`parent_form_draft_v2_${student.id}`);
         return {
             student,
             priority: 1,
@@ -87,7 +88,7 @@ function getBannerContent(student: Student): BannerContent | null {
             title: `Tell us about ${firstName}`,
             body: "Share your insights about your child — their strengths, daily routines, and any concerns. This helps our team understand how to best support them.",
             href: `/parent-onboarding?studentId=${student.id}`,
-            cta: "Get Started",
+            cta: isDraft ? "Continue Assessment" : "Get Started",
             note: "Usually takes about 10–15 minutes.",
         };
     }
@@ -257,8 +258,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
                 <div className="flex shrink-0 flex-col items-stretch gap-3 md:items-end">
                     <Link
                         href={content.href}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-extrabold text-white no-underline shadow-sm transition-transform hover:scale-[1.02]"
-                        style={{ background: style.accent }}
+                        className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold no-underline shadow-sm transition-colors ${style.buttonClass}`}
                     >
                         {content.cta}
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
