@@ -19,6 +19,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
     const { user, logout } = useAuth();
     const [lastParentStudentId, setLastParentStudentId] = useState<string | null>(null);
     const [fallbackParentStudentId, setFallbackParentStudentId] = useState<string | null>(null);
+    const [isProgressLocked, setIsProgressLocked] = useState(false);
 
     const isTeacher = user?.role === "TEACHER";
     const isSpecialist = user?.role === "SPECIALIST";
@@ -56,6 +57,15 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
             const firstAny = res.data?.[0]?.id;
             const chosen = firstEnrolled || firstAny;
             setFallbackParentStudentId(chosen ? String(chosen) : null);
+            
+            // Check if progress should be locked for the relevant child
+            const studentIdToCheck = currentStudentId || chosen;
+            const studentToCheck = res.data?.find((s: any) => String(s.id) === String(studentIdToCheck)) || res.data?.[0];
+            if (studentToCheck) {
+                // If they haven't submitted the initial assessment yet, lock the progress page
+                const isAssessmentPending = studentToCheck.status === "PENDING_ASSESSMENT" && !studentToCheck.has_parent_assessment;
+                setIsProgressLocked(isAssessmentPending);
+            }
         }).catch(() => {});
     }, [isParent, pathname, searchParams]);
 
@@ -100,12 +110,18 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                     {isParent && (
                         <button
                             type="button"
-                            onClick={openMonthlyProgress}
-                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isParentMonthlyProgress ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`}
-                            title="Progress"
+                            onClick={() => !isProgressLocked && openMonthlyProgress()}
+                            disabled={isProgressLocked}
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProgressLocked ? 'text-slate-400 cursor-not-allowed opacity-70' : isParentMonthlyProgress ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`}
+                            title={isProgressLocked ? "Available after initial assessment" : "Progress"}
                         >
                             <LayoutTemplate size={18} />
-                            {!collapsed && <span className="truncate">Progress</span>}
+                            {!collapsed && (
+                                <div className="flex items-center justify-between w-full">
+                                    <span className="truncate">Progress</span>
+                                    {isProgressLocked && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>}
+                                </div>
+                            )}
                         </button>
                     )}
 
@@ -129,10 +145,22 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                     {collapsed && <div className="my-2 h-px bg-slate-200" />}
 
                     {user && (
-                        <Link href={`/users/${user.user_id}`} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="My Profile">
-                            <User size={18} />
-                            {!collapsed && <span className="truncate">My Profile</span>}
-                        </Link>
+                        isProgressLocked ? (
+                            <button disabled className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 text-slate-400 cursor-not-allowed opacity-70 ${collapsed ? 'justify-center px-0' : ''}`} title="Available after initial assessment">
+                                <User size={18} />
+                                {!collapsed && (
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className="truncate">My Profile</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    </div>
+                                )}
+                            </button>
+                        ) : (
+                            <Link href={`/users/${user.user_id}`} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="My Profile">
+                                <User size={18} />
+                                {!collapsed && <span className="truncate">My Profile</span>}
+                            </Link>
+                        )
                     )}
                 </nav>
 
@@ -162,10 +190,18 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                 {isParent && (
                     <button
                         type="button"
-                        onClick={openMonthlyProgress}
-                        className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isParentMonthlyProgress ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}
+                        onClick={() => !isProgressLocked && openMonthlyProgress()}
+                        disabled={isProgressLocked}
+                        className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProgressLocked ? "text-slate-400 opacity-60 cursor-not-allowed" : isParentMonthlyProgress ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}
                     >
-                        <LayoutTemplate size={20} className={isParentMonthlyProgress ? "stroke-[2.5px]" : ""} />
+                        <div className="relative">
+                            <LayoutTemplate size={20} className={isParentMonthlyProgress && !isProgressLocked ? "stroke-[2.5px]" : ""} />
+                            {isProgressLocked && (
+                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-[1px]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                </div>
+                            )}
+                        </div>
                         <span className="text-[0.65rem] font-medium">Progress</span>
                     </button>
                 )}
@@ -181,10 +217,22 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                 </Link>
                 {user && (
                         <>
-                            <Link href={`/users/${user.user_id}`} className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProfile ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
-                                <User size={20} className={isProfile ? "stroke-[2.5px]" : ""} />
-                                <span className="text-[0.65rem] font-medium">Profile</span>
-                            </Link>
+                            {isProgressLocked ? (
+                                <button disabled className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 text-slate-400 opacity-60 cursor-not-allowed`}>
+                                    <div className="relative">
+                                        <User size={20} />
+                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-[1px]">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        </div>
+                                    </div>
+                                    <span className="text-[0.65rem] font-medium">Profile</span>
+                                </button>
+                            ) : (
+                                <Link href={`/users/${user.user_id}`} className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProfile ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
+                                    <User size={20} className={isProfile ? "stroke-[2.5px]" : ""} />
+                                    <span className="text-[0.65rem] font-medium">Profile</span>
+                                </Link>
+                            )}
                         </>
                 )}
             </nav>

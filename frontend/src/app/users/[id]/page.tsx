@@ -25,6 +25,7 @@ import {
     ShieldCheck,
     Sparkles,
     Users,
+    User,
     X,
 } from "lucide-react";
 
@@ -143,7 +144,14 @@ export default function UserProfile() {
     const [savingLanguages, setSavingLanguages] = useState(false);
     const [languageError, setLanguageError] = useState("");
     const [isEditingLanguages, setIsEditingLanguages] = useState(false);
-
+    const [hasSeenProfileExplainer, setHasSeenProfileExplainer] = useState(false);
+    
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const seen = window.localStorage.getItem("arase:seen-profile-explainer");
+            if (seen) setHasSeenProfileExplainer(true);
+        }
+    }, []);
     const initialSpecialties = (raw: UserData): SpecialistSpecialty[] => {
         if (Array.isArray(raw.specialties) && raw.specialties.length > 0) {
             return raw.specialties as SpecialistSpecialty[];
@@ -249,7 +257,40 @@ export default function UserProfile() {
 
     return (
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 md:px-0">
-
+            {viewerIsParent && !hasSeenProfileExplainer && (
+                <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
+                            <div className="p-8 text-center relative">
+                                <div className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors p-1" onClick={() => { setHasSeenProfileExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-profile-explainer", "true"); }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </div>
+                                
+                                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-indigo-100">
+                                    <User className="w-6 h-6 text-indigo-600" strokeWidth={2} />
+                                </div>
+                                <h2 className="text-xl font-extrabold text-slate-900 mb-4 tracking-tight">Welcome to your Profile!</h2>
+                                
+                                <p className="text-slate-600 text-[15px] leading-relaxed mb-8">
+                                    This is where you manage your account settings, notification preferences, and contact information. 
+                                    <br/><br/>
+                                    <strong className="text-slate-800 font-bold">Keeping your details up to date ensures you never miss an important update regarding your child's progress or upcoming assessments.</strong>
+                                </p>
+                                
+                                <button
+                                    onClick={() => {
+                                        setHasSeenProfileExplainer(true);
+                                        if (typeof window !== "undefined") {
+                                            window.localStorage.setItem("arase:seen-profile-explainer", "true");
+                                        }
+                                    }}
+                                    className="w-full py-3 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white font-bold rounded-xl transition-colors shadow-sm text-[15px]"
+                                >
+                                    Got it!
+                                </button>
+                            </div>
+                    </div>
+                </div>
+            )}
             {/* Hero */}
             <SectionCard>
                 <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -3,7 +3,12 @@
 import { useEffect, useState, useRef } from "react";
 import { Eye, Sun, Moon, ChevronDown } from "lucide-react";
 
-export default function AccessibilityToolbar() {
+interface AccessibilityToolbarProps {
+  direction?: 'up' | 'down';
+  alignOffset?: string;
+}
+
+export default function AccessibilityToolbar({ direction = 'down', alignOffset = 'right-0' }: AccessibilityToolbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [highContrast, setHighContrast] = useState(false);
@@ -122,7 +127,9 @@ export default function AccessibilityToolbar() {
       {/* Dropdown Panel */}
       {isOpen && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] md:fixed md:bottom-20 md:right-8 md:top-auto md:left-auto z-[9999]"
+          className={`absolute ${alignOffset} z-[9999] origin-bottom-right ${
+            direction === 'up' ? 'bottom-[calc(100%+1rem)]' : 'top-[calc(100%+8px)]'
+          }`}
           style={{
             width: "260px",
             backgroundColor: theme === "dark" ? "#161e2f" : "#ffffff",

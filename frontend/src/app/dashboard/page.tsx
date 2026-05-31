@@ -5,7 +5,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
-import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon } from "lucide-react";
+import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon, Plus } from "lucide-react";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
@@ -439,6 +439,25 @@ export default function DashboardPage() {
                                             </div>
                                         );
                                     })}
+                                    
+                                    {/* Add Child Card */}
+                                    {students.every(s => s.has_parent_assessment) && (
+                                        <Link
+                                            href="/parent-onboarding"
+                                            className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50/30 no-underline"
+                                            style={{ minHeight: "260px" }}
+                                        >
+                                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                                                <Plus className="h-6 w-6" strokeWidth={2.5} />
+                                            </div>
+                                            <h3 className="m-0 text-lg font-bold text-slate-700 transition-colors group-hover:text-indigo-700">
+                                                Add Another Child
+                                            </h3>
+                                            <p className="mt-2 text-sm text-slate-500 max-w-[200px]">
+                                                Start an onboarding assessment for a new student.
+                                            </p>
+                                        </Link>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">

@@ -131,7 +131,15 @@ function UnifiedWorkspaceContent() {
             ? TABS.filter(tab => tab.id === "sped_tracker")
             : TABS;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const showStudentSidebar = user?.role !== "PARENT";
+    const [hasSeenWorkspaceExplainer, setHasSeenWorkspaceExplainer] = useState(false);
+    
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const seen = window.localStorage.getItem("arase:seen-workspace-explainer");
+            if (seen) setHasSeenWorkspaceExplainer(true);
+        }
+    }, []);
+    const showStudentSidebar = user?.role !== "PARENT" || allStudents.length > 1;
     
     // -- Reports State --
     const [docs, setDocs] = useState<any[]>([]);
@@ -2609,6 +2617,40 @@ function UnifiedWorkspaceContent() {
 
     return (
         <div className="flex h-full w-full overflow-hidden relative">
+                {user?.role === "PARENT" && !hasSeenWorkspaceExplainer && (
+                    <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+                        <div className="bg-white rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
+                            <div className="p-8 text-center relative">
+                                <div className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors p-1" onClick={() => { setHasSeenWorkspaceExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-workspace-explainer", "true"); }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </div>
+                                
+                                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-indigo-100">
+                                    <Sparkles className="w-6 h-6 text-indigo-600" strokeWidth={2} />
+                                </div>
+                                <h2 className="text-xl font-extrabold text-slate-900 mb-4 tracking-tight">Your Child's Progress Hub</h2>
+                                
+                                <p className="text-slate-600 text-[15px] leading-relaxed mb-8">
+                                    This space is your central hub for tracking your child's development. Here you can review specialist assessments, provide your own monthly updates, access active learning plans, and read comprehensive monthly progress reports.
+                                    <br/><br/>
+                                    <strong className="text-slate-800 font-bold">We rely on your active participation to ensure your child gets the best support possible.</strong>
+                                </p>
+                                
+                                <button
+                                    onClick={() => {
+                                        setHasSeenWorkspaceExplainer(true);
+                                        if (typeof window !== "undefined") {
+                                            window.localStorage.setItem("arase:seen-workspace-explainer", "true");
+                                        }
+                                    }}
+                                    className="w-full py-3 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white font-bold rounded-xl transition-colors shadow-sm text-[15px]"
+                                >
+                                    Get Started
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {showStudentSidebar && (
                     <>
                         {/* Student List Sidebar — fixed secondary sidebar */}

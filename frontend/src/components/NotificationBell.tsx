@@ -76,7 +76,12 @@ function getTypeStyle(type: string): TypeStyle {
     }
 }
 
-export default function NotificationBell() {
+interface NotificationBellProps {
+    direction?: 'up' | 'down';
+    alignOffset?: string;
+}
+
+export default function NotificationBell({ direction = 'down', alignOffset = 'right-0' }: NotificationBellProps) {
     const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
     const [isOpen, setIsOpen] = useState(false);
     const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
@@ -116,7 +121,9 @@ export default function NotificationBell() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-full mt-2 md:fixed md:bottom-20 md:right-8 md:top-auto w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50 flex flex-col max-h-[85vh]">
+                <div className={`absolute ${alignOffset} w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-[999] flex flex-col max-h-[85vh] origin-bottom-right ${
+                    direction === 'up' ? 'bottom-[calc(100%+1rem)]' : 'top-[calc(100%+0.5rem)]'
+                }`}>
                     <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                         <h3 className="font-bold text-slate-800 m-0">Notifications</h3>
                         {unreadCount > 0 && (
