@@ -5,19 +5,24 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
-import { User, BookOpen, LayoutTemplate } from "lucide-react";
+import { User, BookOpen, LayoutTemplate, LogOut, ChevronDown } from "lucide-react";
 
 export default function UserSidebar() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [lastParentStudentId, setLastParentStudentId] = useState<string | null>(null);
     const [fallbackParentStudentId, setFallbackParentStudentId] = useState<string | null>(null);
 
     const isTeacher = user?.role === "TEACHER";
     const isSpecialist = user?.role === "SPECIALIST";
     const isParent = user?.role === "PARENT";
+
+    const initials = (
+        ((user?.first_name?.[0] || "") + (user?.last_name?.[0] || "")) ||
+        (user?.email?.[0] || "?")
+    ).toUpperCase();
 
     const portalTitle = isTeacher ? "Teacher Portal" : isSpecialist ? "Specialist Portal" : "Parent Portal";
 
@@ -121,6 +126,37 @@ export default function UserSidebar() {
                         </>
                     )}
                 </nav>
+
+                {/* Bottom Actions */}
+                <div className="mt-auto pt-4 border-t border-[var(--border-light)] flex flex-col gap-3 w-full">
+                    {user && (
+                        <div className="relative group w-full">
+                            {/* Avatar and Info */}
+                            <button className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-slate-50 transition-colors text-left border border-transparent hover:border-slate-200">
+                                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                                    {initials}
+                                </span>
+                                <div className="flex flex-col flex-1 min-w-0">
+                                    <span className="text-sm font-bold text-slate-800 truncate">{user?.first_name} {user?.last_name}</span>
+                                    <span className="text-xs text-slate-500 truncate">{user?.email}</span>
+                                </div>
+                                <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                            </button>
+                            {/* Dropdown Menu */}
+                            <div className="absolute bottom-full left-0 mb-1 w-full hidden group-hover:block z-50">
+                                <div className="bg-white rounded-xl shadow-[0_-4px_15px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden">
+                                    <button
+                                        onClick={logout}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                                    >
+                                        <LogOut size={16} />
+                                        Log Out
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </aside>
 
             {/* Mobile Bottom Navigation */}

@@ -122,10 +122,8 @@ export default function AccessibilityToolbar() {
       {/* Dropdown Panel */}
       {isOpen && (
         <div
+          className="absolute right-0 top-[calc(100%+8px)] md:fixed md:bottom-20 md:right-8 md:top-auto md:left-auto z-[9999]"
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: "0",
             width: "260px",
             backgroundColor: theme === "dark" ? "#161e2f" : "#ffffff",
             border: highContrast
@@ -138,7 +136,6 @@ export default function AccessibilityToolbar() {
             flexDirection: "column",
             gap: "12px",
             color: theme === "dark" ? "#f1f5f9" : "#0f172a",
-            zIndex: 9999,
           }}
         >
           <p
