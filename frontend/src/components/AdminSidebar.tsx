@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { BarChart3, GraduationCap, UsersRound, Mail, LayoutTemplate, LogOut, ChevronDown } from "lucide-react";
+import { BarChart3, GraduationCap, UsersRound, Mail, LayoutTemplate, LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
 
 function Badge({ count, tone }: { count: number; tone: "indigo" | "amber" }) {
     if (count <= 0) return null;
@@ -19,18 +19,18 @@ function Badge({ count, tone }: { count: number; tone: "indigo" | "amber" }) {
     );
 }
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+    collapsed?: boolean;
+    onToggle?: () => void;
+}
+
+export default function AdminSidebar({ collapsed = false, onToggle }: AdminSidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
     const [pendingInviteCount, setPendingInviteCount] = useState(0);
     const [awaitingReviewCount, setAwaitingReviewCount] = useState(0);
     const { user, logout } = useAuth();
-
-    const initials = (
-        ((user?.first_name?.[0] || "") + (user?.last_name?.[0] || "")) ||
-        (user?.email?.[0] || "?")
-    ).toUpperCase();
 
     useEffect(() => {
         let cancelled = false;
@@ -66,81 +66,91 @@ export default function AdminSidebar() {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="hidden md:flex flex-col w-[180px] bg-white border-r border-[var(--border-light)] p-4 shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0">
+            <aside className={`hidden md:flex flex-col bg-white border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[180px] p-4'}`}>
                 {/* Logo */}
                 <button
                     type="button"
-                    className="mb-8 cursor-pointer px-1 text-left rounded-lg"
+                    className={`cursor-pointer text-left rounded-lg ${collapsed ? 'mb-4 px-0 flex items-center justify-center' : 'mb-8 px-1'}`}
                     onClick={() => router.push("/dashboard")}
+                    title="Go to Dashboard"
                 >
-                    <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 leading-tight truncate">Admin Portal</h1>
+                    {collapsed ? (
+                        <span className="text-lg font-bold text-[var(--accent-primary)]">A</span>
+                    ) : (
+                        <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 leading-tight truncate">Admin Portal</h1>
+                    )}
                 </button>
 
                 {/* Nav */}
                 <nav className="flex flex-col gap-1 w-full" aria-label="Admin navigation">
-                    <Link href="/workspace" aria-current={activeTab === 'workspace' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/workspace" aria-current={activeTab === 'workspace' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Workspace">
                         <LayoutTemplate size={18} />
-                        <span className="truncate">Workspace</span>
+                        {!collapsed && <span className="truncate">Workspace</span>}
                     </Link>
 
-                    <div className="px-2 pb-1 mt-5 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                        System Data
-                    </div>
+                    {!collapsed && (
+                        <div className="px-2 pb-1 mt-5 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                            System Data
+                        </div>
+                    )}
+                    {collapsed && <div className="my-2 h-px bg-slate-200" />}
                     
-                    <Link href="/dashboard?tab=analytics" aria-current={activeTab === 'analytics' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=analytics" aria-current={activeTab === 'analytics' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Analytics">
                         <BarChart3 size={18} />
-                        <span className="truncate">Analytics</span>
+                        {!collapsed && <span className="truncate">Analytics</span>}
                     </Link>
-                    <Link href="/dashboard?tab=students" aria-current={activeTab === 'students' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=students" aria-current={activeTab === 'students' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Student Roster">
                         <GraduationCap size={18} />
-                        <span className="truncate">Student Roster</span>
-                        <Badge count={awaitingReviewCount} tone="indigo" />
+                        {!collapsed && <span className="truncate">Student Roster</span>}
+                        {!collapsed && <Badge count={awaitingReviewCount} tone="indigo" />}
+                        {collapsed && awaitingReviewCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white leading-none">
+                                {awaitingReviewCount}
+                            </span>
+                        )}
                     </Link>
 
-                    <div className="px-2 pb-1 mt-5 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                        Organization
-                    </div>
+                    {!collapsed && (
+                        <div className="px-2 pb-1 mt-5 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                            Organization
+                        </div>
+                    )}
+                    {collapsed && <div className="my-2 h-px bg-slate-200" />}
 
-                    <Link href="/dashboard?tab=users" aria-current={activeTab === 'users' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=users" aria-current={activeTab === 'users' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="System Users">
                         <UsersRound size={18} />
-                        <span className="truncate">System Users</span>
+                        {!collapsed && <span className="truncate">System Users</span>}
                     </Link>
-                    <Link href="/dashboard?tab=invitations" aria-current={activeTab === 'invitations' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'}`}>
+                    <Link href="/dashboard?tab=invitations" aria-current={activeTab === 'invitations' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Pending Invites">
                         <Mail size={18} />
-                        <span className="truncate">Pending Invites</span>
-                        <Badge count={pendingInviteCount} tone="amber" />
+                        {!collapsed && <span className="truncate">Pending Invites</span>}
+                        {!collapsed && <Badge count={pendingInviteCount} tone="amber" />}
+                        {collapsed && pendingInviteCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white leading-none">
+                                {pendingInviteCount}
+                            </span>
+                        )}
                     </Link>
                 </nav>
 
                 {/* Bottom Actions */}
-                <div className="mt-auto pt-4 border-t border-[var(--border-light)] flex flex-col gap-3 w-full">
-                    {user && (
-                        <div className="relative group w-full">
-                            {/* Avatar and Info */}
-                            <button className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-slate-50 transition-colors text-left border border-transparent hover:border-slate-200">
-                                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                                    {initials}
-                                </span>
-                                <div className="flex flex-col flex-1 min-w-0">
-                                    <span className="text-sm font-bold text-slate-800 truncate">{user?.first_name} {user?.last_name}</span>
-                                    <span className="text-xs text-slate-500 truncate">{user?.email}</span>
-                                </div>
-                                <ChevronDown size={14} className="text-slate-400 shrink-0" />
-                            </button>
-                            {/* Dropdown Menu */}
-                            <div className="absolute bottom-full left-0 mb-1 w-full hidden group-hover:block z-50">
-                                <div className="bg-white rounded-xl shadow-[0_-4px_15px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden">
-                                    <button
-                                        onClick={logout}
-                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
-                                    >
-                                        <LogOut size={16} />
-                                        Log Out
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                <div className="mt-auto pt-4 border-t border-[var(--border-light)] flex flex-col gap-2 w-full">
+                    <button
+                        onClick={logout}
+                        title="Log Out"
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                    >
+                        <LogOut size={18} />
+                        {!collapsed && <span className="truncate">Log Out</span>}
+                    </button>
+                    <button
+                        onClick={onToggle}
+                        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                    >
+                        {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+                        {!collapsed && <span className="truncate">Collapse</span>}
+                    </button>
                 </div>
             </aside>
 

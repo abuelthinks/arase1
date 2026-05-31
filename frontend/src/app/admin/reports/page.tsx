@@ -47,6 +47,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     const [studentName, setStudentName] = useState("");
     const [formStatuses, setFormStatuses] = useState<FormStatuses | null>(null);
     const [cycleStatus, setCycleStatus] = useState<any>(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const [loading, setLoading] = useState(false);
     const [monthlyLoading, setMonthlyLoading] = useState(false);
@@ -89,6 +90,8 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                     setExistingMonthlyStatus(monthlyDoc?.status ?? null);
         } catch {
             // Embedded generator surfaces its own action-level errors.
+        } finally {
+            setIsInitialLoad(false);
         }
     }, [studentId]);
 
@@ -438,23 +441,39 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         <>
                             <div style={{ borderBottom: "1px solid var(--border-light)", paddingBottom: "1.25rem", marginBottom: "1.5rem" }}>
                                 <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Report Generator</h1>
-                                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
-                                    Generate documents for <strong>{studentName || `Student #${studentId}`}</strong>
-                                </p>
+                                {isInitialLoad ? (
+                                    <div className="h-4 bg-slate-200 animate-pulse rounded w-48 mt-2"></div>
+                                ) : (
+                                    <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
+                                        Generate documents for <strong>{studentName || `Student #${studentId}`}</strong>
+                                    </p>
+                                )}
                             </div>
-                            {renderContent()}
+                            {isInitialLoad ? (
+                                <div className="flex justify-center items-center py-16">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                </div>
+                            ) : renderContent()}
                         </>
                     ) : (
                         /* Standalone mode — wrapped in card */
                         <div style={{ background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
                             <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid var(--border-light)" }}>
                                 <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Report Generator</h1>
-                                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
-                                    Generate documents for <strong>{studentName || `Student #${studentId}`}</strong>
-                                </p>
+                                {isInitialLoad ? (
+                                    <div className="h-4 bg-slate-200 animate-pulse rounded w-48 mt-2"></div>
+                                ) : (
+                                    <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
+                                        Generate documents for <strong>{studentName || `Student #${studentId}`}</strong>
+                                    </p>
+                                )}
                             </div>
                             <div style={{ padding: "1.5rem 2rem" }}>
-                                {renderContent()}
+                                {isInitialLoad ? (
+                                    <div className="flex justify-center items-center py-16">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                    </div>
+                                ) : renderContent()}
                             </div>
                         </div>
                     )}

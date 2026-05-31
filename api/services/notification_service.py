@@ -150,12 +150,26 @@ def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
     student_name = f"{student.first_name} {student.last_name}"
     actor = _user_display_name(user)
 
+    # Map form labels to workspace tab IDs
+    form_tab_map = {
+        'Parent Assessment': 'parent_assessment',
+        'Specialist Assessment': 'multi_assessment',
+        'SPED Assessment': 'sped_assessment',
+        'Parent Progress': 'parent_tracker',
+        'Specialist Progress': 'multi_tracker',
+        'Teacher Progress': 'sped_tracker',
+    }
+    form_tab = form_tab_map.get(form_label, '')
+    default_link = f"/workspace?studentId={student.id}&workspace=forms"
+    if form_tab:
+        default_link += f"&tab={form_tab}"
+
     # Notify admins (exclude the submitter if they are an admin)
     notify_admins_in_app(
         notification_type='FORM_SUBMITTED',
         title=f"{form_label} submitted for {student_name}",
         message=f"{actor} submitted the {form_label.lower()}.",
-        link=link or f"/workspace?studentId={student.id}&workspace=forms",
+        link=link or default_link,
         exclude_user=user,
         actor_name=actor,
         dedupe_key=dedupe_key,
@@ -175,7 +189,7 @@ def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
             notification_type='FORM_SUBMITTED',
             title=f"{form_label} submitted for {student_name}",
             message=f"{actor} submitted the {form_label.lower()}.",
-            link=link or f"/workspace?studentId={student.id}&workspace=forms",
+            link=link or default_link,
             actor_name=actor,
             dedupe_key=dedupe_key,
         )
@@ -413,11 +427,19 @@ def notify_specialist_form_finalized(user, student, cycle, form_label):
     """Notify admins once the full specialist-owned assessment/tracker is finalized."""
     student_name = f"{student.first_name} {student.last_name}"
     actor = _user_display_name(user) if user else "Specialist team"
+    form_tab_map = {
+        'Specialist Assessment': 'multi_assessment',
+        'Specialist Progress': 'multi_tracker',
+    }
+    form_tab = form_tab_map.get(form_label, '')
+    link = f"/workspace?studentId={student.id}&workspace=forms"
+    if form_tab:
+        link += f"&tab={form_tab}"
     notify_admins_in_app(
         notification_type='FORM_SUBMITTED',
         title=f"{form_label} finalized for {student_name}",
         message=f"{actor} finalized the {form_label.lower()}.",
-        link=f"/workspace?studentId={student.id}&workspace=forms",
+        link=link,
         exclude_user=user,
         actor_name=actor,
         dedupe_key=f"specialist-form-finalized:{form_label}:{student.id}:{cycle.id}",
@@ -587,25 +609,29 @@ def notify_parent_assessment_reminder(user, student):
     student_name = f"{student.first_name} {student.last_name}"
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
     form_url = f"{frontend_url}/parent-onboarding?studentId={student.id}"
-    title = f"Parent assessment needed for {student_name}"
+    title = f"Checking in on {student.first_name}'s assessment"
     email_message = (
         f"Hi {user.first_name or user.email},\n\n"
-        f"This is a friendly reminder to complete the parent assessment for {student_name}.\n\n"
-        f"Complete it here: {form_url}\n\n"
-        f"— The ARASE Team"
+        f"We hope you're doing well!\n\n"
+        f"We wanted to quickly check in and see if you had a moment to complete the parent assessment for {student.first_name}. "
+        f"Your insights as a parent are incredibly valuable and help us provide the best possible support.\n\n"
+        f"You can complete it right here whenever you're ready:\n"
+        f"{form_url}\n\n"
+        f"Warmly,\n"
+        f"The ARASE Team"
     )
 
     notify_user_in_app(
         user=user,
         notification_type='REMINDER',
         title=title,
-        message=f"Please complete the parent assessment for {student_name}.",
+        message=f"We're excited to learn more about {student.first_name}! Please take a few minutes to share your insights when you get a chance.",
         link=f"/parent-onboarding?studentId={student.id}",
         actor_name="ARASE",
     )
-    _send_email(user.email, title, email_message)
+    _send_email(user.email, f"Checking in: Parent assessment for {student.first_name}", email_message)
     if user.phone_number and user.is_phone_verified:
-        _send_sms(user.phone_number, f"ARASE: Please complete the parent assessment for {student_name}.")
+        _send_sms(user.phone_number, f"ARASE: Hi! Just checking in to see if you had a moment to complete the parent assessment for {student.first_name}.")
 
 
 def notify_report_ready(admin_user, student, report_id):

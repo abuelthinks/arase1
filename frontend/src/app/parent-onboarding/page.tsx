@@ -225,6 +225,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     const [diagnosticUploading, setDiagnosticUploading] = useState(false);
     const [existingDiagnostic, setExistingDiagnostic] = useState<{ id: number; original_filename: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     // For Translation Toggle
     const [fullSubmission, setFullSubmission] = useState<any>(null);
@@ -965,19 +966,28 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                                         </button>
                                     </div>
                                 ) : (
-                                    <button
-                                        type="button"
+                                    <div
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="w-full flex flex-col items-center justify-center gap-3 px-6 py-8 border-2 border-dashed border-slate-300 rounded-2xl hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer group"
+                                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsDragging(false);
+                                            const file = e.dataTransfer.files?.[0];
+                                            if (file && (file.type === "application/pdf" || file.name.endsWith(".doc") || file.name.endsWith(".docx"))) {
+                                                setDiagnosticFile(file);
+                                            }
+                                        }}
+                                        className={`w-full flex flex-col items-center justify-center gap-3 px-6 py-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group ${isDragging ? 'border-indigo-500 bg-indigo-50/70 shadow-inner' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'}`}
                                     >
-                                        <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center group-hover:bg-indigo-200 transition">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center transition ${isDragging ? 'bg-indigo-200' : 'bg-indigo-100 group-hover:bg-indigo-200'}`}>
                                             <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-sm font-bold text-slate-700">Click to upload diagnostic report</p>
+                                            <p className="text-sm font-bold text-slate-700">{isDragging ? "Drop your file here" : "Click or drag & drop to upload diagnostic report"}</p>
                                             <p className="text-xs text-slate-400 mt-1">PDF, DOC, or DOCX • Max 20 MB</p>
                                         </div>
-                                    </button>
+                                    </div>
                                 )}
                             </div>
                         )}
