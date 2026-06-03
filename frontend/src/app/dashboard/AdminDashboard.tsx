@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
@@ -49,14 +49,6 @@ interface InvitationData {
 
 const ALLOWED_ACTION_PREFIXES = ["/dashboard", "/workspace", "/students", "/users", "/admin", "/specialists"];
 
-function getStudentProgress(status: string) {
-    const s = status?.toUpperCase() || "";
-    if (s === "INTEGRATED") return { value: 5, pct: 100, label: "5/5" };
-    if (s === "ENROLLED") return { value: 3, pct: 60, label: "3/5" };
-    if (s === "ASSESSED") return { value: 2, pct: 40, label: "2/5" };
-    if (s === "ASSESSMENT_SCHEDULED") return { value: 1, pct: 20, label: "1/5" };
-    return { value: 0, pct: 0, label: "0/5" };
-}
 function isSafeActionLink(link?: string): boolean {
     if (!link || typeof link !== "string") return false;
     if (!link.startsWith("/")) return false;
@@ -81,6 +73,11 @@ interface StudentData {
     last_name: string;
     grade: string;
     status: string;
+    has_parent_assessment?: boolean;
+    has_specialist_assessment?: boolean;
+    parent_current_tracker_submitted?: boolean;
+    specialist_current_tracker_submitted?: boolean;
+    teacher_current_tracker_submitted?: boolean;
     next_action?: {
         label: string;
         tone: string;
@@ -108,9 +105,25 @@ const getActionTypeStyle = (type: DashboardAction["type"]) => {
     return { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
 };
 
+const getFormPillClass = (isSubmitted?: boolean) => {
+    return `cursor-pointer text-[0.65rem] font-bold px-2 py-1 rounded-xl border transition-colors duration-200 ${
+        isSubmitted 
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300" 
+            : "border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-500 hover:border-slate-300"
+    }`;
+};
+
+const getActionButtonClass = (tone?: string) => {
+    const base = "no-underline transition-colors duration-200 border ";
+    if (tone === "warning") return base + "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300";
+    if (tone === "positive") return base + "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300";
+    return base + "bg-indigo-50/50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300";
+};
+
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function AdminDashboard() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { user: authUser } = useAuth();
     const getTimeGreeting = () => {
@@ -593,17 +606,6 @@ export default function AdminDashboard() {
     }, { positive: 0, info: 0, warning: 0 });
 
     const watchlistItems = [
-        ...dashboardActions
-            .filter(action => action.type === 'warning')
-            .slice(0, 3)
-            .map(action => ({
-                id: `action-${action.id}`,
-                title: action.title,
-                description: action.description,
-                link: action.link,
-                cta: action.action_text,
-                tone: 'warning' as const,
-            })),
         ...expiringSoonInvitations.slice(0, 2).map(invite => {
             const expiry = getExpiryDisplay(invite.expires_at);
             return {
@@ -668,318 +670,312 @@ export default function AdminDashboard() {
                     </div>
                     {loading ? (
                         <p>Loading database...</p>
-                    ) : activeTab === "analytics" ? (
+                    
+) : activeTab === "analytics" ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeIn 0.4s ease-out" }}>
                             
-                            {/* KPI Row */}
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200">
-                                        <UsersIcon className="h-5 w-5" aria-hidden="true" />
-                                    </div>
-                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-slate-500">Active Students</p>
-                                    <p className="mt-1 text-3xl font-extrabold text-slate-900">{totalStudents}</p>
-                                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                                        {activeStudents} enrolled · {archivedStudents} archived
-                                    </p>
-                                </div>
-                                <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-5 shadow-sm">
-                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-200">
-                                        <Clock className="h-5 w-5" aria-hidden="true" />
-                                    </div>
-                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-amber-700">Awaiting Assessment</p>
-                                    <p className="mt-1 text-3xl font-extrabold text-amber-900">{pendingStudents}</p>
-                                    <p className="mt-1 text-xs font-semibold text-amber-700">
-                                        Still waiting on intake or scheduling
-                                    </p>
-                                </div>
-                                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 shadow-sm">
-                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200">
-                                        <ClipboardList className="h-5 w-5" aria-hidden="true" />
-                                    </div>
-                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-blue-700">Awaiting Enrollment</p>
-                                    <p className="mt-1 text-3xl font-extrabold text-blue-900">{reviewStudents}</p>
-                                    <p className="mt-1 text-xs font-semibold text-blue-700">
-                                        Assessed and ready for your decision
-                                    </p>
-                                </div>
-                                <div className="rounded-2xl border border-pink-100 bg-pink-50/50 p-5 shadow-sm">
-                                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-md shadow-pink-200">
-                                        <Mail className="h-5 w-5" aria-hidden="true" />
-                                    </div>
-                                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-pink-700">Pending Invitations</p>
-                                    <p className="mt-1 text-3xl font-extrabold text-pink-900">{validPendingInvitations.length}</p>
-                                    <p className="mt-1 text-xs font-semibold text-pink-700">
-                                        {expiringSoonInvitations.length} expiring in 24h
-                                        {expiredInvitations.length > 0 && ` · ${expiredInvitations.length} expired`}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Quick Actions */}
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                                <div className="mb-4 flex items-center gap-3">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-sm">
-                                        <Zap className="h-4 w-4" aria-hidden="true" />
+                            {/* Sleek Action Bar */}
+                            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white text-slate-900 rounded-2xl shadow-sm border border-slate-200">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                                        <Zap className="h-5 w-5" aria-hidden="true" />
                                     </div>
                                     <div>
-                                        <h3 className="m-0 text-base font-extrabold text-slate-900">Quick actions</h3>
-                                        <p className="m-0 text-xs text-slate-500">Jump straight into the most-used admin tasks.</p>
+                                        <h3 className="m-0 text-base font-extrabold text-slate-900">Quick Actions</h3>
+                                        <p className="m-0 text-xs text-slate-500">Most-used admin tasks</p>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setShowStudentModal(true)}
-                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                        className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-500 border border-indigo-500"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                                                <UserPlus className="h-4 w-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">Register student</span>
-                                        </div>
-                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                        <UserPlus className="h-4 w-4" aria-hidden="true" />
+                                        Register student
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setShowInviteModal(true)}
-                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                        className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-600">
-                                                <Mail className="h-4 w-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">Invite a user</span>
-                                        </div>
-                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                        <Mail className="h-4 w-4" aria-hidden="true" />
+                                        Invite user
                                     </button>
                                     <Link
                                         href="/admin/iep"
-                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                        className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300 no-underline"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                                                <FileCheck2 className="h-4 w-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">IEP generator</span>
-                                        </div>
-                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                        <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+                                        IEP generator
                                     </Link>
                                     <Link
                                         href="/admin/reports"
-                                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                        className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300 no-underline"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                                                <BarChart3 className="h-4 w-4" aria-hidden="true" />
-                                            </div>
-                                            <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">Monthly reports</span>
-                                        </div>
-                                        <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                        <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                                        Reports
                                     </Link>
                                 </div>
                             </div>
 
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem", alignItems: "stretch" }}>
-                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-                                    <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800 }}>Student Workflow Snapshot</h3>
-                                    <p style={{ margin: "0 0 1.5rem 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                                        A live read on where students currently sit in the admin pipeline.
-                                    </p>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                                        <div>
-                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#a16207" }}>Pending Assessment</span>
-                                                <span>{pendingStudents}</span>
+                            {/* Top Row: Urgent & Pending Tasks + KPIs */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                
+                                {/* Urgent & Pending Tasks (Action Center + Watchlist combined) */}
+                                <div className="lg:col-span-2 flex flex-col bg-white rounded-2xl border border-rose-200 shadow-sm overflow-hidden">
+                                    <div className="bg-rose-50 border-b border-rose-100 p-4 sm:p-5 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 shadow-inner">
+                                                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                             </div>
-                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (pendingStudents / totalStudents) * 100 : 0}%`, background: "#f59e0b", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#0369a1" }}>Assessment Scheduled</span>
-                                                <span>{scheduledStudents}</span>
-                                            </div>
-                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (scheduledStudents / totalStudents) * 100 : 0}%`, background: "#0ea5e9", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
+                                            <div>
+                                                <h3 className="m-0 text-lg font-extrabold text-slate-900">Needs Attention</h3>
+                                                <p className="m-0 text-sm text-slate-500">Urgent actions, pending tasks, and watchlist items.</p>
                                             </div>
                                         </div>
-
-                                        <div>
-                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#1d4ed8" }}>Awaiting Enrollment Review</span>
-                                                <span>{reviewStudents}</span>
-                                            </div>
-                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (reviewStudents / totalStudents) * 100 : 0}%`, background: "#3b82f6", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
-                                                <span style={{ color: "#166534" }}>Enrolled</span>
-                                                <span>{activeStudents}</span>
-                                            </div>
-                                            <div style={{ height: "12px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                                                <div style={{ height: "100%", width: `${totalStudents ? (activeStudents / totalStudents) * 100 : 0}%`, background: "#22c55e", borderRadius: "999px", transition: "width 1s ease-out" }}></div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ marginTop: "0.5rem", padding: "0.9rem 1rem", borderRadius: "10px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-                                            <span style={{ color: "#334155", fontSize: "0.85rem" }}>{inProgressStudents} students are actively moving through evaluation or review.</span>
-                                            <Link href="/dashboard?tab=students" style={{ color: "#2563eb", fontWeight: 700, fontSize: "0.85rem", textDecoration: "none" }}>
-                                                Open roster →
-                                            </Link>
+                                        <div className="hidden sm:flex gap-2">
+                                            <span className="text-xs font-bold text-rose-700 bg-rose-100 px-3 py-1 rounded-full border border-rose-200">{actionCounts.warning} urgent</span>
+                                            <span className="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full border border-blue-200">{actionCounts.info} queued</span>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-                                    <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                        Action Center
-                                    </h3>
-                                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "1rem" }}>
-                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", padding: "4px 10px", borderRadius: "999px" }}>{actionCounts.warning} urgent</span>
-                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "4px 10px", borderRadius: "999px" }}>{actionCounts.info} queued</span>
-                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "4px 10px", borderRadius: "999px" }}>{actionCounts.positive} ready</span>
-                                    </div>
-                                    {dashboardActions.length === 0 ? (
-                                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>You're all caught up! No pending actions required right now.</p>
-                                    ) : (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                            {dashboardActions.map(action => {
-                                                const actionStyle = getActionTypeStyle(action.type);
-                                                return (
-                                                    <div key={action.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: actionStyle.bg, borderRadius: "8px", border: `1px solid ${actionStyle.border}`, gap: "1rem" }}>
-                                                        <div>
-                                                            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: actionStyle.title }}>{action.title}</p>
-                                                            <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: actionStyle.body }}>{action.description}</p>
+                                    <div className="p-4 sm:p-5 flex-1 max-h-[400px] overflow-y-auto bg-slate-50/50">
+                                        {dashboardActions.length === 0 && watchlistItems.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                                                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                                                    <Sparkles className="w-8 h-8" />
+                                                </div>
+                                                <p className="font-bold text-slate-900 m-0 text-lg">You're all caught up!</p>
+                                                <p className="text-sm text-slate-500 mt-1 mb-0">No pending actions required right now.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-3">
+                                                {/* Actions */}
+                                                {dashboardActions.map(action => {
+                                                    const actionStyle = getActionTypeStyle(action.type);
+                                                    return (
+                                                        <div key={action.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl shadow-sm" style={{ backgroundColor: actionStyle.bg, border: `1px solid ${actionStyle.border}` }}>
+                                                            <div>
+                                                                <p className="m-0 text-sm font-bold" style={{ color: actionStyle.title }}>{action.title}</p>
+                                                                <p className="mt-1 mb-0 text-xs" style={{ color: actionStyle.body }}>{action.description}</p>
+                                                            </div>
+                                                            {isSafeActionLink(action.link) ? (
+                                                                <Link href={action.link} className="shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-white shadow-sm transition-transform hover:scale-105 hover:shadow-md" style={{ color: actionStyle.title, border: `1px solid ${actionStyle.border}`, textDecoration: "none" }}>
+                                                                    {action.action_text}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="shrink-0 text-center text-xs italic text-slate-400 px-4 py-2" title="Action link unavailable">Unavailable</span>
+                                                            )}
                                                         </div>
-                                                        {isSafeActionLink(action.link) ? (
-                                                            <Link href={action.link} className="hover:scale-105 transition-transform" style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${actionStyle.border}`, color: actionStyle.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "90px" }}>
-                                                                {action.action_text}
-                                                            </Link>
-                                                        ) : (
-                                                            <span style={{ fontSize: "0.78rem", padding: "4px 10px", color: "#94a3b8", borderRadius: "4px", fontStyle: "italic", minWidth: "90px", textAlign: "center" }} title="Action link unavailable">
-                                                                Unavailable
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                                    );
+                                                })}
+                                                
+                                                {/* Watchlist Items */}
+                                                {watchlistItems.map(item => {
+                                                    const tone = (item.tone as string) === 'warning' ? { bg: '#fffbeb', border: '#fde68a', title: '#92400e', body: '#b45309' } : { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
+                                                    return (
+                                                        <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl shadow-sm" style={{ backgroundColor: tone.bg, border: `1px solid ${tone.border}` }}>
+                                                            <div>
+                                                                <p className="m-0 text-sm font-bold" style={{ color: tone.title }}>{item.title}</p>
+                                                                <p className="mt-1 mb-0 text-xs" style={{ color: tone.body }}>{item.description}</p>
+                                                            </div>
+                                                            {isSafeActionLink(item.link) ? (
+                                                                <Link href={item.link} className="shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-white shadow-sm transition-transform hover:scale-105 hover:shadow-md" style={{ color: tone.title, border: `1px solid ${tone.border}`, textDecoration: "none" }}>
+                                                                    {item.cta} &rarr;
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="shrink-0 text-center text-xs italic text-slate-400 px-4 py-2">Unavailable</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Admin Watchlist */}
-                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-                                    <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6 0A10 10 0 1112 2a10 10 0 0110 10z" /></svg>
-                                        Admin Watchlist
-                                    </h3>
-                                    {watchlistItems.length === 0 ? (
-                                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Nothing pressing right now. The system doesn&apos;t have urgent admin follow-ups at the moment.</p>
-                                    ) : (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                            {watchlistItems.map(item => {
-                                                const tone = item.tone === 'warning'
-                                                    ? { bg: '#fffbeb', border: '#fde68a', title: '#92400e', body: '#b45309' }
-                                                    : { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
-
-                                                return (
-                                                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", padding: "12px 14px", borderRadius: "10px", background: tone.bg, border: `1px solid ${tone.border}` }}>
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: tone.title }}>{item.title}</p>
-                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: tone.body }}>{item.description}</p>
-                                                    </div>
-                                                    {isSafeActionLink(item.link) ? (
-                                                        <Link href={item.link} style={{ fontSize: "0.8rem", padding: "4px 10px", background: "white", border: `1px solid ${tone.border}`, color: tone.title, borderRadius: "4px", textDecoration: "none", fontWeight: 600, display: "inline-block", textAlign: "center", minWidth: "96px" }}>
-                                                            {item.cta} →
-                                                        </Link>
-                                                    ) : (
-                                                        <span style={{ fontSize: "0.78rem", padding: "4px 10px", color: "#94a3b8", fontStyle: "italic", minWidth: "96px", textAlign: "center" }}>Unavailable</span>
-                                                    )}
-                                                </div>
-                                                );
-                                            })}
+                                {/* Condense KPIs */}
+                                <div className="flex flex-col gap-3">
+                                    <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all hover:shadow-md group">
+                                        <div>
+                                            <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-indigo-500">Active Students</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">{totalStudents}</p>
+                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">{activeStudents} enrolled &middot; {archivedStudents} archived</p>
                                         </div>
-                                    )}
-                                </div>
-
-                                <div style={{ background: "white", padding: "1.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-                                    <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5V4H2v16h5m10 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m10 0H7" /></svg>
-                                        Team Capacity
-                                    </h3>
-                                    <p style={{ margin: "0 0 1.25rem 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                                        A quick read on staffing coverage before you assign more work.
-                                    </p>
-                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px", marginBottom: "1rem" }}>
-                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
-                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Admins</div>
-                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{adminUsers.length}</div>
-                                        </div>
-                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
-                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Teachers</div>
-                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{teacherUsers.length}</div>
-                                        </div>
-                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
-                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Specialists</div>
-                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{specialistUsers.length}</div>
-                                        </div>
-                                        <div style={{ padding: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
-                                            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 700 }}>Parents</div>
-                                            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>{parentUsers.length}</div>
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-200">
+                                            <UsersIcon className="h-5 w-5" />
                                         </div>
                                     </div>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                        <div style={{ padding: "12px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
-                                            <p style={{ margin: 0, fontSize: "0.85rem", color: "#334155", fontWeight: 700 }}>Average instructional caseload</p>
-                                            <p style={{ margin: "4px 0 0 0", fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>{averageCaseload.toFixed(1)} students</p>
-                                        </div>
-                                        <div style={{ padding: "12px 14px", background: unassignedStaff.length > 0 ? "#fffbeb" : "#f0fdf4", border: `1px solid ${unassignedStaff.length > 0 ? '#fde68a' : '#bbf7d0'}`, borderRadius: "10px" }}>
-                                            <p style={{ margin: 0, fontSize: "0.85rem", color: unassignedStaff.length > 0 ? "#92400e" : "#166534", fontWeight: 700 }}>
-                                                {unassignedStaff.length} staff member{unassignedStaff.length === 1 ? '' : 's'} currently have no assigned students
-                                            </p>
-                                            <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: unassignedStaff.length > 0 ? "#b45309" : "#15803d" }}>
-                                                {unassignedStaff.length > 0 ? "Useful if you need assignment capacity right away." : "Everyone currently has at least one student assigned."}
-                                            </p>
-                                        </div>
-                                        <div style={{ padding: "12px 14px", background: specialistsWithoutSpecialty.length > 0 ? "#eff6ff" : "#f8fafc", border: `1px solid ${specialistsWithoutSpecialty.length > 0 ? '#bfdbfe' : '#e2e8f0'}`, borderRadius: "10px" }}>
-                                            <p style={{ margin: 0, fontSize: "0.85rem", color: specialistsWithoutSpecialty.length > 0 ? "#1d4ed8" : "#334155", fontWeight: 700 }}>
-                                                {specialistsWithoutSpecialty.length} specialist account{specialistsWithoutSpecialty.length === 1 ? '' : 's'} missing a specialty
-                                            </p>
-                                            <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: specialistsWithoutSpecialty.length > 0 ? "#2563eb" : "#64748b" }}>
-                                                Filling these in makes assignment decisions clearer for admins.
-                                            </p>
-                                        </div>
+                                    
+                                    <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-amber-300 transition-all hover:shadow-md group">
                                         <div>
-                                            <p style={{ margin: "0 0 0.6rem 0", fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Highest current caseloads</p>
-                                            {staffSortedByCaseload.slice(0, 4).map(staff => (
-                                                <div key={staff.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "8px", background: "#fff" }}>
-                                                    <div>
-                                                        <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>{staff.first_name} {staff.last_name}</p>
-                                                        <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
-                                                            {toTitleCase(staff.role)}{(staff.specialties && staff.specialties.length > 0)
-                                                                ? ` • ${staff.specialties.join(", ")}`
-                                                                : (staff.specialty ? ` • ${staff.specialty}` : "")}
-                                                        </p>
-                                                    </div>
-                                                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 10px", borderRadius: "999px" }}>
-                                                        {staff.assigned_students_count} students
-                                                    </span>
-                                                </div>
-                                            ))}
+                                            <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-amber-600">Awaiting Assess</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors">{pendingStudents}</p>
+                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">Intake / Scheduling</p>
+                                        </div>
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-md shadow-amber-200">
+                                            <Clock className="h-5 w-5" />
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-sky-300 transition-all hover:shadow-md group">
+                                        <div>
+                                            <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-sky-600">Awaiting Enroll</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors">{reviewStudents}</p>
+                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">Ready for decision</p>
+                                        </div>
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-sky-500 text-white shadow-md shadow-sky-200">
+                                            <ClipboardList className="h-5 w-5" />
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-pink-300 transition-all hover:shadow-md group">
+                                        <div>
+                                            <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-pink-600">Pending Invites</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-pink-600 transition-colors">{validPendingInvitations.length}</p>
+                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">{expiringSoonInvitations.length} expiring in 24h</p>
+                                        </div>
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-pink-400 to-pink-500 text-white shadow-md shadow-pink-200">
+                                            <Mail className="h-5 w-5" />
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Middle Row: Funnel and Team Capacity */}
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                
+                                {/* Student Workflow Snapshot (Horizontal Funnel) */}
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col hover:shadow-md transition-shadow">
+                                    <div className="mb-6">
+                                        <h3 className="m-0 text-lg font-extrabold text-slate-900">Student Pipeline</h3>
+                                        <p className="m-0 mt-1 text-sm text-slate-500">Live view of where students sit in the enrollment flow.</p>
+                                    </div>
+                                    
+                                    <div className="flex flex-col gap-4 mt-auto mb-auto">
+                                        {/* Horizontal bar representation */}
+                                        <div className="relative pt-6">
+                                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                                                <span>Assess</span>
+                                                <span>Schedule</span>
+                                                <span>Review</span>
+                                                <span>Enrolled</span>
+                                            </div>
+                                            <div className="flex h-12 w-full rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
+                                                <div style={{ width: `${totalStudents ? (pendingStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-amber-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Pending Assessment">
+                                                    {pendingStudents > 0 ? pendingStudents : ""}
+                                                </div>
+                                                <div style={{ width: `${totalStudents ? (scheduledStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-sky-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Assessment Scheduled">
+                                                    {scheduledStudents > 0 ? scheduledStudents : ""}
+                                                </div>
+                                                <div style={{ width: `${totalStudents ? (reviewStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-indigo-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Awaiting Review">
+                                                    {reviewStudents > 0 ? reviewStudents : ""}
+                                                </div>
+                                                <div style={{ width: `${totalStudents ? (activeStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-emerald-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Enrolled">
+                                                    {activeStudents > 0 ? activeStudents : ""}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                                <div className="w-3 h-3 rounded-full bg-amber-400 shrink-0"></div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Pending</span>
+                                                    <span className="text-sm font-extrabold text-slate-700">{pendingStudents}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                                <div className="w-3 h-3 rounded-full bg-sky-400 shrink-0"></div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Scheduled</span>
+                                                    <span className="text-sm font-extrabold text-slate-700">{scheduledStudents}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                                <div className="w-3 h-3 rounded-full bg-indigo-400 shrink-0"></div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Review</span>
+                                                    <span className="text-sm font-extrabold text-slate-700">{reviewStudents}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                                <div className="w-3 h-3 rounded-full bg-emerald-400 shrink-0"></div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Enrolled</span>
+                                                    <span className="text-sm font-extrabold text-slate-700">{activeStudents}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 p-4 rounded-xl">
+                                        <span className="text-sm font-medium text-slate-700">{inProgressStudents} students actively moving through evaluation.</span>
+                                        <Link href="/dashboard?tab=students" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 no-underline whitespace-nowrap">
+                                            Open roster &rarr;
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                {/* Team Capacity Chart */}
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div>
+                                            <h3 className="m-0 text-lg font-extrabold text-slate-900">Team Capacity</h3>
+                                            <p className="m-0 mt-1 text-sm text-slate-500">Average caseload: <span className="font-bold text-slate-800">{averageCaseload.toFixed(1)} students</span></p>
+                                        </div>
+                                        {unassignedStaff.length > 0 && (
+                                            <div className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">
+                                                {unassignedStaff.length} staff available
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="flex-1 flex flex-col justify-end">
+                                        {/* Visual Bar Chart for Caseloads */}
+                                        <div className="space-y-4">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider m-0">Top Caseloads</p>
+                                            {staffSortedByCaseload.slice(0, 4).map(staff => {
+                                                const maxCaseload = Math.max(1, staffSortedByCaseload[0]?.assigned_students_count || 1);
+                                                const pct = (staff.assigned_students_count / maxCaseload) * 100;
+                                                // Color changes depending on load
+                                                const barColor = pct > 80 ? "bg-rose-500" : pct > 50 ? "bg-amber-400" : "bg-emerald-400";
+                                                
+                                                return (
+                                                    <div key={staff.id} className="flex flex-col gap-1.5">
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="font-bold text-slate-700 truncate w-40">{staff.first_name} {staff.last_name}</span>
+                                                            <span className="font-extrabold text-slate-900">{staff.assigned_students_count}</span>
+                                                        </div>
+                                                        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                                            <div className={`${barColor} h-full rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }}></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {staffSortedByCaseload.length === 0 && (
+                                                <p className="text-sm text-slate-500 italic">No instructional staff assigned yet.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {specialistsWithoutSpecialty.length > 0 && (
+                                        <div className="mt-6 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 transition-colors hover:bg-blue-100/50">
+                                            <div className="mt-0.5 text-blue-500">
+                                                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-blue-900 m-0">{specialistsWithoutSpecialty.length} specialist(s) missing specialty</p>
+                                                <p className="text-xs text-blue-700 mt-0.5 mb-0">Update their profiles for better assignment tracking.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                            </div>
                         </div>
                     ) : activeTab === "students" ? (
+
                         <div>
                             {/* Action Bar (Search, Filters, Button) */}
                             <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
@@ -1113,18 +1109,18 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>PROGRESS</th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>NEXT ACTION</th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>QUICK ACTIONS</th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>
+                                                        {statusFilters.length > 0 && statusFilters.every(f => ["ENROLLED", "INTEGRATED"].includes(f.toUpperCase())) ? "PROGRESS TRACKERS" : "FORMS STATUS"}
+                                                    </th>
+                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>ACTION</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {paginatedStudents.map(s => {
                                                     const ss = getStatusStyle(s.status);
-                                                    const progress = getStudentProgress(s.status);
                                                     const nextAction = s.next_action;
                                                     return (
-                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-50 transition-colors duration-150">
+                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }}>
                                                             <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
                                                             <td style={{ padding: "12px" }}>
                                                                 <Link href={`/workspace?studentId=${s.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
@@ -1145,42 +1141,75 @@ export default function AdminDashboard() {
                                                                 }}>{s.status.replace(/_/g, " ")}</span>
                                                             </td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "120px" }}>
-                                                                    <div style={{ flex: 1, height: "6px", background: "#e2e8f0", borderRadius: "999px", overflow: "hidden" }}>
-                                                                        <div style={{ height: "100%", width: `${progress.pct}%`, background: progress.pct === 100 ? "#10b981" : "#3b82f6", borderRadius: "999px" }}></div>
-                                                                    </div>
-                                                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b" }}>{progress.label}</span>
+                                                                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxWidth: "250px" }}>
+                                                                    {s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
+                                                                        <>
+                                                                            <div
+                                                                                className={getFormPillClass(s.has_parent_assessment)}
+                                                                                onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
+                                                                            >Parent Assessment</div>
+                                                                            <div
+                                                                                className={getFormPillClass(s.has_specialist_assessment)}
+                                                                                onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not yet submitted")}
+                                                                            >Specialist Assessment</div>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <div
+                                                                                className={getFormPillClass(s.parent_current_tracker_submitted)}
+                                                                                onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not yet submitted")}
+                                                                            >Parent Progress</div>
+                                                                            <div
+                                                                                className={getFormPillClass(s.specialist_current_tracker_submitted)}
+                                                                                onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not yet submitted")}
+                                                                            >Specialist Progress</div>
+                                                                            {s.status.toUpperCase() === "INTEGRATED" && (
+                                                                                <div
+                                                                                    className={getFormPillClass(s.teacher_current_tracker_submitted)}
+                                                                                    onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not yet submitted")}
+                                                                                >Teacher Progress</div>
+                                                                            )}
+                                                                        </>
+                                                                    )}
                                                                 </div>
-                                                            </td>
-                                                            <td style={{ padding: "12px" }}>
-                                                                {nextAction ? (
-                                                                    <span style={{
-                                                                        fontSize: "0.72rem",
-                                                                        fontWeight: 650,
-                                                                        padding: "4px 8px",
-                                                                        borderRadius: "6px",
-                                                                        background: nextAction.tone === "warning" ? "#fffbeb" : nextAction.tone === "positive" ? "#f0fdf4" : "#f1f5f9",
-                                                                        color: nextAction.tone === "warning" ? "#b45309" : nextAction.tone === "positive" ? "#166534" : "#475569",
-                                                                        border: `1px solid ${nextAction.tone === "warning" ? "#fde68a" : nextAction.tone === "positive" ? "#bbf7d0" : "#e2e8f0"}`,
-                                                                    }}>{nextAction.label}</span>
-                                                                ) : (
-                                                                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontStyle: "italic" }}>None</span>
-                                                                )}
                                                             </td>
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
                                                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", alignItems: "center" }}>
-                                                                    <Link href={`/workspace?studentId=${s.id}`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
-                                                                        Overview
-                                                                    </Link>
-                                                                    <Link href={`/workspace?studentId=${s.id}&workspace=forms`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
-                                                                        Forms
-                                                                    </Link>
-                                                                    <Link href={`/workspace?studentId=${s.id}&workspace=team`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
-                                                                        Team
-                                                                    </Link>
-                                                                    <Link href={`/workspace?studentId=${s.id}&workspace=reports`} style={{ fontSize: "0.75rem", padding: "4px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", color: "#475569", textDecoration: "none", fontWeight: 600 }} className="hover:bg-slate-100 transition-colors">
-                                                                        Reports
-                                                                    </Link>
+                                                                    {nextAction ? (
+                                                                        <Link 
+                                                                            href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
+                                                                            style={{ 
+                                                                                fontSize: "0.75rem", 
+                                                                                padding: "6px 12px", 
+                                                                                borderRadius: "6px", 
+                                                                                fontWeight: 600,
+                                                                                display: "flex",
+                                                                                alignItems: "center",
+                                                                                gap: "4px"
+                                                                            }} 
+                                                                            className={`${getActionButtonClass(nextAction.tone)} active:scale-95`}
+                                                                        >
+                                                                            {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
+                                                                            {nextAction.label}
+                                                                        </Link>
+                                                                    ) : (
+                                                                        <Link 
+                                                                            href={`/workspace?studentId=${s.id}`} 
+                                                                            style={{ 
+                                                                                fontSize: "0.75rem", 
+                                                                                padding: "6px 12px", 
+                                                                                background: "#f8fafc", 
+                                                                                border: "1px solid #e2e8f0", 
+                                                                                borderRadius: "6px", 
+                                                                                color: "#475569", 
+                                                                                textDecoration: "none", 
+                                                                                fontWeight: 600 
+                                                                            }} 
+                                                                            className="hover:bg-slate-100 active:scale-95 transition-all"
+                                                                        >
+                                                                            Open Workspace
+                                                                        </Link>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -1192,7 +1221,6 @@ export default function AdminDashboard() {
                                     <div className="md:hidden flex flex-col gap-3">
                                         {paginatedStudents.map(s => {
                                             const ss = getStatusStyle(s.status);
-                                            const progress = getStudentProgress(s.status);
                                             const nextAction = s.next_action;
                                             return (
                                                 <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
@@ -1210,31 +1238,63 @@ export default function AdminDashboard() {
                                                     </div>
 
                                                     <div className="flex flex-col gap-2 border-t border-slate-100 pt-3">
-                                                        <div className="flex justify-between items-center text-xs">
-                                                            <span className="text-slate-400 font-semibold">Progress</span>
-                                                            <span className="text-slate-700 font-bold">{progress.pct}%</span>
-                                                        </div>
-                                                        {nextAction && (
-                                                            <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-slate-400 font-semibold">Next Action</span>
-                                                                <span className="font-bold" style={{ color: nextAction.tone === "warning" ? "#b45309" : "#166534" }}>{nextAction.label}</span>
+                                                        <div className="flex flex-col gap-2">
+                                                            <span className="text-slate-400 font-semibold text-xs">
+                                                                {["ENROLLED", "INTEGRATED"].includes(s.status.toUpperCase()) ? "Progress Trackers" : "Assessments"}
+                                                            </span>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
+                                                                    <>
+                                                                        <div
+                                                                            className={getFormPillClass(s.has_parent_assessment)}
+                                                                            onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
+                                                                        >Parent Assessment</div>
+                                                                        <div
+                                                                            className={getFormPillClass(s.has_specialist_assessment)}
+                                                                            onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not yet submitted")}
+                                                                        >Specialist Assessment</div>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <div
+                                                                            className={getFormPillClass(s.parent_current_tracker_submitted)}
+                                                                            onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not yet submitted")}
+                                                                        >Parent Progress</div>
+                                                                        <div
+                                                                            className={getFormPillClass(s.specialist_current_tracker_submitted)}
+                                                                            onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not yet submitted")}
+                                                                        >Specialist Progress</div>
+                                                                        {s.status.toUpperCase() === "INTEGRATED" && (
+                                                                            <div
+                                                                                className={getFormPillClass(s.teacher_current_tracker_submitted)}
+                                                                                onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not yet submitted")}
+                                                                            >Teacher Progress</div>
+                                                                        )}
+                                                                    </>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                        </div>
                                                     </div>
 
-                                                    <div className="border-t border-slate-100 pt-3 flex flex-wrap gap-2 justify-end">
-                                                        <Link href={`/workspace?studentId=${s.id}`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Overview">
-                                                            Overview
-                                                        </Link>
-                                                        <Link href={`/workspace?studentId=${s.id}&workspace=forms`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Forms">
-                                                            Forms
-                                                        </Link>
-                                                        <Link href={`/workspace?studentId=${s.id}&workspace=team`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Team">
-                                                            Team
-                                                        </Link>
-                                                        <Link href={`/workspace?studentId=${s.id}&workspace=reports`} className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors" title="Reports">
-                                                            Reports
-                                                        </Link>
+                                                    <div className="border-t border-slate-100 pt-3 flex flex-wrap gap-2 justify-end w-full">
+                                                        {nextAction ? (
+                                                            <Link 
+                                                                href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
+                                                                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center active:scale-95 ${getActionButtonClass(nextAction.tone)}`} 
+                                                                title={nextAction.label}
+                                                            >
+                                                                {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
+                                                                {nextAction.label}
+                                                            </Link>
+                                                        ) : (
+                                                            <Link 
+                                                                href={`/workspace?studentId=${s.id}`} 
+                                                                className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 active:scale-95 transition-all flex-1 text-center" 
+                                                                title="Open Workspace"
+                                                            >
+                                                                Open Workspace
+                                                            </Link>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );

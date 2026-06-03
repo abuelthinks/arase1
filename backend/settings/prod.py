@@ -5,7 +5,7 @@ Used on Render / Railway / etc. — DEBUG off, PostgreSQL, strict security.
 
 from .base import *  # noqa: F401,F403
 
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # SECRET_KEY MUST be set via environment variable in production
 SECRET_KEY = os.environ['SECRET_KEY']

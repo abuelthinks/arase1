@@ -786,23 +786,40 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             setTeamSubmission(res.data);
             const serverData = res.data?.form_data;
             if (!serverData || !schema) return;
+            
+            // Normalize server payload into section_k -> { fieldId: value } shape
+            // (especially needed for assessments which store a flat dict under "v2")
+            const normalizedServerData = mergeSavedFormData(buildInitialFormData(schema), schema, serverData);
+            
             setFormData((prev: any) => {
                 const next: any = { ...prev };
                 for (const section of schema.sections || []) {
                     const dataKey = section.__dataSection || section.id;
-                    const incoming = serverData[dataKey];
+                    const incoming = normalizedServerData[dataKey];
                     if (!incoming || typeof incoming !== "object") continue;
                     const localSection = next[dataKey] || {};
                     const snapshotSection = serverSnapshot.current[dataKey] || {};
                     const mergedSection: any = { ...localSection };
+                    
                     for (const fieldId of Object.keys(incoming)) {
                         const incomingVal = incoming[fieldId];
                         const localVal = localSection[fieldId];
                         const snapshotVal = snapshotSection[fieldId];
+                        
+                        // Check if field is dirty (locally edited since last sync)
+                        // Ignore array ordering (important for checkboxes)
+                        let isDirty = false;
+                        if (Array.isArray(localVal) && Array.isArray(snapshotVal)) {
+                            const sortedLocal = [...localVal].sort();
+                            const sortedSnap = [...snapshotVal].sort();
+                            isDirty = JSON.stringify(sortedLocal) !== JSON.stringify(sortedSnap);
+                        } else {
+                            isDirty = JSON.stringify(localVal) !== JSON.stringify(snapshotVal);
+                        }
+                        
                         // Field is dirty (locally edited since last sync) if
                         // local diverges from the snapshot. Skip merge in
                         // that case — never overwrite in-progress typing.
-                        const isDirty = JSON.stringify(localVal) !== JSON.stringify(snapshotVal);
                         if (!isDirty) {
                             mergedSection[fieldId] = incomingVal;
                         }
@@ -855,10 +872,13 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 if (res.data) {
                     setTeamSubmission(res.data);
                     if (res.data.form_data && schema) {
-                        setFormData((prev: any) => mergeSavedFormData(prev, schema, res.data.form_data));
-                        // Seed snapshot with initial server values so future
-                        // peer merges can detect what the user has changed.
-                        serverSnapshot.current = JSON.parse(JSON.stringify(res.data.form_data || {}));
+                        setFormData((prev: any) => {
+                            const newMerged = mergeSavedFormData(prev, schema, res.data.form_data);
+                            // Seed snapshot with initial server values so future
+                            // peer merges can detect what the user has changed.
+                            serverSnapshot.current = JSON.parse(JSON.stringify(newMerged));
+                            return newMerged;
+                        });
                     }
                 }
             })
@@ -1102,6 +1122,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 }
             }
 
+            // Seed snapshot with initial form state (including defaults like [] or "")
+            // so that peer merges correctly see these untouched fields as clean.
+            serverSnapshot.current = JSON.parse(JSON.stringify(mergedData));
             setFormData(mergedData);
         };
 

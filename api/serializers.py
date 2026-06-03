@@ -188,7 +188,10 @@ class SelfUserSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     has_parent_assessment = serializers.SerializerMethodField()
+    has_specialist_assessment = serializers.SerializerMethodField()
     parent_current_tracker_submitted = serializers.SerializerMethodField()
+    specialist_current_tracker_submitted = serializers.SerializerMethodField()
+    teacher_current_tracker_submitted = serializers.SerializerMethodField()
     active_cycle_label = serializers.SerializerMethodField()
     latest_final_monthly_report_id = serializers.SerializerMethodField()
     recent_activity_at = serializers.SerializerMethodField()
@@ -200,6 +203,9 @@ class StudentSerializer(serializers.ModelSerializer):
 
     def get_has_parent_assessment(self, obj):
         return ParentAssessment.objects.filter(student=obj).exists()
+
+    def get_has_specialist_assessment(self, obj):
+        return MultidisciplinaryAssessment.objects.filter(student=obj, finalized_at__isnull=False).exists()
 
     def _get_active_cycle(self, obj):
         return (
@@ -214,6 +220,18 @@ class StudentSerializer(serializers.ModelSerializer):
         if not cycle:
             return False
         return ParentProgressTracker.objects.filter(student=obj, report_cycle=cycle).exists()
+
+    def get_specialist_current_tracker_submitted(self, obj):
+        cycle = self._get_active_cycle(obj)
+        if not cycle:
+            return False
+        return MultidisciplinaryProgressTracker.objects.filter(student=obj, report_cycle=cycle, finalized_at__isnull=False).exists()
+
+    def get_teacher_current_tracker_submitted(self, obj):
+        cycle = self._get_active_cycle(obj)
+        if not cycle:
+            return False
+        return SpedProgressTracker.objects.filter(student=obj, report_cycle=cycle).exists()
 
     def get_active_cycle_label(self, obj):
         cycle = self._get_active_cycle(obj)
@@ -293,15 +311,15 @@ class StudentSerializer(serializers.ModelSerializer):
             if not has_parent:
                 return action('Parent assessment', 'warning', 'forms', 'parent_assessment', priority=10)
             if not has_specialist:
-                return action('Assign specialist', 'warning', 'team', team_role='SPECIALIST', priority=20)
+                return action('Assign specialist', 'info', 'team', team_role='SPECIALIST', priority=20)
             if not has_finalized_multi:
-                return action('Specialist assessment', 'warning', 'forms', 'multi_assessment', priority=30)
+                return action('Specialist assessment', 'info', 'forms', 'multi_assessment', priority=30)
 
         if status == 'ASSESSED':
             if latest_iep and latest_iep.status != 'FINAL':
                 return action('Finalize IEP', 'positive', 'reports', view='iep', doc_id=latest_iep.id, priority=10)
             if not latest_iep and has_parent and has_finalized_multi:
-                return action('Generate IEP draft', 'warning', 'reports', view='generator', priority=20)
+                return action('Generate IEP draft', 'info', 'reports', view='generator', priority=20)
             if latest_iep and latest_iep.status == 'FINAL':
                 return action('Ready for placement', 'positive', 'overview', priority=30)
 
@@ -309,7 +327,7 @@ class StudentSerializer(serializers.ModelSerializer):
             if latest_iep and latest_iep.status != 'FINAL':
                 return action('Finalize IEP', 'positive', 'reports', view='iep', doc_id=latest_iep.id, priority=10)
             if not latest_iep and has_parent and has_finalized_multi:
-                return action('Generate IEP draft', 'warning', 'reports', view='generator', priority=20)
+                return action('Generate IEP draft', 'info', 'reports', view='generator', priority=20)
 
         if status == 'INTEGRATED' and not has_teacher:
             return action('Assign teacher', 'warning', 'team', team_role='TEACHER', priority=20)
