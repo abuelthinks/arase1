@@ -46,6 +46,7 @@ export type StudentStatus =
     | "ASSESSMENT_SCHEDULED"
     | "ASSESSED"
     | "ENROLLED"
+    | "INTEGRATED"
     | "ARCHIVED";
 
 

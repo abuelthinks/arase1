@@ -639,7 +639,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
-    const [reportCycleId, setReportCycleId] = useState("1");
+    const [reportCycleId, setReportCycleId] = useState("");
     const [schema, setSchema] = useState<any>(null);
     const [formData, setFormData] = useState<any>({});
     const [studentProfile, setStudentProfile] = useState<any>(null);
@@ -765,9 +765,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     // Full refetch — pulls latest form_data into local state. Used when the
     // user *explicitly* asks to update (e.g. clicks Update on a peer's draft).
     const refetchTeamSubmission = useCallback(async () => {
-        if (!collabInstanceId || !collabFormType) return;
+        const instanceId = teamSubmission?.id ?? collabInstanceId;
+        if (!instanceId || !collabFormType) return;
         try {
-            const res = await api.get(`/api/inputs/${formType}/${collabInstanceId}/`);
+            const res = await api.get(`/api/inputs/${formType}/${instanceId}/`);
             setTeamSubmission(res.data);
             if (res.data?.form_data && schema) {
                 setFormData((prev: any) => mergeSavedFormData(prev, schema, res.data.form_data));
@@ -775,30 +776,65 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         } catch (err) {
             console.debug("collab refetch failed:", err);
         }
-    }, [collabFormType, collabInstanceId, formType, schema]);
+    }, [collabFormType, collabInstanceId, formType, schema, teamSubmission?.id]);
 
     // Selective merge — pulls peer changes for fields the local user hasn't
     // touched since the last sync. Local dirty fields are preserved.
-    const mergePeerChangesIfClean = useCallback(async () => {
-        if (!collabInstanceId || !collabFormType) return;
+    const mergePeerChangesIfClean = useCallback(async (eventFormData?: any, isOwnEcho = false) => {
+        console.debug('[Collab merge] called, collabInstanceId=', collabInstanceId, 'collabFormType=', collabFormType, 'isOwnEcho=', isOwnEcho);
+        if (!collabInstanceId || !collabFormType) {
+            console.debug('[Collab merge] bailing: no instanceId or formType');
+            return;
+        }
         try {
-            const res = await api.get(`/api/inputs/${formType}/${collabInstanceId}/`);
-            setTeamSubmission(res.data);
-            const serverData = res.data?.form_data;
-            if (!serverData || !schema) return;
+            let serverData = eventFormData;
+            if (!serverData) {
+                console.debug('[Collab merge] no event form_data, fetching from API');
+                const res = await api.get(`/api/inputs/${formType}/${collabInstanceId}/`, { params: { _t: Date.now() } });
+                setTeamSubmission(res.data);
+                serverData = res.data?.form_data;
+            }
+            if (!serverData || !schema) {
+                console.debug('[Collab merge] bailing: no serverData or schema', { serverData: !!serverData, schema: !!schema });
+                return;
+            }
             
             // Normalize server payload into section_k -> { fieldId: value } shape
             // (especially needed for assessments which store a flat dict under "v2")
             const normalizedServerData = mergeSavedFormData(buildInitialFormData(schema), schema, serverData);
+            console.debug('[Collab merge] normalizedServerData keys:', Object.keys(normalizedServerData));
+            
+            // Capture a frozen snapshot BEFORE we mutate the ref, so the React 
+            // updater is a pure function (fixing Strict Mode double-invocation bugs).
+            const frozenSnapshot = JSON.parse(JSON.stringify(serverSnapshot.current));
+            
+            // Synchronously update the snapshot ref so future WS messages or
+            // subsequent rapid calls have the correct baseline.
+            for (const section of schema.sections || []) {
+                const dataKey = section.__dataSection || section.id;
+                const incoming = normalizedServerData[dataKey];
+                if (incoming && typeof incoming === "object") {
+                    serverSnapshot.current[dataKey] = { ...(serverSnapshot.current[dataKey] || {}), ...incoming };
+                }
+            }
+            
+            if (isOwnEcho) {
+                // If it's our own echo, we just update the snapshot so our local
+                // edits become "clean" again. We don't overwrite formData.
+                console.debug('[Collab merge] own echo: snapshot updated, skipping setFormData');
+                return;
+            }
             
             setFormData((prev: any) => {
                 const next: any = { ...prev };
+                let mergedCount = 0;
+                let skippedCount = 0;
                 for (const section of schema.sections || []) {
                     const dataKey = section.__dataSection || section.id;
                     const incoming = normalizedServerData[dataKey];
                     if (!incoming || typeof incoming !== "object") continue;
                     const localSection = next[dataKey] || {};
-                    const snapshotSection = serverSnapshot.current[dataKey] || {};
+                    const snapshotSection = frozenSnapshot[dataKey] || {};
                     const mergedSection: any = { ...localSection };
                     
                     for (const fieldId of Object.keys(incoming)) {
@@ -822,11 +858,15 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         // that case — never overwrite in-progress typing.
                         if (!isDirty) {
                             mergedSection[fieldId] = incomingVal;
+                            mergedCount++;
+                        } else {
+                            skippedCount++;
+                            console.debug(`[Collab merge] skipping dirty field ${fieldId}:`, { localVal, snapshotVal, incomingVal });
                         }
                     }
                     next[dataKey] = mergedSection;
-                    serverSnapshot.current[dataKey] = { ...(serverSnapshot.current[dataKey] || {}), ...incoming };
                 }
+                console.debug(`[Collab merge] result: ${mergedCount} fields merged, ${skippedCount} skipped (dirty)`);
                 return next;
             });
         } catch (err) {
@@ -839,18 +879,18 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         instanceId: collabFormType ? collabInstanceId : null,
         currentUserId: user?.user_id,
         onSectionSaved: (event) => {
-            // Skip own echoes.
-            if (event.by.user_id === user?.user_id) return;
-            // Merge peer changes for fields the user hasn't dirtied locally.
-            mergePeerChangesIfClean();
-            if (collabFormType === "assessment" && reportCycleId) {
+            console.debug('[Collab] onSectionSaved fired:', { eventUserId: event.by.user_id, myUserId: user?.user_id, sectionKey: event.section_key, hasFormData: !!event.form_data });
+            const isOwnEcho = event.by.user_id === user?.user_id;
+            console.debug(`[Collab] calling mergePeerChangesIfClean with form_data:`, event.form_data);
+            mergePeerChangesIfClean(event.form_data, isOwnEcho);
+            if (collabFormType === "assessment" && reportCycleId && !isOwnEcho) {
                 refreshSectionContributions(reportCycleId);
             }
         },
         onSectionSubmitted: (event) => {
-            if (event.by.user_id === user?.user_id) return;
-            mergePeerChangesIfClean();
-            if (collabFormType === "assessment" && reportCycleId) {
+            const isOwnEcho = event.by.user_id === user?.user_id;
+            mergePeerChangesIfClean(undefined, isOwnEcho);
+            if (collabFormType === "assessment" && reportCycleId && !isOwnEcho) {
                 refreshSectionContributions(reportCycleId);
             }
         },
@@ -1010,7 +1050,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             } else {
                 if (isSectionScopedAssessment && profileData?.form_statuses?.multi_assessment?.id) {
                     try {
-                        const res = await api.get(`/api/inputs/${formType}/${profileData.form_statuses.multi_assessment.id}/`);
+                        const res = await api.get(`/api/inputs/${formType}/${profileData.form_statuses.multi_assessment.id}/`, {
+                            params: { _t: Date.now() }
+                        });
                         setTeamSubmission(res.data);
                         mergedData = mergeSavedFormData(mergedData, renderSchema, res.data.form_data);
                     } catch (err) {
@@ -1742,17 +1784,17 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         {isSectionScopedAssessment && teamSubmission?.finalized_at && (
                             <div className="mt-3">
                                 {isAdmin ? (
-                                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center justify-between">
+                                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center justify-between gap-3">
                                         <div className="text-amber-800 text-sm">
                                             {teamSubmission?.unlock_requested ? (
-                                                <strong>A specialist has requested to unlock this form.</strong>
+                                                <strong>Unlock requested by specialist.</strong>
                                             ) : (
                                                 <span>This form is finalized and locked.</span>
                                             )}
                                         </div>
                                         <button
                                             onClick={adminUnlockForm}
-                                            className="bg-amber-100 hover:bg-amber-200 text-amber-900 text-sm font-semibold py-1.5 px-3 rounded-md transition-colors"
+                                            className="shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-900 text-sm font-semibold py-1.5 px-3 rounded-md transition-colors"
                                         >
                                             Unlock Form
                                         </button>

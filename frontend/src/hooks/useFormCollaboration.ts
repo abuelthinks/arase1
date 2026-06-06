@@ -108,8 +108,12 @@ export function useFormCollaboration({
     }, [locks, currentUserId]);
 
     useEffect(() => {
-        if (!instanceId) return;
+        if (!instanceId) {
+            console.debug('[Collab WS] skipping connect — no instanceId');
+            return;
+        }
         const id = String(instanceId);
+        console.debug(`[Collab WS] connecting to ${formType}/${id}`);
         let cancelled = false;
 
         const connect = () => {
@@ -126,6 +130,7 @@ export function useFormCollaboration({
             wsRef.current = ws;
 
             ws.onopen = () => {
+                console.debug(`[Collab WS] connected to ${formType}/${id}`);
                 setConnected(true);
                 // Re-acquire any locks we held before a reconnect.
                 for (const key of heldSections.current) {
@@ -138,6 +143,7 @@ export function useFormCollaboration({
                 try { msg = JSON.parse(event.data); } catch { return; }
                 if (!msg || typeof msg !== "object") return;
 
+                console.debug('[Collab WS] received:', msg.type, msg);
                 switch (msg.type) {
                     case "presence.snapshot":
                     case "presence.update":
@@ -158,7 +164,8 @@ export function useFormCollaboration({
                 }
             };
 
-            ws.onclose = () => {
+            ws.onclose = (ev) => {
+                console.debug(`[Collab WS] closed: code=${ev.code} reason=${ev.reason}`);
                 setConnected(false);
                 wsRef.current = null;
                 if (!cancelled) {
@@ -166,7 +173,8 @@ export function useFormCollaboration({
                 }
             };
 
-            ws.onerror = () => {
+            ws.onerror = (ev) => {
+                console.debug('[Collab WS] error:', ev);
                 try { ws.close(); } catch { /* noop */ }
             };
         };

@@ -137,7 +137,13 @@ function UnifiedWorkspaceContent() {
     const normalizedStudentStatus = studentStatus?.toUpperCase().replace(/\s+/g, "_");
 
     const rawWorkspace = searchParams.get("workspace") || (user?.role === "ADMIN" ? "overview" : "forms");
-    const workspace = (user?.role === "ADMIN" && rawWorkspace === "forms") ? "reports" : rawWorkspace;
+    const workspace = user?.role === "PARENT" 
+        ? "forms" 
+        : (user?.role === "ADMIN" && rawWorkspace === "forms") 
+            ? "reports" 
+            : (user?.role !== "ADMIN" && rawWorkspace === "overview")
+                ? "forms"
+                : rawWorkspace;
 
 
     useEffect(() => {

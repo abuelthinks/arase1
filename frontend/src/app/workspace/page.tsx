@@ -178,13 +178,14 @@ function UnifiedWorkspaceContent() {
     );
 
     // -- Master Tab Switcher --
-    // Parents can only access the "forms" workspace (ignore any URL tampering)
     const rawWorkspace = workspaceParam || (user?.role === "ADMIN" ? "overview" : "forms");
     const workspace = user?.role === "PARENT" 
         ? "forms" 
         : (user?.role === "ADMIN" && rawWorkspace === "forms") 
             ? "reports" 
-            : rawWorkspace;
+            : (user?.role !== "ADMIN" && rawWorkspace === "overview")
+                ? "forms"
+                : rawWorkspace;
     const isStudentCurrentlyEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
     const defaultFormTab = user?.role === "PARENT"
         ? (formStatuses?.parent_assessment?.submitted
@@ -998,28 +999,19 @@ function UnifiedWorkspaceContent() {
         const specialists = assignedStaff.filter(s => s.role === "SPECIALIST");
         const teachers = assignedStaff.filter(s => s.role === "TEACHER");
         const recentActivity = buildRecentActivity();
-        const profileRows = [
-            { label: "Grade", value: studentDetails?.grade || "TBD" },
-            { label: "Age", value: calculateAge(studentDetails?.date_of_birth) },
-            { label: "DOB", value: formatDate(studentDetails?.date_of_birth) },
-            { label: "Forms", value: `${submittedForms}/5 submitted` },
-            { label: "Docs", value: docs.length ? `${docs.length} on file` : "None" },
-            { label: "Team", value: assignedStaff.length ? `${assignedStaff.length} assigned` : "None" },
-        ];
         const parentRows = [
             { label: "Name", value: studentDetails?.parent_guardian_name || "Not provided" },
             { label: "Email", value: studentDetails?.parent_email || "Not provided", href: studentDetails?.parent_email ? `mailto:${studentDetails.parent_email}` : undefined },
             { label: "Phone", value: studentDetails?.parent_phone || "Not provided", href: studentDetails?.parent_phone ? `tel:${studentDetails.parent_phone}` : undefined },
         ];
 
-        const statusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: studentStatus };
         const parentInitials = (studentDetails?.parent_guardian_name || "")
             .split(" ").map((p: string) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
         const formsPct = Math.round((submittedForms / 5) * 100);
 
         return (
             <>
-                <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                <div className="hidden">
                     <div className="px-5 py-4 border-b border-slate-200">
                         <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
@@ -1446,12 +1438,9 @@ function UnifiedWorkspaceContent() {
                 (user?.role === "PARENT" && ["parent_tracker"].includes(activeFormTab))
             );
 
-        const currentTabLabel = currentTabConf?.label || "Form";
-        const formsStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: studentStatus };
-
         return (
             <>
-                <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                <div className="hidden">
                     <div className="px-5 py-4 border-b border-slate-200">
                         <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
@@ -1628,18 +1617,97 @@ function UnifiedWorkspaceContent() {
                 : undefined;
         const isGenerator = reportView === "generator";
         const isEmptyState = reportView === "empty";
-        const reportsStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: studentStatus };
-        const activeReportLabel = isGenerator
-            ? "Report Generator"
-            : reportView === "iep"
-                ? (user?.role === "PARENT" ? "Current IEP" : "IEP Master")
-                : reportView === "monthly"
-                    ? (user?.role === "PARENT" ? "Monthly Report" : "Progress Report")
-                    : "Reports";
+        const isIepReadyToGenerate = user?.role === "ADMIN"
+            && ["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "")
+            && !!formStatuses?.multi_assessment?.submitted
+            && iepDocs.length === 0;
+        const reportSecondaryTabs = (
+            <div className="shrink-0 border-b border-slate-200 bg-slate-50/70 px-4 py-2 md:px-6">
+                <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                    {user?.role === "ADMIN" && (
+                        <button
+                            type="button"
+                            onClick={() => handleReportMenuChange("generator")}
+                            title={isIepReadyToGenerate ? "IEP is ready to generate for this student." : undefined}
+                            className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${isIepReadyToGenerate ? "border-amber-300 bg-amber-50 text-amber-800 shadow-sm hover:bg-amber-100 hover:border-amber-400" : isGenerator ? "border-indigo-300 bg-white text-indigo-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                        >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Report Generator
+                            {isIepReadyToGenerate && (
+                                <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-wider text-amber-900">
+                                    IEP ready
+                                </span>
+                            )}
+                        </button>
+                    )}
+
+                    {user?.role === "ADMIN" && (
+                        <>
+                            <div className="mx-1 h-6 w-px shrink-0 bg-slate-200" />
+                            {TABS.map((tab) => {
+                                const isSub = formStatuses?.[tab.id]?.submitted;
+                                const isActive = reportView === tab.id;
+                                const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker")
+                                    ? !isStudentCurrentlyEnrolled
+                                    : (tab.id === "sped_tracker")
+                                        ? studentStatus?.toUpperCase() !== "INTEGRATED"
+                                        : false;
+
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        disabled={isLocked}
+                                        onClick={() => handleReportMenuChange(tab.id)}
+                                        className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${isLocked ? "cursor-not-allowed border-transparent text-slate-400 opacity-70" : isActive ? "border-indigo-300 bg-white text-indigo-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                                        title={isLocked ? "Available after enrollment/integration" : undefined}
+                                    >
+                                        {isLocked ? (
+                                            <Lock className="h-3.5 w-3.5 shrink-0" />
+                                        ) : isSub ? (
+                                            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" strokeWidth={3} />
+                                        ) : (
+                                            <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
+                                        )}
+                                        {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </>
+                    )}
+
+                    <div className="mx-1 h-6 w-px shrink-0 bg-slate-200" />
+                    <button
+                        type="button"
+                        disabled={iepDocs.length === 0}
+                        onClick={() => iepDocs[0] && handleReportMenuChange("iep", iepDocs[0].id.toString())}
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${iepDocs.length === 0 ? "cursor-not-allowed border-transparent text-slate-400 opacity-70" : reportView === "iep" ? "border-indigo-300 bg-white text-indigo-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                    >
+                        <FileText className="h-3.5 w-3.5" />
+                        {user?.role === "PARENT" ? "Current IEP" : "IEP Documents"}
+                        {iepDocs.length > 1 && (
+                            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[0.6rem] font-bold text-indigo-700">{iepDocs.length}</span>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        disabled={monthlyDocs.length === 0}
+                        onClick={() => monthlyDocs[0] && handleReportMenuChange("monthly", monthlyDocs[0].id.toString())}
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${monthlyDocs.length === 0 ? "cursor-not-allowed border-transparent text-slate-400 opacity-70" : reportView === "monthly" ? "border-emerald-300 bg-white text-emerald-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                    >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        {user?.role === "PARENT" ? "Monthly Reports" : "Monthly Progress"}
+                        {monthlyDocs.length > 1 && (
+                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[0.6rem] font-bold text-emerald-700">{monthlyDocs.length}</span>
+                        )}
+                    </button>
+                </div>
+            </div>
+        );
 
         return (
             <>
-                <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                <div className="hidden">
                     <div className="px-5 py-4 border-b border-slate-200">
                         <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
@@ -1759,6 +1827,7 @@ function UnifiedWorkspaceContent() {
 
                 <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
                     {tabBar}
+                    {reportSecondaryTabs}
                     <div className="flex-1 overflow-y-auto">
                         {isGenerator && (
                             <AdminReportsContent propStudentId={studentId as string} propHideNavigation={true} propWorkspacePath="/workspace" />
@@ -2207,7 +2276,7 @@ function UnifiedWorkspaceContent() {
 
         return (
             <>
-                <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                <div className="hidden">
                     <div className="px-5 py-4 border-b border-slate-200">
                         <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
@@ -2245,54 +2314,73 @@ function UnifiedWorkspaceContent() {
 
                 <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
                     {tabBar}
-                    <div className="flex-1 overflow-y-auto p-5 md:p-6">
-                        <div className="mb-5">
-                            <h2 className="text-lg font-bold text-slate-900 m-0">{isSpecialist ? "Assign Specialists by Discipline" : "Available Teachers"}</h2>
-                            <p className="text-sm text-slate-500 mt-1">
-                                {isSpecialist
-                                    ? "Pick one specialist for each required discipline. Multi-specialty staff appear in every group they can cover."
-                                    : "Select staff members to assign to this student's caseload."}
-                            </p>
-
-                            <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={confirmTeamChanges}
-                                    disabled={!teamHasChanges || confirmingTeam}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
-                                >
-                                    <Check size={16} />
-                                    {confirmingTeam ? "Confirming..." : "Confirm Team"}
-                                </button>
-                                {teamHasChanges && (
-                                    <>
+                    <div className="flex-1 overflow-y-auto px-5 md:px-6 pb-5 md:pb-6 relative">
+                        <div className="sticky top-0 z-20 -mx-5 mb-4 border-b border-slate-200 bg-white px-5 py-2.5 shadow-sm md:-mx-6 md:px-6">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5">
                                         <button
                                             type="button"
-                                            onClick={discardTeamChanges}
-                                            disabled={confirmingTeam}
-                                            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                            onClick={() => handleTeamMenuChange("SPECIALIST")}
+                                            className={`inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-bold transition-colors ${isSpecialist ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                                         >
-                                            Cancel Changes
+                                            <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                            Specialists
                                         </button>
-                                        <span className="text-xs font-semibold text-amber-700">Changes not saved yet</span>
-                                    </>
-                                )}
-                            </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleTeamMenuChange("TEACHER")}
+                                            className={`inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-bold transition-colors ${isTeacher ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                                        >
+                                            <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                            Teachers
+                                        </button>
+                                    </div>
 
-                            {isLocked && (
-                                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 shadow-sm">
-                                    <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                    <div>
-                                        <p className="text-sm font-bold text-red-800">Assignment Locked</p>
-                                        <p className="text-xs text-red-700 mt-0.5">
-                                            {isSpecialist
-                                                ? `${lockReason}. Specialty assignments unlock after the Parent Assessment is submitted.`
-                                                : `${lockReason}. Staff cannot be assigned until prerequisite conditions are met.`}
-                                        </p>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={confirmTeamChanges}
+                                            disabled={!teamHasChanges || confirmingTeam}
+                                            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-indigo-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                                        >
+                                            <Check size={14} />
+                                            {confirmingTeam ? "Confirming..." : "Confirm Team"}
+                                        </button>
+                                        {teamHasChanges && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={discardTeamChanges}
+                                                    disabled={confirmingTeam}
+                                                    className="h-7 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                                >
+                                                    Cancel Changes
+                                                </button>
+                                                <span className="text-xs font-semibold text-amber-700">Changes not saved yet</span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
-                            )}
+                                <div className="min-w-0 border-l border-slate-200 pl-3">
+                                    <h2 className="text-base font-bold text-slate-900 m-0">{isSpecialist ? "Assign Specialists by Discipline" : "Available Teachers"}</h2>
+                                </div>
+                            </div>
                         </div>
+
+                        {isLocked && (
+                            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 shadow-sm">
+                                <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                <div>
+                                    <p className="text-sm font-bold text-red-800">Assignment Locked</p>
+                                    <p className="text-xs text-red-700 mt-0.5">
+                                        {isSpecialist
+                                            ? `${lockReason}. Specialty assignments unlock after the Parent Assessment is submitted.`
+                                            : `${lockReason}. Staff cannot be assigned until prerequisite conditions are met.`}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {isSpecialist ? (
                             !isLocked && (
@@ -2587,30 +2675,51 @@ function UnifiedWorkspaceContent() {
         return aName.localeCompare(bName);
     });
 
+    const workspaceStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: studentStatus };
     const tabBar = user?.role !== "PARENT" ? (
-        <div className="flex border-b border-slate-200 shrink-0 bg-white relative z-10">
-            <div className="flex-1 px-4 md:px-6 flex items-end gap-1 overflow-x-auto custom-scrollbar pt-1.5">
-                {user?.role === "ADMIN" && (
-                    <button onClick={() => setWorkspace("overview")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                        Overview
-                    </button>
-                )}
-                {user?.role !== "ADMIN" && (
-                    <button onClick={() => setWorkspace("forms")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                        <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        Forms
-                    </button>
-                )}
-                <button onClick={() => setWorkspace("reports")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                    <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                    Reports
-                </button>
-                {user?.role === "ADMIN" && (
-                    <button onClick={() => setWorkspace("team")} className={`workspace-tab px-5 py-2 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
-                        <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                        Team
-                    </button>
-                )}
+        <div className="border-b border-slate-200 shrink-0 bg-white relative z-10">
+            <div className="flex flex-col gap-2 px-4 py-2 md:px-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-4">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 md:border-r md:border-slate-200 md:pr-4">
+                        <h1 className="m-0 truncate text-lg font-extrabold leading-tight tracking-tight text-slate-900" title={studentName}>
+                            {studentName}
+                        </h1>
+                        {studentStatus && (
+                            <span
+                                className="rounded-full px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider"
+                                style={{
+                                    background: workspaceStatusInfo.bg,
+                                    color: workspaceStatusInfo.color,
+                                }}
+                            >
+                                {workspaceStatusInfo.label || studentStatus}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
+                        {user?.role === "ADMIN" && (
+                            <button onClick={() => setWorkspace("overview")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                Overview
+                            </button>
+                        )}
+                        {user?.role !== "ADMIN" && (
+                            <button onClick={() => setWorkspace("forms")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                Forms
+                            </button>
+                        )}
+                        <button onClick={() => setWorkspace("reports")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                            <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                            Reports
+                        </button>
+                        {user?.role === "ADMIN" && (
+                            <button onClick={() => setWorkspace("team")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                Team
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     ) : null;
@@ -2761,9 +2870,8 @@ function UnifiedWorkspaceContent() {
 
                 {/* Main Workspace Area */}
                 <div className="flex-1 flex flex-col min-w-0 h-full relative z-10 bg-slate-50 md:bg-white overflow-hidden">
-                    <div className={`pt-2 md:pt-3 pb-2 pr-4 md:pr-8 flex-1 flex flex-col min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'pl-10 md:pl-14' : 'pl-4 md:pl-8'}`}>
-                        {/* Unified Card Container */}
-                        <div className="bg-white rounded-xl border border-slate-300 shadow-sm flex-1 flex flex-col overflow-hidden min-h-0">
+                    <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'pl-10 md:pl-14' : ''}`}>
+                        <div className="bg-white flex-1 flex flex-col overflow-hidden min-h-0">
                             
                             {/* Main Body */}
                             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 relative z-0">
