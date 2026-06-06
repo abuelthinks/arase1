@@ -11,9 +11,9 @@ import { useAuth } from "@/context/AuthContext";
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden mb-5">
-            <div className="px-6 py-3.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-50 m-0">{title}</h2>
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-5">
+            <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50">
+                <h2 className="text-sm font-bold text-slate-900 m-0">{title}</h2>
             </div>
             <div className="p-6 flex flex-col gap-3">{children}</div>
         </div>
@@ -23,26 +23,26 @@ function SectionCard({ title, children }: { title: string; children: React.React
 function Field({ label, value, edit, onChange }: { label: string; value: string; edit: boolean; onChange?: (v: string) => void }) {
     return (
         <div>
-            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">{label}</p>
+            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">{label}</p>
             {edit ? (
                 <textarea
                     value={value}
                     onChange={e => onChange?.(e.target.value)}
                     rows={Math.max(2, (value || "").split("\n").length)}
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 text-xs text-slate-900 dark:text-slate-50 resize-y box-border focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-900 resize-y box-border focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
             ) : (
-                <p className="text-xs text-slate-850 dark:text-slate-200 whitespace-pre-wrap m-0 leading-relaxed">{value || "—"}</p>
+                <p className="text-xs text-slate-850 whitespace-pre-wrap m-0 leading-relaxed">{value || "—"}</p>
             )}
         </div>
     );
 }
 
 function PillList({ items }: { items: string[] }) {
-    if (!items || items.length === 0) return <span className="text-xs text-slate-400 dark:text-slate-400">—</span>;
+    if (!items || items.length === 0) return <span className="text-xs text-slate-400">—</span>;
     return (
         <div className="flex flex-wrap gap-1.5">
-            {items.map(i => <span key={i} className="px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[0.7rem] font-semibold">{i}</span>)}
+            {items.map(i => <span key={i} className="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[0.7rem] font-semibold">{i}</span>)}
         </div>
     );
 }
@@ -220,8 +220,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     </svg>
                     Back to Student Profile
                 </button>
-                <span className="text-slate-350 dark:text-slate-650">›</span>
-                <span className="text-slate-900 dark:text-slate-50 text-xs font-bold">
+                <span className="text-slate-350">›</span>
+                <span className="text-slate-900 text-xs font-bold">
                     IEP for {meta.student_name}
                 </span>
             </div>
@@ -230,17 +230,17 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Header */}
             <div className="flex justify-between items-start mb-6 flex-wrap gap-3">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-slate-50 m-0 flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 m-0 flex items-center gap-2.5 flex-wrap">
                         Comprehensive AI-Generated IEP
                         <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded border ${
                             iepStatus === "FINAL" 
-                                ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" 
-                                : "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-200" 
+                                : "bg-amber-100 text-amber-800 border-amber-200"
                         }`}>
                             {iepStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
                     </h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                         {meta.student_name} · Generated {formatDocumentDateTime(meta.created_at)}
                     </p>
                 </div>
@@ -267,7 +267,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                                 <button onClick={() => handleSave("FINAL")} disabled={saving} className="btn-green text-xs py-1.5 px-3">
                                     ✅ Finalize
                                 </button>
-                                <span className="text-[0.7rem] text-slate-500 dark:text-slate-400 italic ml-1">
+                                <span className="text-[0.7rem] text-slate-500 italic ml-1">
                                     {saving ? "Saving…" : "All changes saved"}
                                 </span>
                             </div>
@@ -287,7 +287,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 </div>
                 {s1.team_members?.length > 0 && (
                     <div>
-                        <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">IEP Team Members</p>
+                        <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">IEP Team Members</p>
                         <PillList items={s1.team_members.map((m: any) => `${m.name} (${m.role})`)} />
                     </div>
                 )}
@@ -321,8 +321,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 }).map(([key, lbl]) => {
                     const domain = s4[key] || {};
                     return (
-                        <div key={key} className="py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                            <p className="text-xs font-bold text-sky-600 dark:text-sky-400 mb-2">{lbl}</p>
+                        <div key={key} className="py-3 border-b border-slate-100 last:border-0">
+                            <p className="text-xs font-bold text-sky-600 mb-2">{lbl}</p>
                             <div className="flex flex-col gap-3">
                             {Object.entries(domain).map(([fk, fv]) => (
                                 <Field key={fk} label={fk.replace(/_/g, ' ')} value={String(fv)} edit={editing}
@@ -337,11 +337,11 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Section 5 — Long-Term Goals */}
             <SectionCard title="Section 5 — Long-Term IEP Goals (1 Year)">
                 {s5.map((ltg, i) => (
-                    <div key={ltg.id} className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col gap-3 mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 m-0">{ltg.id} — {ltg.domain}</p>
+                    <div key={ltg.id} className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 flex flex-col gap-3 mb-3 last:mb-0">
+                        <p className="text-xs font-bold text-indigo-600 m-0">{ltg.id} — {ltg.domain}</p>
                         <Field label="Goal" value={ltg.goal} edit={editing}
                             onChange={v => { const copy = [...s5]; copy[i] = { ...copy[i], goal: v }; setIep(prev => prev ? { ...prev, section5_ltg: copy } : prev); }} />
-                        <p className="text-[0.7rem] text-slate-400 dark:text-slate-500 m-0 italic">Disciplines: {ltg.disciplines}</p>
+                        <p className="text-[0.7rem] text-slate-400 m-0 italic">Disciplines: {ltg.disciplines}</p>
                     </div>
                 ))}
             </SectionCard>
@@ -349,8 +349,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Section 6 — Short-Term Objectives */}
             <SectionCard title="Section 6 — Short-Term Objectives (3–4 months)">
                 {s6.map((sto, i) => (
-                    <div key={sto.id} className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col gap-3 mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 m-0">Objective {sto.id} → {sto.ltg_ref}</p>
+                    <div key={sto.id} className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 flex flex-col gap-3 mb-3 last:mb-0">
+                        <p className="text-xs font-bold text-emerald-600 m-0">Objective {sto.id} → {sto.ltg_ref}</p>
                         <Field label="Objective" value={sto.objective} edit={editing}
                             onChange={v => { const c = [...s6]; c[i] = { ...c[i], objective: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-1">
@@ -363,16 +363,16 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                             <Field label="Frequency" value={sto.frequency} edit={editing}
                                 onChange={v => { const c = [...s6]; c[i] = { ...c[i], frequency: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                         </div>
-                        <p className="text-[0.7rem] text-slate-400 dark:text-slate-500 m-0">Responsible: {sto.responsible}</p>
+                        <p className="text-[0.7rem] text-slate-400 m-0">Responsible: {sto.responsible}</p>
                     </div>
                 ))}
             </SectionCard>
 
             {/* Section 7 — Accommodations */}
             <SectionCard title="Section 7 — Accommodations & Modifications">
-                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">Classroom Accommodations</p><PillList items={s7.classroom} /></div>
-                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
-                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1.5">Communication Supports</p><PillList items={s7.communication_supports} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Classroom Accommodations</p><PillList items={s7.classroom} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Communication Supports</p><PillList items={s7.communication_supports} /></div>
             </SectionCard>
 
             {/* Section 8 — Therapies */}
@@ -389,12 +389,12 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 }).map(([key, lbl]) => {
                     const t = s8[key] || {};
                     return (
-                        <div key={key} className="py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 m-0 mb-1">{lbl}</p>
+                        <div key={key} className="py-2 border-b border-slate-100 last:border-0">
+                            <p className="text-xs font-bold text-slate-800 m-0 mb-1">{lbl}</p>
                             {key === "shadow_teacher" ? (
-                                <span className="text-xs text-slate-500 dark:text-slate-400">Hours: {t.hours || "N/A"}</span>
+                                <span className="text-xs text-slate-500">Hours: {t.hours || "N/A"}</span>
                             ) : (
-                                <span className="text-xs text-slate-500 dark:text-slate-400">{t.frequency || "N/A"} — {t.focus_areas || "N/A"}</span>
+                                <span className="text-xs text-slate-500">{t.frequency || "N/A"} — {t.focus_areas || "N/A"}</span>
                             )}
                         </div>
                     );
@@ -410,8 +410,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     academic_tasks: "Academic Tasks"
                 }).map(([key, lbl]) => (
                     <div key={key} className="mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-sky-600 dark:text-sky-400 mb-1">{lbl}</p>
-                        <ul className="m-0 pl-5 text-xs text-slate-800 dark:text-slate-250 leading-relaxed list-disc">
+                        <p className="text-xs font-bold text-sky-600 mb-1">{lbl}</p>
+                        <ul className="m-0 pl-5 text-xs text-slate-800 leading-relaxed list-disc">
                             {(s9[key] || []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                         </ul>
                     </div>
@@ -425,33 +425,33 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         {/* Last updated badge */}
                         {iep.section10_progress.last_updated && (
                             <div className="flex items-center gap-2">
-                                <span className="text-[0.7rem] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full">
+                                <span className="text-[0.7rem] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
                                     📅 Last updated: Week of {iep.section10_progress.last_updated}
                                 </span>
                                 {iep.section10_progress.report_period && (
-                                    <span className="text-[0.7rem] text-slate-500 dark:text-slate-400">({iep.section10_progress.report_period})</span>
+                                    <span className="text-[0.7rem] text-slate-500">({iep.section10_progress.report_period})</span>
                                 )}
                             </div>
                         )}
 
                         {/* GAS Score Table */}
                         <div>
-                            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2">Goal Achievement Scores</p>
+                            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">Goal Achievement Scores</p>
                             <div className="flex flex-col gap-2.5">
                                 {iep.section10_progress.gas_scores.map((g: any, i: number) => {
-                                    const sc = g.score >= 5 ? { bg: "bg-emerald-100 dark:bg-emerald-950/40", color: "text-emerald-800 dark:text-emerald-300" }
-                                        : g.score >= 4 ? { bg: "bg-emerald-50 dark:bg-emerald-950/20", color: "text-emerald-700 dark:text-emerald-400" }
-                                        : g.score >= 3 ? { bg: "bg-blue-100 dark:bg-blue-950/40", color: "text-blue-800 dark:text-blue-300" }
-                                        : g.score >= 2 ? { bg: "bg-amber-100 dark:bg-amber-950/40", color: "text-amber-800 dark:text-amber-300" }
-                                        : { bg: "bg-rose-100 dark:bg-rose-950/40", color: "text-rose-800 dark:text-rose-300" };
+                                    const sc = g.score >= 5 ? { bg: "bg-emerald-100", color: "text-emerald-800" }
+                                        : g.score >= 4 ? { bg: "bg-emerald-50", color: "text-emerald-700" }
+                                        : g.score >= 3 ? { bg: "bg-blue-100", color: "text-blue-800" }
+                                        : g.score >= 2 ? { bg: "bg-amber-100", color: "text-amber-800" }
+                                        : { bg: "bg-rose-100", color: "text-rose-800" };
                                     return (
-                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
+                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
                                             <div className={`w-8.5 h-8.5 rounded-lg ${sc.bg} ${sc.color} flex items-center justify-center text-sm font-extrabold shrink-0`}>
                                                 {g.score}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold text-slate-900 dark:text-slate-50 m-0 truncate">{g.goal_id} — {g.domain}</p>
-                                                <p className="text-[0.7rem] text-slate-500 dark:text-slate-400 m-0 mt-0.5 truncate">{g.note}</p>
+                                                <p className="text-xs font-bold text-slate-900 m-0 truncate">{g.goal_id} — {g.domain}</p>
+                                                <p className="text-[0.7rem] text-slate-500 m-0 mt-0.5 truncate">{g.note}</p>
                                             </div>
                                         </div>
                                     );
@@ -465,9 +465,9 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         )}
                         {/* Regression Indicators */}
                         {iep.section10_progress.regression_indicators && iep.section10_progress.regression_indicators !== "No regression indicators reported." && (
-                            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50">
-                                <p className="text-[0.7rem] font-bold text-rose-800 dark:text-rose-400 mb-1 uppercase tracking-wider">⚠ Regression Indicators</p>
-                                <p className="text-xs text-rose-900 dark:text-rose-300 m-0 leading-relaxed">{iep.section10_progress.regression_indicators}</p>
+                            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-100">
+                                <p className="text-[0.7rem] font-bold text-rose-800 mb-1 uppercase tracking-wider">⚠ Regression Indicators</p>
+                                <p className="text-xs text-rose-900 m-0 leading-relaxed">{iep.section10_progress.regression_indicators}</p>
                             </div>
                         )}
                         {/* Attendance */}
@@ -476,42 +476,42 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         )}
                     </div>
                 ) : (
-                    <p className="text-xs text-slate-400 dark:text-slate-450 italic m-0">Progress data will be populated automatically after the first monthly report is generated.</p>
+                    <p className="text-xs text-slate-400 italic m-0">Progress data will be populated automatically after the first monthly report is generated.</p>
                 )}
             </SectionCard>
 
             {/* Section 11 — Review (placeholder) */}
             <SectionCard title="Section 11 — IEP Review Summary">
-                <p className="text-xs text-slate-400 dark:text-slate-450 italic m-0">Quarterly review summary will be generated automatically.</p>
+                <p className="text-xs text-slate-400 italic m-0">Quarterly review summary will be generated automatically.</p>
             </SectionCard>
 
             {/* Section 12 — Signatures */}
             <SectionCard title="Section 12 — Signatures">
-                <p className="text-xs text-slate-400 dark:text-slate-450 italic m-0">Signatures will be collected upon IEP approval.</p>
+                <p className="text-xs text-slate-400 italic m-0">Signatures will be collected upon IEP approval.</p>
             </SectionCard>
 
             {/* Audit History Modal */}
             {showAuditModal && (
-                <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 flex items-center justify-center z-[1000] p-4" onClick={() => setShowAuditModal(false)}>
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-[500px] relative border border-slate-200 dark:border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 bg-transparent border-none text-xl cursor-pointer text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400">×</button>
-                        <h2 className="m-0 text-slate-900 dark:text-slate-50 text-xl font-extrabold mb-5">Document Audit History</h2>
+                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[1000] p-4" onClick={() => setShowAuditModal(false)}>
+                    <div className="bg-white rounded-2xl p-8 w-full max-w-[500px] relative border border-slate-200 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 bg-transparent border-none text-xl cursor-pointer text-slate-400 hover:text-slate-600">×</button>
+                        <h2 className="m-0 text-slate-900 text-xl font-extrabold mb-5">Document Audit History</h2>
                         <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2">
                             {auditHistory.length === 0 ? (
-                                <p className="text-slate-500 dark:text-slate-400 m-0 text-sm">No history found.</p>
+                                <p className="text-slate-500 m-0 text-sm">No history found.</p>
                             ) : (
                                 auditHistory.map((item, idx) => (
                                     <div key={item.id} className="flex gap-4 relative">
-                                        {idx !== auditHistory.length - 1 && <div className="absolute w-0.5 bg-slate-200 dark:bg-slate-750 top-6 bottom-[-16px] left-[11px]" />}
-                                        <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center z-10 shrink-0">
-                                            <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                                        {idx !== auditHistory.length - 1 && <div className="absolute w-0.5 bg-slate-200 top-6 bottom-[-16px] left-[11px]" />}
+                                        <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center z-10 shrink-0">
+                                            <div className="w-2 h-2 rounded-full bg-indigo-600" />
                                         </div>
                                         <div>
-                                            <p className="m-0 text-sm font-bold text-slate-900 dark:text-slate-50">
+                                            <p className="m-0 text-sm font-bold text-slate-900">
                                                 {item.action === "GENERATED" ? "AI Generated Draft" : item.action === "EDITED_DRAFT" ? "Draft Saved" : "Document Finalized"}
                                             </p>
-                                            <p className="m-0 text-xs text-slate-500 dark:text-slate-400">By {item.edited_by}</p>
-                                            <p className="m-0 text-[0.7rem] text-slate-400 dark:text-slate-500 mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
+                                            <p className="m-0 text-xs text-slate-500">By {item.edited_by}</p>
+                                            <p className="m-0 text-[0.7rem] text-slate-400 mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 ))

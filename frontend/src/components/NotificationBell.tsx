@@ -23,6 +23,14 @@ function timeAgo(dateString: string) {
     return `${years}y ago`;
 }
 
+function normalizeNotificationLink(notif: Notification) {
+    const legacyStudentDashboardMatch = notif.link?.match(/^\/students\/(\d+)\/dashboard\/?$/);
+    if (legacyStudentDashboardMatch && notif.notification_type === "UNLOCK_REQUESTED") {
+        return `/workspace?studentId=${legacyStudentDashboardMatch[1]}&workspace=forms&tab=multi_assessment`;
+    }
+    return notif.link;
+}
+
 /* ─── Type-based styling ──────────────────────────────────────────────────── */
 
 interface TypeStyle {
@@ -148,6 +156,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                 {notifications.map((notif) => {
                                     const style = getTypeStyle(notif.notification_type);
                                     const isExpanded = expandedIds.has(notif.id);
+                                    const notificationLink = normalizeNotificationLink(notif);
                                     
                                     const handleToggleExpand = (e: React.MouseEvent) => {
                                         e.preventDefault();
@@ -176,9 +185,9 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                 </div>
 
                                                 <div className="flex-1 min-w-0">
-                                                    {notif.link ? (
+                                                    {notificationLink ? (
                                                         <Link 
-                                                            href={notif.link}
+                                                            href={notificationLink}
                                                             onClick={() => handleNotificationClick(notif)}
                                                             className="block text-slate-800 hover:text-blue-600 focus:outline-none"
                                                         >

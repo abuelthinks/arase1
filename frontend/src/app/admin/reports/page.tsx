@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect, Suspense } from "react";
+import { type ReactNode, useCallback, useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
@@ -35,9 +35,10 @@ interface AdminReportsContentProps {
     propStudentId?: string;
     propHideNavigation?: boolean;
     propWorkspacePath?: string;
+    propInlineTools?: ReactNode;
 }
 
-export function AdminReportsContent({ propStudentId, propHideNavigation, propWorkspacePath }: AdminReportsContentProps) {
+export function AdminReportsContent({ propStudentId, propHideNavigation, propWorkspacePath, propInlineTools }: AdminReportsContentProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -251,6 +252,8 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                     </>
                 )}
             </div>
+
+            {propInlineTools}
 
             {errorMsg && (
                 <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--bg-danger-light)", color: "var(--text-danger)", border: "1px solid var(--border-danger)", marginBottom: "1rem", fontSize: "0.85rem" }}>
