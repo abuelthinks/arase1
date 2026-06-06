@@ -5,7 +5,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
-import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon, Plus } from "lucide-react";
+import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon, Plus, LayoutGrid, List } from "lucide-react";
+import { statusColorHex } from "@/lib/role-colors";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
@@ -35,7 +36,20 @@ export default function DashboardPage() {
     const [statusFilters, setStatusFilters] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
+
+    useEffect(() => {
+        const savedViewMode = window.localStorage.getItem("arase:dashboard-view-mode");
+        if (savedViewMode === "list" || savedViewMode === "grid") {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    const handleViewModeChange = (mode: "grid" | "list") => {
+        setViewMode(mode);
+        window.localStorage.setItem("arase:dashboard-view-mode", mode);
+    };
 
     useEffect(() => {
         const fetchStudents = async () => {
@@ -248,14 +262,34 @@ export default function DashboardPage() {
                             Loading...
                         </div>
                     ) : students.length === 0 ? (
-                        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-12 text-center">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
-                                <UsersIcon className="h-6 w-6" aria-hidden="true" />
+                        user?.role === "PARENT" ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <Link
+                                    href="/parent-onboarding"
+                                    className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50/30 no-underline"
+                                    style={{ minHeight: "260px" }}
+                                >
+                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                                        <Plus className="h-6 w-6" strokeWidth={2.5} />
+                                    </div>
+                                    <h3 className="m-0 text-lg font-bold text-slate-700 transition-colors group-hover:text-indigo-700">
+                                        Register a New Child
+                                    </h3>
+                                    <p className="mt-2 text-sm text-slate-500 max-w-[200px]">
+                                        Start an onboarding assessment for a new student.
+                                    </p>
+                                </Link>
                             </div>
-                            <p className="m-0 text-sm font-medium text-slate-500">
-                                {user?.role === "PARENT" ? "No children assigned yet. Please contact the administrator." : "No students assigned at this time."}
-                            </p>
-                        </div>
+                        ) : (
+                            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-12 text-center">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                                    <UsersIcon className="h-6 w-6" aria-hidden="true" />
+                                </div>
+                                <p className="m-0 text-sm font-medium text-slate-500">
+                                    No students assigned at this time.
+                                </p>
+                            </div>
+                        )
                     ) : (
                         <div>
                             {/* Action Bar (Search, Filters) */}
@@ -315,6 +349,22 @@ export default function DashboardPage() {
                                                     </button>
                                                 )}
                                             </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 shrink-0 ml-auto">
+                                            <button 
+                                                onClick={() => handleViewModeChange("grid")} 
+                                                className={`rounded-md p-1.5 transition-colors ${viewMode === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+                                                aria-label="Grid View"
+                                            >
+                                                <LayoutGrid className="h-4 w-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleViewModeChange("list")} 
+                                                className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+                                                aria-label="List View"
+                                            >
+                                                <List className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     </div>
 
@@ -458,6 +508,54 @@ export default function DashboardPage() {
                                             </p>
                                         </Link>
                                     )}
+                                </div>
+                            ) : viewMode === "list" ? (
+                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "1px solid var(--border-light, #e2e8f0)" }}>
+                                    <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse", textAlign: "left", background: "white" }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc" }}>Student</th>
+                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc" }}>Grade</th>
+                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc" }}>Status</th>
+                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc", textAlign: "right" }}>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedStudents.map(s => {
+                                                const ss = statusColorHex(s.status || "PENDING_ASSESSMENT");
+                                                return (
+                                                    <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid var(--border-light, #e2e8f0)", verticalAlign: "middle" }}>
+                                                        <td style={{ padding: "12px 16px" }}>
+                                                            <Link href={getStudentWorkspaceHref(s.id)} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "#0f172a", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                {s.first_name} {s.last_name}
+                                                            </Link>
+                                                        </td>
+                                                        <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "#64748b" }}>{s.grade && s.grade !== "TBD" ? `Grade ${s.grade}` : "Unassigned"}</td>
+                                                        <td style={{ padding: "12px 16px" }}>
+                                                            <span style={{
+                                                                fontSize: "0.72rem",
+                                                                textTransform: "uppercase",
+                                                                background: ss.bg,
+                                                                color: ss.color,
+                                                                padding: "4px 10px",
+                                                                borderRadius: "12px",
+                                                                fontWeight: "bold",
+                                                                letterSpacing: "0.3px",
+                                                            }}>{s.status?.replace(/_/g, " ") || "Pending"}</span>
+                                                        </td>
+                                                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                                                            <Link
+                                                                href={getStudentWorkspaceHref(s.id)}
+                                                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 no-underline transition-colors hover:bg-indigo-100"
+                                                            >
+                                                                Open Workspace
+                                                            </Link>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">

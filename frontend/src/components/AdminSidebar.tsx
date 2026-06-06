@@ -13,7 +13,7 @@ function Badge({ count, tone }: { count: number; tone: "indigo" | "amber" }) {
         ? "bg-amber-100 text-amber-800"
         : "bg-indigo-100 text-indigo-800";
     return (
-        <span className={`ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[0.65rem] font-extrabold ${cls}`}>
+        <span className={`ml-auto inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[0.65rem] font-extrabold ${cls}`}>
             {count}
         </span>
     );
@@ -66,7 +66,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className={`hidden md:flex flex-col bg-white border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[180px] p-4'}`}>
+            <aside className={`hidden md:flex flex-col bg-white border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[204px] p-4'}`}>
                 {/* Logo */}
                 <button
                     type="button"
@@ -83,9 +83,9 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
 
                 {/* Nav */}
                 <nav className="flex flex-col gap-1 w-full" aria-label="Admin navigation">
-                    <Link href="/workspace" aria-current={activeTab === 'workspace' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Workspace">
-                        <LayoutTemplate size={18} />
-                        {!collapsed && <span className="truncate">Workspace</span>}
+                    <Link href="/workspace" aria-current={activeTab === 'workspace' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Workspace">
+                        <LayoutTemplate size={18} className="shrink-0" />
+                        {!collapsed && <span className="min-w-0 flex-1 truncate">Workspace</span>}
                     </Link>
 
                     {!collapsed && (
@@ -95,13 +95,13 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                     )}
                     {collapsed && <div className="my-2 h-px bg-slate-200" />}
                     
-                    <Link href="/dashboard?tab=analytics" aria-current={activeTab === 'analytics' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Analytics">
-                        <BarChart3 size={18} />
-                        {!collapsed && <span className="truncate">Analytics</span>}
+                    <Link href="/dashboard?tab=analytics" aria-current={activeTab === 'analytics' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Analytics">
+                        <BarChart3 size={18} className="shrink-0" />
+                        {!collapsed && <span className="min-w-0 flex-1 truncate">Analytics</span>}
                     </Link>
-                    <Link href="/dashboard?tab=students" aria-current={activeTab === 'students' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Student Roster">
-                        <GraduationCap size={18} />
-                        {!collapsed && <span className="truncate">Student Roster</span>}
+                    <Link href="/dashboard?tab=students" aria-current={activeTab === 'students' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Students">
+                        <GraduationCap size={18} className="shrink-0" />
+                        {!collapsed && <span className="min-w-0 flex-1 truncate">Students</span>}
                         {!collapsed && <Badge count={awaitingReviewCount} tone="indigo" />}
                         {collapsed && awaitingReviewCount > 0 && (
                             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white leading-none">
@@ -117,13 +117,13 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                     )}
                     {collapsed && <div className="my-2 h-px bg-slate-200" />}
 
-                    <Link href="/dashboard?tab=users" aria-current={activeTab === 'users' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="System Users">
-                        <UsersRound size={18} />
-                        {!collapsed && <span className="truncate">System Users</span>}
+                    <Link href="/dashboard?tab=users" aria-current={activeTab === 'users' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="System Users">
+                        <UsersRound size={18} className="shrink-0" />
+                        {!collapsed && <span className="min-w-0 flex-1 truncate">System Users</span>}
                     </Link>
-                    <Link href="/dashboard?tab=invitations" aria-current={activeTab === 'invitations' ? 'page' : undefined} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Pending Invites">
-                        <Mail size={18} />
-                        {!collapsed && <span className="truncate">Pending Invites</span>}
+                    <Link href="/dashboard?tab=invitations" aria-current={activeTab === 'invitations' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Registration">
+                        <Mail size={18} className="shrink-0" />
+                        {!collapsed && <span className="min-w-0 flex-1 truncate">Registration</span>}
                         {!collapsed && <Badge count={pendingInviteCount} tone="amber" />}
                         {collapsed && pendingInviteCount > 0 && (
                             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white leading-none">
@@ -138,18 +138,18 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                     <button
                         onClick={logout}
                         title="Log Out"
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
-                        <LogOut size={18} />
-                        {!collapsed && <span className="truncate">Log Out</span>}
+                        <LogOut size={18} className="shrink-0" />
+                        {!collapsed && <span className="min-w-0 flex-1 truncate">Log Out</span>}
                     </button>
                     <button
                         onClick={onToggle}
                         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
-                        {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
-                        {!collapsed && <span className="truncate">Collapse</span>}
+                        {collapsed ? <PanelLeft size={18} className="shrink-0" /> : <PanelLeftClose size={18} className="shrink-0" />}
+                        {!collapsed && <span className="min-w-0 flex-1 truncate">Collapse</span>}
                     </button>
                 </div>
             </aside>
@@ -173,7 +173,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                 </Link>
                 <Link href="/dashboard?tab=invitations" className={`relative flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'invitations' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
                     <Mail size={20} className={activeTab === 'invitations' ? "stroke-[2.5px]" : ""} />
-                    <span className="text-[0.65rem] font-medium">Invites</span>
+                    <span className="text-[0.65rem] font-medium">Registration</span>
                     {pendingInviteCount > 0 && (
                         <span className="absolute top-1.5 right-[calc(50%-22px)] inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.55rem] font-extrabold text-white">{pendingInviteCount}</span>
                     )}

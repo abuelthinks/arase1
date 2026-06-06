@@ -5,12 +5,13 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap, CheckCircle2, FileUp, Loader2, Play, Trash2, XCircle } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
 import { roleColorHex, statusColorHex } from "@/lib/role-colors";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import CustomSelect from "@/components/CustomSelect";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
@@ -35,6 +36,12 @@ interface UserData {
     specialties?: SpecialistSpecialty[];
     assigned_students_count: number;
     assigned_student_names: string[];
+}
+
+interface BulkEmailEntry {
+    email: string;
+    status: 'pending' | 'sending' | 'success' | 'error';
+    errorMessage?: string;
 }
 
 interface InvitationData {
@@ -106,10 +113,10 @@ const getActionTypeStyle = (type: DashboardAction["type"]) => {
 };
 
 const getFormPillClass = (isSubmitted?: boolean) => {
-    return `cursor-pointer text-[0.65rem] font-bold px-2 py-1 rounded-xl border transition-colors duration-200 ${
+    return `cursor-pointer text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-colors duration-200 ${
         isSubmitted 
             ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300" 
-            : "border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-500 hover:border-slate-300"
+            : "border-slate-300 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-400"
     }`;
 };
 
@@ -144,10 +151,10 @@ export default function AdminDashboard() {
 
     // Student search & filter
     const [studentSearch, setStudentSearch] = useState("");
-    const [statusFilters, setStatusFilters] = useState<string[]>([]);
+    const [activeStatusTab, setActiveStatusTab] = useState<string>("");
     
     // Student Sorting
-    const [studentSortConfig, setStudentSortConfig] = useState<{ key: 'id' | 'name' | 'grade' | 'status' | null, direction: 'asc' | 'desc' | null }>({ key: null, direction: null });
+    const [studentSortConfig, setStudentSortConfig] = useState<{ key: 'id' | 'name' | 'grade' | 'status' | null; direction: 'asc' | 'desc' | null }>({ key: 'status', direction: 'asc' });
 
     // Student Pagination
     const [studentPage, setStudentPage] = useState(1);
@@ -175,31 +182,117 @@ export default function AdminDashboard() {
     const [invitationPage, setInvitationPage] = useState(1);
     const [invitationItemsPerPage, setInvitationItemsPerPage] = useState(10);
 
-    // Modal state for User
-    const [showUserModal, setShowUserModal] = useState(false);
-    const [newUser, setNewUser] = useState({
-        
-        password: '',
-        confirm_password: '',
-        email: '',
-        role: 'TEACHER',
-        specialty: '' as SpecialistSpecialty | "",
-        specialties: [] as SpecialistSpecialty[],
-        first_name: '',
-        last_name: ''
-    });
-    const [userFormError, setUserFormError] = useState("");
-    const [creatingUser, setCreatingUser] = useState(false);
+
 
     // Modal state for Inviting User
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('PARENT');
 
-    // Modal state for Student
-    const [showStudentModal, setShowStudentModal] = useState(false);
-    const [newStudent, setNewStudent] = useState({ first_name: '', last_name: '', date_of_birth: '', parent_email: '' });
-    const [creatingStudent, setCreatingStudent] = useState(false);
+    // Bulk Registration State
+    const [bulkRole, setBulkRole] = useState("PARENT");
+    const [bulkInputText, setBulkInputText] = useState("");
+    const [bulkEmails, setBulkEmails] = useState<BulkEmailEntry[]>([]);
+    const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
+
+    // Bulk Registration Handlers
+    const extractBulkEmails = (text: string) => {
+        const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g;
+        const found = text.match(emailRegex) || [];
+        
+        const currentEmails = new Set(bulkEmails.map(e => e.email.toLowerCase()));
+        const newEntries: BulkEmailEntry[] = [];
+        
+        found.forEach(e => {
+            const lower = e.toLowerCase();
+            if (!currentEmails.has(lower)) {
+                currentEmails.add(lower);
+                newEntries.push({ email: lower, status: 'pending' });
+            }
+        });
+
+        if (newEntries.length > 0) {
+            setBulkEmails(prev => [...prev, ...newEntries]);
+            toast.success(`Extracted ${newEntries.length} new email(s)`);
+        } else if (text.trim().length > 0) {
+            toast.info("No new valid emails found in the text.");
+        }
+        setBulkInputText("");
+    };
+
+    const handleBulkFileUpload = (file: File | null) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target?.result as string;
+            extractBulkEmails(text);
+        };
+        reader.readAsText(file);
+    };
+
+    const handleBulkDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleBulkFileUpload(file);
+    };
+
+    const removeBulkEmail = (index: number) => {
+        setBulkEmails(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const clearAllBulkEmails = () => {
+        if (confirm("Are you sure you want to clear the entire list?")) {
+            setBulkEmails([]);
+        }
+    };
+
+    const handleBulkSendInvites = async () => {
+        const pendingCount = bulkEmails.filter(e => e.status === 'pending' || e.status === 'error').length;
+        if (pendingCount === 0) {
+            toast.error("No pending emails to process.");
+            return;
+        }
+
+        if (!confirm(`Are you ready to send invitations to ${pendingCount} users?`)) {
+            return;
+        }
+
+        setIsBulkProcessing(true);
+        const updatedList = [...bulkEmails];
+        let successCount = 0;
+
+        for (let i = 0; i < updatedList.length; i++) {
+            if (updatedList[i].status === 'success') continue;
+            
+            updatedList[i].status = 'sending';
+            setBulkEmails([...updatedList]);
+
+            try {
+                await api.post("/api/invitations/", { email: updatedList[i].email, role: bulkRole });
+                updatedList[i].status = 'success';
+                successCount++;
+            } catch (err: any) {
+                updatedList[i].status = 'error';
+                updatedList[i].errorMessage = extractApiError(err, "Failed to send");
+            }
+            setBulkEmails([...updatedList]);
+        }
+
+        setIsBulkProcessing(false);
+        if (successCount > 0) {
+            toast.success(`Successfully sent ${successCount} invitations!`);
+            fetchData(); // Refresh the pending invites table
+        }
+        
+        // Remove successful emails from list to clear it up
+        setTimeout(() => {
+            setBulkEmails(prev => prev.filter(e => e.status !== 'success'));
+        }, 3000);
+    };
+
+
 
     // Modal state for Delete User Confirmation
     const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
@@ -240,7 +333,7 @@ export default function AdminDashboard() {
     }, [fetchData]);
 
     const dashboardEditing =
-        showUserModal || showInviteModal || showStudentModal ||
+        showInviteModal ||
         !!userToDelete || !!inviteToRevoke || !!inviteToResend || !!createdInvite;
     useRealtimeRefresh({
         targets: ['dashboard', 'users', 'staff', 'invitations'],
@@ -257,13 +350,33 @@ export default function AdminDashboard() {
 
     /* ─── Filtered, Sorted, and Paginated Students ───────────────────────── */
 
-    const uniqueStatuses = Array.from(new Set(students.map(s => s.status)));
+    const statusPriority: Record<string, number> = {
+        "PENDING_ASSESSMENT": 1,
+        "ASSESSMENT_SCHEDULED": 2,
+        "ASSESSED": 3,
+        "ENROLLED": 4,
+        "INTEGRATED": 5,
+        "ARCHIVED": 6
+    };
+    const uniqueStatuses = Array.from(new Set(students.map(s => s.status))).sort((a, b) => (statusPriority[a] || 99) - (statusPriority[b] || 99));
+    const statusCounts = students.reduce<Record<string, number>>((acc, student) => {
+        acc[student.status] = (acc[student.status] || 0) + 1;
+        return acc;
+    }, {});
+    const effectiveStatusTab = activeStatusTab || (uniqueStatuses.length > 0 ? uniqueStatuses[0] : "");
+    const statusFilterOptions = uniqueStatuses.map(status => ({
+        status,
+        label: toTitleCase(status.replace(/_/g, " ")),
+        count: statusCounts[status] || 0,
+        style: getStatusStyle(status),
+    }));
+    const activeStatusLabel = effectiveStatusTab ? toTitleCase(effectiveStatusTab.replace(/_/g, " ")) : "Students";
 
     const processedStudents = students.filter(s => {
         const searchTerms = studentSearch.toLowerCase().trim().split(/\s+/);
         const searchableString = `${s.first_name} ${s.last_name} ${s.id}`.toLowerCase();
         const matchesSearch = searchTerms.every(term => searchableString.includes(term));
-        const matchesStatus = statusFilters.length === 0 || statusFilters.includes(s.status);
+        const matchesStatus = s.status === effectiveStatusTab;
         return matchesSearch && matchesStatus;
     });
 
@@ -281,8 +394,16 @@ export default function AdminDashboard() {
                 aVal = a.grade;
                 bVal = b.grade;
             } else if (studentSortConfig.key === 'status') {
-                aVal = a.status;
-                bVal = b.status;
+                const statusPriority: Record<string, number> = {
+                    "PENDING_ASSESSMENT": 1,
+                    "ASSESSMENT_SCHEDULED": 2,
+                    "ASSESSED": 3,
+                    "ENROLLED": 4,
+                    "INTEGRATED": 5,
+                    "ARCHIVED": 6
+                };
+                aVal = statusPriority[a.status] || 99;
+                bVal = statusPriority[b.status] || 99;
             }
             if (aVal < bVal) return studentSortConfig.direction === 'asc' ? -1 : 1;
             if (aVal > bVal) return studentSortConfig.direction === 'asc' ? 1 : -1;
@@ -387,12 +508,7 @@ export default function AdminDashboard() {
         });
     };
 
-    const toggleStudentStatusFilter = (status: string) => {
-        setStatusFilters(prev => 
-            prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
-        );
-        setStudentPage(1);
-    };
+
 
     const handleInvitationSort = (key: 'email' | 'role' | 'date') => {
         setInvitationSortConfig(current => {
@@ -438,82 +554,32 @@ export default function AdminDashboard() {
         setInvitationPage(1);
     }, [invitationSearch, invitationItemsPerPage]);
 
-    const handleCreateUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setUserFormError("");
 
-        // Password confirmation
-        if (newUser.password !== newUser.confirm_password) {
-            setUserFormError("Passwords do not match.");
-            return;
-        }
-        if (newUser.password.length < 6) {
-            setUserFormError("Password must be at least 6 characters.");
-            return;
-        }
 
-        setCreatingUser(true);
-        try {
-            const payload = {
-                
-                password: newUser.password,
-                email: newUser.email,
-                role: newUser.role,
-                specialties: newUser.role === "SPECIALIST" ? newUser.specialties : [],
-                first_name: toTitleCase(newUser.first_name),
-                last_name: toTitleCase(newUser.last_name),
-            };
-            await api.post("/api/users/", payload);
-            setShowUserModal(false);
-            setNewUser({  password: '', confirm_password: '', email: '', role: 'TEACHER', specialty: '', specialties: [], first_name: '', last_name: '' });
-            fetchData();
-            toast.success("User created successfully");
-        } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to create user"));
-        } finally {
-            setCreatingUser(false);
-        }
-    };
-
+    const [invitingUser, setInvitingUser] = useState(false);
     const handleInviteUser = async (e: React.FormEvent) => {
         e.preventDefault();
+        setInvitingUser(true);
         try {
-            const response = await api.post("/api/invitations/", { email: inviteEmail, role: inviteRole });
             const issuedEmail = inviteEmail;
+            if (inviteRole === 'PARENT') {
+                await api.post("/api/students/", { parent_email: inviteEmail });
+                toast.success("Student registered and parent invited successfully");
+            } else {
+                const response = await api.post("/api/invitations/", { email: inviteEmail, role: inviteRole });
+                toast.success(`Invitation sent to ${issuedEmail}.`);
+                if (response.data?.token) {
+                    setCreatedInvite({ email: issuedEmail, token: response.data.token });
+                }
+            }
             setShowInviteModal(false);
             setInviteEmail('');
             setInviteRole('PARENT');
             fetchData();
-            toast.success(`Invitation sent to ${issuedEmail}.`);
-            if (response.data?.token) {
-                setCreatedInvite({ email: issuedEmail, token: response.data.token });
-            }
         } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to send invite"));
-        }
-    };
-
-    const handleCreateStudent = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setCreatingStudent(true);
-        try {
-            const payload = {
-                first_name: toTitleCase(newStudent.first_name),
-                last_name: toTitleCase(newStudent.last_name),
-                date_of_birth: newStudent.date_of_birth,
-                parent_email: newStudent.parent_email,
-                status: 'PENDING_ASSESSMENT',
-                grade: 'TBD',
-            };
-            await api.post("/api/students/", payload);
-            setShowStudentModal(false);
-            setNewStudent({ first_name: '', last_name: '', date_of_birth: '', parent_email: '' });
-            fetchData();
-            toast.success("Student registered successfully");
-        } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to register student"));
+            toast.error(extractApiError(err, "Failed to complete action"));
         } finally {
-            setCreatingStudent(false);
+            setInvitingUser(false);
         }
     };
 
@@ -646,26 +712,26 @@ export default function AdminDashboard() {
                 </h2>
                 <p className="mt-2 text-base text-slate-500">
                     {activeTab === "analytics" && adminActionSummary}
-                    {activeTab === "students" && `Manage all registered students. Showing ${processedStudents.length} of ${students.length}.`}
+                    {activeTab === "students" && `Manage all registered students. ${students.length} total records.`}
                     {activeTab === "users" && `Manage active system users. Showing ${processedUsers.length} of ${users.length}.`}
-                    {activeTab === "invitations" && `Track and revoke pending invitations. Showing ${processedInvitations.length} of ${pendingInvitations.length}.`}
+                    {activeTab === "invitations" && `Manage user registrations and track pending invitations. Showing ${processedInvitations.length} of ${pendingInvitations.length}.`}
                 </p>
             </div>
                 {/* Desktop only: card wrapper. Mobile: px-4 content padding */}
-                <div className="p-4 sm:p-6 md:p-8 md:glass-panel md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] md:min-h-[60vh]">
+                <div className={`p-4 sm:p-6 md:p-8 md:glass-panel md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] ${activeTab === "students" ? "" : "md:min-h-[60vh]"}`}>
                     {/* Mobile-only title */}
                     <div className="md:hidden mb-5">
                         <h2 className="m-0 text-xl font-bold text-slate-800">
                             {activeTab === "analytics" && "Analytics Dashboard"}
                             {activeTab === "students" && <>Student Roster <span className="text-base font-normal text-slate-400">({processedStudents.length})</span></>}
                             {activeTab === "users" && <>System Users <span className="text-base font-normal text-slate-400">({processedUsers.length})</span></>}
-                            {activeTab === "invitations" && <>Pending Invitations <span className="text-base font-normal text-slate-400">({processedInvitations.length})</span></>}
+                            {activeTab === "invitations" && <>Registration <span className="text-base font-normal text-slate-400">({processedInvitations.length})</span></>}
                         </h2>
                         <p className="m-0 mt-1 text-sm text-slate-400">
                             {activeTab === "analytics" && "Live pipeline health, actions, staffing coverage, and invitation risk."}
                             {activeTab === "students" && "Manage all registered students in the system."}
                             {activeTab === "users" && "Manage active system users and clinical roles."}
-                            {activeTab === "invitations" && "Track and revoke pending access invitations."}
+                            {activeTab === "invitations" && "Manage user registrations and track pending invitations."}
                         </p>
                     </div>
                     {loading ? (
@@ -688,34 +754,12 @@ export default function AdminDashboard() {
                                 <div className="flex flex-wrap items-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => setShowStudentModal(true)}
+                                        onClick={() => setShowInviteModal(true)}
                                         className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-500 border border-indigo-500"
                                     >
                                         <UserPlus className="h-4 w-4" aria-hidden="true" />
-                                        Register student
+                                        Registration
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowInviteModal(true)}
-                                        className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
-                                    >
-                                        <Mail className="h-4 w-4" aria-hidden="true" />
-                                        Invite user
-                                    </button>
-                                    <Link
-                                        href="/admin/iep"
-                                        className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300 no-underline"
-                                    >
-                                        <FileCheck2 className="h-4 w-4" aria-hidden="true" />
-                                        IEP generator
-                                    </Link>
-                                    <Link
-                                        href="/admin/reports"
-                                        className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300 no-underline"
-                                    >
-                                        <BarChart3 className="h-4 w-4" aria-hidden="true" />
-                                        Reports
-                                    </Link>
                                 </div>
                             </div>
 
@@ -977,10 +1021,9 @@ export default function AdminDashboard() {
                     ) : activeTab === "students" ? (
 
                         <div>
-                            {/* Action Bar (Search, Filters, Button) */}
-                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
-                                <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
-                                    <div className="relative w-full md:flex-1 md:max-w-[400px]">
+                            <div className="flex flex-col lg:flex-row justify-between gap-4 mb-4 items-start">
+                                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full lg:flex-1 min-w-0">
+                                    <div className="relative w-full md:flex-1 md:max-w-[420px]">
                                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         <input
                                             type="text"
@@ -996,88 +1039,87 @@ export default function AdminDashboard() {
                                                 height: "38px",
                                                 outline: "none",
                                                 boxSizing: "border-box",
-                                                background: "#f8fafc",
+                                                background: "#ffffff",
                                             }}
                                         />
                                     </div>
-                                    <div className="flex gap-2 items-center overflow-x-auto w-full md:w-auto pb-1 md:pb-0" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-                                        {uniqueStatuses.map(s => {
-                                            const isActive = statusFilters.includes(s);
-                                            return (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => toggleStudentStatusFilter(s)}
-                                                    style={{
-                                                        padding: "6px 14px",
-                                                        borderRadius: "20px",
-                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
-                                                        fontSize: "0.8rem",
-                                                        fontWeight: isActive ? 600 : 400,
-                                                        background: isActive ? '#eff6ff' : '#f8fafc',
-                                                        color: isActive ? 'var(--accent-primary)' : '#475569',
-                                                        cursor: "pointer",
-                                                        transition: "all 0.2s"
-                                                    }}
-                                                >
-                                                    {s}
-                                                </button>
-                                            );
-                                        })}
-                                        {(studentSearch || statusFilters.length > 0) && (
-                                            <button 
-                                                onClick={() => { setStudentSearch(''); setStatusFilters([]); }}
-                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
-                                            >
-                                                Clear Filters
-                                            </button>
-                                        )}
-                                    </div>
+                                    {studentSearch && (
+                                        <button
+                                            onClick={() => setStudentSearch('')}
+                                            className="h-[38px] whitespace-nowrap rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            Clear Search
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="w-full md:w-auto flex items-center shrink-0">
-                                    <button onClick={() => setShowStudentModal(true)} className="btn-primary w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
-                                        + Register New Student
+                                    <button onClick={() => setShowInviteModal(true)} className="btn-primary w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
+                                        + Registration
                                     </button>
                                 </div>
                             </div>
-                            
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
-                                <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} students</span>
-                                {students.length > 10 && (
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                        <span>Show:</span>
-                                        <select
-                                            value={studentItemsPerPage}
-                                            onChange={(e) => setStudentItemsPerPage(Number(e.target.value))}
-                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
-                                        >
-                                            <option value={10}>10</option>
-                                            <option value={25}>25</option>
-                                            <option value={50}>50</option>
-                                            <option value={100}>100</option>
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
 
-                            {processedStudents.length === 0 ? (
-                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-                                    {students.length === 0
-                                        ? "No students in the system yet."
-                                        : studentSearch && statusFilters.length > 0
-                                            ? `No students match "${studentSearch}" with the selected status filters. Try clearing one.`
-                                            : studentSearch
-                                                ? `No students match "${studentSearch}". Try a different search term.`
-                                                : statusFilters.length > 0
-                                                    ? `No students match the selected status filters.`
-                                                    : "No students to show."}
-                                </p>
-                            ) : (
-                                <>
-                                    <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "2px solid var(--border-light)" }}>
-                                        <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "left" }}>
+                            <div className="w-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
+                                    <div className="flex justify-end">
+                                        {students.length > 10 && (
+                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                                <span>Show</span>
+                                                <select
+                                                    value={studentItemsPerPage}
+                                                    onChange={(e) => setStudentItemsPerPage(Number(e.target.value))}
+                                                    className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400"
+                                                >
+                                                    <option value={10}>10</option>
+                                                    <option value={25}>25</option>
+                                                    <option value={50}>50</option>
+                                                    <option value={100}>100</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {statusFilterOptions.length > 0 && (
+                                        <div className={`${students.length > 10 ? 'mt-3' : ''} flex flex-wrap gap-2`}>
+                                            {statusFilterOptions.map(option => {
+                                                const isActive = effectiveStatusTab === option.status;
+                                                return (
+                                                    <button
+                                                        key={option.status}
+                                                        onClick={() => { setActiveStatusTab(option.status); setStudentPage(1); }}
+                                                        aria-pressed={isActive}
+                                                        className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 text-xs font-bold transition-colors duration-200 ${isActive ? 'shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'}`}
+                                                        style={isActive ? { background: option.style.bg, borderColor: option.style.color, color: option.style.color, cursor: 'pointer' } : { cursor: 'pointer' }}
+                                                    >
+                                                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: option.style.color }} />
+                                                        <span className="uppercase">{option.label}</span>
+                                                        <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-white/75' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {option.count}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-0">
+                                    {processedStudents.length === 0 ? (
+                                        <div className="p-8">
+                                            <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1", margin: 0 }}>
+                                                {students.length === 0
+                                                    ? "No students in the system yet."
+                                                    : studentSearch
+                                                        ? `No ${activeStatusLabel.toLowerCase()} students match "${studentSearch}". Try a different search term.`
+                                                        : `No ${activeStatusLabel.toLowerCase()} students to show.`}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="hidden md:block" style={{ overflowX: "auto", width: "100%" }}>
+                                                <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ID
                                                             <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
@@ -1085,7 +1127,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             NAME
                                                             <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
@@ -1093,7 +1135,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             GRADE
                                                             <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
@@ -1101,18 +1143,10 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleStudentSort('status')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                            STATUS
-                                                            <span style={{ opacity: studentSortConfig.key === 'status' ? 1 : 0.3 }}>
-                                                                {studentSortConfig.key === 'status' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
-                                                            </span>
-                                                        </div>
+                                                    <th style={{ padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>
+                                                        {["ENROLLED", "INTEGRATED"].includes(effectiveStatusTab.toUpperCase()) ? "FORMS STATUS (PROGRESS)" : "FORMS STATUS (ASSESSMENT)"}
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>
-                                                        {statusFilters.length > 0 && statusFilters.every(f => ["ENROLLED", "INTEGRATED"].includes(f.toUpperCase())) ? "PROGRESS TRACKERS" : "FORMS STATUS"}
-                                                    </th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>ACTION</th>
+                                                    <th style={{ padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>ACTION</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1129,45 +1163,33 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{s.grade}</td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <span style={{
-                                                                    fontSize: "0.72rem",
-                                                                    textTransform: "uppercase",
-                                                                    background: ss.bg,
-                                                                    color: ss.color,
-                                                                    padding: "4px 10px",
-                                                                    borderRadius: "12px",
-                                                                    fontWeight: "bold",
-                                                                    letterSpacing: "0.3px",
-                                                                }}>{s.status.replace(/_/g, " ")}</span>
-                                                            </td>
-                                                            <td style={{ padding: "12px" }}>
                                                                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxWidth: "250px" }}>
                                                                     {s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
                                                                         <>
                                                                             <div
                                                                                 className={getFormPillClass(s.has_parent_assessment)}
                                                                                 onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
-                                                                            >Parent Assessment</div>
+                                                                            >Parent</div>
                                                                             <div
                                                                                 className={getFormPillClass(s.has_specialist_assessment)}
                                                                                 onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not yet submitted")}
-                                                                            >Specialist Assessment</div>
+                                                                            >Specialist</div>
                                                                         </>
                                                                     ) : (
                                                                         <>
                                                                             <div
                                                                                 className={getFormPillClass(s.parent_current_tracker_submitted)}
                                                                                 onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not yet submitted")}
-                                                                            >Parent Progress</div>
+                                                                            >Parent</div>
                                                                             <div
                                                                                 className={getFormPillClass(s.specialist_current_tracker_submitted)}
                                                                                 onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not yet submitted")}
-                                                                            >Specialist Progress</div>
+                                                                            >Specialist</div>
                                                                             {s.status.toUpperCase() === "INTEGRATED" && (
                                                                                 <div
                                                                                     className={getFormPillClass(s.teacher_current_tracker_submitted)}
                                                                                     onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not yet submitted")}
-                                                                                >Teacher Progress</div>
+                                                                                >Teacher</div>
                                                                             )}
                                                                         </>
                                                                     )}
@@ -1176,22 +1198,44 @@ export default function AdminDashboard() {
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
                                                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", alignItems: "center" }}>
                                                                     {nextAction ? (
-                                                                        <Link 
-                                                                            href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
-                                                                            style={{ 
-                                                                                fontSize: "0.75rem", 
-                                                                                padding: "6px 12px", 
-                                                                                borderRadius: "6px", 
-                                                                                fontWeight: 600,
-                                                                                display: "flex",
-                                                                                alignItems: "center",
-                                                                                gap: "4px"
-                                                                            }} 
-                                                                            className={`${getActionButtonClass(nextAction.tone)} active:scale-95`}
-                                                                        >
-                                                                            {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
-                                                                            {nextAction.label}
-                                                                        </Link>
+                                                                        nextAction.tone === "waiting" ? (
+                                                                            <button 
+                                                                                onClick={() => toast.info(`Action locked: ${nextAction.label === 'Awaiting Parent' ? 'Waiting for the parent to submit their initial assessment.' : 'Waiting for the clinical team to finalize their evaluations.'}`)}
+                                                                                style={{ 
+                                                                                    fontSize: "0.75rem", 
+                                                                                    padding: "6px 12px", 
+                                                                                    borderRadius: "6px", 
+                                                                                    fontWeight: 600,
+                                                                                    display: "flex",
+                                                                                    alignItems: "center",
+                                                                                    gap: "4px",
+                                                                                    background: ss.bg,
+                                                                                    color: ss.color,
+                                                                                    cursor: "help",
+                                                                                    border: "none"
+                                                                                }} 
+                                                                                className="hover:opacity-80 transition-opacity"
+                                                                            >
+                                                                                {nextAction.label}
+                                                                            </button>
+                                                                        ) : (
+                                                                            <Link 
+                                                                                href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
+                                                                                style={{ 
+                                                                                    fontSize: "0.75rem", 
+                                                                                    padding: "6px 12px", 
+                                                                                    borderRadius: "6px", 
+                                                                                    fontWeight: 600,
+                                                                                    display: "flex",
+                                                                                    alignItems: "center",
+                                                                                    gap: "4px"
+                                                                                }} 
+                                                                                className={`${getActionButtonClass(nextAction.tone)} active:scale-95`}
+                                                                            >
+                                                                                {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
+                                                                                {nextAction.label}
+                                                                            </Link>
+                                                                        )
                                                                     ) : (
                                                                         <Link 
                                                                             href={`/workspace?studentId=${s.id}`} 
@@ -1218,7 +1262,7 @@ export default function AdminDashboard() {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="md:hidden flex flex-col gap-3">
+                                    <div className="md:hidden flex flex-col gap-3 p-3 bg-slate-50/50">
                                         {paginatedStudents.map(s => {
                                             const ss = getStatusStyle(s.status);
                                             const nextAction = s.next_action;
@@ -1248,27 +1292,27 @@ export default function AdminDashboard() {
                                                                         <div
                                                                             className={getFormPillClass(s.has_parent_assessment)}
                                                                             onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
-                                                                        >Parent Assessment</div>
+                                                                        >Parent</div>
                                                                         <div
                                                                             className={getFormPillClass(s.has_specialist_assessment)}
                                                                             onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not yet submitted")}
-                                                                        >Specialist Assessment</div>
+                                                                        >Specialist</div>
                                                                     </>
                                                                 ) : (
                                                                     <>
                                                                         <div
                                                                             className={getFormPillClass(s.parent_current_tracker_submitted)}
                                                                             onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not yet submitted")}
-                                                                        >Parent Progress</div>
+                                                                        >Parent</div>
                                                                         <div
                                                                             className={getFormPillClass(s.specialist_current_tracker_submitted)}
                                                                             onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not yet submitted")}
-                                                                        >Specialist Progress</div>
+                                                                        >Specialist</div>
                                                                         {s.status.toUpperCase() === "INTEGRATED" && (
                                                                             <div
                                                                                 className={getFormPillClass(s.teacher_current_tracker_submitted)}
                                                                                 onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not yet submitted")}
-                                                                            >Teacher Progress</div>
+                                                                            >Teacher</div>
                                                                         )}
                                                                     </>
                                                                 )}
@@ -1278,14 +1322,30 @@ export default function AdminDashboard() {
 
                                                     <div className="border-t border-slate-100 pt-3 flex flex-wrap gap-2 justify-end w-full">
                                                         {nextAction ? (
-                                                            <Link 
-                                                                href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
-                                                                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center active:scale-95 ${getActionButtonClass(nextAction.tone)}`} 
-                                                                title={nextAction.label}
-                                                            >
-                                                                {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
-                                                                {nextAction.label}
-                                                            </Link>
+                                                            nextAction.tone === "waiting" ? (
+                                                                <button 
+                                                                    onClick={() => toast.info(`Action locked: ${nextAction.label === 'Awaiting Parent' ? 'Waiting for the parent to submit their initial assessment.' : 'Waiting for the clinical team to finalize their evaluations.'}`)}
+                                                                    style={{ 
+                                                                        background: ss.bg,
+                                                                        color: ss.color,
+                                                                        cursor: "help",
+                                                                        border: "none"
+                                                                    }} 
+                                                                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center hover:opacity-80 transition-opacity" 
+                                                                    title={nextAction.label}
+                                                                >
+                                                                    {nextAction.label}
+                                                                </button>
+                                                            ) : (
+                                                                <Link 
+                                                                    href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
+                                                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center active:scale-95 ${getActionButtonClass(nextAction.tone)}`} 
+                                                                    title={nextAction.label}
+                                                                >
+                                                                    {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
+                                                                    {nextAction.label}
+                                                                </Link>
+                                                            )
                                                         ) : (
                                                             <Link 
                                                                 href={`/workspace?studentId=${s.id}`} 
@@ -1302,6 +1362,8 @@ export default function AdminDashboard() {
                                     </div>
                                 </>
                             )}
+                                </div>
+                            </div>
                             
                             {/* Pagination Controls */}
                             {processedStudents.length > 0 && totalStudentPages > 1 && (
@@ -1379,12 +1441,6 @@ export default function AdminDashboard() {
                                             </button>
                                         )}
                                     </div>
-                                </div>
-                                <div className="w-full md:w-auto flex items-center shrink-0">
-                                    <button onClick={() => setShowUserModal(true)} className="btn-primary inline-flex items-center justify-center gap-2 w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap" }}>
-                                        <UserPlus className="h-4 w-4" aria-hidden="true" />
-                                        Create New User
-                                    </button>
                                 </div>
                             </div>
                             
@@ -1576,7 +1632,133 @@ export default function AdminDashboard() {
                         </div>
                     ) : activeTab === "invitations" ? (
                         <div>
-                            {/* Action Bar (Search, Filters, Button) */}
+                            {/* Bulk Registration Panel */}
+                            <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200 mb-8">
+                                <div className="mb-5">
+                                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 m-0">
+                                        <Mail className="text-indigo-600" size={20} />
+                                        Send Invites
+                                    </h2>
+                                    <p className="text-sm text-slate-500 m-0 mt-1">
+                                        Send individual or bulk invitations. Paste emails or drop a CSV file.
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                                    {/* Left Column: Role & Input */}
+                                    <div className="lg:col-span-1 flex flex-col gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                                                Account Role
+                                            </label>
+                                            <CustomSelect 
+                                                value={bulkRole}
+                                                onChange={setBulkRole}
+                                                disabled={isBulkProcessing}
+                                                options={[
+                                                    { value: 'PARENT', label: 'Parent' },
+                                                    { value: 'TEACHER', label: 'Teacher' },
+                                                    { value: 'SPECIALIST', label: 'Specialist' }
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div className="flex-1 flex flex-col min-h-[250px]">
+                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide flex justify-between">
+                                                <span>Add Emails</span>
+                                                <span className="font-normal text-slate-400 normal-case">Paste or drop CSV</span>
+                                            </label>
+                                            <div 
+                                                className={`flex-1 relative border-2 border-dashed rounded-xl transition-all duration-200 flex flex-col overflow-hidden ${isDragOver ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'} ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}
+                                                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                                                onDragLeave={() => setIsDragOver(false)}
+                                                onDrop={handleBulkDrop}
+                                            >
+                                                <textarea
+                                                    className="w-full h-full p-4 bg-transparent resize-none outline-none text-sm placeholder:text-slate-400"
+                                                    placeholder="Enter emails separated by commas, spaces, or newlines..."
+                                                    value={bulkInputText}
+                                                    onChange={(e) => setBulkInputText(e.target.value)}
+                                                    disabled={isBulkProcessing}
+                                                />
+                                                <div className="absolute bottom-3 right-3 flex gap-2">
+                                                    <label className="cursor-pointer bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 p-2 rounded-lg shadow-sm transition-all hover:shadow">
+                                                        <FileUp size={16} />
+                                                        <input type="file" accept=".csv,.txt" className="hidden" onChange={(e) => handleBulkFileUpload(e.target.files?.[0] || null)} disabled={isBulkProcessing} />
+                                                    </label>
+                                                    <button 
+                                                        onClick={() => extractBulkEmails(bulkInputText)}
+                                                        disabled={!bulkInputText.trim() || isBulkProcessing}
+                                                        className="bg-indigo-600 text-white p-2 rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition-all hover:shadow"
+                                                    >
+                                                        <ArrowRight size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Column: Review List */}
+                                    <div className="lg:col-span-2 flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden min-h-[300px]">
+                                        <div className="px-4 py-3 border-b border-slate-200 bg-white flex justify-between items-center">
+                                            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 m-0">
+                                                <ClipboardList size={16} className="text-slate-400" />
+                                                Review List
+                                                <span className="bg-slate-100 text-slate-600 text-xs py-0.5 px-2 rounded-full font-medium border border-slate-200">
+                                                    {bulkEmails.length}
+                                                </span>
+                                            </h3>
+                                            {bulkEmails.length > 0 && !isBulkProcessing && (
+                                                <button onClick={clearAllBulkEmails} className="text-xs font-bold text-red-500 hover:text-red-700">Clear All</button>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 max-h-[300px]">
+                                            {bulkEmails.length === 0 ? (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
+                                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+                                                        <Mail size={20} className="text-slate-300" />
+                                                    </div>
+                                                    <p className="text-sm font-medium m-0">List is empty</p>
+                                                    <p className="text-xs m-0">Add emails to start sending invites.</p>
+                                                </div>
+                                            ) : (
+                                                bulkEmails.map((entry, idx) => (
+                                                    <div key={`${entry.email}-${idx}`} className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-all ${entry.status === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : entry.status === 'error' ? 'bg-red-50 border-red-200 text-red-800' : entry.status === 'sending' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-white border-slate-200 text-slate-700'}`}>
+                                                        <div className="flex items-center gap-3 truncate">
+                                                            {entry.status === 'success' ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : entry.status === 'error' ? <XCircle size={16} className="text-red-500 shrink-0" /> : entry.status === 'sending' ? <Loader2 size={16} className="text-indigo-500 animate-spin shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-slate-200 shrink-0" />}
+                                                            <div className="flex flex-col truncate">
+                                                                <span className="font-medium truncate">{entry.email}</span>
+                                                                {entry.errorMessage && <span className="text-xs text-red-600 mt-0.5 truncate">{entry.errorMessage}</span>}
+                                                            </div>
+                                                        </div>
+                                                        {entry.status === 'pending' && !isBulkProcessing && (
+                                                            <button onClick={() => removeBulkEmail(idx)} className="text-slate-400 hover:text-red-500 p-1">
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        <div className="p-4 border-t border-slate-200 bg-white">
+                                            <button 
+                                                onClick={handleBulkSendInvites}
+                                                disabled={isBulkProcessing || bulkEmails.filter(e => e.status === 'pending' || e.status === 'error').length === 0}
+                                                className={`w-full py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isBulkProcessing ? 'bg-indigo-400 cursor-not-allowed' : bulkEmails.filter(e => e.status === 'pending' || e.status === 'error').length === 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-[0_4px_12px_-4px_rgba(79,70,229,0.4)] hover:shadow-[0_6px_16px_-4px_rgba(79,70,229,0.5)]'}`}
+                                            >
+                                                {isBulkProcessing ? <><Loader2 size={18} className="animate-spin" /> Sending Invites...</> : <><Play size={18} className="fill-current" /> Send Invites</>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 m-0 mb-4">
+                                Pending Invites
+                            </h2>
+
+                            {/* Action Bar (Search, Filters) */}
                             <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
                                 <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
                                     <div className="relative w-full md:flex-1 md:max-w-[400px]">
@@ -1631,11 +1813,6 @@ export default function AdminDashboard() {
                                             </button>
                                         )}
                                     </div>
-                                </div>
-                                <div className="w-full md:w-auto flex items-center shrink-0">
-                                    <button onClick={() => setShowInviteModal(true)} className="btn-secondary w-full md:w-auto" style={{ padding: "8px 16px", height: "38px", whiteSpace: "nowrap", background: "#f8fafc", color: "var(--accent-primary)", border: "1px solid var(--accent-primary)", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
-                                        ✉️ Invite New User
-                                    </button>
                                 </div>
                             </div>
                             
@@ -1826,129 +2003,57 @@ export default function AdminDashboard() {
                     ) : null}
                 </div>
 
-            {/* ── Create User Modal ───────────────────────────────────────── */}
-            {showUserModal && (
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                    <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "420px", maxWidth: "90%" }}>
-                        <h2 style={{ marginTop: 0 }}>Create User Account</h2>
-                        {userFormError && (
-                            <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "10px", borderRadius: "6px", marginBottom: "1rem", fontSize: "0.85rem", fontWeight: "bold" }}>
-                                {userFormError}
-                            </div>
-                        )}
-                        <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            <div style={{ display: "flex", gap: "1rem" }}>
-                                <input required placeholder="First Name" value={newUser.first_name} onChange={e => setNewUser({ ...newUser, first_name: e.target.value })} className="form-input" style={{ width: "50%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                                <input required placeholder="Last Name" value={newUser.last_name} onChange={e => setNewUser({ ...newUser, last_name: e.target.value })} className="form-input" style={{ width: "50%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            </div>
-                            <input required type="email" placeholder="Email Address" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <div style={{ display: "flex", gap: "1rem" }}>
-                                <input required type="password" placeholder="Password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="form-input" style={{ width: "50%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                                <input required type="password" placeholder="Confirm Password" value={newUser.confirm_password}
-                                    onChange={e => setNewUser({ ...newUser, confirm_password: e.target.value })}
-                                    className="form-input"
-                                    style={{
-                                        width: "50%", padding: "8px", borderRadius: "4px",
-                                        border: `1px solid ${newUser.confirm_password && newUser.password !== newUser.confirm_password ? '#ef4444' : '#ccc'}`,
-                                    }}
-                                />
-                            </div>
-                            {newUser.confirm_password && newUser.password !== newUser.confirm_password && (
-                                <p style={{ color: "#ef4444", fontSize: "0.8rem", margin: "-6px 0 0 0" }}>Passwords do not match</p>
-                            )}
-                            <select required value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value, specialties: e.target.value === "SPECIALIST" ? newUser.specialties : [] })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}>
-                                <option value="ADMIN">Admin</option>
-                                <option value="TEACHER">Teacher</option>
-                                <option value="SPECIALIST">Specialist</option>
-                                <option value="PARENT">Parent</option>
-                            </select>
-                            {newUser.role === "SPECIALIST" && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "10px", border: "1px solid #ccc", borderRadius: "4px" }}>
-                                    <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#475569", margin: "0 0 4px 0", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                                        Specialties (select one or more)
-                                    </p>
-                                    {SPECIALIST_SPECIALTIES.map(option => {
-                                        const checked = newUser.specialties.includes(option);
-                                        return (
-                                            <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#0f172a", cursor: "pointer" }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={checked}
-                                                    onChange={() => {
-                                                        setNewUser(prev => ({
-                                                            ...prev,
-                                                            specialties: checked
-                                                                ? prev.specialties.filter(s => s !== option)
-                                                                : [...prev.specialties, option],
-                                                        }));
-                                                    }}
-                                                    style={{ width: 16, height: 16, accentColor: "#4f46e5" }}
-                                                />
-                                                {option}
-                                            </label>
-                                        );
-                                    })}
-                                    {newUser.specialties.length === 0 && (
-                                        <p style={{ fontSize: "0.78rem", color: "#dc2626", margin: "4px 0 0 0" }}>
-                                            Select at least one specialty.
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                            <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                                <button type="submit" className="btn-primary" style={{ flex: 1, padding: "10px", opacity: creatingUser ? 0.6 : 1 }} disabled={creatingUser}>
-                                    {creatingUser ? "Creating..." : "Create"}
-                                </button>
-                                <button type="button" onClick={() => { setShowUserModal(false); setUserFormError(""); }} style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
-            {/* ── Create Student Modal ────────────────────────────────────── */}
-            {showStudentModal && (
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                    <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
-                        <h2 style={{ marginTop: 0, fontWeight: 500, color: "#334155" }}>Register Student</h2>
-                        <form onSubmit={handleCreateStudent} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            <input required placeholder="First Name *" value={newStudent.first_name} onChange={e => setNewStudent({ ...newStudent, first_name: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <input required placeholder="Last Name *" value={newStudent.last_name} onChange={e => setNewStudent({ ...newStudent, last_name: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                <label style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: 400 }}>
-                                    Child's Date of Birth <span style={{ color: "#ef4444" }}>*</span>
-                                </label>
-                                <input required type="date" value={newStudent.date_of_birth} onChange={e => setNewStudent({ ...newStudent, date_of_birth: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            </div>
-                            <input required placeholder="Parent Email *" type="email" value={newStudent.parent_email} onChange={e => setNewStudent({ ...newStudent, parent_email: e.target.value })} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
 
-                            <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                                <button type="submit" className="btn-primary" style={{ flex: 1, padding: "10px", opacity: creatingStudent ? 0.6 : 1 }} disabled={creatingStudent}>
-                                    {creatingStudent ? "Registering..." : "Register"}
-                                </button>
-                                <button type="button" onClick={() => setShowStudentModal(false)} style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+
 
             {/* ── Invite User Modal ──────────────────────────────────────── */}
             {showInviteModal && (
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                    <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
-                        <h2 style={{ marginTop: 0 }}>Invite New User</h2>
-                        <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem", fontSize: "0.9rem" }}>Send an email invitation allowing a user to set up their own account.</p>
-                        <form onSubmit={handleInviteUser} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            <input required type="email" placeholder="Email Address" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }} />
-                            <select required value={inviteRole} onChange={e => setInviteRole(e.target.value)} className="form-input" style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}>
-                                <option value="PARENT">Parent</option>
-                                <option value="TEACHER">Teacher</option>
-                                <option value="SPECIALIST">Specialist</option>
-                            </select>
-                            <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                                <button type="submit" className="btn-primary" style={{ flex: 1, padding: "10px" }}>Send Invite</button>
-                                <button type="button" onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
+                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                    <div style={{ background: "white", padding: "2rem", borderRadius: "16px", width: "420px", maxWidth: "90%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1.5rem" }}>
+                            <div style={{ background: "#e0e7ff", color: "#4f46e5", padding: "8px", borderRadius: "10px" }}>
+                                <UserPlus size={20} />
+                            </div>
+                            <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: "1.25rem", color: "#1e293b", fontWeight: 800 }}>Registration</h2>
+                        </div>
+                        
+                        <form onSubmit={handleInviteUser} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
+                                <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: "0.9rem", transition: "all 0.2s" }} />
+                            </div>
+
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Account Role <span style={{ color: "#ef4444" }}>*</span></label>
+                                <CustomSelect 
+                                    value={inviteRole}
+                                    onChange={setInviteRole}
+                                    disabled={invitingUser}
+                                    options={[
+                                        { value: 'PARENT', label: 'Parent' },
+                                        { value: 'TEACHER', label: 'Teacher' },
+                                        { value: 'SPECIALIST', label: 'Specialist' }
+                                    ]}
+                                />
+                            </div>
+                            
+                            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                                <button type="submit" className="btn-primary" style={{ flex: 1, padding: "8px 16px", borderRadius: "8px", fontSize: "0.85rem", opacity: invitingUser ? 0.6 : 1, transition: "all 0.2s" }} disabled={invitingUser}>
+                                    {invitingUser ? "Sending..." : "Send Link"}
+                                </button>
+                                <button type="button" onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: "8px 16px", background: "white", color: "#64748b", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }} disabled={invitingUser}>
+                                    Cancel
+                                </button>
+                            </div>
+
+                            <div style={{ marginTop: "1rem", textAlign: "center", borderTop: "1px dashed #e2e8f0", paddingTop: "1rem" }}>
+                                <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0 }}>
+                                    Need to invite multiple people? <br/>
+                                    <Link href="/bulk-registration" style={{ color: "#4f46e5", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
+                                        Go to Bulk Registration <ArrowRight size={14} />
+                                    </Link>
+                                </p>
                             </div>
                         </form>
                     </div>
