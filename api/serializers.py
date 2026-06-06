@@ -309,11 +309,11 @@ class StudentSerializer(serializers.ModelSerializer):
 
         if status in ('PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED'):
             if not has_parent:
-                return action('Parent assessment', 'warning', 'forms', 'parent_assessment', priority=10)
+                return action('Awaiting Parent', 'waiting', priority=10)
             if not has_specialist:
                 return action('Assign specialist', 'info', 'team', team_role='SPECIALIST', priority=20)
             if not has_finalized_multi:
-                return action('Specialist assessment', 'info', 'forms', 'multi_assessment', priority=30)
+                return action('Awaiting Specialists', 'waiting', workspace='forms', tab='multi_assessment', priority=30)
 
         if status == 'ASSESSED':
             if latest_iep and latest_iep.status != 'FINAL':

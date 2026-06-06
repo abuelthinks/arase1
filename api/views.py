@@ -83,11 +83,22 @@ class StudentViewSet(viewsets.ModelViewSet):
         from .services.student_service import create_student_with_invitation
 
         student_data = {k: v for k, v in request.data.items() if k != 'parent_email'}
-        # Title-case names
+        # Title-case names, or provide defaults if missing
         if 'first_name' in student_data:
             student_data['first_name'] = student_data['first_name'].strip().title()
+        else:
+            student_data['first_name'] = 'Pending'
+
         if 'last_name' in student_data:
             student_data['last_name'] = student_data['last_name'].strip().title()
+        else:
+            student_data['last_name'] = 'Student'
+            
+        if not student_data.get('date_of_birth'):
+            student_data['date_of_birth'] = '2000-01-01'
+            
+        if not student_data.get('grade'):
+            student_data['grade'] = 'TBD'
 
         serializer = self.get_serializer(data=student_data)
         serializer.is_valid(raise_exception=True)
@@ -899,7 +910,7 @@ class AssessmentRequestUnlockView(APIView):
                 notification_type='UNLOCK_REQUESTED',
                 title='Unlock Request',
                 message=f'{request.user.first_name} {request.user.last_name} has requested to unlock the specialist assessment for {student.first_name} {student.last_name}.',
-                link=f'/students/{student.id}/dashboard',
+                link=f'/workspace?studentId={student.id}&workspace=forms&tab=multi_assessment',
                 actor_name=f'{request.user.first_name} {request.user.last_name}'
             )
             
@@ -1020,6 +1031,12 @@ class FormEnsureView(APIView):
             return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except SectionValidationError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Unexpected error in FormEnsureView")
+            return Response(
+                {"error": "An unexpected error occurred."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         serializer_cls = (
             MultidisciplinaryAssessmentSerializer

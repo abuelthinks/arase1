@@ -158,6 +158,7 @@ See [`.env.example`](.env.example) for a full annotated reference.
 
 | Variable | Required | Description |
 |---|---|---|
+| `DEBUG` | No | Set to `True` to override `DEBUG` mode in production |
 | `SECRET_KEY` | Yes | Django secret key |
 | `GEMINI_API_KEY` | Yes | Google Gemini API key |
 | `USE_S3` | No | `True` for S3 storage; defaults to `False` (local filesystem) |

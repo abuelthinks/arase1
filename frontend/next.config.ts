@@ -5,6 +5,15 @@ const baseUrl = rawApiUrl ? rawApiUrl.replace(/\/$/, "") : "";
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/login',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     if (!baseUrl) {
       return [];
