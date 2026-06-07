@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { extractApiError } from '@/lib/toast-utils';
 import { normalizeLanguages } from '@/lib/languages';
 import { getPractitionerTitle } from '@/lib/specialties';
+import { semanticToneClass } from '@/lib/role-colors';
 
 interface Specialist {
   id: number;
@@ -67,15 +68,6 @@ interface ParentAssessment {
   };
 }
 
-const AVATAR_GRADIENTS = [
-  'from-indigo-500 to-blue-600',
-  'from-emerald-500 to-teal-600',
-  'from-amber-500 to-orange-600',
-  'from-pink-500 to-rose-600',
-  'from-violet-500 to-purple-600',
-  'from-sky-500 to-cyan-600',
-];
-
 const SPECIALTY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   'Speech-Language Pathology': MessageCircleHeart,
   'Occupational Therapy': HandHeart,
@@ -96,8 +88,6 @@ const LANGUAGE_CODES: Record<string, string> = {
   Mandarin: 'ZH',
   Chinese: 'ZH',
 };
-
-const avatarGradient = (id: number) => AVATAR_GRADIENTS[id % AVATAR_GRADIENTS.length];
 
 const specialistName = (specialist: Specialist) => {
   const name = `${specialist.first_name || ''} ${specialist.last_name || ''}`.trim();
@@ -288,7 +278,7 @@ function SpecialistsContent() {
 
   if (!parentAssessmentSubmitted) {
     return (
-      <div className='bg-gradient-to-b from-indigo-50/60 via-white to-white pb-32 min-h-screen flex flex-col items-center justify-center p-6 text-center'>
+      <div className='flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 pb-32 text-center'>
         <div className='w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center mb-6'>
           <Lock className='h-8 w-8 text-slate-400' />
         </div>
@@ -309,7 +299,7 @@ function SpecialistsContent() {
 
   if (isTeamFinalized) {
     return (
-      <div className='bg-gradient-to-b from-indigo-50/60 via-white to-white pb-32 min-h-screen'>
+      <div className='min-h-screen bg-slate-50 pb-32'>
         <div className='mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 md:px-0 md:py-12'>
           <div className='flex items-start gap-4'>
             <Link
@@ -320,11 +310,11 @@ function SpecialistsContent() {
               <ChevronLeft className='h-4 w-4' />
             </Link>
             <div className='flex items-start gap-4'>
-              <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200'>
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-sm ${semanticToneClass('primary')}`}>
                 <Users className='h-6 w-6' aria-hidden='true' />
               </div>
               <div>
-                <h1 className='m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-2xl font-extrabold leading-tight tracking-tight text-transparent md:text-3xl'>
+                <h1 className='m-0 text-2xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-3xl'>
                   {childName}&apos;s Clinical Team
                 </h1>
                 <p className='mt-2 text-sm leading-relaxed text-slate-500'>
@@ -342,7 +332,7 @@ function SpecialistsContent() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={staff.profile_image} alt='' className='h-14 w-14 rounded-full object-cover shadow-sm' />
                   ) : (
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(staff.id)} text-base font-extrabold text-white shadow-sm`}>
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-full border text-base font-extrabold shadow-sm ${semanticToneClass('primary')}`}>
                       {staff.first_name?.[0] || ''}{staff.last_name?.[0] || ''}
                     </div>
                   )}
@@ -381,13 +371,13 @@ function SpecialistsContent() {
 
   if (selectionMode === 'undecided') {
     return (
-      <div className='bg-gradient-to-b from-indigo-50/60 via-white to-white pb-32 min-h-screen flex flex-col items-center justify-center p-6 text-center'>
+      <div className='flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 pb-32 text-center'>
         <div className='mx-auto flex w-full max-w-2xl flex-col gap-8'>
           <div className='flex flex-col items-center gap-4'>
-            <div className='flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200'>
+            <div className={`flex h-16 w-16 items-center justify-center rounded-2xl border shadow-sm ${semanticToneClass('primary')}`}>
               <Users className='h-8 w-8' aria-hidden='true' />
             </div>
-            <h1 className='m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-3xl font-extrabold leading-tight tracking-tight text-transparent md:text-4xl'>
+            <h1 className='m-0 text-3xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-4xl'>
               Who should work with {childName}?
             </h1>
             <p className='text-base leading-relaxed text-slate-500 max-w-lg'>
@@ -402,7 +392,7 @@ function SpecialistsContent() {
                 handleSave();
               }}
               disabled={saving}
-              className='group relative flex flex-col items-center gap-3 rounded-2xl border-2 border-indigo-100 bg-white p-6 text-center transition-all hover:border-indigo-500 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-500/20 disabled:opacity-50'
+              className='group relative flex flex-col items-center gap-3 rounded-2xl border-2 border-indigo-100 bg-white p-6 text-center transition-colors hover:border-indigo-500 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-500/20 disabled:opacity-50'
             >
               <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-colors group-hover:bg-indigo-500 group-hover:text-white'>
                 {saving ? <Loader2 className='h-6 w-6 animate-spin' /> : <Sparkles className='h-6 w-6' />}
@@ -418,7 +408,7 @@ function SpecialistsContent() {
             <button
               onClick={() => setSelectionMode('manual')}
               disabled={saving}
-              className='group relative flex flex-col items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-6 text-center transition-all hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-slate-400/20 disabled:opacity-50'
+              className='group relative flex flex-col items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-6 text-center transition-colors hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-slate-400/20 disabled:opacity-50'
             >
               <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition-colors group-hover:bg-slate-200 group-hover:text-slate-800'>
                 <Briefcase className='h-6 w-6' />
@@ -437,7 +427,7 @@ function SpecialistsContent() {
   }
 
   return (
-    <div className='bg-gradient-to-b from-indigo-50/60 via-white to-white pb-32'>
+    <div className='bg-slate-50 pb-32'>
       <div className='mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 md:px-0 md:py-12'>
         <div className='flex items-start gap-4'>
           <Link
@@ -448,11 +438,11 @@ function SpecialistsContent() {
             <ChevronLeft className='h-4 w-4' />
           </Link>
           <div className='flex items-start gap-4'>
-            <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200'>
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${semanticToneClass('primary')}`}>
               <Users className='h-6 w-6' aria-hidden='true' />
             </div>
             <div>
-              <h1 className='m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-2xl font-extrabold leading-tight tracking-tight text-transparent md:text-3xl'>
+              <h1 className='m-0 text-2xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-3xl'>
                 Who should work with {childName}?
               </h1>
               <p className='mt-2 text-sm leading-relaxed text-slate-500'>
@@ -464,33 +454,27 @@ function SpecialistsContent() {
         </div>
 
         <div
-          className={`flex items-start gap-3 rounded-2xl border p-4 transition-colors ${
-            hasOverrides
-              ? 'border-indigo-200 bg-indigo-50/70'
-              : 'border-emerald-200 bg-emerald-50/70'
-          }`}
+          className={`flex items-start gap-3 rounded-2xl border p-4 transition-colors ${semanticToneClass(hasOverrides ? 'primary' : 'success')}`}
         >
-          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-            hasOverrides ? 'bg-white text-indigo-600' : 'bg-white text-emerald-600'
-          }`}>
+          <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-current/20 bg-white'>
             <Sparkles className='h-5 w-5' aria-hidden='true' />
           </div>
           <div className='flex-1'>
             {hasOverrides ? (
               <>
-                <p className='m-0 text-sm font-extrabold text-indigo-950'>
+                <p className='m-0 text-sm font-extrabold'>
                   You&apos;ve picked {overrideCount} specialist{overrideCount !== 1 ? 's' : ''}.
                 </p>
-                <p className='mt-1 text-sm text-indigo-800'>
+                <p className='mt-1 text-sm'>
                   Our team will match {childName} with the best-fit specialist for the remaining {totalSpecialties - overrideCount} area{totalSpecialties - overrideCount !== 1 ? 's' : ''}.
                 </p>
               </>
             ) : (
               <>
-                <p className='m-0 text-sm font-extrabold text-emerald-950'>
+                <p className='m-0 text-sm font-extrabold'>
                   {childName} is ready. We&apos;ll match the best team.
                 </p>
-                <p className='mt-1 text-sm text-emerald-800'>
+                <p className='mt-1 text-sm'>
                   {requestedLanguages.length > 0
                     ? <>Language needs like <span className='font-bold'>{requestedLanguages.join(', ')}</span> will be prioritized during matching.</>
                     : 'Specialty fit and team review will guide the final match.'}
@@ -518,15 +502,15 @@ function SpecialistsContent() {
               return (
                 <section
                   key={specialty}
-                  className={`rounded-2xl border bg-white shadow-sm transition-all ${
+                  className={`rounded-2xl border bg-white shadow-sm transition-colors ${
                     hasPick ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-slate-200'
                   }`}
                   aria-labelledby={`specialty-heading-${specialty.replace(/\s+/g, '-')}`}
                 >
-                  <div className='flex items-center justify-between gap-3 border-b border-indigo-100/60 px-4 py-3 md:px-5'>
+                  <div className='flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 md:px-5'>
                     <div className='flex min-w-0 items-center gap-3'>
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                        hasPick ? 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-sm' : 'bg-indigo-50 text-indigo-600'
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+                        hasPick ? semanticToneClass('primary') : semanticToneClass('neutral')
                       }`}>
                         <SpecialtyIcon className='h-4 w-4' />
                       </div>
@@ -541,12 +525,12 @@ function SpecialistsContent() {
                     </div>
                     <div className='shrink-0'>
                       {hasPick ? (
-                        <span className='inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[0.65rem] font-bold text-indigo-700'>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-bold ${semanticToneClass('primary')}`}>
                           <CheckCircle2 className='h-3 w-3' aria-hidden='true' />
                           Your pick
                         </span>
                       ) : (
-                        <span className='inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-700'>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-bold ${semanticToneClass('success')}`}>
                           <Sparkles className='h-3 w-3' aria-hidden='true' />
                           Matching for you
                         </span>
@@ -568,7 +552,7 @@ function SpecialistsContent() {
                               />
                             ) : (
                               <div
-                                className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(pickedSpecialist.id)} text-sm font-extrabold text-white shadow-sm`}
+                                className={`flex h-12 w-12 items-center justify-center rounded-full border text-sm font-extrabold shadow-sm ${semanticToneClass('primary')}`}
                                 aria-hidden='true'
                               >
                                 {specialistInitials(pickedSpecialist)}
@@ -620,7 +604,7 @@ function SpecialistsContent() {
                                 {list.slice(0, 4).map(specialist => (
                                   <div
                                     key={specialist.id}
-                                    className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(specialist.id)} text-[0.65rem] font-extrabold text-white ring-2 ring-white`}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-full border text-[0.65rem] font-extrabold ring-2 ring-white ${semanticToneClass('primary')}`}
                                     title={specialistName(specialist)}
                                   >
                                     {specialistInitials(specialist)}
@@ -654,8 +638,8 @@ function SpecialistsContent() {
                           </div>
 
                           {requestedLanguages.length > 0 && languageMatchCount === 0 && (
-                            <div className='flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800'>
-                              <AlertTriangle className='h-4 w-4 shrink-0 text-amber-600' aria-hidden='true' />
+                            <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${semanticToneClass('warning')}`}>
+                              <AlertTriangle className='h-4 w-4 shrink-0' aria-hidden='true' />
                               No specialists currently list {requestedLanguages.join(', ')}. Our team will find the best alternative.
                             </div>
                           )}
@@ -675,7 +659,7 @@ function SpecialistsContent() {
                               value={searchTerms[specialty] || ''}
                               onChange={event => setSearchTerms(prev => ({ ...prev, [specialty]: event.target.value }))}
                               placeholder='Search specialists'
-                              className='h-10 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-9 pr-3 text-sm text-slate-800 outline-none transition-all hover:bg-white focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/15'
+                              className='h-10 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-9 pr-3 text-sm text-slate-800 outline-none transition-colors hover:bg-white focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/15'
                             />
                           </div>
                         ) : <div />}
@@ -693,15 +677,15 @@ function SpecialistsContent() {
                         type='button'
                         onClick={() => clearPickForSpecialty(specialty)}
                         aria-pressed={!hasPick}
-                        className={`mb-3 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/20 ${
+                        className={`mb-3 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-4 focus:ring-emerald-500/20 ${
                           !hasPick
                             ? 'border-emerald-300 bg-emerald-50/70'
                             : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
                         }`}
                       >
                         <div className='flex items-center gap-3'>
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                            !hasPick ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200' : 'bg-slate-100 text-slate-400'
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+                            !hasPick ? semanticToneClass('success') : semanticToneClass('neutral')
                           }`}>
                             <Sparkles className='h-4 w-4' aria-hidden='true' />
                           </div>
@@ -868,7 +852,7 @@ function SpecialistCard({
 
   return (
     <div
-      className={`rounded-xl border bg-white transition-all ${
+      className={`rounded-xl border bg-white transition-colors ${
         isSelected
           ? 'border-indigo-400 shadow-sm ring-2 ring-indigo-100'
           : 'border-slate-200 hover:border-indigo-200 hover:shadow-sm'
@@ -885,7 +869,7 @@ function SpecialistCard({
           }
         }}
         aria-pressed={isSelected}
-        className='flex w-full cursor-pointer items-start gap-3 rounded-xl p-3 text-left transition-all focus:outline-none focus:ring-4 focus:ring-indigo-500/20'
+        className='flex w-full cursor-pointer items-start gap-3 rounded-xl p-3 text-left transition-colors focus:outline-none focus:ring-4 focus:ring-indigo-500/20'
       >
         <div className='relative shrink-0'>
           {specialist.profile_image ? (
@@ -897,7 +881,7 @@ function SpecialistCard({
             />
           ) : (
             <div
-              className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(specialist.id)} text-sm font-extrabold text-white shadow-sm`}
+              className={`flex h-14 w-14 items-center justify-center rounded-full border text-sm font-extrabold shadow-sm ${semanticToneClass('primary')}`}
               aria-hidden='true'
             >
               {specialistInitials(specialist)}
@@ -905,7 +889,7 @@ function SpecialistCard({
           )}
           {languageMatch && (
             <div
-              className='absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white'
+              className='absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 ring-2 ring-white'
               title='Speaks your language'
               aria-label='Language match'
             >
@@ -948,7 +932,7 @@ function SpecialistCard({
                         title={language}
                         className={`inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded px-1 text-[0.6rem] font-extrabold ${
                           match
-                            ? 'bg-emerald-100 text-emerald-700'
+                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
@@ -964,7 +948,7 @@ function SpecialistCard({
                 </div>
               ) : requestedLanguages.length > 0 ? (
                 <div className='mt-1.5'>
-                  <span className='inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[0.6rem] font-bold text-amber-700'>
+                  <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[0.6rem] font-bold ${semanticToneClass('warning')}`}>
                     <AlertTriangle className='h-2.5 w-2.5' aria-hidden='true' />
                     Language not listed
                   </span>

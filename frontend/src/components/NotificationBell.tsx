@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Bell, Check, CheckCheck, ClipboardList, FileText, UserPlus, Calendar, X, AlertCircle, Sparkles } from "lucide-react";
 import { useNotifications, Notification } from "@/hooks/useNotifications";
 import Link from "next/link";
+import { semanticToneClass } from "@/lib/role-colors";
 
 function timeAgo(dateString: string) {
     const date = new Date(dateString);
@@ -35,8 +36,7 @@ function normalizeNotificationLink(notif: Notification) {
 
 interface TypeStyle {
     icon: React.ReactNode;
-    bg: string;
-    color: string;
+    className: string;
 }
 
 function getTypeStyle(type: string): TypeStyle {
@@ -44,42 +44,36 @@ function getTypeStyle(type: string): TypeStyle {
         case 'FORM_SUBMITTED':
             return {
                 icon: <ClipboardList size={14} />,
-                bg: 'bg-indigo-100',
-                color: 'text-indigo-600',
+                className: semanticToneClass("primary"),
             };
         case 'REPORT_GENERATED':
         case 'REPORT_FINALIZED':
         case 'IEP_GENERATED':
             return {
                 icon: <FileText size={14} />,
-                bg: 'bg-emerald-100',
-                color: 'text-emerald-600',
+                className: semanticToneClass("success"),
             };
         case 'STUDENT_ENROLLED':
         case 'SPECIALIST_ASSIGNED':
         case 'TEACHER_ASSIGNED':
             return {
                 icon: <UserPlus size={14} />,
-                bg: 'bg-blue-100',
-                color: 'text-blue-600',
+                className: semanticToneClass("info"),
             };
         case 'REMINDER':
             return {
                 icon: <Calendar size={14} />,
-                bg: 'bg-amber-100',
-                color: 'text-amber-600',
+                className: semanticToneClass("warning"),
             };
         case 'BIRTHDAY':
             return {
                 icon: <Sparkles size={14} />,
-                bg: 'bg-pink-100',
-                color: 'text-pink-600',
+                className: semanticToneClass("attention"),
             };
         default:
             return {
                 icon: <AlertCircle size={14} />,
-                bg: 'bg-slate-100',
-                color: 'text-slate-500',
+                className: semanticToneClass("neutral"),
             };
     }
 }
@@ -122,7 +116,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
             >
                 <Bell size={18} strokeWidth={1.6} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-[1px] -right-[1px] flex h-[16px] min-w-[16px] px-1 shrink-0 items-center justify-center rounded-full bg-red-500 text-[9px] font-medium text-white shadow ring-2 ring-white leading-none">
+                    <span className="absolute -top-[1px] -right-[1px] flex h-[16px] min-w-[16px] px-1 shrink-0 items-center justify-center rounded-full bg-red-600 text-[9px] font-medium text-white shadow ring-2 ring-white leading-none">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
@@ -137,7 +131,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                         {unreadCount > 0 && (
                             <button
                                 onClick={markAllAsRead}
-                                className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors border-none bg-transparent cursor-pointer p-0"
+                                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors border-none bg-transparent cursor-pointer p-0"
                             >
                                 <CheckCheck size={14} />
                                 Mark all read
@@ -173,14 +167,14 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                     return (
                                         <div
                                             key={notif.id}
-                                            className={`p-3 transition-colors relative group ${notif.is_read ? 'bg-white hover:bg-slate-50' : 'bg-blue-50/40 hover:bg-blue-50/60'}`}
+                                            className={`p-3 transition-colors relative group ${notif.is_read ? 'bg-white hover:bg-slate-50' : 'bg-indigo-50/40 hover:bg-indigo-50/60'}`}
                                         >
                                             {!notif.is_read && (
-                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r shadow-sm" />
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r shadow-sm" />
                                             )}
                                             <div className="flex gap-2.5">
                                                 {/* Type icon */}
-                                                <div className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-0.5 ${style.bg} ${style.color}`}>
+                                                <div className={`shrink-0 w-7 h-7 rounded-lg border flex items-center justify-center mt-0.5 ${style.className}`}>
                                                     {style.icon}
                                                 </div>
 
@@ -189,7 +183,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                         <Link 
                                                             href={notificationLink}
                                                             onClick={() => handleNotificationClick(notif)}
-                                                            className="block text-slate-800 hover:text-blue-600 focus:outline-none"
+                                                            className="block text-slate-800 hover:text-indigo-600 focus:outline-none"
                                                         >
                                                             <p className={`text-sm m-0 leading-snug ${!notif.is_read ? 'font-semibold' : 'font-medium'}`}>
                                                                 {notif.title}
@@ -216,7 +210,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                                 {notif.message}
                                                             </p>
                                                             {notif.message.length > 60 && (
-                                                                <span className="text-[10px] text-blue-500 font-medium inline-block mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <span className="text-[10px] text-indigo-600 font-medium inline-block mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                     {isExpanded ? 'Show less' : 'Show more'}
                                                                 </span>
                                                             )}
@@ -245,7 +239,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                                 e.stopPropagation();
                                                                 markAsRead(notif.id);
                                                             }}
-                                                            className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-100 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
+                                                            className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
                                                             title="Mark as read"
                                                         >
                                                             <Check size={13} strokeWidth={2.5} />
@@ -257,7 +251,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                             e.stopPropagation();
                                                             deleteNotification(notif.id);
                                                         }}
-                                                        className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
+                                                        className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
                                                         title="Delete"
                                                     >
                                                         <X size={13} strokeWidth={2.5} />

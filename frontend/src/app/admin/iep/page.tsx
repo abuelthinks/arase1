@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { semanticToneClass, type SemanticTone } from "@/lib/role-colors";
 
 /* ─── Shared UI helpers ───────────────────────────────────────────────────── */
 
@@ -42,12 +43,22 @@ function PillList({ items }: { items: string[] }) {
     if (!items || items.length === 0) return <span className="text-xs text-slate-400">—</span>;
     return (
         <div className="flex flex-wrap gap-1.5">
-            {items.map(i => <span key={i} className="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[0.7rem] font-semibold">{i}</span>)}
+            {items.map(i => <span key={i} className={`rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold ${semanticToneClass("neutral")}`}>{i}</span>)}
         </div>
     );
 }
 
 /* ─── Types ───────────────────────────────────────────────────────────────── */
+
+const iepBadgeClass = (tone: SemanticTone, extra = "") =>
+    `inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-bold ${semanticToneClass(tone)} ${extra}`.trim();
+
+const gasScoreTone = (score: number): SemanticTone => {
+    if (score >= 4) return "success";
+    if (score >= 3) return "info";
+    if (score >= 2) return "warning";
+    return "danger";
+};
 
 interface IEPData {
     section1_student_info: Record<string, any>;
@@ -232,11 +243,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 <div>
                     <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 m-0 flex items-center gap-2.5 flex-wrap">
                         Comprehensive AI-Generated IEP
-                        <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded border ${
-                            iepStatus === "FINAL" 
-                                ? "bg-emerald-100 text-emerald-800 border-emerald-200" 
-                                : "bg-amber-100 text-amber-800 border-amber-200"
-                        }`}>
+                        <span className={iepBadgeClass(iepStatus === "FINAL" ? "success" : "warning", "rounded border")}>
                             {iepStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
                     </h1>
@@ -322,7 +329,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     const domain = s4[key] || {};
                     return (
                         <div key={key} className="py-3 border-b border-slate-100 last:border-0">
-                            <p className="text-xs font-bold text-sky-600 mb-2">{lbl}</p>
+                            <p className="text-xs font-bold text-blue-600 mb-2">{lbl}</p>
                             <div className="flex flex-col gap-3">
                             {Object.entries(domain).map(([fk, fv]) => (
                                 <Field key={fk} label={fk.replace(/_/g, ' ')} value={String(fv)} edit={editing}
@@ -410,7 +417,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     academic_tasks: "Academic Tasks"
                 }).map(([key, lbl]) => (
                     <div key={key} className="mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-sky-600 mb-1">{lbl}</p>
+                        <p className="text-xs font-bold text-blue-600 mb-1">{lbl}</p>
                         <ul className="m-0 pl-5 text-xs text-slate-800 leading-relaxed list-disc">
                             {(s9[key] || []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                         </ul>
@@ -425,7 +432,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         {/* Last updated badge */}
                         {iep.section10_progress.last_updated && (
                             <div className="flex items-center gap-2">
-                                <span className="text-[0.7rem] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+                                <span className={iepBadgeClass("success")}>
                                     📅 Last updated: Week of {iep.section10_progress.last_updated}
                                 </span>
                                 {iep.section10_progress.report_period && (
@@ -439,14 +446,10 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                             <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">Goal Achievement Scores</p>
                             <div className="flex flex-col gap-2.5">
                                 {iep.section10_progress.gas_scores.map((g: any, i: number) => {
-                                    const sc = g.score >= 5 ? { bg: "bg-emerald-100", color: "text-emerald-800" }
-                                        : g.score >= 4 ? { bg: "bg-emerald-50", color: "text-emerald-700" }
-                                        : g.score >= 3 ? { bg: "bg-blue-100", color: "text-blue-800" }
-                                        : g.score >= 2 ? { bg: "bg-amber-100", color: "text-amber-800" }
-                                        : { bg: "bg-rose-100", color: "text-rose-800" };
+                                    const scoreTone = gasScoreTone(Number(g.score) || 0);
                                     return (
                                         <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
-                                            <div className={`w-8.5 h-8.5 rounded-lg ${sc.bg} ${sc.color} flex items-center justify-center text-sm font-extrabold shrink-0`}>
+                                            <div className={`w-8.5 h-8.5 rounded-lg border ${semanticToneClass(scoreTone)} flex items-center justify-center text-sm font-extrabold shrink-0`}>
                                                 {g.score}
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -465,9 +468,9 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         )}
                         {/* Regression Indicators */}
                         {iep.section10_progress.regression_indicators && iep.section10_progress.regression_indicators !== "No regression indicators reported." && (
-                            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-100">
-                                <p className="text-[0.7rem] font-bold text-rose-800 mb-1 uppercase tracking-wider">⚠ Regression Indicators</p>
-                                <p className="text-xs text-rose-900 m-0 leading-relaxed">{iep.section10_progress.regression_indicators}</p>
+                            <div className={`rounded-xl border p-3.5 ${semanticToneClass("danger")}`}>
+                                <p className="text-[0.7rem] font-bold mb-1 uppercase tracking-wider">Regression Indicators</p>
+                                <p className="text-xs m-0 leading-relaxed">{iep.section10_progress.regression_indicators}</p>
                             </div>
                         )}
                         {/* Attendance */}

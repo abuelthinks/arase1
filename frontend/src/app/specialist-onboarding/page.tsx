@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { LANGUAGE_OPTIONS, normalizeLanguages } from '@/lib/languages';
 import { SPECIALIST_SPECIALTIES } from '@/lib/specialties';
+import { semanticToneClass } from '@/lib/role-colors';
 import { toast } from 'sonner';
 import { extractApiError } from '@/lib/toast-utils';
 import {
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react';
 
 const inputCls =
-  'w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 placeholder:font-normal placeholder:text-slate-400 transition-all hover:bg-white focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/15';
+  'w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 placeholder:font-normal placeholder:text-slate-400 transition-colors hover:bg-white focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/15';
 
 function LanguagePill({
   label,
@@ -39,10 +40,10 @@ function LanguagePill({
       type="button"
       onClick={onToggle}
       aria-pressed={checked}
-      className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${
+      className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${
         checked
           ? 'border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]'
-          : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
       }`}
     >
       {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
@@ -128,7 +129,7 @@ export default function SpecialistOnboardingPage() {
 
   return (
     <ProtectedRoute allowedRoles={['SPECIALIST']}>
-      <div className="bg-gradient-to-b from-indigo-50/60 via-white to-white py-8 md:py-12">
+      <div className="bg-slate-50 py-8 md:py-12">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 md:px-0">
           {/* Progress indicator */}
           <ol className="flex items-center gap-3 text-sm">
@@ -138,7 +139,7 @@ export default function SpecialistOnboardingPage() {
               </span>
               Profile
             </li>
-            <li className="h-px flex-1 bg-gradient-to-r from-indigo-300 to-slate-200" aria-hidden="true" />
+            <li className="h-px flex-1 bg-slate-200" aria-hidden="true" />
             <li className="flex items-center gap-2 font-medium text-slate-400">
               <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-xs">
                 2
@@ -149,12 +150,12 @@ export default function SpecialistOnboardingPage() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
             {/* Header */}
-            <div className="mb-8 flex items-start gap-4 border-b border-indigo-100/60 pb-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-200">
+            <div className="mb-7 flex items-start gap-4 border-b border-slate-200 pb-5">
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-sm ${semanticToneClass('primary')}`}>
                 <Sparkles className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <h1 className="m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-2xl font-extrabold leading-tight text-transparent">
+                <h1 className="m-0 text-2xl font-extrabold leading-tight text-slate-900">
                   Complete your specialist profile
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500">
@@ -200,7 +201,7 @@ export default function SpecialistOnboardingPage() {
             </div>
 
             {/* Specialty */}
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <BadgeCheck className="h-5 w-5 text-indigo-600" aria-hidden="true" />
@@ -216,18 +217,18 @@ export default function SpecialistOnboardingPage() {
                   {specialties.map((specialty) => (
                     <span
                       key={specialty}
-                      className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-800"
+                      className={`rounded-full border px-3 py-1 text-sm font-semibold ${semanticToneClass('primary')}`}
                     >
                       {specialty}
                     </span>
                   ))}
                 </div>
               ) : (
-                <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+                <div className={`mt-3 flex items-start gap-3 rounded-xl border p-4 ${semanticToneClass('warning')}`}>
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                   <div>
-                    <p className="m-0 text-sm font-bold text-amber-900">Not assigned yet</p>
-                    <p className="mt-1 text-sm text-amber-800">
+                    <p className="m-0 text-sm font-bold">Not assigned yet</p>
+                    <p className="mt-1 text-sm">
                       Admin needs to assign your specialty before you can finish setup. You'll get a notification once it's ready.
                     </p>
                   </div>
@@ -292,7 +293,7 @@ export default function SpecialistOnboardingPage() {
                           id="requested-specialty"
                           value={requestedSpecialty}
                           onChange={(event) => setRequestedSpecialty(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 transition-all hover:bg-white focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/15"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 transition-colors hover:bg-white focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/15"
                         >
                           <option value="">Select specialty</option>
                           {SPECIALIST_SPECIALTIES.filter((option) => !specialties.includes(option)).map((option) => (
@@ -312,7 +313,7 @@ export default function SpecialistOnboardingPage() {
                           onChange={(event) => setSpecialtyRequestNote(event.target.value)}
                           rows={3}
                           placeholder="Briefly explain what should be changed."
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 transition-all hover:bg-white focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/15"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 transition-colors hover:bg-white focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/15"
                         />
                       </div>
                       <div>
@@ -445,7 +446,7 @@ export default function SpecialistOnboardingPage() {
 
             {/* Error */}
             {error && (
-              <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className={`mt-6 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${semanticToneClass('danger')}`}>
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>{error}</span>
               </div>

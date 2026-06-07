@@ -299,30 +299,37 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             })}
                         </div>
                     </div>
-                    <button
-                        onClick={() => {
-                            if (existingIepId) {
-                                openGeneratedDocument("iep", existingIepId);
-                            } else {
-                                handleGenerateIEP();
-                            }
-                        }}
-                        onMouseEnter={() => setIepHovered(true)}
-                        onMouseLeave={() => setIepHovered(false)}
-                        disabled={loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase())}
-                        style={{
-                            padding: "10px 20px", borderRadius: "8px",
-                            border: (existingIepId && existingIepStatus === "FINAL") ? "1px solid var(--border-light)" : "none",
-                            background: loading ? "var(--border-light)" : (existingIepId && existingIepStatus === "FINAL") ? (iepHovered ? "var(--border-light)" : "var(--bg-primary)") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "var(--bg-primary)",
-                            color: (existingIepId && existingIepStatus === "FINAL") ? "var(--text-primary)" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "white" : "var(--text-muted)",
-                            fontWeight: 700, fontSize: "0.85rem",
-                            cursor: loading || !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
-                            whiteSpace: "nowrap", flexShrink: 0, marginTop: "4px",
-                            transition: "background 0.2s ease",
-                        }}
-                    >
-                        {loading ? "⏳ Generating…" : (existingIepId && existingIepStatus === "FINAL") ? "📄 View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "🤖 Generate IEP" : "Requires Review"}
-                    </button>
+                    {loading ? (
+                        <div className="flex items-center gap-3 px-5 py-2.5 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 mt-1">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-200 border-t-indigo-700"></div>
+                            <span className="text-sm font-bold animate-pulse">Analyzing data and generating IEP...</span>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => {
+                                if (existingIepId) {
+                                    openGeneratedDocument("iep", existingIepId);
+                                } else {
+                                    handleGenerateIEP();
+                                }
+                            }}
+                            onMouseEnter={() => setIepHovered(true)}
+                            onMouseLeave={() => setIepHovered(false)}
+                            disabled={!["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase())}
+                            style={{
+                                padding: "10px 20px", borderRadius: "8px",
+                                border: (existingIepId && existingIepStatus === "FINAL") ? "1px solid var(--border-light)" : "none",
+                                background: (existingIepId && existingIepStatus === "FINAL") ? (iepHovered ? "var(--border-light)" : "var(--bg-primary)") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "var(--bg-primary)",
+                                color: (existingIepId && existingIepStatus === "FINAL") ? "var(--text-primary)" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "white" : "var(--text-muted)",
+                                fontWeight: 700, fontSize: "0.85rem",
+                                cursor: !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
+                                whiteSpace: "nowrap", flexShrink: 0, marginTop: "4px",
+                                transition: "background 0.2s ease",
+                            }}
+                        >
+                            {(existingIepId && existingIepStatus === "FINAL") ? "📄 View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "🤖 Generate IEP" : "Requires Review"}
+                        </button>
+                    )}
                 </div>
             </div>
 

@@ -128,6 +128,7 @@ function UnifiedWorkspaceContent() {
     const [unassigningStaff, setUnassigningStaff] = useState<{ id: number, specialty?: string, name?: string, role: string } | null>(null);
     const [isUnassigning, setIsUnassigning] = useState(false);
     const [confirmingTeam, setConfirmingTeam] = useState(false);
+    const [teamConfirmedSuccess, setTeamConfirmedSuccess] = useState(false);
     const [pendingTeamNavigation, setPendingTeamNavigation] = useState<string | null>(null);
     const [specialistSearch, setSpecialistSearch] = useState("");
     const [sendingParentReminder, setSendingParentReminder] = useState(false);
@@ -321,6 +322,8 @@ function UnifiedWorkspaceContent() {
             setAssignedStaff(nextAssigned);
             setStagedAssignedStaff(nextAssigned);
             toast.success("Team confirmed.");
+            setTeamConfirmedSuccess(true);
+            setTimeout(() => setTeamConfirmedSuccess(false), 3000);
             return true;
         } catch (err: any) {
             toast.error(extractApiError(err, "Failed to confirm team."));
@@ -667,7 +670,7 @@ function UnifiedWorkspaceContent() {
             actions.push({ title: "Finalize IEP Draft", label: "Open IEP", onClick: () => handleReportMenuChange("iep", latestIep.id.toString()), tone: "positive" });
         }
         if (["ASSESSED", "ENROLLED"].includes(normalizedStudentStatus || "") && assessmentFinalized && !latestIep) {
-            actions.push({ title: "Generate IEP Draft", label: "Open Reports", onClick: () => handleReportMenuChange("generator") });
+            actions.push({ title: "Generate IEP", label: "Open Reports", onClick: () => handleReportMenuChange("generator") });
         }
         if (canGenerateMonthlyReport) {
             actions.push({ title: "Generate Monthly Progress Report", label: "Open Reports", onClick: () => handleReportMenuChange("generator"), tone: "positive" });
@@ -1466,11 +1469,15 @@ function UnifiedWorkspaceContent() {
                             <button
                                 type="button"
                                 onClick={confirmTeamChanges}
-                                disabled={!teamHasChanges || confirmingTeam}
-                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                                disabled={(!teamHasChanges && !teamConfirmedSuccess) || confirmingTeam}
+                                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors ${
+                                    teamConfirmedSuccess
+                                        ? "bg-emerald-500 hover:bg-emerald-600"
+                                        : "bg-indigo-600 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                                }`}
                             >
                                 <Check size={16} />
-                                {confirmingTeam ? "Confirming..." : "Confirm Team"}
+                                {teamConfirmedSuccess ? "Team Confirmed!" : confirmingTeam ? "Confirming..." : "Confirm Team"}
                             </button>
                             {teamHasChanges && (
                                 <>

@@ -16,6 +16,7 @@ import { extractApiError, toastPromise } from "@/lib/toast-utils";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
+import { semanticToneClass, statusColorHex, statusLabel, type SemanticTone } from "@/lib/role-colors";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 // Inputs
@@ -29,15 +30,15 @@ import { StudentProfileContent } from "@/app/students/[id]/page";
 import { AdminReportsContent } from "@/app/admin/reports/page";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
-    "PENDING_ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d", label: "Pending Assessment" },
-    "PENDING ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d", label: "Pending Assessment" },
-    "ASSESSMENT_SCHEDULED": { bg: "#fef3c7", color: "#92400e", label: "Assessment Scheduled" },
-    "ASSESSMENT SCHEDULED": { bg: "#fef3c7", color: "#92400e", label: "Assessment Scheduled" },
-    "ASSESSED":     { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
-    "ASSESSED (AWAITING ENROLLMENT)": { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
-    "ENROLLED":     { bg: "#dcfce7", color: "#14532d", label: "Enrolled" },
-    "INTEGRATED":   { bg: "#ede9fe", color: "#5b21b6", label: "Integrated" },
-    "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b", label: "Archived" },
+    "PENDING_ASSESSMENT":    { ...statusColorHex("PENDING_ASSESSMENT"), label: statusLabel("PENDING_ASSESSMENT") },
+    "PENDING ASSESSMENT":    { ...statusColorHex("PENDING_ASSESSMENT"), label: statusLabel("PENDING_ASSESSMENT") },
+    "ASSESSMENT_SCHEDULED": { ...statusColorHex("ASSESSMENT_SCHEDULED"), label: statusLabel("ASSESSMENT_SCHEDULED") },
+    "ASSESSMENT SCHEDULED": { ...statusColorHex("ASSESSMENT_SCHEDULED"), label: statusLabel("ASSESSMENT_SCHEDULED") },
+    "ASSESSED":     { ...statusColorHex("ASSESSED"), label: statusLabel("ASSESSED") },
+    "ASSESSED (AWAITING ENROLLMENT)": { ...statusColorHex("ASSESSED"), label: statusLabel("ASSESSED") },
+    "ENROLLED":     { ...statusColorHex("ENROLLED"), label: statusLabel("ENROLLED") },
+    "INTEGRATED":   { ...statusColorHex("INTEGRATED"), label: statusLabel("INTEGRATED") },
+    "ARCHIVED":   { ...statusColorHex("ARCHIVED"), label: statusLabel("ARCHIVED") },
 };
 
 const TABS = [
@@ -49,6 +50,60 @@ const TABS = [
 ];
 
 type StudentSidebarSort = "recent" | "az";
+
+const workspaceMainTabClass = (active: boolean) =>
+    `workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${
+        active
+            ? "border-indigo-600 bg-indigo-50/40 text-indigo-700"
+            : "border-transparent text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+    }`;
+
+const workspaceSecondaryTabClass = ({
+    active,
+    disabled,
+    tone = "primary",
+    attention,
+}: {
+    active?: boolean;
+    disabled?: boolean;
+    tone?: "primary" | "success" | "warning" | "neutral";
+    attention?: boolean;
+}) => {
+    const base = "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors";
+    if (disabled) return `${base} cursor-not-allowed border-transparent text-slate-400 opacity-70`;
+    if (attention) return `${base} ${semanticToneClass("warning")} shadow-sm hover:bg-amber-100 hover:border-amber-300`;
+    if (active) return `${base} ${semanticToneClass(tone)} bg-white shadow-sm`;
+    return `${base} border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900`;
+};
+
+const workspaceSegmentButtonClass = (active: boolean) =>
+    `inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-bold transition-colors ${
+        active
+            ? "bg-white text-indigo-700 shadow-sm"
+            : "text-slate-500 hover:bg-white/60 hover:text-slate-800"
+    }`;
+
+const workspacePrimaryButtonClass =
+    "inline-flex h-7 items-center gap-1.5 rounded-md bg-indigo-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500";
+
+const workspaceSecondaryButtonClass =
+    "h-7 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60";
+
+const toneDotClass: Record<SemanticTone, string> = {
+    primary: "bg-indigo-500",
+    info: "bg-blue-500",
+    success: "bg-emerald-500",
+    warning: "bg-amber-500",
+    danger: "bg-red-500",
+    attention: "bg-pink-500",
+    neutral: "bg-slate-400",
+};
+
+const workspaceBadgeClass = (tone: SemanticTone, extra = "") =>
+    `inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${semanticToneClass(tone)} ${extra}`.trim();
+
+const workspaceAlertClass = (tone: SemanticTone, extra = "") =>
+    `rounded-xl border p-4 ${semanticToneClass(tone)} ${extra}`.trim();
 
 type WorkspaceMemory = {
     studentId?: string;
@@ -79,12 +134,12 @@ const getStaffSpecialties = (staff: any): string[] => userSpecialtyList(staff?.s
 
 const nextActionClass = (tone?: string, isCurrent?: boolean) => {
     if (tone === "positive") {
-        return isCurrent ? "bg-emerald-100 text-emerald-800" : "bg-emerald-50 text-emerald-700";
+        return semanticToneClass("success");
     }
     if (tone === "warning") {
-        return isCurrent ? "bg-amber-100 text-amber-800" : "bg-amber-50 text-amber-700";
+        return semanticToneClass("warning");
     }
-    return isCurrent ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-600";
+    return isCurrent ? semanticToneClass("primary") : semanticToneClass("neutral");
 };
 
 const buildWorkspaceStudentHref = (student: any, fallbackWorkspace: string) => {
@@ -886,15 +941,15 @@ function UnifiedWorkspaceContent() {
     const getSpecialtyStatus = (sectionKey: string) => {
         const contrib = sectionContributions.find(c => c.section_key === sectionKey);
         if (!contrib) {
-            return { status: "not_started", label: "Not Started", bg: "bg-slate-50 border-slate-200 text-slate-500", dot: "bg-slate-400" };
+            return { status: "not_started", label: "Not Started", bg: semanticToneClass("neutral"), dot: toneDotClass.neutral };
         }
         if (contrib.status === "submitted") {
-            return { status: "submitted", label: "Submitted", bg: "bg-emerald-50 border-emerald-200 text-emerald-700", dot: "bg-emerald-500" };
+            return { status: "submitted", label: "Submitted", bg: semanticToneClass("success"), dot: toneDotClass.success };
         }
         if (isSectionReopened(sectionKey)) {
-            return { status: "reopened", label: "Reopened", bg: "bg-rose-50 border-rose-200 text-rose-700 animate-pulse", dot: "bg-rose-500" };
+            return { status: "reopened", label: "Reopened", bg: `${semanticToneClass("danger")} animate-pulse`, dot: toneDotClass.danger };
         }
-        return { status: "draft", label: "Draft", bg: "bg-amber-50 border-amber-200 text-amber-700", dot: "bg-amber-500" };
+        return { status: "draft", label: "Draft", bg: semanticToneClass("warning"), dot: toneDotClass.warning };
     };
 
     const getAssignedSpecialist = (specialtyLabel: string) => {
@@ -1047,7 +1102,7 @@ function UnifiedWorkspaceContent() {
                                     Action Queue
                                 </h2>
                                 {actions.length > 0 && (
-                                    <span className="text-[0.65rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                    <span className={workspaceBadgeClass("warning")}>
                                         {actions.length} active
                                     </span>
                                 )}
@@ -1507,15 +1562,15 @@ function UnifiedWorkspaceContent() {
                     <div className="flex-1 overflow-y-auto">
                     {specialistOnboardingIncomplete && (
                         <div className="px-5 pt-5 md:px-6 md:pt-6">
-                            <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className={workspaceAlertClass("warning", "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between")}>
                                 <div>
-                                    <p className="m-0 text-sm font-bold text-amber-950">Complete your profile setup</p>
-                                    <p className="m-0 text-sm text-amber-800">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
+                                    <p className="m-0 text-sm font-bold">Complete your profile setup</p>
+                                    <p className="m-0 text-sm">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => router.push("/specialist-onboarding")}
-                                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
+                                    className="rounded-lg border border-amber-600 bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:border-amber-700 hover:bg-amber-700"
                                 >
                                     Finish setup
                                 </button>
@@ -1629,12 +1684,12 @@ function UnifiedWorkspaceContent() {
                             type="button"
                             onClick={() => handleReportMenuChange("generator")}
                             title={isIepReadyToGenerate ? "IEP is ready to generate for this student." : undefined}
-                            className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${isIepReadyToGenerate ? "border-amber-300 bg-amber-50 text-amber-800 shadow-sm hover:bg-amber-100 hover:border-amber-400" : isGenerator ? "border-indigo-300 bg-white text-indigo-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                            className={workspaceSecondaryTabClass({ active: isGenerator, attention: isIepReadyToGenerate })}
                         >
                             <Sparkles className="h-3.5 w-3.5" />
                             Report Generator
                             {isIepReadyToGenerate && (
-                                <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-wider text-amber-900">
+                                <span className={workspaceBadgeClass("warning", "bg-amber-200 px-1.5 py-0")}>
                                     IEP ready
                                 </span>
                             )}
@@ -1659,7 +1714,7 @@ function UnifiedWorkspaceContent() {
                                         type="button"
                                         disabled={isLocked}
                                         onClick={() => handleReportMenuChange(tab.id)}
-                                        className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${isLocked ? "cursor-not-allowed border-transparent text-slate-400 opacity-70" : isActive ? "border-indigo-300 bg-white text-indigo-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                                        className={workspaceSecondaryTabClass({ active: isActive, disabled: isLocked })}
                                         title={isLocked ? "Available after enrollment/integration" : undefined}
                                     >
                                         {isLocked ? (
@@ -1681,24 +1736,24 @@ function UnifiedWorkspaceContent() {
                         type="button"
                         disabled={iepDocs.length === 0}
                         onClick={() => iepDocs[0] && handleReportMenuChange("iep", iepDocs[0].id.toString())}
-                        className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${iepDocs.length === 0 ? "cursor-not-allowed border-transparent text-slate-400 opacity-70" : reportView === "iep" ? "border-indigo-300 bg-white text-indigo-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                        className={workspaceSecondaryTabClass({ active: reportView === "iep", disabled: iepDocs.length === 0 })}
                     >
                         <FileText className="h-3.5 w-3.5" />
                         {user?.role === "PARENT" ? "Current IEP" : "IEP Documents"}
                         {iepDocs.length > 1 && (
-                            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[0.6rem] font-bold text-indigo-700">{iepDocs.length}</span>
+                            <span className={workspaceBadgeClass("primary", "px-1.5 py-0")}>{iepDocs.length}</span>
                         )}
                     </button>
                     <button
                         type="button"
                         disabled={monthlyDocs.length === 0}
                         onClick={() => monthlyDocs[0] && handleReportMenuChange("monthly", monthlyDocs[0].id.toString())}
-                        className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${monthlyDocs.length === 0 ? "cursor-not-allowed border-transparent text-slate-400 opacity-70" : reportView === "monthly" ? "border-emerald-300 bg-white text-emerald-700 shadow-sm" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900"}`}
+                        className={workspaceSecondaryTabClass({ active: reportView === "monthly", disabled: monthlyDocs.length === 0, tone: "success" })}
                     >
                         <ClipboardList className="h-3.5 w-3.5" />
                         {user?.role === "PARENT" ? "Monthly Reports" : "Monthly Progress"}
                         {monthlyDocs.length > 1 && (
-                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[0.6rem] font-bold text-emerald-700">{monthlyDocs.length}</span>
+                            <span className={workspaceBadgeClass("success", "px-1.5 py-0")}>{monthlyDocs.length}</span>
                         )}
                     </button>
                 </div>
@@ -2121,7 +2176,7 @@ function UnifiedWorkspaceContent() {
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
                                                     <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>Current IEP</span>
-                                                    {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Current</span>}
+                                                    {isLatest && <span className={workspaceBadgeClass("primary", "ml-2 shrink-0 px-1.5 py-0")}>Current</span>}
                                                 </div>
                                                 <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                             </button>
@@ -2146,7 +2201,7 @@ function UnifiedWorkspaceContent() {
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
                                                     <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Monthly Report</span>
-                                                    {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
+                                                    {isLatest && <span className={workspaceBadgeClass("success", "ml-2 shrink-0 px-1.5 py-0")}>Latest</span>}
                                                 </div>
                                                 <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                             </button>
@@ -2322,7 +2377,7 @@ function UnifiedWorkspaceContent() {
                                         <button
                                             type="button"
                                             onClick={() => handleTeamMenuChange("SPECIALIST")}
-                                            className={`inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-bold transition-colors ${isSpecialist ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                                            className={workspaceSegmentButtonClass(isSpecialist)}
                                         >
                                             <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                             Specialists
@@ -2330,7 +2385,7 @@ function UnifiedWorkspaceContent() {
                                         <button
                                             type="button"
                                             onClick={() => handleTeamMenuChange("TEACHER")}
-                                            className={`inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-bold transition-colors ${isTeacher ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                                            className={workspaceSegmentButtonClass(isTeacher)}
                                         >
                                             <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                                             Teachers
@@ -2342,7 +2397,7 @@ function UnifiedWorkspaceContent() {
                                             type="button"
                                             onClick={confirmTeamChanges}
                                             disabled={!teamHasChanges || confirmingTeam}
-                                            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-indigo-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                                            className={workspacePrimaryButtonClass}
                                         >
                                             <Check size={14} />
                                             {confirmingTeam ? "Confirming..." : "Confirm Team"}
@@ -2353,7 +2408,7 @@ function UnifiedWorkspaceContent() {
                                                     type="button"
                                                     onClick={discardTeamChanges}
                                                     disabled={confirmingTeam}
-                                                    className="h-7 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                                    className={workspaceSecondaryButtonClass}
                                                 >
                                                     Cancel Changes
                                                 </button>
@@ -2369,11 +2424,11 @@ function UnifiedWorkspaceContent() {
                         </div>
 
                         {isLocked && (
-                            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 shadow-sm">
-                                <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            <div className={workspaceAlertClass("danger", "mb-5 flex items-start gap-3 shadow-sm")}>
+                                <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                 <div>
-                                    <p className="text-sm font-bold text-red-800">Assignment Locked</p>
-                                    <p className="text-xs text-red-700 mt-0.5">
+                                    <p className="text-sm font-bold">Assignment Locked</p>
+                                    <p className="text-xs mt-0.5">
                                         {isSpecialist
                                             ? `${lockReason}. Specialty assignments unlock after the Parent Assessment is submitted.`
                                             : `${lockReason}. Staff cannot be assigned until prerequisite conditions are met.`}
@@ -2403,18 +2458,18 @@ function UnifiedWorkspaceContent() {
                                             return (
                                                 <div
                                                     key={specialty}
-                                                    className={`rounded-xl border px-4 py-3 ${isCovered ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-slate-50"}`}
+                                                    className={`rounded-xl border px-4 py-3 ${isCovered ? semanticToneClass("success") : semanticToneClass("neutral")}`}
                                                 >
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <span className={`text-xs font-extrabold uppercase tracking-wider ${isCovered ? "text-indigo-700" : "text-slate-500"}`}>
+                                                        <span className="text-xs font-extrabold uppercase tracking-wider">
                                                             {specialtyShortLabel(specialty as any)}
                                                         </span>
-                                                        <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${isCovered ? "bg-white text-indigo-700" : "bg-white text-slate-500"}`}>
+                                                        <span className={workspaceBadgeClass(isCovered ? "success" : "neutral", "bg-white")}>
                                                             {isCovered ? "Assigned" : "Open"}
                                                         </span>
                                                     </div>
                                                     <p className="mt-2 text-sm font-bold text-slate-900 leading-tight">{specialty}</p>
-                                                    <p className={`mt-1 text-xs ${isCovered ? "text-indigo-700" : "text-slate-500"}`}>
+                                                    <p className="mt-1 text-xs">
                                                         {isCovered ? getStaffName(assignedForSpecialty) : "No specialist assigned yet"}
                                                     </p>
                                                 </div>
@@ -2430,7 +2485,7 @@ function UnifiedWorkspaceContent() {
                                                         <div className="min-w-0">
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <h3 className="m-0 text-lg font-bold text-slate-900">{specialty}</h3>
-                                                                <span className={`rounded-full px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wider ${assignedForSpecialty ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500"}`}>
+                                                                <span className={workspaceBadgeClass(assignedForSpecialty ? "success" : "neutral")}>
                                                                     {assignedForSpecialty ? "Assigned" : "Unassigned"}
                                                                 </span>
                                                             </div>
@@ -2479,17 +2534,17 @@ function UnifiedWorkspaceContent() {
                                                                                 {staffName}
                                                                             </p>
                                                                             {staff.recommended_for?.includes(specialty) && (
-                                                                                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-amber-800">
+                                                                                <span className={workspaceBadgeClass("warning")}>
                                                                                     Match
                                                                                 </span>
                                                                             )}
                                                                             {staff.preferred_for?.includes(specialty) && (
-                                                                                <span className="rounded-full bg-pink-100 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-pink-800">
+                                                                                <span className={workspaceBadgeClass("attention")}>
                                                                                     Parent Pick
                                                                                 </span>
                                                                             )}
                                                                             {alreadyAssigned && !isAssignedForThisSpecialty && (
-                                                                                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-emerald-800">
+                                                                                <span className={workspaceBadgeClass("success")}>
                                                                                     On Team
                                                                                 </span>
                                                                             )}
@@ -2576,16 +2631,16 @@ function UnifiedWorkspaceContent() {
 
                                     return (
                                         <div key={staff.id} className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                                            alreadyAssigned ? "border-green-500 bg-green-50" : "border-slate-200 bg-white"
+                                            alreadyAssigned ? semanticToneClass("success") : "border-slate-200 bg-white"
                                         }`}>
                                             <div className="min-w-0 pr-4">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <p className={`text-md font-bold truncate ${alreadyAssigned ? "text-green-800" : "text-slate-800"}`}>
+                                                    <p className="text-md font-bold truncate text-slate-800">
                                                         {getStaffName(staff)}
                                                     </p>
                                                     {staff.recommended && (
-                                                        <span className="text-[0.65rem] font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
-                                                            ⭐ Match
+                                                        <span className={workspaceBadgeClass("warning", "whitespace-nowrap")}>
+                                                            Match
                                                         </span>
                                                     )}
                                                 </div>
@@ -2698,22 +2753,22 @@ function UnifiedWorkspaceContent() {
                     </div>
                     <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
                         {user?.role === "ADMIN" && (
-                            <button onClick={() => setWorkspace("overview")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                            <button onClick={() => setWorkspace("overview")} className={workspaceMainTabClass(workspace === "overview")}>
                                 Overview
                             </button>
                         )}
                         {user?.role !== "ADMIN" && (
-                            <button onClick={() => setWorkspace("forms")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                            <button onClick={() => setWorkspace("forms")} className={workspaceMainTabClass(workspace === "forms")}>
                                 <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 Forms
                             </button>
                         )}
-                        <button onClick={() => setWorkspace("reports")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                        <button onClick={() => setWorkspace("reports")} className={workspaceMainTabClass(workspace === "reports")}>
                             <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                             Reports
                         </button>
                         {user?.role === "ADMIN" && (
-                            <button onClick={() => setWorkspace("team")} className={`workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                            <button onClick={() => setWorkspace("team")} className={workspaceMainTabClass(workspace === "team")}>
                                 <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                 Team
                             </button>

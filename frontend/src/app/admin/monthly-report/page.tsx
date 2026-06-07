@@ -5,19 +5,42 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { semanticToneHex, type SemanticTone } from "@/lib/role-colors";
 
 /* ─── UI Helpers ─────────────────────────────────────────────────────────── */
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}>
-            <div style={{ padding: "0.875rem 1.5rem", borderBottom: "1px solid #e2e8f0", background: "#f0fdf4" }}>
+            <div style={{ padding: "0.75rem 1.25rem", borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
                 <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{title}</h2>
             </div>
-            <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>{children}</div>
+            <div style={{ padding: "1.15rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>{children}</div>
         </div>
     );
 }
+
+const pillStyle = (tone: SemanticTone): React.CSSProperties => {
+    const colors = semanticToneHex(tone);
+    return {
+        padding: "3px 10px",
+        borderRadius: "999px",
+        background: colors.bg,
+        color: colors.color,
+        border: `1px solid ${colors.border}`,
+        fontSize: "0.78rem",
+        fontWeight: 600,
+    };
+};
+
+const sectionLabelStyle = (tone: SemanticTone): React.CSSProperties => ({
+    fontSize: "0.7rem",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.4px",
+    color: semanticToneHex(tone).color,
+    marginBottom: "4px",
+});
 
 function ProgressSection({ title, data }: { title: string; data: any }) {
     if (!data || (!data.summary && !data.highlights?.length && !data.concerns?.length)) return null;
@@ -26,17 +49,17 @@ function ProgressSection({ title, data }: { title: string; data: any }) {
             {data.summary && <p style={{ fontSize: "0.85rem", color: "#1e293b", lineHeight: 1.6, margin: 0 }}>{data.summary}</p>}
             {data.highlights?.length > 0 && (
                 <div>
-                    <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#16a34a", marginBottom: "4px" }}>Highlights</p>
+                    <p style={sectionLabelStyle("success")}>Highlights</p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                        {data.highlights.map((h: string, i: number) => <span key={i} style={{ padding: "3px 10px", borderRadius: "999px", background: "#dcfce7", color: "#166534", fontSize: "0.78rem", fontWeight: 600 }}>{h}</span>)}
+                        {data.highlights.map((h: string, i: number) => <span key={i} style={pillStyle("success")}>{h}</span>)}
                     </div>
                 </div>
             )}
             {data.concerns?.length > 0 && (
                 <div>
-                    <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#dc2626", marginBottom: "4px" }}>Concerns</p>
+                    <p style={sectionLabelStyle("danger")}>Concerns</p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                        {data.concerns.map((c: string, i: number) => <span key={i} style={{ padding: "3px 10px", borderRadius: "999px", background: "#fee2e2", color: "#991b1b", fontSize: "0.78rem", fontWeight: 600 }}>{c}</span>)}
+                        {data.concerns.map((c: string, i: number) => <span key={i} style={pillStyle("danger")}>{c}</span>)}
                     </div>
                 </div>
             )}
@@ -148,15 +171,15 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
     const focus = report.next_month_focus_areas || [];
 
     const scoreColor = (s: number) => {
-        if (s >= 5) return { bg: "#dcfce7", color: "#166534" };
-        if (s >= 4) return { bg: "#d1fae5", color: "#065f46" };
-        if (s >= 3) return { bg: "#dbeafe", color: "#1e40af" };
-        if (s >= 2) return { bg: "#fef3c7", color: "#92400e" };
-        return { bg: "#fee2e2", color: "#991b1b" };
+        if (s >= 4) return semanticToneHex("success");
+        if (s >= 3) return semanticToneHex("info");
+        if (s >= 2) return semanticToneHex("warning");
+        return semanticToneHex("danger");
     };
+    const reportStatusStyle = semanticToneHex(reportStatus === "FINAL" ? "success" : "warning");
 
     return (
-        <div style={{ maxWidth: propHideNavigation ? "1024px" : "900px", margin: "0 auto", padding: propHideNavigation ? "2rem 1.5rem 4rem" : "2rem 1rem 4rem" }}>
+        <div style={{ maxWidth: propHideNavigation ? "1024px" : "900px", margin: "0 auto", padding: propHideNavigation ? "1.5rem 1.25rem 3rem" : "2rem 1rem 4rem" }}>
             {/* Breadcrumb Nav */}
             {!propHideNavigation && (
                 <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
@@ -182,7 +205,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                 <div>
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                         📊 Monthly Progress Report
-                        <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatus === "FINAL" ? "#dcfce7" : "#fef3c7", color: reportStatus === "FINAL" ? "#166534" : "#92400e", border: `1px solid ${reportStatus === "FINAL" ? "#bbf7d0" : "#fde68a"}` }}>
+                        <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatusStyle.bg, color: reportStatusStyle.color, border: `1px solid ${reportStatusStyle.border}` }}>
                             {reportStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
                     </h1>
@@ -203,7 +226,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                         <span className="hidden md:block" style={{ width: "1px", height: "24px", background: "#cbd5e1", margin: "0 4px" }}></span>
                         {reportStatus !== "FINAL" ? (
                             <button onClick={() => handleSaveStatus("FINAL")} disabled={saving}
-                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "#059669", color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: semanticToneHex("success").color, color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
                                 {saving ? "Saving…" : "✅ Finalize"}
                             </button>
                         ) : (
@@ -248,7 +271,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                             const sc = scoreColor(g.score);
                             return (
                                 <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                                    <div style={{ width: 36, height: 36, borderRadius: "8px", background: sc.bg, color: sc.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", fontWeight: 800, flexShrink: 0 }}>
+                                    <div style={{ width: 36, height: 36, borderRadius: "8px", background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", fontWeight: 800, flexShrink: 0 }}>
                                         {g.score}
                                     </div>
                                     <div style={{ flex: 1 }}>
@@ -283,17 +306,17 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     <p style={{ fontSize: "0.85rem", color: "#1e293b", margin: 0 }}><strong>Overall:</strong> {po.overall_comparison}</p>
                     {po.top_concerns?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#dc2626", marginBottom: "4px" }}>Concerns</p>
+                            <p style={sectionLabelStyle("danger")}>Concerns</p>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                {po.top_concerns.map((c: string, i: number) => <span key={i} style={{ padding: "3px 10px", borderRadius: "999px", background: "#fee2e2", color: "#991b1b", fontSize: "0.78rem", fontWeight: 600 }}>{c}</span>)}
+                                {po.top_concerns.map((c: string, i: number) => <span key={i} style={pillStyle("danger")}>{c}</span>)}
                             </div>
                         </div>
                     )}
                     {po.parent_goals?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#059669", marginBottom: "4px" }}>Goals for Next Month</p>
+                            <p style={sectionLabelStyle("success")}>Goals for Next Month</p>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                {po.parent_goals.map((g: string, i: number) => <span key={i} style={{ padding: "3px 10px", borderRadius: "999px", background: "#dcfce7", color: "#166534", fontSize: "0.78rem", fontWeight: 600 }}>{g}</span>)}
+                                {po.parent_goals.map((g: string, i: number) => <span key={i} style={pillStyle("success")}>{g}</span>)}
                             </div>
                         </div>
                     )}
@@ -305,7 +328,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                 <SectionCard title="Recommendations">
                     {recs.classroom?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#4f46e5", marginBottom: "4px" }}>Classroom</p>
+                            <p style={{ fontSize: "0.78rem", fontWeight: 700, color: semanticToneHex("primary").color, marginBottom: "4px" }}>Classroom</p>
                             <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
                                 {recs.classroom.map((r: string, i: number) => <li key={i}>{r}</li>)}
                             </ul>
@@ -313,7 +336,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     )}
                     {recs.home_program?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#059669", marginBottom: "4px" }}>Home Program</p>
+                            <p style={{ fontSize: "0.78rem", fontWeight: 700, color: semanticToneHex("success").color, marginBottom: "4px" }}>Home Program</p>
                             <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
                                 {recs.home_program.map((r: string, i: number) => <li key={i}>{r}</li>)}
                             </ul>
@@ -321,7 +344,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     )}
                     {recs.therapy_adjustments?.length > 0 && (
                         <div>
-                            <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#dc2626", marginBottom: "4px" }}>Therapy Adjustments</p>
+                            <p style={{ fontSize: "0.78rem", fontWeight: 700, color: semanticToneHex("danger").color, marginBottom: "4px" }}>Therapy Adjustments</p>
                             <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
                                 {recs.therapy_adjustments.map((r: string, i: number) => <li key={i}>{r}</li>)}
                             </ul>
@@ -335,7 +358,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                 <SectionCard title="Next Month Focus Areas">
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         {focus.map((f, i) => (
-                            <span key={i} style={{ padding: "6px 14px", borderRadius: "999px", background: "#e0f2fe", color: "#0369a1", fontSize: "0.82rem", fontWeight: 600 }}>🎯 {f}</span>
+                            <span key={i} style={pillStyle("info")}>Focus: {f}</span>
                         ))}
                     </div>
                 </SectionCard>
@@ -354,8 +377,8 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                                 auditHistory.map((item, idx) => (
                                     <div key={item.id} style={{ display: "flex", gap: "1rem", position: "relative" }}>
                                         {idx !== auditHistory.length - 1 && <div style={{ position: "absolute", width: "2px", background: "#e2e8f0", top: "24px", bottom: "-16px", left: "11px" }} />}
-                                        <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#e0e7ff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
-                                            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4f46e5" }} />
+                                        <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: semanticToneHex("primary").bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
+                                            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: semanticToneHex("primary").color }} />
                                         </div>
                                         <div>
                                             <p style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "#0f172a", fontWeight: 700 }}>

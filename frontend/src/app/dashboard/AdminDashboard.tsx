@@ -127,6 +127,22 @@ const getActionButtonClass = (tone?: string) => {
     return base + "bg-indigo-50/50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300";
 };
 
+const getCardButtonClass = (tone: string) => {
+    const base = "shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-white shadow-sm transition-colors duration-200 border no-underline ";
+    switch (tone) {
+        case "warning":
+            return base + "text-amber-700 border-amber-200 hover:bg-amber-400 hover:text-amber-900 hover:border-amber-500";
+        case "info":
+            return base + "text-blue-700 border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-700";
+        case "success":
+            return base + "text-emerald-700 border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-700";
+        case "attention":
+            return base + "text-pink-700 border-pink-200 hover:bg-pink-600 hover:text-white hover:border-pink-700";
+        default:
+            return base + "text-slate-700 border-slate-200 hover:bg-slate-800 hover:text-white hover:border-slate-900";
+    }
+};
+
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function AdminDashboard() {
@@ -797,6 +813,7 @@ export default function AdminDashboard() {
                                                 {/* Actions */}
                                                 {dashboardActions.map(action => {
                                                     const actionStyle = getActionTypeStyle(action.type);
+                                                    const toneKey = action.type === "positive" ? "success" : action.type === "warning" ? "warning" : "info";
                                                     return (
                                                         <div key={action.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl shadow-sm" style={{ backgroundColor: actionStyle.bg, border: `1px solid ${actionStyle.border}` }}>
                                                             <div>
@@ -804,7 +821,7 @@ export default function AdminDashboard() {
                                                                 <p className="mt-1 mb-0 text-xs" style={{ color: actionStyle.body }}>{action.description}</p>
                                                             </div>
                                                             {isSafeActionLink(action.link) ? (
-                                                                <Link href={action.link} className="shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-white shadow-sm transition-transform hover:scale-105 hover:shadow-md" style={{ color: actionStyle.title, border: `1px solid ${actionStyle.border}`, textDecoration: "none" }}>
+                                                                <Link href={action.link} className={getCardButtonClass(toneKey)}>
                                                                     {action.action_text}
                                                                 </Link>
                                                             ) : (
@@ -816,7 +833,8 @@ export default function AdminDashboard() {
                                                 
                                                 {/* Watchlist Items */}
                                                 {watchlistItems.map(item => {
-                                                    const tone = (item.tone as string) === 'warning' ? { bg: '#fffbeb', border: '#fde68a', title: '#92400e', body: '#b45309' } : { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
+                                                    const toneKey = (item.tone as string) === 'warning' ? "warning" : "info";
+                                                    const tone = toneKey === 'warning' ? { bg: '#fffbeb', border: '#fde68a', title: '#92400e', body: '#b45309' } : { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
                                                     return (
                                                         <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl shadow-sm" style={{ backgroundColor: tone.bg, border: `1px solid ${tone.border}` }}>
                                                             <div>
@@ -824,7 +842,7 @@ export default function AdminDashboard() {
                                                                 <p className="mt-1 mb-0 text-xs" style={{ color: tone.body }}>{item.description}</p>
                                                             </div>
                                                             {isSafeActionLink(item.link) ? (
-                                                                <Link href={item.link} className="shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-white shadow-sm transition-transform hover:scale-105 hover:shadow-md" style={{ color: tone.title, border: `1px solid ${tone.border}`, textDecoration: "none" }}>
+                                                                <Link href={item.link} className={getCardButtonClass(toneKey)}>
                                                                     {item.cta} &rarr;
                                                                 </Link>
                                                             ) : (

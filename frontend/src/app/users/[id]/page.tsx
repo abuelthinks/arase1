@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { LANGUAGE_OPTIONS, normalizeLanguages } from "@/lib/languages";
+import { semanticToneClass, statusColorClass, type SemanticTone } from "@/lib/role-colors";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 import type { LucideIcon } from "lucide-react";
@@ -57,15 +58,7 @@ interface UserData {
 }
 
 const inputCls =
-    "w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition-all hover:bg-white focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/15";
-
-const statusStyles: Record<string, string> = {
-    PENDING_ASSESSMENT: "bg-pink-50 text-pink-700 border-pink-100",
-    ASSESSMENT_SCHEDULED: "bg-amber-50 text-amber-700 border-amber-100",
-    ASSESSED: "bg-blue-50 text-blue-700 border-blue-100",
-    ENROLLED: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    ARCHIVED: "bg-slate-50 text-slate-500 border-slate-200",
-};
+    "w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition-colors hover:bg-white focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/15";
 
 const profileCache = new Map<string, UserData>();
 
@@ -123,6 +116,10 @@ function SectionHeader({
             {action && <div className="shrink-0">{action}</div>}
         </div>
     );
+}
+
+function profileBadgeClass(tone: SemanticTone, extra = "") {
+    return `rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass(tone)} ${extra}`;
 }
 
 export default function UserProfile() {
@@ -249,9 +246,9 @@ export default function UserProfile() {
 
     const statCards = canViewOperationalDetails && !isParent
         ? [
-            { label: "Caseload", value: studentCount, note: "total assigned students", accent: "from-indigo-500 to-blue-600" },
-            { label: "Active", value: activeCount, note: "enrolled students", accent: "from-emerald-500 to-teal-600" },
-            { label: "Needs Follow-up", value: pendingCount + assessedCount, note: "pending or assessed", accent: "from-amber-500 to-orange-600" },
+            { label: "Caseload", value: studentCount, note: "total assigned students", tone: "primary" as SemanticTone },
+            { label: "Active", value: activeCount, note: "enrolled students", tone: "success" as SemanticTone },
+            { label: "Needs Follow-up", value: pendingCount + assessedCount, note: "pending or assessed", tone: "warning" as SemanticTone },
         ]
         : [];
 
@@ -325,15 +322,15 @@ export default function UserProfile() {
                 </div>
 
                 <div className="flex flex-col items-start gap-5 sm:flex-row">
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-2xl font-extrabold text-white shadow-md shadow-indigo-200">
+                    <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border text-2xl font-extrabold shadow-sm ${semanticToneClass("primary")}`}>
                         {initials}
                     </div>
                     <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-3">
-                            <h1 className="m-0 bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-2xl font-extrabold leading-tight text-transparent">
+                            <h1 className="m-0 text-2xl font-extrabold leading-tight text-slate-900">
                                 {displayName}
                             </h1>
-                            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide text-indigo-700">
+                            <span className={`rounded-full border px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide ${semanticToneClass("primary")}`}>
                                 {role}
                             </span>
                         </div>
@@ -354,7 +351,7 @@ export default function UserProfile() {
                                 </span>
                             )}
                             {!isParent && (
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                <span className={`inline-flex items-center gap-1.5 ${profileBadgeClass("primary")}`}>
                                     <BadgeCheck className="h-3 w-3" aria-hidden="true" />
                                     {(user.specialties && user.specialties.length > 0)
                                         ? user.specialties.join(", ")
@@ -371,7 +368,7 @@ export default function UserProfile() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {statCards.map(card => (
                         <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.accent} text-lg font-extrabold text-white shadow-md`}>
+                            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border text-lg font-extrabold ${semanticToneClass(card.tone)}`}>
                                 {card.value}
                             </div>
                             <p className="m-0 text-xs font-bold uppercase tracking-wide text-slate-500">{card.label}</p>
@@ -383,10 +380,10 @@ export default function UserProfile() {
 
             {/* Onboarding callout */}
             {role === "SPECIALIST" && onboardingIncomplete && canViewOperationalDetails && (
-                <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className={`flex flex-col gap-3 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between ${semanticToneClass("warning")}`}>
                     <div>
-                        <p className="m-0 text-sm font-extrabold text-amber-900">Complete your profile setup</p>
-                        <p className="mt-1 text-sm text-amber-800">{specialistOnboardingMessage(user.specialist_onboarding_missing || authUser?.specialist_onboarding_missing)}</p>
+                        <p className="m-0 text-sm font-extrabold">Complete your profile setup</p>
+                        <p className="mt-1 text-sm">{specialistOnboardingMessage(user.specialist_onboarding_missing || authUser?.specialist_onboarding_missing)}</p>
                     </div>
                     <Link
                         href="/specialist-onboarding"
@@ -410,7 +407,7 @@ export default function UserProfile() {
                             {profileInfo.map(item => {
                                 const Icon = item.icon;
                                 return (
-                                    <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50">
+                                    <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5">
                                         <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500">
                                             {Icon && <Icon className="h-4 w-4 text-slate-400" aria-hidden="true" />}
                                             {item.label}
@@ -436,7 +433,7 @@ export default function UserProfile() {
                             />
                             <div className="flex flex-col gap-3">
                                 {canViewPrivateContact && (
-                                    <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                                         <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
                                             <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" />
                                             Phone Verification
@@ -445,14 +442,14 @@ export default function UserProfile() {
                                             <span className="text-sm font-bold text-slate-900">
                                                 {user.phone_number || "No phone number on file"}
                                             </span>
-                                            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${user.is_phone_verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                            <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${semanticToneClass(user.is_phone_verified ? "success" : "warning")}`}>
                                                 {user.is_phone_verified ? "Verified" : "Not verified"}
                                             </span>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                                     <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
                                         <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                                         Area of Practice
@@ -460,12 +457,12 @@ export default function UserProfile() {
                                     <div className="mt-2 flex flex-wrap gap-2">
                                         {user.specialties && user.specialties.length > 0 ? (
                                             user.specialties.map(s => (
-                                                <span key={s} className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                                <span key={s} className={profileBadgeClass("primary")}>
                                                     {s}
                                                 </span>
                                             ))
                                         ) : user.specialty ? (
-                                            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                            <span className={profileBadgeClass("primary")}>
                                                 {user.specialty}
                                             </span>
                                         ) : (
@@ -475,7 +472,7 @@ export default function UserProfile() {
                                 </div>
 
                                 {role === "SPECIALIST" && (
-                                    <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                                         <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
                                             <Languages className="h-3.5 w-3.5" aria-hidden="true" />
                                             Session Languages
@@ -483,7 +480,7 @@ export default function UserProfile() {
                                         <div className="mt-2 flex flex-wrap gap-2">
                                             {languages.length > 0 ? (
                                                 languages.map(l => (
-                                                    <span key={l} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                                    <span key={l} className={profileBadgeClass("success")}>
                                                         {l}
                                                     </span>
                                                 ))
@@ -534,9 +531,9 @@ export default function UserProfile() {
                                                         ));
                                                     }}
                                                     aria-pressed={checked}
-                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
+                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
                                                         ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
-                                                        : "border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+                                                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
                                                         }`}
                                                 >
                                                     {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
@@ -642,7 +639,7 @@ export default function UserProfile() {
                                 <div className="flex flex-wrap gap-2">
                                     {languages.length > 0 ? (
                                         languages.map(language => (
-                                            <span key={language} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                            <span key={language} className={profileBadgeClass("success")}>
                                                 {language}
                                             </span>
                                         ))
@@ -686,9 +683,9 @@ export default function UserProfile() {
                                                         setSpecialties(prev => checked ? prev.filter(s => s !== option) : [...prev, option]);
                                                     }}
                                                     aria-pressed={checked}
-                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
+                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
                                                         ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
-                                                        : "border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+                                                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
                                                         }`}
                                                 >
                                                     {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
@@ -750,7 +747,7 @@ export default function UserProfile() {
                                 <div className="flex flex-wrap gap-2">
                                     {specialties.length > 0 ? (
                                         specialties.map(s => (
-                                            <span key={s} className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                            <span key={s} className={profileBadgeClass("primary")}>
                                                 {s}
                                             </span>
                                         ))
@@ -793,7 +790,7 @@ export default function UserProfile() {
                             ) : (
                                 <div className="flex flex-col gap-2">
                                     {[...assignedStudents].sort((a, b) => b.id - a.id).map(student => {
-                                        const statusCls = statusStyles[student.status?.toUpperCase()] ?? "bg-slate-50 text-slate-500 border-slate-200";
+                                        const statusCls = statusColorClass(student.status);
                                         return (
                                             <Link
                                                 key={student.id}
@@ -823,15 +820,15 @@ export default function UserProfile() {
                                 title="Communication"
                                 description="All messages go through the system to keep records and protect both parties."
                             />
-                            <div className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+                            <div className={`flex items-start gap-3 rounded-xl border p-4 ${semanticToneClass("primary")}`}>
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/80 shadow-sm">
                                     <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                                 </div>
                                 <div>
-                                    <p className="m-0 text-sm font-extrabold text-indigo-950">
+                                    <p className="m-0 text-sm font-extrabold">
                                         Direct contact is not available
                                     </p>
-                                    <p className="mt-1 text-sm text-indigo-800">
+                                    <p className="mt-1 text-sm">
                                         In-app messaging will be available soon. Until then, coordinate through your admin or scheduled session.
                                     </p>
                                 </div>
@@ -892,18 +889,18 @@ export default function UserProfile() {
                     )}
 
                     {isAdmin && (
-                        <section className="rounded-2xl border border-orange-200 bg-orange-50/60 p-6 md:p-7">
+                        <section className={`rounded-2xl border p-6 md:p-7 ${semanticToneClass("warning")}`}>
                             <SectionHeader
                                 title="Admin Tools"
                                 description="Higher-impact actions belong here once they are wired up."
                             />
                             <div className="flex flex-col gap-3">
-                                <p className="m-0 text-sm text-orange-900">
+                                <p className="m-0 text-sm">
                                     This section is intentionally limited to real tools. Reset-password and deactivate controls should be added only after the backend action is implemented.
                                 </p>
                                 <Link
                                     href={`/users/${user.id}/activity`}
-                                    className="inline-flex w-fit items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-bold text-orange-800 no-underline transition-colors hover:bg-orange-100"
+                                    className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800 no-underline transition-colors hover:border-amber-400 hover:bg-amber-100"
                                 >
                                     Open Audit Trail
                                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -933,7 +930,7 @@ function ActionRow({
     const content = (
         <>
             <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${semanticToneClass("primary")}`}>
                     <Icon className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <div>

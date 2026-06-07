@@ -66,11 +66,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 : <UserSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
             }
             
-            {/* Floating Bottom-Right Tools (Desktop Only) */}
-            <div className="hidden md:flex absolute bottom-4 right-6 lg:right-12 z-50 items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200/50 shadow-lg rounded-full px-4 py-1.5 scale-90 lg:scale-100 origin-bottom-right transition-all duration-300">
-                <AccessibilityToolbar direction="up" alignOffset="-right-[69px]" />
+            {/* Floating Top-Right Tools (Desktop Only) */}
+            <div className="hidden md:flex absolute top-4 right-6 lg:right-12 z-50 items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200/50 shadow-lg rounded-full px-4 py-1.5 scale-90 lg:scale-100 origin-top-right transition-all duration-300">
+                <AccessibilityToolbar direction="down" alignOffset="-right-[69px]" />
                 <div className="w-px h-4 bg-slate-200" /> {/* Divider */}
-                <NotificationBell direction="up" alignOffset="-right-4" />
+                <NotificationBell direction="down" alignOffset="-right-4" />
             </div>
 
             <main id="main-content" className={`flex-1 h-full ${isWorkspace ? 'p-0 overflow-hidden' : 'px-0 pt-6 pb-28 md:py-8 md:px-12 md:pb-8 overflow-y-auto'}`}>

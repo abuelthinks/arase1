@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { semanticToneClass } from "@/lib/role-colors";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,8 +22,8 @@ const Cb = ({
 }) => (
     <label 
         className={`
-            flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer select-none transition-all duration-200
-            ${disabled ? "opacity-60 cursor-not-allowed" : "hover:-translate-y-0.5 hover:shadow-sm"}
+            flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer select-none transition-colors duration-200
+            ${disabled ? "opacity-60 cursor-not-allowed" : "hover:shadow-sm"}
             ${checked 
                 ? "bg-indigo-50 border-indigo-400 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]" 
                 : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}
@@ -54,8 +55,8 @@ const toggle = (arr: string[], val: string) => {
 };
 
 const SectionHeader = ({ title, description }: { title: string, description?: string }) => (
-    <div className="border-b border-indigo-100/60 pb-4 mb-7">
-        <h2 className="font-bold bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-transparent" style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }}>
+    <div className="border-b border-slate-200 pb-4 mb-7">
+        <h2 className="font-bold text-slate-900" style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }}>
             {title}
         </h2>
         {description && <p className="font-medium text-slate-500 mt-1.5" style={{ fontSize: "var(--form-helper-font-size)", lineHeight: "var(--form-line-height)" }}>{description}</p>}
@@ -63,7 +64,7 @@ const SectionHeader = ({ title, description }: { title: string, description?: st
 );
 
 const Field = ({ label, children, required, isInvalid }: { label: string; children: React.ReactNode; required?: boolean; isInvalid?: boolean }) => (
-    <div className={`space-y-2 p-3 -m-3 rounded-2xl border transition-all duration-200 ${isInvalid ? 'bg-red-50/70 border-red-200 shadow-[0_2px_10px_rgba(239,68,68,0.04)]' : 'border-transparent'}`} data-invalid={isInvalid ? "true" : "false"}>
+    <div className={`space-y-2 p-3 -m-3 rounded-2xl border transition-colors duration-200 ${isInvalid ? 'bg-red-50/70 border-red-200 shadow-[0_2px_10px_rgba(239,68,68,0.04)]' : 'border-transparent'}`} data-invalid={isInvalid ? "true" : "false"}>
         <label className="block text-slate-700 font-semibold" style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)" }}>
             {label}{required && <span className="text-pink-500 ml-1 opacity-80">*</span>}
         </label>
@@ -76,7 +77,7 @@ const Field = ({ label, children, required, isInvalid }: { label: string; childr
     </div>
 );
 
-const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-xl text-[var(--form-control-font-size)] leading-[var(--form-line-height)] focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-400 outline-none bg-slate-50/50 hover:bg-white transition-all disabled:bg-slate-50 disabled:text-slate-400 font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal";
+const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-xl text-[var(--form-control-font-size)] leading-[var(--form-line-height)] focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-400 outline-none bg-slate-50/50 hover:bg-white transition-colors disabled:bg-slate-50 disabled:text-slate-400 font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal";
 const milestoneCls = "flex flex-wrap gap-2.5";
 
 // ── initial state factory ─────────────────────────────────────────────────────
@@ -514,11 +515,11 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                 </div>
 
                 {successMsg && (
-                    <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg text-sm font-semibold">{successMsg}</div>
+                    <div className={`mb-5 rounded-lg border px-4 py-3 text-sm font-semibold ${semanticToneClass("success")}`}>{successMsg}</div>
                 )}
 
                 {errorMsg && (
-                    <div className="mb-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{errorMsg}</div>
+                    <div className={`mb-5 rounded-lg border px-4 py-3 text-sm ${semanticToneClass("danger")}`}>{errorMsg}</div>
                 )}
 
                 <fieldset disabled={dis} className="space-y-10">
@@ -526,11 +527,11 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                     {isWizardMode && (
                         <div className="mb-2">
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm font-bold text-blue-600 tracking-wide uppercase">Step {currentStep + 1} of {totalSteps}</span>
+                                <span className="text-sm font-bold uppercase tracking-wide text-indigo-700">Step {currentStep + 1} of {totalSteps}</span>
                                 <span className="text-xs font-semibold text-slate-400">{Math.round(((currentStep + 1) / totalSteps) * 100)}% Completed</span>
                             </div>
                             <div className="w-full bg-slate-100/80 h-3 rounded-full overflow-hidden mb-8 shadow-inner border border-slate-200/50">
-                                <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 h-full transition-all duration-500 ease-out relative" style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}>
+                                <div className="relative h-full bg-indigo-600 transition-[width] duration-500 ease-out" style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}>
                                     <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                                 </div>
                             </div>
@@ -978,7 +979,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
                                                 setDiagnosticFile(file);
                                             }
                                         }}
-                                        className={`w-full flex flex-col items-center justify-center gap-3 px-6 py-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group ${isDragging ? 'border-indigo-500 bg-indigo-50/70 shadow-inner' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'}`}
+                                        className={`w-full flex flex-col items-center justify-center gap-3 px-6 py-8 border-2 border-dashed rounded-2xl transition-colors cursor-pointer group ${isDragging ? 'border-indigo-500 bg-indigo-50/70 shadow-inner' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'}`}
                                     >
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center transition ${isDragging ? 'bg-indigo-200' : 'bg-indigo-100 group-hover:bg-indigo-200'}`}>
                                             <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>

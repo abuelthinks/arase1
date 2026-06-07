@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
 import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon, Plus, LayoutGrid, List } from "lucide-react";
-import { statusColorHex } from "@/lib/role-colors";
+import { semanticToneClass, statusColorHex, type SemanticTone } from "@/lib/role-colors";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
@@ -177,8 +177,7 @@ export default function DashboardPage() {
             <div className="px-4 md:px-0">
                 {/* SMS Verification Banner — Parent only */}
                 {user?.role === "PARENT" && isPhoneVerified === false && (
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 sm:px-5 sm:py-3 rounded-lg border border-amber-400"
-                        style={{ background: "linear-gradient(90deg, #fef3c7, #fffbeb)" }}>
+                    <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:px-5 sm:py-3 ${semanticToneClass("warning")}`}>
                         <div className="flex items-start gap-3">
                             <span className="text-xl leading-none mt-0.5">📱</span>
                             <p className="m-0 text-sm md:text-[0.9rem] text-amber-900 font-medium">
@@ -213,12 +212,12 @@ export default function DashboardPage() {
                 <WelcomeBanner students={students} />
 
                 {specialistOnboardingIncomplete && (
-                    <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className={`mb-6 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${semanticToneClass("warning")}`}>
                         <div className="flex items-start gap-3">
-                            <Calendar className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                            <Calendar className="mt-0.5 h-5 w-5 shrink-0" />
                             <div>
-                                <p className="m-0 text-sm font-bold text-amber-950">Complete your profile setup</p>
-                                <p className="m-0 text-sm text-amber-800">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
+                                <p className="m-0 text-sm font-bold">Complete your profile setup</p>
+                                <p className="m-0 text-sm">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
                             </div>
                         </div>
                         <Link href="/specialist-onboarding" className="rounded-lg bg-amber-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-amber-700">
@@ -266,7 +265,7 @@ export default function DashboardPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
                                 <Link
                                     href="/parent-onboarding"
-                                    className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50/30 no-underline"
+                                    className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center no-underline transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
                                     style={{ minHeight: "260px" }}
                                 >
                                     <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
@@ -396,31 +395,24 @@ export default function DashboardPage() {
                             ) : user?.role === "PARENT" ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
                                     {paginatedStudents.map(s => {
-                                        type StatusTone = "action" | "waiting" | "ready" | "neutral";
-                                        const statusMap: Record<string, { text: string; tone: StatusTone; Icon: any }> = {
+                                        const statusMap: Record<string, { text: string; tone: SemanticTone; Icon: any }> = {
                                             PENDING_ASSESSMENT: {
                                                 text: s.has_parent_assessment ? "Assessment submitted — awaiting review" : "Waiting for your assessment",
-                                                tone: s.has_parent_assessment ? "waiting" : "action",
+                                                tone: s.has_parent_assessment ? "info" : "warning",
                                                 Icon: s.has_parent_assessment ? Clock : ClipboardList,
                                             },
-                                            ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", tone: "waiting", Icon: Clock },
-                                            ASSESSED: { text: "Assessment complete — enrollment pending", tone: "waiting", Icon: CheckCircle2 },
+                                            ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", tone: "warning", Icon: Clock },
+                                            ASSESSED: { text: "Assessment complete — enrollment pending", tone: "info", Icon: CheckCircle2 },
                                             ENROLLED: {
                                                 text: s.parent_current_tracker_submitted ? "Enrolled & up to date" : "Monthly progress update needed",
-                                                tone: s.parent_current_tracker_submitted ? "ready" : "action",
+                                                tone: s.parent_current_tracker_submitted ? "success" : "warning",
                                                 Icon: s.parent_current_tracker_submitted ? Sparkles : FileText,
                                             },
                                             ARCHIVED: { text: "Record archived", tone: "neutral", Icon: Archive },
                                         };
-                                        const toneStyles: Record<StatusTone, { bg: string; text: string; iconBg: string; iconColor: string }> = {
-                                            action: { bg: "bg-amber-50 border-amber-100", text: "text-amber-800", iconBg: "bg-amber-100", iconColor: "text-amber-600" },
-                                            waiting: { bg: "bg-blue-50 border-blue-100", text: "text-blue-800", iconBg: "bg-blue-100", iconColor: "text-blue-600" },
-                                            ready: { bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-800", iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
-                                            neutral: { bg: "bg-slate-50 border-slate-200", text: "text-slate-600", iconBg: "bg-slate-100", iconColor: "text-slate-500" },
-                                        };
                                         const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
-                                        const statusInfo = statusMap[statusKey] ?? { text: s.status?.replace(/_/g, " "), tone: "neutral" as StatusTone, Icon: FileText };
-                                        const statusTone = toneStyles[statusInfo.tone];
+                                        const statusInfo = statusMap[statusKey] ?? { text: s.status?.replace(/_/g, " "), tone: "neutral" as SemanticTone, Icon: FileText };
+                                        const statusTone = semanticToneClass(statusInfo.tone);
 
                                         const getPrimaryCTA = () => {
                                             if (s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) {
@@ -441,12 +433,12 @@ export default function DashboardPage() {
                                             >
                                                 {/* Child header */}
                                                 <div className="flex items-center gap-4 border-b border-indigo-100/60 p-5">
-                                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-xl font-extrabold text-white shadow-md shadow-indigo-200">
+                                                    <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-extrabold shadow-sm ${semanticToneClass("primary")}`}>
                                                         {s.first_name.charAt(0).toUpperCase()}
                                                         {s.last_name?.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <h3 className="m-0 truncate bg-gradient-to-r from-blue-700 to-indigo-500 bg-clip-text text-xl font-extrabold leading-tight text-transparent">
+                                                        <h3 className="m-0 truncate text-xl font-extrabold leading-tight text-slate-900">
                                                             {s.first_name} {s.last_name}
                                                         </h3>
                                                         {s.grade && s.grade !== "TBD" && (
@@ -456,11 +448,11 @@ export default function DashboardPage() {
                                                 </div>
 
                                                 {/* Status */}
-                                                <div className={`flex items-start gap-3 border-b px-5 py-3 ${statusTone.bg}`}>
-                                                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${statusTone.iconBg}`}>
-                                                        <statusInfo.Icon className={`h-4 w-4 ${statusTone.iconColor}`} aria-hidden="true" />
+                                                <div className={`flex items-start gap-3 border-b px-5 py-3 ${statusTone}`}>
+                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80">
+                                                        <statusInfo.Icon className="h-4 w-4" aria-hidden="true" />
                                                     </div>
-                                                    <p className={`m-0 text-sm font-semibold leading-snug ${statusTone.text}`}>
+                                                    <p className="m-0 text-sm font-semibold leading-snug">
                                                         {statusInfo.text}
                                                     </p>
                                                 </div>
@@ -494,7 +486,7 @@ export default function DashboardPage() {
                                     {students.every(s => s.has_parent_assessment) && (
                                         <Link
                                             href="/parent-onboarding"
-                                            className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50/30 no-underline"
+                                            className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center no-underline transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
                                             style={{ minHeight: "260px" }}
                                         >
                                             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
@@ -560,15 +552,16 @@ export default function DashboardPage() {
                             ) : (
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                                     {paginatedStudents.map(s => {
-                                        const statusToneMap: Record<string, { bg: string; text: string; iconBg: string; iconColor: string; Icon: any; label: string }> = {
-                                            PENDING_ASSESSMENT: { bg: "bg-pink-50 border-pink-100", text: "text-pink-800", iconBg: "bg-pink-100", iconColor: "text-pink-600", Icon: ClipboardList, label: "Pending Assessment" },
-                                            ASSESSMENT_SCHEDULED: { bg: "bg-amber-50 border-amber-100", text: "text-amber-800", iconBg: "bg-amber-100", iconColor: "text-amber-600", Icon: Clock, label: "Assessment Scheduled" },
-                                            ASSESSED: { bg: "bg-blue-50 border-blue-100", text: "text-blue-800", iconBg: "bg-blue-100", iconColor: "text-blue-600", Icon: CheckCircle2, label: "Assessed" },
-                                            ENROLLED: { bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-800", iconBg: "bg-emerald-100", iconColor: "text-emerald-600", Icon: Sparkles, label: "Enrolled" },
-                                            ARCHIVED: { bg: "bg-slate-50 border-slate-200", text: "text-slate-600", iconBg: "bg-slate-100", iconColor: "text-slate-500", Icon: Archive, label: "Archived" },
+                                        const statusToneMap: Record<string, { tone: SemanticTone; Icon: any; label: string }> = {
+                                            PENDING_ASSESSMENT: { tone: "attention", Icon: ClipboardList, label: "Pending Assessment" },
+                                            ASSESSMENT_SCHEDULED: { tone: "warning", Icon: Clock, label: "Assessment Scheduled" },
+                                            ASSESSED: { tone: "info", Icon: CheckCircle2, label: "Assessed" },
+                                            ENROLLED: { tone: "success", Icon: Sparkles, label: "Enrolled" },
+                                            ARCHIVED: { tone: "neutral", Icon: Archive, label: "Archived" },
                                         };
                                         const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
-                                        const tone = statusToneMap[statusKey] ?? { bg: "bg-slate-50 border-slate-200", text: "text-slate-600", iconBg: "bg-slate-100", iconColor: "text-slate-500", Icon: FileText, label: s.status?.replace(/_/g, " ") };
+                                        const tone = statusToneMap[statusKey] ?? { tone: "neutral" as SemanticTone, Icon: FileText, label: s.status?.replace(/_/g, " ") };
+                                        const statusClass = semanticToneClass(tone.tone);
                                         const initials = `${s.first_name?.[0] || ""}${s.last_name?.[0] || ""}`.toUpperCase();
 
                                         return (
@@ -577,7 +570,7 @@ export default function DashboardPage() {
                                                 className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                                             >
                                                 <div className="flex items-center gap-3 border-b border-indigo-100/60 p-4">
-                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-sm font-extrabold text-white shadow-sm">
+                                                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm font-extrabold shadow-sm ${semanticToneClass("primary")}`}>
                                                         {initials || "?"}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
@@ -593,7 +586,7 @@ export default function DashboardPage() {
                                                         {user?.role === "SPECIALIST" && Array.isArray((user as any)?.specialties) && (user as any).specialties.length > 0 && (
                                                             <div className="mt-1.5 flex flex-wrap gap-1">
                                                                 {(user as any).specialties.slice(0, 2).map((sp: string) => (
-                                                                    <span key={sp} className="inline-flex rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[0.6rem] font-bold text-indigo-700">
+                                                                    <span key={sp} className={`inline-flex rounded-full border px-2 py-0.5 text-[0.6rem] font-bold ${semanticToneClass("primary")}`}>
                                                                         {sp}
                                                                     </span>
                                                                 ))}
@@ -601,11 +594,11 @@ export default function DashboardPage() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${tone.bg}`}>
-                                                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone.iconBg}`}>
-                                                        <tone.Icon className={`h-3.5 w-3.5 ${tone.iconColor}`} aria-hidden="true" />
+                                                <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${statusClass}`}>
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/80">
+                                                        <tone.Icon className="h-3.5 w-3.5" aria-hidden="true" />
                                                     </div>
-                                                    <span className={`text-xs font-bold ${tone.text}`}>{tone.label}</span>
+                                                    <span className="text-xs font-bold">{tone.label}</span>
                                                 </div>
                                                 <div className="flex flex-col gap-2 p-4">
                                                     {user?.role === "SPECIALIST" && s.status === "PENDING_ASSESSMENT" ? (

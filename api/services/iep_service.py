@@ -66,6 +66,7 @@ def run_iep_generation(student_id, cycle_id):
         report_cycle=cycle,
         document_type='IEP',
         iep_data=iep_data,
+        status='FINAL',
     )
 
     # Generate PDF and save to storage (S3 in production, local in dev)

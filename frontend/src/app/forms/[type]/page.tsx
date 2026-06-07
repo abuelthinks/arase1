@@ -21,6 +21,10 @@ import {
 } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 import { useFormCollaboration } from "@/hooks/useFormCollaboration";
+import { semanticToneClass, type SemanticTone } from "@/lib/role-colors";
+
+const formBannerClass = (tone: SemanticTone) =>
+    `rounded-md border p-3 flex items-center justify-between gap-3 ${semanticToneClass(tone)}`;
 
 // Import all JSON schemas
 import parent_assessment from "@/config/forms/parentAssessmentSchema.json";
@@ -1784,8 +1788,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         {isSectionScopedAssessment && teamSubmission?.finalized_at && (
                             <div className="mt-3">
                                 {isAdmin ? (
-                                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center justify-between gap-3">
-                                        <div className="text-amber-800 text-sm">
+                                    <div className={formBannerClass("warning")}>
+                                        <div className="text-sm">
                                             {teamSubmission?.unlock_requested ? (
                                                 <strong>Unlock requested by specialist.</strong>
                                             ) : (
@@ -1794,15 +1798,15 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                         </div>
                                         <button
                                             onClick={adminUnlockForm}
-                                            className="shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-900 text-sm font-semibold py-1.5 px-3 rounded-md transition-colors"
+                                            className="shrink-0 rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100"
                                         >
                                             Unlock Form
                                         </button>
                                     </div>
                                 ) : (
                                     user?.role === "SPECIALIST" && !studentProfile?.generated_documents?.some((doc: any) => doc.document_type === "IEP") && (
-                                        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between">
-                                            <div className="text-slate-700 text-sm">
+                                        <div className={formBannerClass("neutral")}>
+                                            <div className="text-sm">
                                                 {teamSubmission?.unlock_requested ? (
                                                     <span>You have requested an admin to unlock this form.</span>
                                                 ) : (
@@ -1812,7 +1816,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                             {!teamSubmission?.unlock_requested && (
                                                 <button
                                                     onClick={requestUnlock}
-                                                    className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold py-1.5 px-3 rounded-md transition-colors"
+                                                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
                                                 >
                                                     Request Unlock
                                                 </button>
