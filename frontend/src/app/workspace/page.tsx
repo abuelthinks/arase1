@@ -16,7 +16,7 @@ import { extractApiError, toastPromise } from "@/lib/toast-utils";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
-import { semanticToneClass, statusColorHex, statusLabel, type SemanticTone } from "@/lib/role-colors";
+import { semanticToneClass, statusColorHex, statusLabel, studentRowActionPillClass, type SemanticTone } from "@/lib/role-colors";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 // Inputs
@@ -132,14 +132,8 @@ const getStaffName = (staff: any) =>
 
 const getStaffSpecialties = (staff: any): string[] => userSpecialtyList(staff?.specialties, staff?.specialty);
 
-const nextActionClass = (tone?: string, isCurrent?: boolean) => {
-    if (tone === "positive") {
-        return semanticToneClass("success");
-    }
-    if (tone === "warning") {
-        return semanticToneClass("warning");
-    }
-    return isCurrent ? semanticToneClass("primary") : semanticToneClass("neutral");
+const nextActionClass = (status?: string, tone?: string) => {
+    return studentRowActionPillClass(status || "ARCHIVED", tone);
 };
 
 const buildWorkspaceStudentHref = (student: any, fallbackWorkspace: string) => {
@@ -243,7 +237,7 @@ function UnifiedWorkspaceContent() {
                 : rawWorkspace;
     const isStudentCurrentlyEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
     const defaultFormTab = user?.role === "PARENT"
-        ? (formStatuses?.parent_assessment?.submitted
+        ? (formStatuses?.parent_assessment?.submitted && !(formStatuses?.parent_assessment?.unlocked && formStatuses?.parent_assessment?.unlock_available !== false)
             ? "parent_tracker"
             : "parent_assessment")
         : user?.role === "TEACHER"
@@ -489,6 +483,20 @@ function UnifiedWorkspaceContent() {
         isEditing: teamHasChanges || Boolean(unassigningStaff) || confirmingTeam || showEnrollConfirm || enrollingStudent || showIntegrateConfirm || integratingStudent,
         onRefresh: refreshWorkspaceData,
     });
+
+    useRealtimeRefresh({
+        targets: ['workspace', 'student'],
+        onRefresh: async () => {
+            if (!isAuthorized) return;
+            try {
+                const res = await api.get("/api/students/");
+                setAllStudents(res.data);
+            } catch (err) {
+                console.error("Failed to refresh student list:", err);
+            }
+        },
+    });
+
     const getTeamUnits = (staff: any[]) => staff.flatMap((member) => {
         if (member.role === "SPECIALIST") {
             return getStaffSpecialties(member).map((specialty) => ({
@@ -962,6 +970,8 @@ function UnifiedWorkspaceContent() {
     const buildAdminActions = () => {
         const specialists = assignedStaff.filter(s => s.role === "SPECIALIST");
         const teachers = assignedStaff.filter(s => s.role === "TEACHER");
+        const currentStudent = allStudents.find(s => s.id?.toString() === studentId);
+        const isReadyForPlacement = currentStudent?.next_action?.label === "Ready for placement";
         const latestIep = docs.find(d => d.type === "IEP");
         const latestIepFinalized = latestIep?.status === "FINAL";
         const latestMonthlyReport = docs.find(d => d.type === "MONTHLY");
@@ -981,7 +991,7 @@ function UnifiedWorkspaceContent() {
         if (normalizedStudentStatus === "ASSESSMENT_SCHEDULED" && !formStatuses?.multi_assessment?.submitted) {
             actions.push({ id: "specialist_assessment", title: "Specialist Assessment in progress", label: "Open Team", onClick: () => handleTeamMenuChange("SPECIALIST"), Icon: Users });
         }
-        if (normalizedStudentStatus === "ASSESSED" && assessmentFinalized && latestIepFinalized) {
+        if (normalizedStudentStatus === "ASSESSED" && (isReadyForPlacement || (assessmentFinalized && latestIepFinalized))) {
             actions.push({ title: `Enroll ${compactStudentName()} (Therapy)?`, label: "Enroll", onClick: () => setShowEnrollConfirm(true), tone: "positive", Icon: CheckCircle2 });
             actions.push({ title: `Integrate ${compactStudentName()} (Mainstream)?`, label: "Integrate", onClick: () => setShowIntegrateConfirm(true), tone: "positive", Icon: GraduationCap });
         }
@@ -1486,11 +1496,19 @@ function UnifiedWorkspaceContent() {
         const isTeacherProgressLocked = user?.role === "TEACHER" && activeFormTab === "sped_tracker" && studentStatus?.toUpperCase() !== "INTEGRATED";
         const isParentProgressLocked = user?.role === "PARENT" && activeFormTab === "parent_tracker" && !isStudentEnrolled;
         const isSpecialistOnboardingLocked = user?.role === "SPECIALIST" && specialistOnboardingIncomplete && ["multi_assessment", "multi_tracker"].includes(activeFormTab);
+        const canEditUnlockedParentAssessment = user?.role === "PARENT"
+            && activeFormTab === "parent_assessment"
+            && !!currentStatus?.submitted
+            && !!currentStatus?.unlocked
+            && currentStatus?.unlock_available !== false;
         const canCreateCurrentForm =
-            !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !isParentProgressLocked && !isSpecialistOnboardingLocked && !currentStatus?.submitted && (
+            !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !isParentProgressLocked && !isSpecialistOnboardingLocked && (
+                canEditUnlockedParentAssessment ||
+                (!currentStatus?.submitted && (
                 (user?.role === "SPECIALIST" && ["multi_assessment", "multi_tracker"].includes(activeFormTab)) ||
                 (user?.role === "TEACHER" && activeFormTab === "sped_tracker") ||
-                (user?.role === "PARENT" && ["parent_tracker"].includes(activeFormTab))
+                (user?.role === "PARENT" && ["parent_assessment", "parent_tracker"].includes(activeFormTab))
+                ))
             );
 
         return (
@@ -1627,7 +1645,12 @@ function UnifiedWorkspaceContent() {
                     ) : canCreateCurrentForm ? (
                         <div className="w-full">
                             {activeFormTab === "parent_assessment" ? (
-                                <ParentFormContent propHideNavigation={true} propStudentId={studentId as string} propOnSubmitted={handleEmbeddedFormSubmitted} />
+                                <ParentFormContent
+                                    propHideNavigation={true}
+                                    propStudentId={studentId as string}
+                                    propSubmissionId={canEditUnlockedParentAssessment ? currentStatus.id?.toString() : undefined}
+                                    propOnSubmitted={handleEmbeddedFormSubmitted}
+                                />
                             ) : (
                                 <FormEntryContent propType={currentTabConf?.formType as string} propHideNavigation={true} propStudentId={studentId as string} propOnSubmitted={handleEmbeddedFormSubmitted} />
                             )}
@@ -1643,7 +1666,16 @@ function UnifiedWorkspaceContent() {
                     ) : (
                         <div className="w-full">
                             {activeFormTab === "parent_assessment" ? (
-                                <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} />
+                                <ParentFormContent
+                                    propMode="view"
+                                    propHideNavigation={true}
+                                    propStudentId={studentId as string}
+                                    propSubmissionId={currentStatus.id?.toString()}
+                                    propReportCycleId={activeCycle?.id}
+                                    propSpecialistSubmitted={!!formStatuses?.multi_assessment?.submitted}
+                                    propUnlockAvailable={currentStatus?.unlock_available}
+                                    propOnUnlocked={() => setProfileRefreshKey(key => key + 1)}
+                                />
                             ) : (
                                 <FormEntryContent propType={currentTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} />
                             )}
@@ -1678,7 +1710,7 @@ function UnifiedWorkspaceContent() {
             && iepDocs.length === 0;
         const reportSecondaryTabs = (
             <div className="shrink-0 border-b border-slate-200 bg-slate-50/70 px-4 py-2 md:px-6">
-                <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                <div className="flex items-center gap-2 overflow-x-auto secondary-header-scrollbar">
                     {user?.role === "ADMIN" && (
                         <button
                             type="button"
@@ -2102,7 +2134,7 @@ function UnifiedWorkspaceContent() {
         const getParentStatusLabel = () => {
             const normalized = studentStatus?.toUpperCase().replace(/ /g, "_");
             if (normalized === "PENDING_ASSESSMENT") return formStatuses?.parent_assessment?.submitted ? "Awaiting Review" : "Action Needed";
-            if (normalized === "ASSESSMENT_SCHEDULED") return "Under Evaluation";
+            if (normalized === "ASSESSMENT_SCHEDULED") return "Pending Assessment";
             if (normalized === "ASSESSED") return "Evaluation Complete";
             return STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus;
         };
@@ -2705,16 +2737,18 @@ function UnifiedWorkspaceContent() {
         if (!status) return "Unknown";
         return STATUS_COLORS[status.toUpperCase()]?.label || status.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
     };
+    const getSidebarStatusFilterKey = (status?: string) =>
+        status === "ASSESSMENT_SCHEDULED" ? "PENDING_ASSESSMENT" : status;
 
     const sidebarStatuses = Array.from(
-        new Set(allStudents.map(s => s.status).filter(Boolean))
+        new Set(allStudents.map(s => getSidebarStatusFilterKey(s.status)).filter(Boolean))
     ).sort((a, b) => formatStatusLabel(a).localeCompare(formatStatusLabel(b)));
 
     const filteredStudents = [...allStudents].filter(s => {
         const query = studentSearch.trim().toLowerCase();
         const fullName = `${s.first_name || ""} ${s.last_name || ""}`.trim().toLowerCase();
         const matchesSearch = !query || fullName.includes(query) || formatStatusLabel(s.status).toLowerCase().includes(query);
-        const matchesStatus = studentStatusFilter === "ALL" || s.status === studentStatusFilter;
+        const matchesStatus = studentStatusFilter === "ALL" || getSidebarStatusFilterKey(s.status) === studentStatusFilter;
         return matchesSearch && matchesStatus;
     }).sort((a, b) => {
         const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim().toLowerCase();
@@ -2751,7 +2785,7 @@ function UnifiedWorkspaceContent() {
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
+                    <div className="flex items-center gap-1 overflow-x-auto secondary-header-scrollbar">
                         {user?.role === "ADMIN" && (
                             <button onClick={() => setWorkspace("overview")} className={workspaceMainTabClass(workspace === "overview")}>
                                 Overview
@@ -2868,8 +2902,7 @@ function UnifiedWorkspaceContent() {
                                     ) : (
                                         filteredStudents.map(s => {
                                             const isCurrent = s.id.toString() === studentId;
-                                            const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", INTEGRATED: "#7c3aed", ARCHIVED: "#94a3b8" };
-                                            const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
+                                            const dot = statusColorHex(s.status || "ARCHIVED").color;
                                             const statusLabel = STATUS_COLORS[s.status?.toUpperCase()]?.label || s.status?.replace(/_/g, ' ');
                                             const nextAction = user?.role === "ADMIN" ? s.next_action : null;
                                             return (
@@ -2893,7 +2926,7 @@ function UnifiedWorkspaceContent() {
                                                             {s.first_name} {s.last_name}
                                                         </span>
                                                         {nextAction && (
-                                                            <span className={`mt-1 inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-[0.58rem] font-bold ${nextActionClass(nextAction.tone, isCurrent)}`}>
+                                                            <span className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-colors ${nextActionClass(s.status, nextAction.tone)}`}>
                                                                 {nextAction.label}
                                                             </span>
                                                         )}
@@ -3148,6 +3181,20 @@ function UnifiedWorkspaceContent() {
                     .custom-scrollbar::-webkit-scrollbar-thumb {
                         background-color: #cbd5e1;
                         border-radius: 20px;
+                    }
+                    .secondary-header-scrollbar {
+                        scrollbar-width: thin;
+                        scrollbar-color: #cbd5e1 transparent;
+                    }
+                    .secondary-header-scrollbar::-webkit-scrollbar {
+                        height: 3px;
+                    }
+                    .secondary-header-scrollbar::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+                    .secondary-header-scrollbar::-webkit-scrollbar-thumb {
+                        background-color: #cbd5e1;
+                        border-radius: 999px;
                     }
                 `}} />
         </div>

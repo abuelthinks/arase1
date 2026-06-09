@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
-import { semanticToneClass } from "@/lib/role-colors";
+import { semanticToneClass, type SemanticTone } from "@/lib/role-colors";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,7 +78,58 @@ const Field = ({ label, children, required, isInvalid }: { label: string; childr
 );
 
 const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-xl text-[var(--form-control-font-size)] leading-[var(--form-line-height)] focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-400 outline-none bg-slate-50/50 hover:bg-white transition-colors disabled:bg-slate-50 disabled:text-slate-400 font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal";
+const formBannerClass = (tone: SemanticTone) =>
+    `rounded-md border p-3 flex items-center justify-between gap-3 ${semanticToneClass(tone)}`;
 const milestoneCls = "flex flex-wrap gap-2.5";
+const INVITATION_PLACEHOLDER_FIRST_NAME = "Pending";
+const INVITATION_PLACEHOLDER_LAST_NAME = "Student";
+const INVITATION_PLACEHOLDER_DOB = "2000-01-01";
+
+type StudentPrefill = {
+    first_name?: string;
+    last_name?: string;
+    date_of_birth?: string;
+    grade?: string;
+    gender?: string;
+};
+
+const isInvitationPlaceholderStudent = (student: StudentPrefill) =>
+    (student.first_name || "").trim().toLowerCase() === INVITATION_PLACEHOLDER_FIRST_NAME.toLowerCase()
+    && (student.last_name || "").trim().toLowerCase() === INVITATION_PLACEHOLDER_LAST_NAME.toLowerCase()
+    && (!student.date_of_birth || student.date_of_birth === INVITATION_PLACEHOLDER_DOB);
+
+const cleanStudentPrefill = (student: StudentPrefill) => {
+    if (isInvitationPlaceholderStudent(student)) {
+        return {
+            first_name: "",
+            last_name: "",
+            date_of_birth: "",
+            grade: "",
+            gender: "",
+        };
+    }
+
+    return {
+        first_name: student.first_name || "",
+        last_name: student.last_name || "",
+        date_of_birth: student.date_of_birth === INVITATION_PLACEHOLDER_DOB ? "" : student.date_of_birth || "",
+        grade: student.grade && student.grade !== "TBD" ? student.grade : "",
+        gender: student.gender || "",
+    };
+};
+
+const cleanDraftStudentFields = <T extends StudentPrefill>(draft: T): T => {
+    if (!isInvitationPlaceholderStudent(draft)) return draft;
+
+    return {
+        ...draft,
+        first_name: "",
+        last_name: "",
+        date_of_birth: "",
+        grade: "",
+        gender: "",
+    };
+};
 
 // ── initial state factory ─────────────────────────────────────────────────────
 
@@ -136,7 +187,27 @@ type FormState = ReturnType<typeof initState>;
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export function ParentFormContent({ propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted }: { propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void> } = {}) {
+export function ParentFormContent({
+    propStudentId,
+    propSubmissionId,
+    propMode,
+    propHideNavigation,
+    propOnSubmitted,
+    propReportCycleId,
+    propSpecialistSubmitted,
+    propUnlockAvailable,
+    propOnUnlocked,
+}: {
+    propStudentId?: string;
+    propSubmissionId?: string;
+    propMode?: string;
+    propHideNavigation?: boolean;
+    propOnSubmitted?: (message: string) => void | Promise<void>;
+    propReportCycleId?: string | number;
+    propSpecialistSubmitted?: boolean;
+    propUnlockAvailable?: boolean;
+    propOnUnlocked?: () => void | Promise<void>;
+} = {}) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const isViewMode = propMode === "view" || searchParams.get("mode") === "view";
@@ -152,6 +223,7 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     const [errorMsg, setErrorMsg] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
     const [currentStep, setCurrentStep] = useState(0);
+    const [unlockLoading, setUnlockLoading] = useState(false);
     const totalSteps = 5;
     const isWizardMode = !isViewMode;
     const topRef = useRef<HTMLDivElement>(null);
@@ -232,6 +304,11 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
     const [fullSubmission, setFullSubmission] = useState<any>(null);
     const [isTranslated, setIsTranslated] = useState(false);
     const hasTranslation = fullSubmission && fullSubmission.translated_data && Object.keys(fullSubmission.translated_data).length > 0 && fullSubmission.original_language && !['en', 'english'].includes(fullSubmission.original_language.toLowerCase());
+    const reportCycleId = propReportCycleId || fullSubmission?.report_cycle;
+    const specialistSubmitted = propUnlockAvailable === false ? true : Boolean(propSpecialistSubmitted);
+    const showParentUnlockPanel = isViewMode
+        && fullSubmission
+        && (user?.role === "ADMIN" || (user?.role === "PARENT" && !specialistSubmitted));
 
     // ── setters ──────────────────────────────────────────────────────────────
 
@@ -279,20 +356,21 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
         // Restore draft first
         const draft = draftKey ? localStorage.getItem(draftKey) : null;
         if (draft) {
-            try { setForm(JSON.parse(draft)); } catch {}
+            try { setForm(cleanDraftStudentFields(JSON.parse(draft))); } catch {}
         }
 
         // Prefill from admin-registered student data
         if (studentIdParam) {
             api.get(`/api/students/${studentIdParam}/`)
                 .then(res => {
-                    const s = res.data;
+                    const s = cleanStudentPrefill(res.data);
                     setForm(prev => ({
                         ...prev,
-                        first_name:    prev.first_name    || s.first_name    || "",
-                        last_name:     prev.last_name     || s.last_name     || "",
-                        date_of_birth: prev.date_of_birth || s.date_of_birth || "",
-                        grade:         prev.grade         || (s.grade !== "TBD" ? s.grade : "") || "",
+                        first_name:    prev.first_name    || s.first_name,
+                        last_name:     prev.last_name     || s.last_name,
+                        date_of_birth: prev.date_of_birth || s.date_of_birth,
+                        grade:         prev.grade         || s.grade,
+                        gender:        prev.gender        || s.gender,
                     }));
                 })
                 .catch(() => {});
@@ -384,6 +462,50 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
         setErrorMsg("");
         setCurrentStep(prev => Math.max(prev - 1, 0));
         setTimeout(() => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    };
+
+    const requestParentUnlock = async () => {
+        if (!studentIdParam || !reportCycleId || unlockLoading) return;
+        setUnlockLoading(true);
+        setErrorMsg("");
+        setSuccessMsg("");
+        try {
+            await api.post("/api/inputs/parent-assessment/request-unlock/", {
+                student_id: studentIdParam,
+                report_cycle_id: reportCycleId,
+            });
+            setFullSubmission((prev: any) => prev ? { ...prev, unlock_requested: true } : prev);
+            setSuccessMsg("Unlock request sent to admin.");
+            await propOnUnlocked?.();
+        } catch (err: any) {
+            setErrorMsg(err.response?.data?.error || "Could not request unlock. Please try again.");
+        } finally {
+            setUnlockLoading(false);
+        }
+    };
+
+    const adminUnlockParentAssessment = async () => {
+        if (!studentIdParam || !reportCycleId || unlockLoading) return;
+        setUnlockLoading(true);
+        setErrorMsg("");
+        setSuccessMsg("");
+        try {
+            await api.post("/api/inputs/parent-assessment/unlock/", {
+                student_id: studentIdParam,
+                report_cycle_id: reportCycleId,
+            });
+            setFullSubmission((prev: any) => prev ? {
+                ...prev,
+                unlock_requested: false,
+                unlocked_at: new Date().toISOString(),
+            } : prev);
+            setSuccessMsg("Parent assessment unlocked.");
+            await propOnUnlocked?.();
+        } catch (err: any) {
+            setErrorMsg(err.response?.data?.error || "Could not unlock the parent assessment. Please try again.");
+        } finally {
+            setUnlockLoading(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -520,6 +642,60 @@ export function ParentFormContent({ propStudentId, propSubmissionId, propMode, p
 
                 {errorMsg && (
                     <div className={`mb-5 rounded-lg border px-4 py-3 text-sm ${semanticToneClass("danger")}`}>{errorMsg}</div>
+                )}
+
+                {showParentUnlockPanel && (
+                    <div className="mb-5">
+                        {user?.role === "ADMIN" ? (
+                            <div className={formBannerClass(specialistSubmitted ? "neutral" : "warning")}>
+                                <div className="text-sm">
+                                    {specialistSubmitted ? (
+                                        <span>This form can no longer be unlocked because the specialist assessment has been submitted.</span>
+                                    ) : fullSubmission?.unlocked_at ? (
+                                        <span>This parent assessment is unlocked for parent edits.</span>
+                                    ) : fullSubmission?.unlock_requested ? (
+                                        <strong>Unlock requested by parent.</strong>
+                                    ) : (
+                                        <span>This parent assessment is submitted and locked.</span>
+                                    )}
+                                </div>
+                                {!specialistSubmitted && !fullSubmission?.unlocked_at && (
+                                    <button
+                                        type="button"
+                                        onClick={adminUnlockParentAssessment}
+                                        disabled={unlockLoading}
+                                        className="shrink-0 rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {unlockLoading ? "Unlocking..." : "Unlock Form"}
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            user?.role === "PARENT" && !specialistSubmitted && (
+                                <div className={formBannerClass("neutral")}>
+                                    <div className="text-sm">
+                                        {fullSubmission?.unlocked_at ? (
+                                            <span>This form has been unlocked. You can edit and resubmit it.</span>
+                                        ) : fullSubmission?.unlock_requested ? (
+                                            <span>You have requested an admin to unlock this form.</span>
+                                        ) : (
+                                            <span>Need to make changes?</span>
+                                        )}
+                                    </div>
+                                    {!fullSubmission?.unlock_requested && !fullSubmission?.unlocked_at && (
+                                        <button
+                                            type="button"
+                                            onClick={requestParentUnlock}
+                                            disabled={unlockLoading}
+                                            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {unlockLoading ? "Requesting..." : "Request Unlock"}
+                                        </button>
+                                    )}
+                                </div>
+                            )
+                        )}
+                    </div>
                 )}
 
                 <fieldset disabled={dis} className="space-y-10">

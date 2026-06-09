@@ -951,6 +951,94 @@ class AssessmentUnlockView(APIView):
         return Response({"status": "Assessment unlocked successfully."})
 
 
+class ParentAssessmentRequestUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'PARENT':
+            return Response({"error": "Only parents can request to unlock a parent assessment."}, status=status.HTTP_403_FORBIDDEN)
+
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        assessment = ParentAssessment.objects.filter(
+            student_id=student_id,
+            report_cycle_id=report_cycle_id,
+            submitted_by=request.user,
+        ).select_related('student').first()
+
+        if not assessment:
+            return Response({"error": "Parent assessment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        specialist_submitted = MultidisciplinaryAssessment.objects.filter(
+            student_id=student_id,
+            report_cycle_id=report_cycle_id,
+            finalized_at__isnull=False,
+        ).exists()
+
+        if specialist_submitted:
+            return Response({"error": "Specialist assessment has already been submitted. Unlock is no longer possible."}, status=status.HTTP_400_BAD_REQUEST)
+
+        assessment.unlock_requested = True
+        assessment.save(update_fields=['unlock_requested'])
+
+        admins = User.objects.filter(role='ADMIN')
+        student = assessment.student
+        actor_name = f'{request.user.first_name} {request.user.last_name}'.strip() or request.user.email
+        for admin in admins:
+            Notification.objects.create(
+                recipient=admin,
+                notification_type='UNLOCK_REQUESTED',
+                title='Unlock Request',
+                message=f'{actor_name} has requested to unlock the parent assessment for {student.first_name} {student.last_name}.',
+                link=f'/workspace?studentId={student.id}&workspace=forms&tab=parent_assessment',
+                actor_name=actor_name,
+            )
+
+        return Response({"status": "Unlock requested successfully."})
+
+
+class ParentAssessmentUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can unlock a parent assessment."}, status=status.HTTP_403_FORBIDDEN)
+
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        assessment = ParentAssessment.objects.filter(
+            student_id=student_id,
+            report_cycle_id=report_cycle_id,
+        ).select_related('student').first()
+
+        if not assessment:
+            return Response({"error": "Parent assessment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        specialist_submitted = MultidisciplinaryAssessment.objects.filter(
+            student_id=student_id,
+            report_cycle_id=report_cycle_id,
+            finalized_at__isnull=False,
+        ).exists()
+
+        if specialist_submitted:
+            return Response({"error": "Specialist assessment has already been submitted. Unlock is no longer possible."}, status=status.HTTP_400_BAD_REQUEST)
+
+        assessment.unlock_requested = False
+        assessment.unlocked_at = timezone.now()
+        assessment.unlocked_by = request.user
+        assessment.save(update_fields=['unlock_requested', 'unlocked_at', 'unlocked_by'])
+
+        return Response({"status": "Parent assessment unlocked successfully."})
+
+
 
 class TrackerSubmitAllView(SectionSubmitAllView):
     form_type = 'tracker'
@@ -1511,6 +1599,44 @@ class ParentAssessmentReminderView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Failed to send reminder: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SpecialistAssessmentReminderView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, student_id):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can send specialist assessment reminders."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            student = Student.objects.get(pk=student_id)
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if MultidisciplinaryAssessment.objects.filter(student=student, finalized_at__isnull=False).exists():
+            return Response({"error": "Specialist assessment has already been finalized."}, status=status.HTTP_400_BAD_REQUEST)
+
+        specialist_users = User.objects.filter(
+            role='SPECIALIST',
+            is_active=True,
+            student_access__student=student,
+        ).distinct()
+
+        if not specialist_users.exists():
+            return Response({
+                "error": "No assigned specialist account was found for this student."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        from .services.notification_service import notify_specialist_assessment_reminder
+
+        for specialist in specialist_users:
+            notify_specialist_assessment_reminder(specialist, student)
+
+        return Response({
+            "message": f"Reminder sent to {specialist_users.count()} specialist account(s).",
+            "mode": "notification",
+            "count": specialist_users.count(),
+        }, status=status.HTTP_200_OK)
 
 
 # ─── Staff ───────────────────────────────────────────────────────────────────

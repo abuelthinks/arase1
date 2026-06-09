@@ -634,6 +634,35 @@ def notify_parent_assessment_reminder(user, student):
         _send_sms(user.phone_number, f"ARASE: Hi! Just checking in to see if you had a moment to complete the parent assessment for {student.first_name}.")
 
 
+def notify_specialist_assessment_reminder(user, student):
+    """
+    Remind a specialist to complete/finalize the multidisciplinary assessment for a student.
+    """
+    student_name = f"{student.first_name} {student.last_name}"
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+    form_url = f"{frontend_url}/workspace?studentId={student.id}&workspace=forms&tab=multi_assessment"
+    email_message = (
+        f"Hi {user.first_name or user.email},\n\n"
+        f"This is a friendly reminder to complete and finalize the specialist assessment for {student_name}.\n\n"
+        f"You can continue the assessment here:\n"
+        f"{form_url}\n\n"
+        f"Thank you,\n"
+        f"The ARASE Team"
+    )
+
+    notify_user_in_app(
+        user=user,
+        notification_type='REMINDER',
+        title=f"Specialist assessment reminder: {student_name}",
+        message=f"Please complete and finalize the specialist assessment for {student_name}.",
+        link=f"/workspace?studentId={student.id}&workspace=forms&tab=multi_assessment",
+        actor_name="ARASE",
+    )
+    _send_email(user.email, f"Reminder: Specialist assessment for {student_name}", email_message)
+    if user.phone_number and user.is_phone_verified:
+        _send_sms(user.phone_number, f"ARASE: Please complete the specialist assessment for {student_name}.")
+
+
 def notify_report_ready(admin_user, student, report_id):
     """
     Notify an admin that a monthly report was auto-generated and is ready for review.

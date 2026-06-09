@@ -194,6 +194,12 @@ class ParentAssessment(models.Model):
     translated_data = models.JSONField(default=dict, blank=True)
     original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    unlock_requested = models.BooleanField(default=False)
+    unlocked_at = models.DateTimeField(null=True, blank=True)
+    unlocked_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='unlocked_parent_assessments',
+    )
 
 class MultidisciplinaryAssessment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)

@@ -79,10 +79,31 @@ def onboard_parent_student(user, student_data, form_data, student_id=None):
                 is_active=True,
             )
 
+        existing_assessment = ParentAssessment.objects.filter(
+            student=student,
+            report_cycle=cycle,
+        ).first()
+        if existing_assessment:
+            specialist_submitted = MultidisciplinaryAssessment.objects.filter(
+                student=student,
+                report_cycle=cycle,
+                finalized_at__isnull=False,
+            ).exists()
+            if specialist_submitted:
+                raise ValidationError("Parent assessment can no longer be edited because the specialist assessment has already been submitted.")
+            if not existing_assessment.unlocked_at:
+                raise PermissionDenied("Parent assessment is locked. Request an unlock from the submitted form view.")
+
         ParentAssessment.objects.update_or_create(
             student=student,
             report_cycle=cycle,
-            defaults={'submitted_by': user, 'form_data': form_data},
+            defaults={
+                'submitted_by': user,
+                'form_data': form_data,
+                'unlock_requested': False,
+                'unlocked_at': None,
+                'unlocked_by': None,
+            },
         )
         return student, False
     else:
@@ -186,6 +207,22 @@ def get_student_profile_data(student, user=None):
                     "role": obj.submitted_by.role,
                 } if obj and obj.submitted_by else None,
             }
+            if key == "parent_assessment":
+                specialist_submitted = MultidisciplinaryAssessment.objects.filter(
+                    student=student,
+                    report_cycle=cycle,
+                    finalized_at__isnull=False,
+                ).exists()
+                form_statuses[key].update({
+                    "unlock_requested": bool(obj.unlock_requested) if obj else False,
+                    "unlocked": bool(obj.unlocked_at) if obj else False,
+                    "unlocked_at": obj.unlocked_at if obj else None,
+                    "unlock_available": bool(obj) and not specialist_submitted,
+                })
+            elif key == "multi_assessment":
+                form_statuses[key].update({
+                    "unlock_requested": bool(obj.unlock_requested) if obj else False,
+                })
 
         # Diagnostic report (separate model, not cycle-scoped)
         diag = DiagnosticReport.objects.filter(student=student).order_by('-created_at').first()
