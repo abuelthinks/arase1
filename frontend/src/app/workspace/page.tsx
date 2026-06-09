@@ -174,11 +174,24 @@ function UnifiedWorkspaceContent() {
     // -- Forms State --
     const [formStatuses, setFormStatuses] = useState<any>(null);
     const requestedFormTab = searchParams.get("tab");
+    const getFilteredTabsByStatus = (tabs: typeof TABS) => {
+        const status = studentStatus?.toUpperCase() || "";
+        if (status === "ENROLLED") {
+            return tabs.filter(tab => ["parent_tracker", "multi_tracker"].includes(tab.id));
+        } else if (status === "INTEGRATED") {
+            return tabs.filter(tab => ["parent_tracker", "multi_tracker", "sped_tracker"].includes(tab.id));
+        } else {
+            return tabs.filter(tab => ["parent_assessment", "multi_assessment"].includes(tab.id));
+        }
+    };
+
+    const statusFilteredTabs = getFilteredTabsByStatus(TABS);
+
     const visibleFormTabs = user?.role === "PARENT"
-        ? TABS.filter(tab => tab.id === "parent_tracker" || tab.id === "parent_assessment")
+        ? statusFilteredTabs.filter(tab => tab.id === "parent_tracker" || tab.id === "parent_assessment")
         : user?.role === "TEACHER"
-            ? TABS.filter(tab => tab.id === "sped_tracker")
-            : TABS;
+            ? statusFilteredTabs.filter(tab => tab.id === "sped_tracker")
+            : statusFilteredTabs;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [hasSeenWorkspaceExplainer, setHasSeenWorkspaceExplainer] = useState(false);
     
@@ -247,13 +260,28 @@ function UnifiedWorkspaceContent() {
                     ? "multi_tracker"
                     : "multi_assessment"
                 : "parent_assessment";
-    const canUseRequestedFormTab = requestedFormTab &&
-        visibleFormTabs.some(tab => tab.id === requestedFormTab) &&
+    const isSubmittedAssessmentTab = ["parent_assessment", "multi_assessment", "sped_assessment"].includes(requestedFormTab || "") &&
+        formStatuses?.[requestedFormTab || ""]?.submitted;
+
+    const canUseRequestedFormTab = requestedFormTab && (
+        visibleFormTabs.some(tab => tab.id === requestedFormTab) || isSubmittedAssessmentTab
+    ) &&
         !(user?.role === "SPECIALIST" && requestedFormTab === "multi_tracker" && !isStudentCurrentlyEnrolled) &&
         !(user?.role === "TEACHER" && requestedFormTab === "sped_tracker" && !isStudentCurrentlyEnrolled);
-    const activeFormTab = canUseRequestedFormTab
-        ? requestedFormTab
-        : defaultFormTab;
+    const activeFormTab = (() => {
+        if (canUseRequestedFormTab) return requestedFormTab;
+        if (visibleFormTabs.some(t => t.id === defaultFormTab)) return defaultFormTab;
+        
+        const roleSpecificTab = user?.role === "PARENT"
+            ? visibleFormTabs.find(t => t.id === "parent_tracker")
+            : user?.role === "SPECIALIST"
+                ? visibleFormTabs.find(t => t.id === "multi_tracker")
+                : user?.role === "TEACHER"
+                    ? visibleFormTabs.find(t => t.id === "sped_tracker")
+                    : null;
+                    
+        return roleSpecificTab?.id || visibleFormTabs[0]?.id || defaultFormTab;
+    })();
 
     useEffect(() => {
         if (user?.role !== "PARENT" || !studentId || typeof window === "undefined") return;
@@ -1367,6 +1395,44 @@ function UnifiedWorkspaceContent() {
                                     )}
                                 </div>
                             </div>
+
+                            {(formStatuses?.parent_assessment?.submitted || formStatuses?.multi_assessment?.submitted) && (
+                                <div className="border-t border-slate-100 mt-4 pt-3">
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                                        <ClipboardList size={11} /> Initial Assessments
+                                    </p>
+                                    <div className="flex flex-wrap gap-3">
+                                        {formStatuses?.parent_assessment?.submitted && (
+                                            <button 
+                                                onClick={() => {
+                                                    const url = new URL(window.location.href);
+                                                    url.searchParams.set("workspace", "forms");
+                                                    url.searchParams.set("tab", "parent_assessment");
+                                                    navigateWithTeamGuard(url.pathname + url.search);
+                                                }}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors cursor-pointer"
+                                            >
+                                                <FileText size={12} className="text-indigo-500" />
+                                                Parent Assessment
+                                            </button>
+                                        )}
+                                        {formStatuses?.multi_assessment?.submitted && (
+                                            <button 
+                                                onClick={() => {
+                                                    const url = new URL(window.location.href);
+                                                    url.searchParams.set("workspace", "forms");
+                                                    url.searchParams.set("tab", "multi_assessment");
+                                                    navigateWithTeamGuard(url.pathname + url.search);
+                                                }}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors cursor-pointer"
+                                            >
+                                                <FileText size={12} className="text-indigo-500" />
+                                                Specialist Assessment
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </section>
                     </div>
                     </div>
@@ -1472,7 +1538,7 @@ function UnifiedWorkspaceContent() {
 
     // 1. FORMS WORKSPACE RENDERER
     const renderFormsWorkspace = () => {
-        const currentTabConf = visibleFormTabs.find(t => t.id === activeFormTab);
+        const currentTabConf = TABS.find(t => t.id === activeFormTab);
         const currentStatus = formStatuses[activeFormTab];
         const isStudentEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
         const assessmentTabs = user?.role === "PARENT"
@@ -1731,7 +1797,7 @@ function UnifiedWorkspaceContent() {
                     {user?.role === "ADMIN" && (
                         <>
                             <div className="mx-1 h-6 w-px shrink-0 bg-slate-200" />
-                            {TABS.map((tab) => {
+                            {statusFilteredTabs.map((tab) => {
                                 const isSub = formStatuses?.[tab.id]?.submitted;
                                 const isActive = reportView === tab.id;
                                 const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker")
@@ -1827,7 +1893,7 @@ function UnifiedWorkspaceContent() {
                             <div className="px-3 mb-6">
                                 <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Input Forms</p>
                                 <div className="flex flex-col gap-1">
-                                    {TABS.map((tab) => {
+                                    {statusFilteredTabs.map((tab) => {
                                         const isSub = formStatuses?.[tab.id]?.submitted;
                                         const isActive = reportView === tab.id;
                                         const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker") 
@@ -2160,38 +2226,55 @@ function UnifiedWorkspaceContent() {
 
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                         {/* Your Input section */}
-                        <div className="px-4 mb-6">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Your Input</p>
-                            <div className="flex flex-col gap-1">
-                                <button
-                                    onClick={() => handleParentPanelChange("assessment")}
-                                    className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
-                                >
-                                    {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                    <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-slate-700'}`}>About Your Child</span>
-                                    {assessmentStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
-                                </button>
+                        {!isStudentEnrolled && (
+                            <div className="px-4 mb-6">
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Your Input</p>
+                                <div className="flex flex-col gap-1">
+                                    <button
+                                        onClick={() => handleParentPanelChange("assessment")}
+                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}
+                                    >
+                                        {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-slate-700'}`}>About Your Child</span>
+                                        {assessmentStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Monthly Updates section */}
-                        <div className="px-4 mb-6">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Updates</p>
-                            <div className="flex flex-col gap-1">
-                                <button
-                                    onClick={() => !isParentTrackerLocked && handleParentPanelChange("tracker")}
-                                    disabled={isParentTrackerLocked}
-                                    title={isParentTrackerLocked ? "Available after enrollment" : undefined}
-                                    className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isParentTrackerLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : parentActivePanel === "tracker" ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
-                                >
-                                    {parentActivePanel === "tracker" && !isParentTrackerLocked && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                    <span className={`text-sm font-bold truncate ${isParentTrackerLocked ? 'text-slate-400' : parentActivePanel === "tracker" ? 'text-emerald-800' : 'text-slate-700'}`}>Home Update</span>
-                                    {isParentTrackerLocked ? (
-                                        <Lock className="w-4 h-4 text-slate-400 shrink-0 ml-2" aria-hidden="true" />
-                                    ) : trackerStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
-                                </button>
+                        {isStudentEnrolled && (
+                            <div className="px-4 mb-6">
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Updates</p>
+                                <div className="flex flex-col gap-1">
+                                    <button
+                                        onClick={() => handleParentPanelChange("tracker")}
+                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "tracker" ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}
+                                    >
+                                        {parentActivePanel === "tracker" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "tracker" ? 'text-emerald-800' : 'text-slate-700'}`}>Home Update</span>
+                                        {trackerStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {/* History section */}
+                        {isStudentEnrolled && assessmentStatus?.submitted && (
+                            <div className="px-4 mb-6">
+                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">History</p>
+                                <div className="flex flex-col gap-1">
+                                    <button
+                                        onClick={() => handleParentPanelChange("assessment")}
+                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}
+                                    >
+                                        {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
+                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-slate-700'}`}>About Your Child</span>
+                                        <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Learning Plans section */}
                         <div className="px-4 mb-6">
@@ -2204,7 +2287,7 @@ function UnifiedWorkspaceContent() {
                                         const isActive = parentActivePanel === "iep" && docIdParam === doc.id.toString();
                                         const isLatest = idx === 0;
                                         return (
-                                            <button key={doc.id} onClick={() => handleParentPanelChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                            <button key={doc.id} onClick={() => handleParentPanelChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
                                                     <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>Current IEP</span>
@@ -2229,7 +2312,7 @@ function UnifiedWorkspaceContent() {
                                         const isActive = parentActivePanel === "monthly" && docIdParam === doc.id.toString();
                                         const isLatest = idx === 0;
                                         return (
-                                            <button key={doc.id} onClick={() => handleParentPanelChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                            <button key={doc.id} onClick={() => handleParentPanelChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
                                                     <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Monthly Report</span>
