@@ -7,6 +7,7 @@ using Google Gemini AI.
 
 import logging
 import os
+from io import BytesIO
 
 from django.conf import settings
 
@@ -62,6 +63,34 @@ def _extract_text_with_gemini(file_bytes, filename):
     return response.text
 
 
+def _extract_text_locally(file_bytes, filename):
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext == '.pdf':
+        from PyPDF2 import PdfReader
+
+        reader = PdfReader(BytesIO(file_bytes))
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n\n".join(page.strip() for page in pages if page.strip())
+
+    if ext == '.docx':
+        from docx import Document
+
+        document = Document(BytesIO(file_bytes))
+        paragraphs = [paragraph.text.strip() for paragraph in document.paragraphs if paragraph.text.strip()]
+        return "\n".join(paragraphs)
+
+    raise RuntimeError("Local diagnostic extraction supports PDF and DOCX files only.")
+
+
+def _extract_text(file_bytes, filename):
+    provider = getattr(settings, 'AI_PROVIDER', 'gemini').strip().lower()
+    if provider == 'ollama' or (provider == 'auto' and not settings.GEMINI_API_KEY):
+        return _extract_text_locally(file_bytes, filename)
+
+    return _extract_text_with_gemini(file_bytes, filename)
+
+
 def process_diagnostic_upload(instance):
     """
     Main entry point: read file, extract text via Gemini, save to model.
@@ -73,7 +102,7 @@ def process_diagnostic_upload(instance):
         return
 
     try:
-        extracted = _extract_text_with_gemini(file_bytes, instance.original_filename)
+        extracted = _extract_text(file_bytes, instance.original_filename)
         instance.extracted_text = extracted
         instance.save(update_fields=['extracted_text'])
         logger.info(
@@ -81,5 +110,5 @@ def process_diagnostic_upload(instance):
             instance.id, len(extracted),
         )
     except Exception as e:
-        logger.error("Gemini text extraction failed for report id=%s: %s", instance.id, e)
+        logger.error("Diagnostic text extraction failed for report id=%s: %s", instance.id, e)
         # Don't re-raise — the upload itself succeeded, extraction can be retried later

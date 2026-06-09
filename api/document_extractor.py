@@ -1,23 +1,17 @@
 import json
-import google.generativeai as genai
-from django.conf import settings
+
+from api.services.llm_service import call_text
 
 def _get_check(val):
     return "[X]" if val else "[ ]"
 
 def _generate_ai_content(prompt: str, is_iep=True) -> str:
     """
-    Calls the Gemini API.
+    Calls the configured AI provider.
     """
     pii_free_prompt = prompt.replace("John Doe", "The Student")
 
-    if not settings.GEMINI_API_KEY:
-        return "Error: GEMINI_API_KEY is not configured."
-
     try:
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-        
         if is_iep:
             system_instruction = "You are an expert special education teacher writing an IEP. Output 3-4 specific and measurable goals."
         else:
@@ -25,10 +19,9 @@ def _generate_ai_content(prompt: str, is_iep=True) -> str:
             
         full_prompt = f"{system_instruction}\n\nContext:\n{pii_free_prompt}"
         
-        response = model.generate_content(full_prompt)
-        return response.text
+        return call_text(full_prompt, temperature=0.4)
     except Exception as e:
-        print(f"Error calling Gemini API: {e}")
+        print(f"Error calling AI provider: {e}")
         return "Error: Could not generate content."
 
 def extract_assessment_draft(student, cycle, inputs):

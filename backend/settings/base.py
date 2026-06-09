@@ -22,6 +22,10 @@ def parse_csv_env(name):
 # ─── API Keys ────────────────────────────────────────────────────────────────
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite')
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'gemini')
+OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
+OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5-coder:3b')
+OLLAMA_TIMEOUT_SECONDS = int(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '180'))
 
 # ─── Security ────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ.get('SECRET_KEY', '')
