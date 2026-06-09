@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
 import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon, Plus, LayoutGrid, List } from "lucide-react";
-import { semanticToneClass, statusColorHex, type SemanticTone } from "@/lib/role-colors";
+import { semanticToneClass, statusColorClass, statusColorHex, statusLabel } from "@/lib/role-colors";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
@@ -395,24 +395,22 @@ export default function DashboardPage() {
                             ) : user?.role === "PARENT" ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
                                     {paginatedStudents.map(s => {
-                                        const statusMap: Record<string, { text: string; tone: SemanticTone; Icon: any }> = {
+                                        const statusMap: Record<string, { text: string; Icon: any }> = {
                                             PENDING_ASSESSMENT: {
                                                 text: s.has_parent_assessment ? "Assessment submitted — awaiting review" : "Waiting for your assessment",
-                                                tone: s.has_parent_assessment ? "info" : "warning",
                                                 Icon: s.has_parent_assessment ? Clock : ClipboardList,
                                             },
-                                            ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", tone: "warning", Icon: Clock },
-                                            ASSESSED: { text: "Assessment complete — enrollment pending", tone: "info", Icon: CheckCircle2 },
+                                            ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", Icon: Clock },
+                                            ASSESSED: { text: "Assessment complete — enrollment pending", Icon: CheckCircle2 },
                                             ENROLLED: {
                                                 text: s.parent_current_tracker_submitted ? "Enrolled & up to date" : "Monthly progress update needed",
-                                                tone: s.parent_current_tracker_submitted ? "success" : "warning",
                                                 Icon: s.parent_current_tracker_submitted ? Sparkles : FileText,
                                             },
-                                            ARCHIVED: { text: "Record archived", tone: "neutral", Icon: Archive },
+                                            ARCHIVED: { text: "Record archived", Icon: Archive },
                                         };
                                         const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
-                                        const statusInfo = statusMap[statusKey] ?? { text: s.status?.replace(/_/g, " "), tone: "neutral" as SemanticTone, Icon: FileText };
-                                        const statusTone = semanticToneClass(statusInfo.tone);
+                                        const statusInfo = statusMap[statusKey] ?? { text: s.status?.replace(/_/g, " "), Icon: FileText };
+                                        const statusTone = statusColorClass(s.status || "ARCHIVED");
 
                                         const getPrimaryCTA = () => {
                                             if (s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment) {
@@ -533,7 +531,7 @@ export default function DashboardPage() {
                                                                 borderRadius: "12px",
                                                                 fontWeight: "bold",
                                                                 letterSpacing: "0.3px",
-                                                            }}>{s.status?.replace(/_/g, " ") || "Pending"}</span>
+                                                            }}>{statusLabel(s.status) || "Pending"}</span>
                                                         </td>
                                                         <td style={{ padding: "12px 16px", textAlign: "right" }}>
                                                             <Link
@@ -552,16 +550,17 @@ export default function DashboardPage() {
                             ) : (
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                                     {paginatedStudents.map(s => {
-                                        const statusToneMap: Record<string, { tone: SemanticTone; Icon: any; label: string }> = {
-                                            PENDING_ASSESSMENT: { tone: "attention", Icon: ClipboardList, label: "Pending Assessment" },
-                                            ASSESSMENT_SCHEDULED: { tone: "warning", Icon: Clock, label: "Assessment Scheduled" },
-                                            ASSESSED: { tone: "info", Icon: CheckCircle2, label: "Assessed" },
-                                            ENROLLED: { tone: "success", Icon: Sparkles, label: "Enrolled" },
-                                            ARCHIVED: { tone: "neutral", Icon: Archive, label: "Archived" },
+                                        const statusIconMap: Record<string, any> = {
+                                            PENDING_ASSESSMENT: ClipboardList,
+                                            ASSESSMENT_SCHEDULED: Clock,
+                                            ASSESSED: CheckCircle2,
+                                            ENROLLED: Sparkles,
+                                            INTEGRATED: Sparkles,
+                                            ARCHIVED: Archive,
                                         };
                                         const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
-                                        const tone = statusToneMap[statusKey] ?? { tone: "neutral" as SemanticTone, Icon: FileText, label: s.status?.replace(/_/g, " ") };
-                                        const statusClass = semanticToneClass(tone.tone);
+                                        const StatusIcon = statusIconMap[statusKey] ?? FileText;
+                                        const statusClass = statusColorClass(s.status || "ARCHIVED");
                                         const initials = `${s.first_name?.[0] || ""}${s.last_name?.[0] || ""}`.toUpperCase();
 
                                         return (
@@ -596,9 +595,9 @@ export default function DashboardPage() {
                                                 </div>
                                                 <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${statusClass}`}>
                                                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/80">
-                                                        <tone.Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        <StatusIcon className="h-3.5 w-3.5" aria-hidden="true" />
                                                     </div>
-                                                    <span className="text-xs font-bold">{tone.label}</span>
+                                                    <span className="text-xs font-bold">{statusLabel(s.status)}</span>
                                                 </div>
                                                 <div className="flex flex-col gap-2 p-4">
                                                     {user?.role === "SPECIALIST" && s.status === "PENDING_ASSESSMENT" ? (

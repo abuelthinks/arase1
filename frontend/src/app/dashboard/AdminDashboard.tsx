@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap, CheckCircle2, FileUp, Loader2, Play, Trash2, XCircle } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
-import { roleColorHex, statusColorHex } from "@/lib/role-colors";
+import { roleColorHex, statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
@@ -89,6 +89,10 @@ interface StudentData {
         label: string;
         tone: string;
         workspace?: string;
+        tab?: string | null;
+        view?: string | null;
+        docId?: string | null;
+        teamRole?: string | null;
     };
 }
 
@@ -120,11 +124,27 @@ const getFormPillClass = (isSubmitted?: boolean) => {
     }`;
 };
 
-const getActionButtonClass = (tone?: string) => {
-    const base = "no-underline transition-colors duration-200 border ";
-    if (tone === "warning") return base + "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300";
-    if (tone === "positive") return base + "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300";
-    return base + "bg-indigo-50/50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300";
+const getActionButtonClass = (studentStatus?: string, actionTone?: string) => {
+    return `no-underline border transition-colors duration-200 ${studentRowActionPillClass(studentStatus || "ARCHIVED", actionTone)}`;
+};
+
+const getWaitingActionMessage = (label?: string) =>
+    label === 'Awaiting Parent'
+        ? 'Parent assessment is still missing.'
+        : 'Specialist assessment is not finalized yet.';
+
+const getWaitingActionTitle = (label?: string) =>
+    label === 'Awaiting Parent' ? 'Waiting on parent' : 'Waiting on specialists';
+
+const buildStudentActionHref = (student: StudentData) => {
+    const params = new URLSearchParams({ studentId: student.id.toString() });
+    const action = student.next_action;
+    if (action?.workspace) params.set("workspace", action.workspace);
+    if (action?.tab) params.set("tab", action.tab);
+    if (action?.view) params.set("view", action.view);
+    if (action?.docId) params.set("docId", action.docId);
+    if (action?.teamRole) params.set("teamRole", action.teamRole);
+    return `/workspace?${params.toString()}`;
 };
 
 const getCardButtonClass = (tone: string) => {
@@ -178,7 +198,7 @@ export default function AdminDashboard() {
 
     // User search & filter
     const [userSearch, setUserSearch] = useState("");
-    const [userRoleFilters, setUserRoleFilters] = useState<string[]>([]);
+    const [userRoleFilter, setUserRoleFilter] = useState("");
     
     // User Sorting
     const [userSortConfig, setUserSortConfig] = useState<{ key: 'name' | 'role' | 'kids' | null, direction: 'asc' | 'desc' | null }>({ key: null, direction: null });
@@ -211,6 +231,31 @@ export default function AdminDashboard() {
     const [bulkEmails, setBulkEmails] = useState<BulkEmailEntry[]>([]);
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
+
+    const sendAssessmentReminder = async (student: StudentData, target: 'parent' | 'specialist') => {
+        const path = target === 'parent' ? 'parent-assessment-reminder' : 'specialist-assessment-reminder';
+        const label = target === 'parent' ? 'parent' : 'specialist';
+        try {
+            const res = await api.post(`/api/students/${student.id}/${path}/`);
+            toast.success(res.data?.message || `Reminder sent to ${label}.`);
+        } catch (err: any) {
+            toast.error(extractApiError(err, `Failed to send ${label} reminder.`));
+        }
+    };
+
+    const handleWaitingAction = (student: StudentData, nextAction: NonNullable<StudentData['next_action']>) => {
+        const isParentReminder = nextAction.label === 'Awaiting Parent';
+        const isSpecialistReminder = nextAction.label === 'Awaiting Specialists';
+        toast.info(getWaitingActionTitle(nextAction.label), {
+            description: getWaitingActionMessage(nextAction.label),
+            action: isParentReminder || isSpecialistReminder
+                ? {
+                    label: isParentReminder ? 'Remind' : 'Remind team',
+                    onClick: () => sendAssessmentReminder(student, isParentReminder ? 'parent' : 'specialist'),
+                }
+                : undefined,
+        });
+    };
 
     // Bulk Registration Handlers
     const extractBulkEmails = (text: string) => {
@@ -374,25 +419,28 @@ export default function AdminDashboard() {
         "INTEGRATED": 5,
         "ARCHIVED": 6
     };
-    const uniqueStatuses = Array.from(new Set(students.map(s => s.status))).sort((a, b) => (statusPriority[a] || 99) - (statusPriority[b] || 99));
+    const getStudentStatusFilterKey = (status: string) =>
+        status === "ASSESSMENT_SCHEDULED" ? "PENDING_ASSESSMENT" : status;
+    const uniqueStatuses = Array.from(new Set(students.map(s => getStudentStatusFilterKey(s.status)))).sort((a, b) => (statusPriority[a] || 99) - (statusPriority[b] || 99));
     const statusCounts = students.reduce<Record<string, number>>((acc, student) => {
-        acc[student.status] = (acc[student.status] || 0) + 1;
+        const statusKey = getStudentStatusFilterKey(student.status);
+        acc[statusKey] = (acc[statusKey] || 0) + 1;
         return acc;
     }, {});
     const effectiveStatusTab = activeStatusTab || (uniqueStatuses.length > 0 ? uniqueStatuses[0] : "");
     const statusFilterOptions = uniqueStatuses.map(status => ({
         status,
-        label: toTitleCase(status.replace(/_/g, " ")),
+        label: statusLabel(status),
         count: statusCounts[status] || 0,
         style: getStatusStyle(status),
     }));
-    const activeStatusLabel = effectiveStatusTab ? toTitleCase(effectiveStatusTab.replace(/_/g, " ")) : "Students";
+    const activeStatusLabel = effectiveStatusTab ? statusLabel(effectiveStatusTab) : "Students";
 
     const processedStudents = students.filter(s => {
         const searchTerms = studentSearch.toLowerCase().trim().split(/\s+/);
         const searchableString = `${s.first_name} ${s.last_name} ${s.id}`.toLowerCase();
         const matchesSearch = searchTerms.every(term => searchableString.includes(term));
-        const matchesStatus = s.status === effectiveStatusTab;
+        const matchesStatus = getStudentStatusFilterKey(s.status) === effectiveStatusTab;
         return matchesSearch && matchesStatus;
     });
 
@@ -441,8 +489,7 @@ export default function AdminDashboard() {
         const searchableString = `${u.first_name} ${u.last_name} ${u.email} `.toLowerCase();
         const matchesSearch = searchTerms.every(term => searchableString.includes(term));
         
-        // Multi-select role filter
-        const matchesRole = userRoleFilters.length === 0 || userRoleFilters.includes(u.role);
+        const matchesRole = !userRoleFilter || u.role === userRoleFilter;
         
         return matchesSearch && matchesRole;
     });
@@ -552,9 +599,7 @@ export default function AdminDashboard() {
     };
 
     const toggleUserRoleFilter = (role: string) => {
-        setUserRoleFilters(prev => 
-            prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
-        );
+        setUserRoleFilter(prev => prev === role ? "" : role);
         setUserPage(1); // Reset pagination on re-filter
     };
     
@@ -621,10 +666,11 @@ export default function AdminDashboard() {
         if (!inviteToRevoke) return;
         setInviteActionLoading(true);
         try {
+            const revokedInvite = inviteToRevoke;
             await api.delete(`/api/invitations/${inviteToRevoke.id}/`);
-            toast.success(`Invitation for ${inviteToRevoke.email} revoked.`);
+            setInvitations(prev => prev.filter(inv => inv.id !== revokedInvite.id));
             setInviteToRevoke(null);
-            fetchData();
+            toast.success(`Invitation for ${revokedInvite.email} revoked.`);
         } catch (err: any) {
             toast.error(extractApiError(err, "Failed to delete invitation."));
         } finally {
@@ -754,7 +800,7 @@ export default function AdminDashboard() {
                         <p>Loading database...</p>
                     
 ) : activeTab === "analytics" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2rem", animation: "fadeIn 0.4s ease-out" }}>
+                        <div key="analytics-tab" style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
                             
                             {/* Sleek Action Bar */}
                             <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white text-slate-900 rounded-2xl shadow-sm border border-slate-200">
@@ -858,7 +904,7 @@ export default function AdminDashboard() {
 
                                 {/* Condense KPIs */}
                                 <div className="flex flex-col gap-3">
-                                    <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-indigo-300 transition-all hover:shadow-md group">
+                                    <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-indigo-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-indigo-500">Active Students</p>
                                             <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">{totalStudents}</p>
@@ -869,7 +915,7 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                     
-                                    <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-amber-300 transition-all hover:shadow-md group">
+                                    <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-amber-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-amber-600">Awaiting Assess</p>
                                             <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors">{pendingStudents}</p>
@@ -880,7 +926,7 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-sky-300 transition-all hover:shadow-md group">
+                                    <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-sky-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-sky-600">Awaiting Enroll</p>
                                             <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors">{reviewStudents}</p>
@@ -891,7 +937,7 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm flex items-center justify-between hover:border-pink-300 transition-all hover:shadow-md group">
+                                    <div className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-pink-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-pink-600">Pending Invites</p>
                                             <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-pink-600 transition-colors">{validPendingInvitations.length}</p>
@@ -927,7 +973,7 @@ export default function AdminDashboard() {
                                                 <div style={{ width: `${totalStudents ? (pendingStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-amber-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Pending Assessment">
                                                     {pendingStudents > 0 ? pendingStudents : ""}
                                                 </div>
-                                                <div style={{ width: `${totalStudents ? (scheduledStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-sky-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Assessment Scheduled">
+                                                <div style={{ width: `${totalStudents ? (scheduledStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-sky-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Pending Assessment">
                                                     {scheduledStudents > 0 ? scheduledStudents : ""}
                                                 </div>
                                                 <div style={{ width: `${totalStudents ? (reviewStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-indigo-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Awaiting Review">
@@ -1169,7 +1215,6 @@ export default function AdminDashboard() {
                                             </thead>
                                             <tbody>
                                                 {paginatedStudents.map(s => {
-                                                    const ss = getStatusStyle(s.status);
                                                     const nextAction = s.next_action;
                                                     return (
                                                         <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }}>
@@ -1218,7 +1263,7 @@ export default function AdminDashboard() {
                                                                     {nextAction ? (
                                                                         nextAction.tone === "waiting" ? (
                                                                             <button 
-                                                                                onClick={() => toast.info(`Action locked: ${nextAction.label === 'Awaiting Parent' ? 'Waiting for the parent to submit their initial assessment.' : 'Waiting for the clinical team to finalize their evaluations.'}`)}
+                                                                                onClick={() => handleWaitingAction(s, nextAction)}
                                                                                 style={{ 
                                                                                     fontSize: "0.75rem", 
                                                                                     padding: "6px 12px", 
@@ -1227,18 +1272,15 @@ export default function AdminDashboard() {
                                                                                     display: "flex",
                                                                                     alignItems: "center",
                                                                                     gap: "4px",
-                                                                                    background: ss.bg,
-                                                                                    color: ss.color,
                                                                                     cursor: "help",
-                                                                                    border: "none"
                                                                                 }} 
-                                                                                className="hover:opacity-80 transition-opacity"
+                                                                                className={`${getActionButtonClass(s.status, nextAction.tone)} hover:opacity-90`}
                                                                             >
                                                                                 {nextAction.label}
                                                                             </button>
                                                                         ) : (
                                                                             <Link 
-                                                                                href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
+                                                                                href={buildStudentActionHref(s)} 
                                                                                 style={{ 
                                                                                     fontSize: "0.75rem", 
                                                                                     padding: "6px 12px", 
@@ -1248,7 +1290,7 @@ export default function AdminDashboard() {
                                                                                     alignItems: "center",
                                                                                     gap: "4px"
                                                                                 }} 
-                                                                                className={`${getActionButtonClass(nextAction.tone)} active:scale-95`}
+                                                                                className={getActionButtonClass(s.status, nextAction.tone)}
                                                                             >
                                                                                 {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
                                                                                 {nextAction.label}
@@ -1267,7 +1309,7 @@ export default function AdminDashboard() {
                                                                                 textDecoration: "none", 
                                                                                 fontWeight: 600 
                                                                             }} 
-                                                                            className="hover:bg-slate-100 active:scale-95 transition-all"
+                                                                            className="transition-colors hover:bg-slate-100"
                                                                         >
                                                                             Open Workspace
                                                                         </Link>
@@ -1295,7 +1337,7 @@ export default function AdminDashboard() {
                                                             <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>
                                                         </div>
                                                         <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: ss.bg, color: ss.color, textAlign: "center", whiteSpace: "nowrap" }}>
-                                                            {s.status.replace(/_/g, " ")}
+                                                            {statusLabel(s.status)}
                                                         </span>
                                                     </div>
 
@@ -1342,22 +1384,19 @@ export default function AdminDashboard() {
                                                         {nextAction ? (
                                                             nextAction.tone === "waiting" ? (
                                                                 <button 
-                                                                    onClick={() => toast.info(`Action locked: ${nextAction.label === 'Awaiting Parent' ? 'Waiting for the parent to submit their initial assessment.' : 'Waiting for the clinical team to finalize their evaluations.'}`)}
+                                                                    onClick={() => handleWaitingAction(s, nextAction)}
                                                                     style={{ 
-                                                                        background: ss.bg,
-                                                                        color: ss.color,
                                                                         cursor: "help",
-                                                                        border: "none"
                                                                     }} 
-                                                                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center hover:opacity-80 transition-opacity" 
+                                                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center hover:opacity-90 ${getActionButtonClass(s.status, nextAction.tone)}`} 
                                                                     title={nextAction.label}
                                                                 >
                                                                     {nextAction.label}
                                                                 </button>
                                                             ) : (
                                                                 <Link 
-                                                                    href={`/workspace?studentId=${s.id}${nextAction.workspace ? `&workspace=${nextAction.workspace}` : ''}`} 
-                                                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center active:scale-95 ${getActionButtonClass(nextAction.tone)}`} 
+                                                                    href={buildStudentActionHref(s)} 
+                                                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center ${getActionButtonClass(s.status, nextAction.tone)}`} 
                                                                     title={nextAction.label}
                                                                 >
                                                                     {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
@@ -1367,7 +1406,7 @@ export default function AdminDashboard() {
                                                         ) : (
                                                             <Link 
                                                                 href={`/workspace?studentId=${s.id}`} 
-                                                                className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 active:scale-95 transition-all flex-1 text-center" 
+                                                                className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors flex-1 text-center" 
                                                                 title="Open Workspace"
                                                             >
                                                                 Open Workspace
@@ -1429,7 +1468,7 @@ export default function AdminDashboard() {
                                     </div>
                                     <div className="flex gap-2 items-center overflow-x-auto w-full md:w-auto pb-1 md:pb-0" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                                         {uniqueUserRoles.map(r => {
-                                            const isActive = userRoleFilters.includes(r);
+                                            const isActive = userRoleFilter === r;
                                             return (
                                                 <button
                                                     key={r}
@@ -1450,9 +1489,9 @@ export default function AdminDashboard() {
                                                 </button>
                                             );
                                         })}
-                                        {(userSearch || userRoleFilters.length > 0) && (
+                                        {(userSearch || userRoleFilter) && (
                                             <button 
-                                                onClick={() => { setUserSearch(''); setUserRoleFilters([]); }}
+                                                onClick={() => { setUserSearch(''); setUserRoleFilter(''); }}
                                                 style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
                                             >
                                                 Clear Filters
@@ -1485,11 +1524,11 @@ export default function AdminDashboard() {
                                 <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
                                     {users.length === 0
                                         ? "No users in the system yet."
-                                        : userSearch && userRoleFilters.length > 0
+                                        : userSearch && userRoleFilter
                                             ? `No users match "${userSearch}" with the selected role filters. Try clearing one.`
                                             : userSearch
                                                 ? `No users match "${userSearch}". Try a different search term.`
-                                                : userRoleFilters.length > 0
+                                                : userRoleFilter
                                                     ? `No users match the selected role filters.`
                                                     : "No users to show."}
                                 </p>
@@ -2068,7 +2107,7 @@ export default function AdminDashboard() {
                             <div style={{ marginTop: "1rem", textAlign: "center", borderTop: "1px dashed #e2e8f0", paddingTop: "1rem" }}>
                                 <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0 }}>
                                     Need to invite multiple people? <br/>
-                                    <Link href="/bulk-registration" style={{ color: "#4f46e5", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
+                                    <Link href="/dashboard?tab=invitations" onClick={() => setShowInviteModal(false)} style={{ color: "#4f46e5", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
                                         Go to Bulk Registration <ArrowRight size={14} />
                                     </Link>
                                 </p>

@@ -81,9 +81,25 @@ export const STATUS_COLOR_HEX: Record<string, { bg: string; color: string }> = {
     ARCHIVED: { bg: SEMANTIC_TONE_HEX.neutral.bg, color: SEMANTIC_TONE_HEX.neutral.color },
 };
 
-export function statusColorHex(status: StatusKey): { bg: string; color: string } {
+export const STATUS_TONE: Record<string, SemanticTone> = {
+    PENDING_ASSESSMENT: "attention",
+    ASSESSMENT_SCHEDULED: "warning",
+    ASSESSED: "info",
+    ASSESSED_AWAITING_ENROLLMENT: "info",
+    "ASSESSED_(AWAITING_ENROLLMENT)": "info",
+    ENROLLED: "success",
+    INTEGRATED: "primary",
+    ARCHIVED: "neutral",
+};
+
+export function statusTone(status: StatusKey): SemanticTone {
     const key = normalizeStatusKey(status);
-    return STATUS_COLOR_HEX[key] ?? { bg: SEMANTIC_TONE_HEX.neutral.bg, color: SEMANTIC_TONE_HEX.neutral.color };
+    return STATUS_TONE[key] ?? "neutral";
+}
+
+export function statusColorHex(status: StatusKey): { bg: string; color: string } {
+    const tone = statusTone(status);
+    return { bg: SEMANTIC_TONE_HEX[tone].bg, color: SEMANTIC_TONE_HEX[tone].color };
 }
 
 export const STATUS_COLOR_CLASS: Record<string, string> = {
@@ -97,8 +113,47 @@ export const STATUS_COLOR_CLASS: Record<string, string> = {
 };
 
 export function statusColorClass(status: StatusKey): string {
-    const key = normalizeStatusKey(status);
-    return STATUS_COLOR_CLASS[key] ?? SEMANTIC_TONE_CLASS.neutral;
+    return semanticToneClass(statusTone(status));
+}
+
+export const SEMANTIC_TONE_HOVER_CLASS: Record<SemanticTone, string> = {
+    primary: "hover:bg-indigo-100 hover:border-indigo-300",
+    info: "hover:bg-blue-100 hover:border-blue-300",
+    success: "hover:bg-emerald-100 hover:border-emerald-300",
+    warning: "hover:bg-amber-100 hover:border-amber-300",
+    danger: "hover:bg-red-100 hover:border-red-300",
+    attention: "hover:bg-pink-100 hover:border-pink-300",
+    neutral: "hover:bg-slate-100 hover:border-slate-300",
+};
+
+export function statusActionPillClass(status: StatusKey): string {
+    const tone = statusTone(status);
+    return `${statusColorClass(status)} ${SEMANTIC_TONE_HOVER_CLASS[tone]}`;
+}
+
+export const STUDENT_WAITING_ACTION_CLASS = "bg-slate-50 text-slate-500 border-slate-100";
+export const STUDENT_WAITING_ACTION_HOVER_CLASS = "hover:bg-slate-100 hover:border-slate-200";
+
+export function studentRowActionPillClass(status: StatusKey, tone?: string | null): string {
+    if ((tone || "").toLowerCase() === "waiting") {
+        return `${STUDENT_WAITING_ACTION_CLASS} ${STUDENT_WAITING_ACTION_HOVER_CLASS}`;
+    }
+    return statusActionPillClass(status);
+}
+
+export const STUDENT_ACTION_TONE_CLASS: Record<string, string> = {
+    positive: SEMANTIC_TONE_CLASS.success,
+    success: SEMANTIC_TONE_CLASS.success,
+    warning: SEMANTIC_TONE_CLASS.warning,
+    waiting: SEMANTIC_TONE_CLASS.neutral,
+    info: SEMANTIC_TONE_CLASS.info,
+    attention: SEMANTIC_TONE_CLASS.attention,
+    default: SEMANTIC_TONE_CLASS.primary,
+};
+
+export function studentActionPillClass(tone?: string | null): string {
+    const key = (tone || "default").toLowerCase();
+    return STUDENT_ACTION_TONE_CLASS[key] ?? STUDENT_ACTION_TONE_CLASS.default;
 }
 
 export const STATUS_LABELS: Record<string, string> = {

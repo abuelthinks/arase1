@@ -81,7 +81,7 @@ interface ProfileData {
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
     "Pending Assessment":   { label: "Pending Assessment",   bg: "#fce7f3", color: "#9d174d" },
-    "Assessment Scheduled": { label: "Assessment Scheduled", bg: "#fef3c7", color: "#92400e" },
+    "Assessment Scheduled": { label: "Pending Assessment", bg: "#fef3c7", color: "#92400e" },
     "Assessed":             { label: "Assessed",             bg: "#dbeafe", color: "#1e40af" },
     "Enrolled":             { label: "Enrolled",             bg: "#dcfce7", color: "#14532d" },
     "Archived":             { label: "Archived",             bg: "#f1f5f9", color: "#64748b" },
@@ -89,7 +89,7 @@ const statusConfig: Record<string, { label: string; bg: string; color: string }>
 
 const STATUS_STEPS = [
     { key: "Pending Assessment", label: "Awaiting evaluation", shortLabel: "Pending" },
-    { key: "Assessment Scheduled", label: "Under evaluation", shortLabel: "Scheduled" },
+    { key: "Assessment Scheduled", label: "Specialist review", shortLabel: "Specialist" },
     { key: "Assessed", label: "Evaluation complete", shortLabel: "Assessed" },
     { key: "Enrolled", label: "Active", shortLabel: "Enrolled" },
 ];

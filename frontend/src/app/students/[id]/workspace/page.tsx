@@ -11,6 +11,7 @@ import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -23,15 +24,15 @@ import { AdminReportsContent } from "@/app/admin/reports/page";
 import { StudentProfileContent } from "@/app/students/[id]/page";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
-    "PENDING_ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d", label: "Pending Assessment" },
-    "PENDING ASSESSMENT":    { bg: "#fce7f3", color: "#9d174d", label: "Pending Assessment" },
-    "ASSESSMENT_SCHEDULED": { bg: "#fef3c7", color: "#92400e", label: "Assessment Scheduled" },
-    "ASSESSMENT SCHEDULED": { bg: "#fef3c7", color: "#92400e", label: "Assessment Scheduled" },
-    "ASSESSED":     { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
-    "ASSESSED (AWAITING ENROLLMENT)": { bg: "#dbeafe", color: "#1e40af", label: "Assessed" },
-    "ENROLLED":     { bg: "#dcfce7", color: "#14532d", label: "Enrolled" },
-    "INTEGRATED":   { bg: "#ede9fe", color: "#5b21b6", label: "Integrated" },
-    "ARCHIVED":   { bg: "#f1f5f9", color: "#64748b", label: "Archived" },
+    "PENDING_ASSESSMENT":    { ...statusColorHex("PENDING_ASSESSMENT"), label: statusLabel("PENDING_ASSESSMENT") },
+    "PENDING ASSESSMENT":    { ...statusColorHex("PENDING_ASSESSMENT"), label: statusLabel("PENDING_ASSESSMENT") },
+    "ASSESSMENT_SCHEDULED": { ...statusColorHex("ASSESSMENT_SCHEDULED"), label: statusLabel("ASSESSMENT_SCHEDULED") },
+    "ASSESSMENT SCHEDULED": { ...statusColorHex("ASSESSMENT_SCHEDULED"), label: statusLabel("ASSESSMENT_SCHEDULED") },
+    "ASSESSED":     { ...statusColorHex("ASSESSED"), label: statusLabel("ASSESSED") },
+    "ASSESSED (AWAITING ENROLLMENT)": { ...statusColorHex("ASSESSED"), label: statusLabel("ASSESSED") },
+    "ENROLLED":     { ...statusColorHex("ENROLLED"), label: statusLabel("ENROLLED") },
+    "INTEGRATED":   { ...statusColorHex("INTEGRATED"), label: statusLabel("INTEGRATED") },
+    "ARCHIVED":   { ...statusColorHex("ARCHIVED"), label: statusLabel("ARCHIVED") },
 };
 
 const TABS = [
@@ -60,14 +61,8 @@ const getStaffName = (staff: any) =>
 
 const getStaffSpecialties = (staff: any): string[] => userSpecialtyList(staff?.specialties, staff?.specialty);
 
-const nextActionClass = (tone?: string, isCurrent?: boolean) => {
-    if (tone === "positive") {
-        return isCurrent ? "bg-emerald-100 text-emerald-800" : "bg-emerald-50 text-emerald-700";
-    }
-    if (tone === "warning") {
-        return isCurrent ? "bg-amber-100 text-amber-800" : "bg-amber-50 text-amber-700";
-    }
-    return isCurrent ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-600";
+const nextActionClass = (status?: string, tone?: string) => {
+    return studentRowActionPillClass(status || "ARCHIVED", tone);
 };
 
 const buildStudentWorkspaceHref = (student: any, fallbackWorkspace: string) => {
@@ -257,6 +252,18 @@ function UnifiedWorkspaceContent() {
         studentId,
         isEditing: teamHasChanges || Boolean(unassigningStaff) || confirmingTeam || showEnrollConfirm || enrollingStudent,
         onRefresh: refreshWorkspaceData,
+    });
+
+    useRealtimeRefresh({
+        targets: ['workspace', 'student'],
+        onRefresh: async () => {
+            try {
+                const res = await api.get("/api/students/");
+                setAllStudents(res.data);
+            } catch (err) {
+                console.error("Failed to refresh student list:", err);
+            }
+        },
     });
     const getTeamUnits = (staff: any[]) => staff.flatMap((member) => {
         if (member.role === "SPECIALIST") {
@@ -1812,8 +1819,7 @@ function UnifiedWorkspaceContent() {
                                 ) : (
                                     filteredStudents.map(s => {
                                         const isCurrent = s.id.toString() === studentId;
-                                        const dotColor: Record<string, string> = { ENROLLED: "#16a34a", ASSESSED: "#2563eb", PENDING_ASSESSMENT: "#db2777", ASSESSMENT_SCHEDULED: "#d97706", INTEGRATED: "#7c3aed", ARCHIVED: "#94a3b8" };
-                                        const dot = dotColor[s.status?.toUpperCase()] || "#cbd5e1";
+                                        const dot = statusColorHex(s.status || "ARCHIVED").color;
                                         const nextAction = user?.role === "ADMIN" ? s.next_action : null;
                                         return (
                                             <button
@@ -1832,7 +1838,7 @@ function UnifiedWorkspaceContent() {
                                                         {s.first_name} {s.last_name}
                                                     </span>
                                                     {nextAction && (
-                                                        <span className={`mt-1 inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-[0.58rem] font-bold ${nextActionClass(nextAction.tone, isCurrent)}`}>
+                                                        <span className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-colors ${nextActionClass(s.status, nextAction.tone)}`}>
                                                             {nextAction.label}
                                                         </span>
                                                     )}
