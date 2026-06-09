@@ -124,7 +124,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
 
             {isOpen && (
                 <div className={`absolute ${alignOffset} w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-[999] flex flex-col max-h-[85vh] origin-bottom-right ${
-                    direction === 'up' ? 'bottom-[calc(100%+1rem)]' : 'top-[calc(100%+0.5rem)]'
+                    direction === 'up' ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]'
                 }`}>
                     <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                         <h3 className="font-bold text-slate-800 m-0">Notifications</h3>

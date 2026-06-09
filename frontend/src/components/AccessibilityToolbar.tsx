@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Eye, Sun, Moon, ChevronDown } from "lucide-react";
+import { Eye, Sun, Moon, ChevronDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 interface AccessibilityToolbarProps {
   direction?: 'up' | 'down';
@@ -13,6 +13,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [highContrast, setHighContrast] = useState(false);
   const [fontScale, setFontScale] = useState<"standard" | "large" | "xlarge">("standard");
+  const [placement, setPlacement] = useState<"top-right" | "bottom-right">("top-right");
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Close panel when clicking outside
@@ -31,10 +32,12 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
     const savedTheme = localStorage.getItem("arase:accessibility:theme") as "light" | "dark" | null;
     const savedContrast = localStorage.getItem("arase:accessibility:contrast") === "true";
     const savedScale = localStorage.getItem("arase:accessibility:scale") as "standard" | "large" | "xlarge" | null;
+    const savedPlacement = localStorage.getItem("arase:accessibility:placement") as "top-right" | "bottom-right" | null;
 
     if (savedTheme) setTheme(savedTheme);
     if (savedContrast !== undefined) setHighContrast(savedContrast);
     if (savedScale) setFontScale(savedScale);
+    if (savedPlacement) setPlacement(savedPlacement);
 
     applyPreferences(savedTheme || "light", savedContrast, savedScale || "standard");
   }, []);
@@ -89,6 +92,12 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
     applyPreferences(theme, highContrast, newScale);
   };
 
+  const handlePlacementChange = (newPlacement: "top-right" | "bottom-right") => {
+    setPlacement(newPlacement);
+    localStorage.setItem("arase:accessibility:placement", newPlacement);
+    window.dispatchEvent(new Event("arase:accessibility:updated"));
+  };
+
   return (
     <div
       ref={panelRef}
@@ -128,7 +137,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
       {isOpen && (
         <div
           className={`absolute ${alignOffset} z-[9999] origin-bottom-right ${
-            direction === 'up' ? 'bottom-[calc(100%+1rem)]' : 'top-[calc(100%+8px)]'
+            direction === 'up' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'
           }`}
           style={{
             width: "260px",
@@ -215,6 +224,69 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
               >
                 <Moon size={14} />
                 <span>Dark</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Widget Placement */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 700 }}>Widget Placement</span>
+            <div style={{ display: "flex", gap: "6px" }}>
+              <button
+                onClick={() => handlePlacementChange("top-right")}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  padding: "8px 4px",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  border: placement === "top-right"
+                    ? "2px solid var(--accent-primary, #3b82f6)"
+                    : `1px solid ${theme === "dark" ? "#2d3748" : "#cbd5e1"}`,
+                  backgroundColor: placement === "top-right"
+                    ? (theme === "dark" ? "#1e3a8a" : "#eff6ff")
+                    : "transparent",
+                  color: placement === "top-right"
+                    ? (theme === "dark" ? "#60a5fa" : "var(--accent-primary, #3b82f6)")
+                    : (theme === "dark" ? "#f1f5f9" : "#64748b"),
+                }}
+              >
+                <ArrowUpRight size={14} />
+                <span>Top Right</span>
+              </button>
+              <button
+                onClick={() => handlePlacementChange("bottom-right")}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  padding: "8px 4px",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  border: placement === "bottom-right"
+                    ? "2px solid var(--accent-primary, #3b82f6)"
+                    : `1px solid ${theme === "dark" ? "#2d3748" : "#cbd5e1"}`,
+                  backgroundColor: placement === "bottom-right"
+                    ? (theme === "dark" ? "#1e3a8a" : "#eff6ff")
+                    : "transparent",
+                  color: placement === "bottom-right"
+                    ? (theme === "dark" ? "#60a5fa" : "var(--accent-primary, #3b82f6)")
+                    : (theme === "dark" ? "#f1f5f9" : "#64748b"),
+                }}
+              >
+                <ArrowDownRight size={14} />
+                <span>Bottom Right</span>
               </button>
             </div>
           </div>

@@ -17,6 +17,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [widgetPlacement, setWidgetPlacement] = useState<"top-right" | "bottom-right">("top-right");
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -24,6 +25,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             if (saved === "true") {
                 setSidebarCollapsed(true);
             }
+
+            const savedPlacement = window.localStorage.getItem("arase:accessibility:placement") as "top-right" | "bottom-right" | null;
+            if (savedPlacement) {
+                setWidgetPlacement(savedPlacement);
+            }
+
+            const handleAccessibilityUpdate = () => {
+                const newPlacement = window.localStorage.getItem("arase:accessibility:placement") as "top-right" | "bottom-right" | null;
+                if (newPlacement) setWidgetPlacement(newPlacement);
+            };
+
+            window.addEventListener("arase:accessibility:updated", handleAccessibilityUpdate);
+            return () => {
+                window.removeEventListener("arase:accessibility:updated", handleAccessibilityUpdate);
+            };
         }
     }, []);
 
@@ -66,11 +82,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 : <UserSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
             }
             
-            {/* Floating Top-Right Tools (Desktop Only) */}
-            <div className="hidden md:flex absolute top-4 right-6 lg:right-12 z-50 items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200/50 shadow-lg rounded-full px-4 py-1.5 scale-90 lg:scale-100 origin-top-right transition-all duration-300">
-                <AccessibilityToolbar direction="down" alignOffset="-right-[69px]" />
+            {/* Floating Tools (Desktop Only) */}
+            <div className={`hidden md:flex absolute ${widgetPlacement === 'bottom-right' ? 'bottom-4' : 'top-4'} right-6 lg:right-12 z-50 items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200/50 shadow-lg rounded-full px-4 py-1.5 scale-90 lg:scale-100 ${widgetPlacement === 'bottom-right' ? 'origin-bottom-right' : 'origin-top-right'} transition-all duration-300`}>
+                <AccessibilityToolbar direction={widgetPlacement === 'bottom-right' ? 'up' : 'down'} alignOffset="-right-[69px]" />
                 <div className="w-px h-4 bg-slate-200" /> {/* Divider */}
-                <NotificationBell direction="down" alignOffset="-right-4" />
+                <NotificationBell direction={widgetPlacement === 'bottom-right' ? 'up' : 'down'} alignOffset="-right-4" />
             </div>
 
             <main id="main-content" className={`flex-1 h-full ${isWorkspace ? 'p-0 overflow-hidden' : 'px-0 pt-6 pb-28 md:py-8 md:px-12 md:pb-8 overflow-y-auto'}`}>
