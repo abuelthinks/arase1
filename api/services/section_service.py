@@ -23,6 +23,30 @@ from ..specialties import (
 )
 
 
+SECTION_KEY_LABELS = {
+    # Assessment
+    "A": "Section A",
+    "B": "Section B",
+    "C": "Section C (SLP)",
+    "D": "Section D (OT)",
+    "E": "Section E (PT)",
+    "F1": "Section F1 (ABA)",
+    "F2": "Section F2 (Dev Psych)",
+    "G": "Section G",
+    # Tracker
+    "section_a": "Section A",
+    "section_b": "Section B",
+    "section_c_slp": "Section C1 (SLP)",
+    "section_c_ot": "Section C2 (OT)",
+    "section_c_pt": "Section C3 (PT)",
+    "section_c_aba": "Section C4 (ABA)",
+    "section_c_developmental_psychology": "Section C5 (Dev Psych)",
+    "section_d": "Section D",
+    "section_e": "Section E",
+    "section_f": "Section F",
+}
+
+
 FORM_MODELS = {
     "assessment": MultidisciplinaryAssessment,
     "tracker": MultidisciplinaryProgressTracker,
@@ -219,11 +243,13 @@ def _check_section_edit(form_type: str, instance, user, section_key: str):
 
     # Own submitted section cannot be edited again (only admin can reopen).
     if contribution and contribution.status == "submitted":
-        raise SectionLockedError(f"Section {section_key} has already been submitted.")
+        display_label = SECTION_KEY_LABELS.get(section_key, f"Section {section_key}")
+        raise SectionLockedError(f"{display_label} has already been submitted.")
 
     if _is_shared_locked(form_type, instance, section_key):
+        display_label = SECTION_KEY_LABELS.get(section_key, f"Section {section_key}")
         raise SectionLockedError(
-            f"Section {section_key} is locked (verified/matched)."
+            f"{display_label} is locked (verified/matched)."
         )
 
 
@@ -312,8 +338,9 @@ def submit_section(
         # (whoever opts in is signaling "nothing to add here").
         if owner != SHARED_SECTION and user.role != "ADMIN":
             if not _section_has_content(form_type, instance, section_key):
+                display_label = SECTION_KEY_LABELS.get(section_key, f"Section {section_key}")
                 raise SectionValidationError(
-                    f"Section {section_key} is empty. Please fill out the section before submitting."
+                    f"{display_label} is empty. Please fill out the section before submitting."
                 )
 
         contribution, _created = SectionContribution.objects.update_or_create(
@@ -403,7 +430,8 @@ def reopen_section(
                 )
 
         if _is_shared_locked(form_type, instance, section_key):
-            raise SectionLockedError(f"Section {section_key} is locked (verified) and cannot be reopened.")
+            display_label = SECTION_KEY_LABELS.get(section_key, f"Section {section_key}")
+            raise SectionLockedError(f"{display_label} is locked (verified) and cannot be reopened.")
 
         contribution = SectionContribution.objects.filter(
             **{_fk_field(form_type): instance}, section_key=section_key
@@ -480,9 +508,10 @@ def submit_all_sections(
             if key not in existing or not _section_has_content(form_type, instance, key)
         ]
         if missing:
-            label = ", ".join(missing)
+            labels = [SECTION_KEY_LABELS.get(key, key) for key in missing]
+            label_str = ", ".join(labels)
             raise SectionValidationError(
-                f"Please fill out your assigned section(s) before submitting: {label}"
+                f"Please fill out your assigned section(s) before submitting: {label_str}"
             )
 
         # Submit every draft contribution where this user is the latest editor.
