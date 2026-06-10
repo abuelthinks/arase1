@@ -1822,14 +1822,26 @@ function UnifiedWorkspaceContent() {
                                         const dot = statusColorHex(s.status || "ARCHIVED").color;
                                         const nextAction = user?.role === "ADMIN" ? s.next_action : null;
                                         return (
-                                            <button
+                                            <div
                                                 key={s.id}
+                                                role="button"
+                                                tabIndex={0}
                                                 onClick={() => !isCurrent && navigateWithTeamGuard(buildStudentWorkspaceHref(s, workspace))}
-                                                className={`w-full flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
-                                                    isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm' : 'border border-transparent hover:bg-slate-50'
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        if (!isCurrent) navigateWithTeamGuard(buildStudentWorkspaceHref(s, workspace));
+                                                    }
+                                                }}
+                                                className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                                    isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-slate-50'
                                                 }`}
                                                 style={{ cursor: isCurrent ? 'default' : 'pointer' }}
+                                                title={`${s.first_name} ${s.last_name} — ${s.status?.replace(/_/g, ' ')}`}
                                             >
+                                                {isCurrent && (
+                                                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />
+                                                )}
                                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500'}`}>
                                                     {s.first_name?.[0]}{s.last_name?.[0]}
                                                 </div>
@@ -1838,13 +1850,27 @@ function UnifiedWorkspaceContent() {
                                                         {s.first_name} {s.last_name}
                                                     </span>
                                                     {nextAction && (
-                                                        <span className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-colors ${nextActionClass(s.status, nextAction.tone)}`}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const params = new URLSearchParams();
+                                                                params.set("workspace", nextAction.workspace || "overview");
+                                                                if (nextAction.tab) params.set("tab", nextAction.tab);
+                                                                if (nextAction.view) params.set("view", nextAction.view);
+                                                                if (nextAction.docId) params.set("docId", nextAction.docId);
+                                                                if (nextAction.teamRole) params.set("teamRole", nextAction.teamRole);
+                                                                navigateWithTeamGuard(`/students/${s.id}/workspace?${params.toString()}`);
+                                                            }}
+                                                            className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-all duration-200 cursor-pointer ${nextActionClass(s.status, nextAction.tone)}`}
+                                                            title={`Click to resolve action: ${nextAction.label}`}
+                                                        >
                                                             {nextAction.label}
-                                                        </span>
+                                                        </button>
                                                     )}
                                                 </div>
                                                 <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={s.status?.replace(/_/g, ' ')}></span>
-                                            </button>
+                                            </div>
                                         );
                                     })
                                 )}

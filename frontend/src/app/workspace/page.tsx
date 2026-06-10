@@ -165,6 +165,7 @@ function UnifiedWorkspaceContent() {
     const [studentDetails, setStudentDetails] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [studentsLoaded, setStudentsLoaded] = useState(false);
     const [profileRefreshKey, setProfileRefreshKey] = useState(0);
     const [activeCycle, setActiveCycle] = useState<any>(null);
     const [sectionContributions, setSectionContributions] = useState<any[]>([]);
@@ -245,7 +246,7 @@ function UnifiedWorkspaceContent() {
         ? "forms" 
         : (user?.role === "ADMIN" && rawWorkspace === "forms") 
             ? "reports" 
-            : (user?.role !== "ADMIN" && rawWorkspace === "overview")
+            : (user?.role !== "ADMIN" && ["overview", "team"].includes(rawWorkspace))
                 ? "forms"
                 : rawWorkspace;
     const isStudentCurrentlyEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
@@ -285,8 +286,9 @@ function UnifiedWorkspaceContent() {
 
     useEffect(() => {
         if (user?.role !== "PARENT" || !studentId || typeof window === "undefined") return;
+        if (!allStudents.some((student: any) => student.id.toString() === studentId)) return;
         window.localStorage.setItem("arase:last-parent-student-id", studentId);
-    }, [studentId, user?.role]);
+    }, [allStudents, studentId, user?.role]);
 
     useEffect(() => {
         if (!isAuthorized) {
@@ -296,10 +298,29 @@ function UnifiedWorkspaceContent() {
 
         let isActive = true;
         setLoadError(null);
+        setStudentsLoaded(false);
         api.get("/api/students/").then(res => {
             if (!isActive) return;
             const students = res.data;
             setAllStudents(students);
+            setStudentsLoaded(true);
+
+            if (studentId && !students.some((student: any) => student.id.toString() === studentId)) {
+                if (user?.role === "PARENT" && typeof window !== "undefined") {
+                    window.localStorage.removeItem("arase:last-parent-student-id");
+                    window.localStorage.removeItem(workspaceMemoryKey);
+                }
+                if (students.length > 0) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("studentId", students[0].id.toString());
+                    router.replace(url.pathname + url.search);
+                } else {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("studentId");
+                    router.replace(url.pathname + url.search);
+                }
+                return;
+            }
 
             if (!hasExplicitWorkspaceState && typeof window !== "undefined") {
                 const stored = window.localStorage.getItem(workspaceMemoryKey);
@@ -341,16 +362,21 @@ function UnifiedWorkspaceContent() {
             }
         }).catch(() => {
             if (!isActive) return;
+            setStudentsLoaded(true);
             setLoadError("Unable to connect to the server. Make sure Django is running on port 8000, then refresh the page.");
             setLoading(false);
         });
         return () => {
             isActive = false;
         };
-    }, [studentId, router, isAuthorized, hasExplicitWorkspaceState, workspaceMemoryKey]);
+    }, [studentId, router, isAuthorized, hasExplicitWorkspaceState, workspaceMemoryKey, user?.role]);
 
     useEffect(() => {
         if (!isAuthorized || !studentId) return; // Prevent fetch if no student is active
+        if (user?.role === "PARENT") {
+            if (!studentsLoaded) return;
+            if (!allStudents.some((student: any) => student.id.toString() === studentId)) return;
+        }
         let isActive = true;
         setLoadError(null);
         
@@ -377,13 +403,13 @@ function UnifiedWorkspaceContent() {
             })
             .catch(() => {
                 if (!isActive) return;
-                setLoadError("Unable to load this student's workspace. Make sure Django is running, then refresh the page.");
+                setLoadError("Unable to load this student's workspace.");
                 setLoading(false);
             });
         return () => {
             isActive = false;
         };
-    }, [studentId, isAuthorized, profileRefreshKey]);
+    }, [allStudents, studentId, isAuthorized, profileRefreshKey, studentsLoaded, user?.role]);
 
     const fetchSectionContributions = useCallback(async (currentStudentId: string, currentCycleId: number) => {
         try {
@@ -416,6 +442,9 @@ function UnifiedWorkspaceContent() {
         const url = new URL(window.location.href);
         url.searchParams.set("workspace", "forms");
         url.searchParams.set("tab", activeFormTab);
+        url.searchParams.delete("view");
+        url.searchParams.delete("docId");
+        url.searchParams.delete("teamRole");
         router.replace(url.pathname + url.search);
     }, [isAuthorized, studentId, formStatuses, workspace, requestedFormTab, activeFormTab, router]);
 
@@ -687,8 +716,14 @@ function UnifiedWorkspaceContent() {
     };
 
     const setWorkspace = (newWorkspace: string) => {
+        if (newWorkspace === "team" && user?.role !== "ADMIN") {
+            newWorkspace = "forms";
+        }
         const url = new URL(window.location.href);
         url.searchParams.set("workspace", newWorkspace);
+        if (newWorkspace !== "team") {
+            url.searchParams.delete("teamRole");
+        }
         if (newWorkspace === "reports" && user?.role !== "ADMIN") {
             const latestDoc = docs[0];
             if (latestDoc) {
@@ -722,6 +757,7 @@ function UnifiedWorkspaceContent() {
     };
 
     const handleTeamMenuChange = (role: string) => {
+        if (user?.role !== "ADMIN") return;
         const url = new URL(window.location.href);
         url.searchParams.set("workspace", "team");
         url.searchParams.set("teamRole", role);
@@ -2120,9 +2156,13 @@ function UnifiedWorkspaceContent() {
         const viewParam = searchParams.get("view");
         const docIdParam = searchParams.get("docId");
         let parentActivePanel = viewParam === "iep" ? "iep" : viewParam === "monthly" ? "monthly" : viewParam === "tracker" ? "tracker" : viewParam === "assessment" ? "assessment" : null;
+
+        if (!parentActivePanel) {
+            parentActivePanel = requestedFormTab === "parent_assessment" ? "assessment" : requestedFormTab === "parent_tracker" ? "tracker" : null;
+        }
         
         if (!parentActivePanel) {
-            parentActivePanel = (!isStudentEnrolled && !assessmentStatus?.submitted) ? "assessment" : "tracker";
+            parentActivePanel = !isStudentEnrolled ? "assessment" : "tracker";
         }
 
         const handleParentPanelChange = (panel: string, docId?: string) => {
@@ -2182,10 +2222,24 @@ function UnifiedWorkspaceContent() {
 
         // Assessment form rendering logic
         const renderAssessmentContent = () => {
+            const canEditUnlockedAssessment = !!assessmentStatus?.submitted
+                && !!assessmentStatus?.unlocked
+                && assessmentStatus?.unlock_available !== false;
+
             if (assessmentStatus?.submitted) {
                 return (
                     <div className="w-full">
-                        <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={assessmentStatus.id?.toString()} />
+                        <ParentFormContent
+                            propMode={canEditUnlockedAssessment ? undefined : "view"}
+                            propHideNavigation={true}
+                            propStudentId={studentId as string}
+                            propSubmissionId={assessmentStatus.id?.toString()}
+                            propOnSubmitted={canEditUnlockedAssessment ? handleEmbeddedFormSubmitted : undefined}
+                            propReportCycleId={activeCycle?.id}
+                            propSpecialistSubmitted={!!formStatuses?.multi_assessment?.submitted}
+                            propUnlockAvailable={assessmentStatus?.unlock_available}
+                            propOnUnlocked={() => setProfileRefreshKey(key => key + 1)}
+                        />
                     </div>
                 );
             }
@@ -2989,10 +3043,18 @@ function UnifiedWorkspaceContent() {
                                             const statusLabel = STATUS_COLORS[s.status?.toUpperCase()]?.label || s.status?.replace(/_/g, ' ');
                                             const nextAction = user?.role === "ADMIN" ? s.next_action : null;
                                             return (
-                                                <button
+                                                <div
                                                     key={s.id}
+                                                    role="button"
+                                                    tabIndex={0}
                                                     onClick={() => !isCurrent && navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace))}
-                                                    className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 ${
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault();
+                                                            if (!isCurrent) navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace));
+                                                        }
+                                                    }}
+                                                    className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
                                                         isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-slate-50'
                                                     }`}
                                                     style={{ cursor: isCurrent ? 'default' : 'pointer' }}
@@ -3009,13 +3071,28 @@ function UnifiedWorkspaceContent() {
                                                             {s.first_name} {s.last_name}
                                                         </span>
                                                         {nextAction && (
-                                                            <span className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-colors ${nextActionClass(s.status, nextAction.tone)}`}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const params = new URLSearchParams();
+                                                                    params.set("studentId", s.id.toString());
+                                                                    params.set("workspace", nextAction.workspace || "overview");
+                                                                    if (nextAction.tab) params.set("tab", nextAction.tab);
+                                                                    if (nextAction.view) params.set("view", nextAction.view);
+                                                                    if (nextAction.docId) params.set("docId", nextAction.docId);
+                                                                    if (nextAction.teamRole) params.set("teamRole", nextAction.teamRole);
+                                                                    navigateWithTeamGuard(`/workspace?${params.toString()}`);
+                                                                }}
+                                                                className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-all duration-200 cursor-pointer ${nextActionClass(s.status, nextAction.tone)}`}
+                                                                title={`Click to resolve action: ${nextAction.label}`}
+                                                            >
                                                                 {nextAction.label}
-                                                            </span>
+                                                            </button>
                                                         )}
                                                     </div>
                                                     <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={statusLabel}></span>
-                                                </button>
+                                                </div>
                                             );
                                         })
                                     )}
