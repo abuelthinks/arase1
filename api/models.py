@@ -261,6 +261,7 @@ class MultidisciplinaryProgressTracker(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='finalized_multidisciplinary_trackers',
     )
+    unlock_requested = models.BooleanField(default=False)
 
 class SpedProgressTracker(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)

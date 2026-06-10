@@ -951,6 +951,95 @@ class AssessmentUnlockView(APIView):
         return Response({"status": "Assessment unlocked successfully."})
 
 
+class TrackerRequestUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'SPECIALIST':
+            return Response({"error": "Only specialists can request to unlock a progress tracker."}, status=status.HTTP_403_FORBIDDEN)
+            
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+        
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        tracker = MultidisciplinaryProgressTracker.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id
+        ).first()
+        
+        if not tracker:
+            return Response({"error": "Tracker not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        if not tracker.finalized_at:
+            return Response({"error": "Tracker is not finalized."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Check if monthly progress report is generated
+        from .models import GeneratedDocument
+        report_generated = GeneratedDocument.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id, document_type='MONTHLY'
+        ).exists()
+        
+        if report_generated:
+            return Response({"error": "Monthly progress report is already generated. Unlock is no longer possible."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        tracker.unlock_requested = True
+        tracker.save(update_fields=['unlock_requested'])
+        
+        # Notify admins
+        from .models import User, Notification
+        admins = User.objects.filter(role='ADMIN')
+        student = tracker.student
+        for admin in admins:
+            Notification.objects.create(
+                recipient=admin,
+                notification_type='UNLOCK_REQUESTED',
+                title='Unlock Request',
+                message=f'{request.user.first_name} {request.user.last_name} has requested to unlock the specialist progress tracker for {student.first_name} {student.last_name}.',
+                link=f'/workspace?studentId={student.id}&workspace=forms&tab=multi_tracker',
+                actor_name=f'{request.user.first_name} {request.user.last_name}'
+            )
+            
+        return Response({"status": "Unlock requested successfully."})
+
+
+class TrackerUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can unlock a progress tracker."}, status=status.HTTP_403_FORBIDDEN)
+            
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+        
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        tracker = MultidisciplinaryProgressTracker.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id
+        ).first()
+        
+        if not tracker:
+            return Response({"error": "Tracker not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        if not tracker.finalized_at:
+            return Response({"error": "Tracker is not finalized."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        tracker.finalized_at = None
+        tracker.finalized_by = None
+        tracker.unlock_requested = False
+        tracker.save(update_fields=['finalized_at', 'finalized_by', 'unlock_requested'])
+        
+        from .services.collaboration_service import broadcast_lock_changed
+        broadcast_lock_changed("tracker", tracker.id)
+        
+        return Response({"status": "Tracker unlocked successfully."})
+
+
+
+
+
 class ParentAssessmentRequestUnlockView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1888,6 +1977,12 @@ class ManageInvitationView(APIView):
 
         from django.shortcuts import get_object_or_404
         invitation = get_object_or_404(Invitation, pk=pk)
+        try:
+            from .services.user_service import send_invitation_revoked_email
+            send_invitation_revoked_email(invitation)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Invitation revoked but email failed: {e}")
         invitation.delete()
         return Response({"message": "Invitation deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
@@ -1966,6 +2061,9 @@ class AcceptInvitationView(APIView):
 
             # Notify admins of new user registration
             notify_new_user_registered(user)
+            if user.role == 'PARENT':
+                from .services.notification_service import notify_parent_welcome_to_register_child
+                notify_parent_welcome_to_register_child(user, invitation.student)
             from .services.realtime_service import create_activity_event
             create_activity_event(
                 event_type='USER_REGISTERED',
@@ -2069,54 +2167,40 @@ class GenerateIEPView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Lock the student row so two simultaneous admin clicks can't create duplicate IEPs.
-        # select_for_update() holds a DB-level row lock until the transaction commits.
-        with transaction.atomic():
-            student = Student.objects.select_for_update().get(id=student_id)
+        existing_iep = GeneratedDocument.objects.filter(
+            student=student,
+            report_cycle=report_cycle,
+            document_type='IEP',
+        ).order_by('-created_at').first()
+        if existing_iep:
+            return Response({
+                "message": "IEP already exists for this cycle.",
+                "iep_id": existing_iep.id,
+            }, status=status.HTTP_200_OK)
 
-            existing_iep = GeneratedDocument.objects.filter(
-                student=student,
-                report_cycle=report_cycle,
-                document_type='IEP',
-            ).order_by('-created_at').first()
-            if existing_iep:
-                return Response({
-                    "message": "IEP already exists for this cycle.",
-                    "iep_id": existing_iep.id,
-                }, status=status.HTTP_200_OK)
-
-            has_parent = ParentAssessment.objects.filter(student=student, report_cycle=report_cycle).exists()
-            has_finalized_multi = has_finalized_multidisciplinary_assessment(student, report_cycle)
-            if not (has_parent and has_finalized_multi):
-                return Response(
-                    {"error": "Parent Assessment and finalized Specialist Assessment are required before generating an IEP."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            from .services.iep_service import run_iep_generation
-            from .services.realtime_service import create_activity_event
-            create_activity_event(
-                event_type='REPORT_GENERATING',
-                title=f"IEP generation started for {_student_name(student)}",
-                actor=request.user,
-                student=student,
-                metadata={'document_type': 'IEP'},
+        has_parent = ParentAssessment.objects.filter(student=student, report_cycle=report_cycle).exists()
+        has_finalized_multi = has_finalized_multidisciplinary_assessment(student, report_cycle)
+        if not (has_parent and has_finalized_multi):
+            return Response(
+                {"error": "Parent Assessment and finalized Specialist Assessment are required before generating an IEP."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            doc, _ = run_iep_generation(student_id, report_cycle_id)
-            from .services.document_service import record_document_version
-            record_document_version(doc, request.user, 'GENERATED')
-            create_activity_event(
-                event_type='REPORT_READY',
-                title=f"IEP draft ready for {_student_name(student)}",
-                actor=request.user,
-                student=student,
-                metadata={'document_id': doc.id, 'document_type': 'IEP'},
-            )
+
+        from .tasks import generate_iep_task
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_QUEUED',
+            title=f"IEP generation queued for {_student_name(student)}",
+            actor=request.user,
+            student=student,
+            metadata={'document_type': 'IEP'},
+        )
+        task = generate_iep_task.delay(student_id, report_cycle_id, request.user.id)
 
         return Response({
-            "message": "IEP generated.",
-            "iep_id": doc.id,
-        }, status=status.HTTP_201_CREATED)
+            "message": "IEP generation started.",
+            "task_id": task.id,
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class IEPDetailView(APIView):
@@ -2367,48 +2451,35 @@ class GenerateMonthlyReportView(APIView):
         except (Student.DoesNotExist, ReportCycle.DoesNotExist):
             return Response({"error": "Student or Report Cycle not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Lock the student row so two simultaneous admin clicks can't create duplicate reports.
-        with transaction.atomic():
-            student = Student.objects.select_for_update().get(id=student_id)
+        existing_report = GeneratedDocument.objects.filter(
+            student=student,
+            report_cycle=report_cycle,
+            document_type='MONTHLY',
+        ).order_by('-created_at').first()
+        if existing_report:
+            if report_cycle.status == 'GENERATING':
+                report_cycle.status = 'COMPLETED'
+                report_cycle.save(update_fields=['status'])
+            return Response({
+                "message": "Monthly report already exists for this cycle.",
+                "report_id": existing_report.id,
+            }, status=status.HTTP_200_OK)
 
-            existing_report = GeneratedDocument.objects.filter(
-                student=student,
-                report_cycle=report_cycle,
-                document_type='MONTHLY',
-            ).order_by('-created_at').first()
-            if existing_report:
-                if report_cycle.status == 'GENERATING':
-                    report_cycle.status = 'COMPLETED'
-                    report_cycle.save(update_fields=['status'])
-                return Response({
-                    "message": "Monthly report already exists for this cycle.",
-                    "report_id": existing_report.id,
-                }, status=status.HTTP_200_OK)
-
-            from .services.iep_service import run_monthly_report_generation
-            from .services.realtime_service import create_activity_event
-            create_activity_event(
-                event_type='REPORT_GENERATING',
-                title=f"Monthly report generation started for {_student_name(student)}",
-                actor=request.user,
-                student=student,
-                metadata={'document_type': 'MONTHLY'},
-            )
-            doc, _ = run_monthly_report_generation(student_id, report_cycle_id)
-            from .services.document_service import record_document_version
-            record_document_version(doc, request.user, 'GENERATED')
-            create_activity_event(
-                event_type='REPORT_READY',
-                title=f"Monthly report draft ready for {_student_name(student)}",
-                actor=request.user,
-                student=student,
-                metadata={'document_id': doc.id, 'document_type': 'MONTHLY'},
-            )
+        from .tasks import generate_monthly_report_task
+        from .services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_QUEUED',
+            title=f"Monthly report generation queued for {_student_name(student)}",
+            actor=request.user,
+            student=student,
+            metadata={'document_type': 'MONTHLY'},
+        )
+        task = generate_monthly_report_task.delay(student_id, report_cycle_id, request.user.id)
 
         return Response({
-            "message": "Monthly report generated.",
-            "report_id": doc.id,
-        }, status=status.HTTP_201_CREATED)
+            "message": "Monthly report generation started.",
+            "task_id": task.id,
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class MonthlyReportDetailView(APIView):
@@ -2775,6 +2846,18 @@ class NotificationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        if request.user.role == 'PARENT':
+            dedupe_key = f"parent-welcome-register-child:{request.user.id}"
+            if not Notification.objects.filter(recipient=request.user, dedupe_key=dedupe_key).exists():
+                parent_students = Student.objects.filter(assigned_users__user=request.user)
+                submitted_student_ids = ParentAssessment.objects.filter(
+                    student__in=parent_students,
+                ).values_list('student_id', flat=True)
+                student = parent_students.exclude(id__in=submitted_student_ids).order_by('id').first()
+                if student or not parent_students.exists():
+                    from .services.notification_service import notify_parent_welcome_to_register_child
+                    notify_parent_welcome_to_register_child(request.user, student)
+
         qs = Notification.objects.filter(recipient=request.user)[:50]
         unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
         serializer = NotificationSerializer(qs, many=True)

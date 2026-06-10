@@ -24,6 +24,7 @@ from .views import (
     AssessmentSubmitAllView, TrackerSubmitAllView,
     AssessmentRequestUnlockView, AssessmentUnlockView,
     ParentAssessmentRequestUnlockView, ParentAssessmentUnlockView,
+    TrackerRequestUnlockView, TrackerUnlockView,
     TrackerSectionWriteView, TrackerSectionSubmitView, TrackerSectionReopenView,
     AssessmentContributionsView, TrackerContributionsView,
     AssessmentEnsureView, TrackerEnsureView,
@@ -92,6 +93,10 @@ urlpatterns = [
          TrackerEnsureView.as_view(), name='tracker-ensure'),
     path('inputs/multidisciplinary-tracker/submit-all/',
          TrackerSubmitAllView.as_view(), name='tracker-submit-all'),
+    path('inputs/multidisciplinary-tracker/request-unlock/',
+         TrackerRequestUnlockView.as_view(), name='tracker-request-unlock'),
+    path('inputs/multidisciplinary-tracker/unlock/',
+         TrackerUnlockView.as_view(), name='tracker-unlock'),
 
     path('', include(router.urls)),
     path('staff/', StaffListView.as_view(), name='staff-list'),

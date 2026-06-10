@@ -112,29 +112,78 @@ function getSectionOwner(formType: string, sectionId: string): SectionOwner | "M
 // virtual sections (section_f1 ABA / section_f2 Dev Psych) so each can be
 // owned independently. Underlying form data still lives under section_f.
 function transformSchema(formType: string, schema: any): any {
-    if (!schema || formType !== "multidisciplinary-assessment") return schema;
-    const next = { ...schema, sections: [] as any[] };
-    for (const sec of schema.sections || []) {
-        if (sec.id !== "section_f") {
-            next.sections.push(sec);
-            continue;
+    if (!schema) return schema;
+    if (formType === "multidisciplinary-assessment") {
+        const next = { ...schema, sections: [] as any[] };
+        for (const sec of schema.sections || []) {
+            if (sec.id !== "section_f") {
+                next.sections.push(sec);
+                continue;
+            }
+            const f1Fields = (sec.fields || []).filter((f: any) => ASSESSMENT_F1_FIELDS.has(f.id));
+            const f2Fields = (sec.fields || []).filter((f: any) => !ASSESSMENT_F1_FIELDS.has(f.id));
+            next.sections.push({
+                id: "section_f1",
+                title: "SECTION F1 — APPLIED BEHAVIOR ANALYSIS (ABA) ASSESSMENT",
+                fields: f1Fields,
+                __dataSection: "section_f",
+            });
+            next.sections.push({
+                id: "section_f2",
+                title: "SECTION F2 — DEVELOPMENTAL PSYCHOLOGY ASSESSMENT",
+                fields: f2Fields,
+                __dataSection: "section_f",
+            });
         }
-        const f1Fields = (sec.fields || []).filter((f: any) => ASSESSMENT_F1_FIELDS.has(f.id));
-        const f2Fields = (sec.fields || []).filter((f: any) => !ASSESSMENT_F1_FIELDS.has(f.id));
-        next.sections.push({
-            id: "section_f1",
-            title: "SECTION F1 — APPLIED BEHAVIOR ANALYSIS (ABA) ASSESSMENT",
-            fields: f1Fields,
-            __dataSection: "section_f",
-        });
-        next.sections.push({
-            id: "section_f2",
-            title: "SECTION F2 — DEVELOPMENTAL PSYCHOLOGY ASSESSMENT",
-            fields: f2Fields,
-            __dataSection: "section_f",
-        });
+        return next;
     }
-    return next;
+    if (formType === "multidisciplinary-tracker") {
+        const next = { ...schema, sections: [] as any[] };
+        for (const sec of schema.sections || []) {
+            if (sec.id !== "section_c") {
+                next.sections.push(sec);
+                continue;
+            }
+            const slpFields = (sec.fields || []).filter((f: any) => TRACKER_C_FIELD_OWNERS[f.id] === SLP);
+            const otFields = (sec.fields || []).filter((f: any) => TRACKER_C_FIELD_OWNERS[f.id] === OT);
+            const ptFields = (sec.fields || []).filter((f: any) => TRACKER_C_FIELD_OWNERS[f.id] === PT);
+            const abaFields = (sec.fields || []).filter((f: any) => TRACKER_C_FIELD_OWNERS[f.id] === ABA);
+            const devPsychFields = (sec.fields || []).filter((f: any) => TRACKER_C_FIELD_OWNERS[f.id] === DEV_PSY);
+
+            next.sections.push({
+                id: "section_c_slp",
+                title: "SECTION C1 — SPEECH-LANGUAGE PATHOLOGY (SLP) PROGRESS",
+                fields: slpFields,
+                __dataSection: "section_c",
+            });
+            next.sections.push({
+                id: "section_c_ot",
+                title: "SECTION C2 — OCCUPATIONAL THERAPY (OT) PROGRESS",
+                fields: otFields,
+                __dataSection: "section_c",
+            });
+            next.sections.push({
+                id: "section_c_pt",
+                title: "SECTION C3 — PHYSICAL THERAPY (PT) PROGRESS",
+                fields: ptFields,
+                __dataSection: "section_c",
+            });
+            next.sections.push({
+                id: "section_c_aba",
+                title: "SECTION C4 — APPLIED BEHAVIOR ANALYSIS (ABA) PROGRESS",
+                fields: abaFields,
+                __dataSection: "section_c",
+            });
+            next.sections.push({
+                id: "section_c_developmental_psychology",
+                title: "SECTION C5 — DEVELOPMENTAL PSYCHOLOGY PROGRESS",
+                fields: devPsychFields,
+                __dataSection: "section_c",
+            });
+        }
+        return next;
+    }
+    return schema;
 }
 
 function canEditOwner(owner: SectionOwner | null, userSpecialties: string[], isAdmin: boolean): boolean {
@@ -638,7 +687,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const formType = propType || (params?.type as string) || "unknown";
     const studentId = propStudentId || searchParams.get("studentId");
     const isTeamScopedForm = formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker";
-    const isSectionScopedAssessment = formType === "multidisciplinary-assessment";
+    const isSectionScopedForm = formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker";
 
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
@@ -728,6 +777,13 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         let resolvedSectionId = sectionId;
         if (formType === "multidisciplinary-assessment" && sectionId === "section_f") {
             resolvedSectionId = ASSESSMENT_F1_FIELDS.has(fieldId) ? "section_f1" : "section_f2";
+        }
+        if (formType === "multidisciplinary-tracker" && sectionId === "section_c") {
+            if (fieldId === "communication" || fieldId === "slp_notes") resolvedSectionId = "section_c_slp";
+            else if (fieldId === "fine_motor_sensory_adls" || fieldId === "ot_notes") resolvedSectionId = "section_c_ot";
+            else if (fieldId === "gross_motor" || fieldId === "pt_notes") resolvedSectionId = "section_c_pt";
+            else if (fieldId === "behavior_emotional" || fieldId === "aba_notes") resolvedSectionId = "section_c_aba";
+            else if (fieldId === "developmental_psychology" || fieldId === "developmental_psychology_notes") resolvedSectionId = "section_c_developmental_psychology";
         }
         const owner = getFieldOwner(formType, resolvedSectionId, fieldId);
         return canEditOwner(owner, editableSpecialties, isAdmin);
@@ -887,14 +943,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             const isOwnEcho = event.by.user_id === user?.user_id;
             console.debug(`[Collab] calling mergePeerChangesIfClean with form_data:`, event.form_data);
             mergePeerChangesIfClean(event.form_data, isOwnEcho);
-            if (collabFormType === "assessment" && reportCycleId && !isOwnEcho) {
+            if (isSectionScopedForm && reportCycleId && !isOwnEcho) {
                 refreshSectionContributions(reportCycleId);
             }
         },
         onSectionSubmitted: (event) => {
             const isOwnEcho = event.by.user_id === user?.user_id;
             mergePeerChangesIfClean(undefined, isOwnEcho);
-            if (collabFormType === "assessment" && reportCycleId && !isOwnEcho) {
+            if (isSectionScopedForm && reportCycleId && !isOwnEcho) {
                 refreshSectionContributions(reportCycleId);
             }
         },
@@ -930,9 +986,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     }, [collabFormType, isViewMode, studentId, reportCycleId, teamSubmission?.id, schema]);
 
     const refreshSectionContributions = useCallback(async (cycleId = reportCycleId) => {
-        if (!isSectionScopedAssessment || !studentId || !cycleId) return;
+        if (!isSectionScopedForm || !studentId || !cycleId) return;
         try {
-            const res = await api.get(`/api/inputs/multidisciplinary-assessment/contributions/`, {
+            const res = await api.get(`/api/inputs/${formType}/contributions/`, {
                 params: {
                     student: studentId,
                     report_cycle: cycleId,
@@ -946,7 +1002,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         } catch (err) {
             console.error("Failed to load section contributions:", err);
         }
-    }, [isSectionScopedAssessment, reportCycleId, studentId]);
+    }, [isSectionScopedForm, formType, reportCycleId, studentId]);
 
     useEffect(() => {
         let isMounted = true;
@@ -1052,17 +1108,21 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     setErrorMsg("Failed to load the form submission.");
                 }
             } else {
-                if (isSectionScopedAssessment && profileData?.form_statuses?.multi_assessment?.id) {
-                    try {
-                        const res = await api.get(`/api/inputs/${formType}/${profileData.form_statuses.multi_assessment.id}/`, {
-                            params: { _t: Date.now() }
-                        });
-                        setTeamSubmission(res.data);
-                        mergedData = mergeSavedFormData(mergedData, renderSchema, res.data.form_data);
-                    } catch (err) {
-                        console.error("Failed to load assessment draft:", err);
+                if (isSectionScopedForm) {
+                    const statusKey = formType === "multidisciplinary-assessment" ? "multi_assessment" : "multi_tracker";
+                    const draftId = profileData?.form_statuses?.[statusKey]?.id;
+                    if (draftId) {
+                        try {
+                            const res = await api.get(`/api/inputs/${formType}/${draftId}/`, {
+                                params: { _t: Date.now() }
+                            });
+                            setTeamSubmission(res.data);
+                            mergedData = mergeSavedFormData(mergedData, renderSchema, res.data.form_data);
+                        } catch (err) {
+                            console.error("Failed to load collaborative form draft:", err);
+                        }
                     }
-                } else if (!isSectionScopedAssessment) {
+                } else if (!isSectionScopedForm) {
                     // Try to load auto-saved draft
                     try {
                         const draftKey = `draft_${formType}_${studentId}`;
@@ -1177,7 +1237,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         loadForm();
         
         return () => { isMounted = false; };
-    }, [draftKey, formIdStr, formType, isAdmin, isSectionScopedAssessment, isTeamScopedForm, isViewMode, studentId, user, userSpecialties]);
+    }, [draftKey, formIdStr, formType, isAdmin, isSectionScopedForm, isTeamScopedForm, isViewMode, studentId, user, userSpecialties]);
 
     useEffect(() => {
         if (isViewMode && fullSubmission && schema) {
@@ -1190,7 +1250,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     // Auto-save effect
     useEffect(() => {
         if (isViewMode) return; // Do not auto-save if merely viewing an old submission
-        if (isSectionScopedAssessment) return; // Collaborative assessment drafts live on the server.
+        if (isSectionScopedForm) return; // Collaborative drafts live on the server.
         if (!formData || Object.keys(formData).length === 0 || !studentId || !formType) return;
         
         // Use a timeout to debounce the saving slightly
@@ -1203,15 +1263,15 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }, 1000); // 1s debounce
 
         return () => clearTimeout(timeoutId);
-    }, [draftKey, formData, formType, isSectionScopedAssessment, isViewMode, studentId]);
+    }, [draftKey, formData, formType, isSectionScopedForm, isViewMode, studentId]);
 
     useEffect(() => {
-        if (isViewMode || !isSectionScopedAssessment || !studentId || !reportCycleId) return;
+        if (isViewMode || !isSectionScopedForm || !studentId || !reportCycleId) return;
         refreshSectionContributions(reportCycleId);
-    }, [isSectionScopedAssessment, isViewMode, refreshSectionContributions, reportCycleId, studentId]);
+    }, [isSectionScopedForm, isViewMode, refreshSectionContributions, reportCycleId, studentId]);
 
     const queueAssessmentSectionAutosave = (sectionId: string) => {
-        if (!isSectionScopedAssessment) return;
+        if (!isSectionScopedForm) return;
         setPendingSectionSaves(prev => ({
             ...prev,
             [sectionId]: Date.now() + Math.random(),
@@ -1241,6 +1301,13 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         if (formType === "multidisciplinary-assessment" && sectionId === "section_f") {
             autosaveSectionId = ASSESSMENT_F1_FIELDS.has(fieldId) ? "section_f1" : "section_f2";
         }
+        if (formType === "multidisciplinary-tracker" && sectionId === "section_c") {
+            if (fieldId === "communication" || fieldId === "slp_notes") autosaveSectionId = "section_c_slp";
+            else if (fieldId === "fine_motor_sensory_adls" || fieldId === "ot_notes") autosaveSectionId = "section_c_ot";
+            else if (fieldId === "gross_motor" || fieldId === "pt_notes") autosaveSectionId = "section_c_pt";
+            else if (fieldId === "behavior_emotional" || fieldId === "aba_notes") autosaveSectionId = "section_c_aba";
+            else if (fieldId === "developmental_psychology" || fieldId === "developmental_psychology_notes") autosaveSectionId = "section_c_developmental_psychology";
+        }
         queueAssessmentSectionAutosave(autosaveSectionId);
     };
 
@@ -1261,17 +1328,28 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         if (formType === "multidisciplinary-assessment" && sectionId === "section_f") {
             autosaveSectionId = ASSESSMENT_F1_FIELDS.has(fieldId) ? "section_f1" : "section_f2";
         }
+        if (formType === "multidisciplinary-tracker" && sectionId === "section_c") {
+            if (fieldId === "communication" || fieldId === "slp_notes") autosaveSectionId = "section_c_slp";
+            else if (fieldId === "fine_motor_sensory_adls" || fieldId === "ot_notes") autosaveSectionId = "section_c_ot";
+            else if (fieldId === "gross_motor" || fieldId === "pt_notes") autosaveSectionId = "section_c_pt";
+            else if (fieldId === "behavior_emotional" || fieldId === "aba_notes") autosaveSectionId = "section_c_aba";
+            else if (fieldId === "developmental_psychology" || fieldId === "developmental_psychology_notes") autosaveSectionId = "section_c_developmental_psychology";
+        }
         queueAssessmentSectionAutosave(autosaveSectionId);
     };
 
     const sectionStates = useMemo(() => {
-        if (!isSectionScopedAssessment || !schema) return {};
+        if (!isSectionScopedForm || !schema) return {};
         const next: Record<string, any> = {};
         schema.sections?.forEach((section: any) => {
-            const apiKey = ASSESSMENT_SECTION_API_KEYS[section.id];
+            const apiKey = formType === "multidisciplinary-assessment"
+                ? ASSESSMENT_SECTION_API_KEYS[section.id]
+                : section.id;
             const contribution = apiKey ? sectionContributions[apiKey] : null;
             const sectionOwner = getSectionOwner(formType, section.id);
-            const isVerificationLocked = apiKey === "A" && formData.section_a?.a2_verification === "matches";
+            const isVerificationLocked = formType === "multidisciplinary-assessment"
+                ? (apiKey === "A" && formData.section_a?.a2_verification === "matches")
+                : false;
             const isFinalized = !!teamSubmission?.finalized_at;
             const isSubmitted = contribution?.status === "submitted";
 
@@ -1300,7 +1378,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         formData.section_a,
         formType,
         isAdmin,
-        isSectionScopedAssessment,
+        isSectionScopedForm,
         isViewMode,
         schema,
         sectionContributions,
@@ -1309,7 +1387,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     ]);
 
     const saveAssessmentSection = useCallback(async (section: any, submit = false, options: { silent?: boolean } = {}) => {
-        const apiKey = ASSESSMENT_SECTION_API_KEYS[section.id];
+        const apiKey = formType === "multidisciplinary-assessment"
+            ? ASSESSMENT_SECTION_API_KEYS[section.id]
+            : section.id;
         if (!apiKey || !studentId) return null;
         const silent = options.silent === true;
         if (specialistOnboardingLocked) {
@@ -1333,8 +1413,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             sectionPayload[field.id] = currentSectionData[field.id];
         });
 
+        const displayLabel = formType === "multidisciplinary-assessment" ? `Section ${apiKey}` : (section.title?.split("—")?.[0]?.trim() || `Section ${apiKey}`);
+
         try {
-            const saveRes = await api.patch(`/api/inputs/multidisciplinary-assessment/sections/${apiKey}/`, {
+            const saveRes = await api.patch(`/api/inputs/${formType}/sections/${apiKey}/`, {
                 student: parseInt(studentId || "0"),
                 report_cycle: parseInt(reportCycleId),
                 section_data: sectionPayload,
@@ -1346,7 +1428,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             serverSnapshot.current[dataKey] = { ...snapshotSection, ...sectionPayload };
 
             if (submit) {
-                const submitRes = await api.post(`/api/inputs/multidisciplinary-assessment/sections/${apiKey}/submit/`, {
+                const submitRes = await api.post(`/api/inputs/${formType}/sections/${apiKey}/submit/`, {
                     student: parseInt(studentId || "0"),
                     report_cycle: parseInt(reportCycleId),
                 });
@@ -1367,7 +1449,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     return submitRes.data;
                 }
 
-                const message = `Section ${apiKey} submitted.`;
+                const message = `${displayLabel} submitted.`;
                 setSuccessMsg(message);
                 if (!silent) {
                     toast.success(message);
@@ -1376,7 +1458,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             }
 
             await refreshSectionContributions(reportCycleId);
-            const message = `Section ${apiKey} saved.`;
+            const message = `${displayLabel} saved.`;
             if (!silent) {
                 setSuccessMsg(message);
                 toast.success(message);
@@ -1408,14 +1490,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         if (!studentId || !reportCycleId) return;
         setIsReopening(sectionKey);
         try {
-            const res = await api.post(`/api/inputs/multidisciplinary-assessment/sections/${sectionKey}/reopen/`, {
+            const res = await api.post(`/api/inputs/${formType}/sections/${sectionKey}/reopen/`, {
                 student: parseInt(studentId),
                 report_cycle: parseInt(reportCycleId),
             });
-            toast.success(`Section ${sectionKey} reopened for editing.`);
+            toast.success(`Section reopened for editing.`);
             await refreshSectionContributions(reportCycleId);
         } catch (err: any) {
-            toast.error(extractApiError(err, `Failed to reopen Section ${sectionKey}.`), {
+            toast.error(extractApiError(err, `Failed to reopen Section.`), {
                 id: `reopen-error-${sectionKey}`,
                 duration: 7000,
             });
@@ -1425,7 +1507,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     };
 
     const ownedAssessmentSections = useMemo<Array<{ section: any; owner: SectionOwner; state: any }>>(() => {
-        if (!isSectionScopedAssessment || !schema) return [];
+        if (!isSectionScopedForm || !schema) return [];
         return (schema.sections || [])
             .map((section: any) => {
                 const owner = getSectionOwner(formType, section.id);
@@ -1435,7 +1517,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             .filter(({ owner }: { owner: SectionOwner | "MIXED" | null }) =>
                 owner && owner !== SHARED && owner !== "MIXED" && editableSpecialties.includes(owner)
             ) as Array<{ section: any; owner: SectionOwner; state: any }>;
-    }, [editableSpecialties, formType, isSectionScopedAssessment, schema, sectionStates]);
+    }, [editableSpecialties, formType, isSectionScopedForm, schema, sectionStates]);
 
     const submittableOwnedSections = useMemo(
         () => ownedAssessmentSections.filter(({ state }) => state?.canEditSection),
@@ -1479,7 +1561,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     }, [pendingSectionSaves, saveAssessmentSection, sectionById]);
 
     const submitOwnedAssessmentSections = useCallback(async () => {
-        if (!isSectionScopedAssessment || isViewMode || isAdmin) return;
+        if (!isSectionScopedForm || isViewMode || isAdmin) return;
         if (specialistOnboardingLocked) {
             const message = specialistOnboardingMessage(user?.specialist_onboarding_missing);
             setErrorMsg(message);
@@ -1493,7 +1575,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         
         setConfirmModal({
             isOpen: true,
-            title: "Submit Assessment Sections?",
+            title: `Submit ${formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"} Sections?`,
             message: "Are you sure you want to submit? Once all specialists submit their part, the form will be locked out and you won't be able to edit it anymore unless you request an admin to unlock it.",
             actionText: "Submit Form",
             actionVariant: "primary",
@@ -1512,7 +1594,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     // shared sections the user has authored). Validates owned-section
                     // content + finalizes the form when all assigned sections done.
                     const res = await api.post(
-                        "/api/inputs/multidisciplinary-assessment/submit-all/",
+                        `/api/inputs/${formType}/submit-all/`,
                         {
                             student: parseInt(studentId || "0"),
                             report_cycle: parseInt(reportCycleId),
@@ -1553,7 +1635,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         formType,
         hasSomethingToSubmit,
         isAdmin,
-        isSectionScopedAssessment,
+        isSectionScopedForm,
         isViewMode,
         propHideNavigation,
         propOnSubmitted,
@@ -1567,7 +1649,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     ]);
 
     useEffect(() => {
-        if (isViewMode || !isSectionScopedAssessment || !studentId || !reportCycleId) return;
+        if (isViewMode || !isSectionScopedForm || !studentId || !reportCycleId) return;
         const pendingEntries = Object.entries(pendingSectionSaves);
         if (pendingEntries.length === 0) return;
 
@@ -1587,7 +1669,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
         return () => clearTimeout(timeoutId);
     }, [
-        isSectionScopedAssessment,
+        isSectionScopedForm,
         isViewMode,
         pendingSectionSaves,
         reportCycleId,
@@ -1602,7 +1684,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         setSuccessMsg("");
         setErrorMsg("");
 
-        if (isSectionScopedAssessment) {
+        if (isSectionScopedForm) {
             setErrorMsg("Use the section Save Draft and Submit My Section buttons instead of submitting the whole form at once.");
             setLoading(false);
             return;
@@ -1785,7 +1867,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         <p className="text-sm text-slate-500 mt-1 mb-0 leading-relaxed">Fill out each section below.</p>
                         
                         {/* Unlock functionality banners */}
-                        {isSectionScopedAssessment && teamSubmission?.finalized_at && (
+                        {isSectionScopedForm && teamSubmission?.finalized_at && (
                             <div className="mt-3">
                                 {isAdmin ? (
                                     <div className={formBannerClass("warning")}>
@@ -2083,13 +2165,13 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                         </div>
                                     );
                                 })}
-                                {!isViewMode && isSectionScopedAssessment && sectionState?.apiKey && (
+                                {!isViewMode && isSectionScopedForm && sectionState?.apiKey && (
                                     <div style={{ marginTop: "0.75rem" }}>
                                         {sectionState.isLocked && !isAdmin ? (
                                             <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#f1f5f9", color: "#475569", fontSize: "0.85rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                 <div>
                                                     {teamSubmission?.finalized_at ? (
-                                                        <>Assessment finalized on <strong>{new Date(teamSubmission.finalized_at).toLocaleString()}</strong>.</>
+                                                        <>{formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"} finalized on <strong>{new Date(teamSubmission.finalized_at).toLocaleString()}</strong>.</>
                                                     ) : sectionState.isVerificationLocked ? (
                                                         <>Section A is locked after the verification is marked as <strong>matches</strong>.</>
                                                     ) : sectionState.contribution?.specialist_name ? (
@@ -2128,11 +2210,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         })}
                     </fieldset>
 
-                    {!isViewMode && isSectionScopedAssessment && !isAdmin && (
+                    {!isViewMode && isSectionScopedForm && !isAdmin && (
                         <div style={{ marginTop: "1rem", padding: "16px 18px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#ffffff", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
                             <div>
                                 <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
-                                    Submit My Assessment
+                                    Submit My {formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"}
                                 </p>
                                 <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "#64748b" }}>
                                     {hasSomethingToSubmit
@@ -2146,13 +2228,13 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 disabled={specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit}
                                 style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "#cbd5f5" : "#4f46e5", color: "white", fontWeight: 700, cursor: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "not-allowed" : "pointer", fontSize: "0.9rem", minWidth: "190px" }}
                             >
-                                {submittingOwnedSections ? "Submitting..." : "Submit My Assessment"}
+                                {submittingOwnedSections ? "Submitting..." : `Submit My ${formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"}`}
                             </button>
                         </div>
                     )}
 
                     {/* Submit */}
-                    {!isViewMode && !isSectionScopedAssessment && (
+                    {!isViewMode && !isSectionScopedForm && (
                         <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "0.5rem" }}>
                             <button type="button" onClick={() => router.push("/dashboard")}
                                 style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" }}>

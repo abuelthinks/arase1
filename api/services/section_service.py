@@ -134,6 +134,14 @@ def _section_has_content(form_type: str, instance, section_key: str) -> bool:
             return True
         return any(not _is_value_blank(v2.get(f)) for f in fields)
     # Tracker form: section data is namespaced under form_data[section_key].
+    if section_key.startswith("section_c_"):
+        section_data = (instance.form_data or {}).get("section_c")
+        if not isinstance(section_data, dict):
+            return False
+        owner = get_section_owners(form_type).get(section_key)
+        from ..specialties import TRACKER_FIELD_OWNERS
+        owner_fields = [f for f, field_owner in TRACKER_FIELD_OWNERS.items() if field_owner == owner]
+        return any(not _is_value_blank(section_data.get(f)) for f in owner_fields)
     section_data = (instance.form_data or {}).get(section_key)
     if not isinstance(section_data, dict):
         return False
@@ -244,8 +252,11 @@ def save_section(
             # section_c_slp, etc). Merge into the top-level slot.
             if not isinstance(section_data, dict):
                 raise SectionValidationError("section_data must be an object.")
-            form_data[section_key] = {
-                **(form_data.get(section_key) or {}),
+            storage_key = section_key
+            if section_key.startswith("section_c_"):
+                storage_key = "section_c"
+            form_data[storage_key] = {
+                **(form_data.get(storage_key) or {}),
                 **section_data,
             }
 
