@@ -303,15 +303,26 @@ function mergeSavedFormData(baseData: any, schema: any, rawSavedData: any) {
 
 /* ─── Shared UI Components ─────────────────────────────────────────────────── */
 
-function SectionCard({ title, children, isMySection }: { title: string; children: React.ReactNode; isMySection?: boolean }) {
+function SectionCard({ title, children, isMySection, isInvalid }: { title: string; children: React.ReactNode; isMySection?: boolean; isInvalid?: boolean }) {
     return (
-        <div style={{
-            background: "white", borderRadius: "12px", overflow: "hidden", marginBottom: "1.25rem",
-            border: isMySection ? "2px solid #818cf8" : "1px solid #e2e8f0",
-            boxShadow: isMySection ? "0 0 0 2px rgba(238, 242, 255, 0.5)" : "none",
-            transition: "all 0.2s"
-        }} className={isMySection ? "" : "bg-white rounded-xl"}>
-            <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", background: isMySection ? "#eef2ff" : "#f8fafc" }}>
+        <div 
+            data-section-card="true"
+            data-invalid={isInvalid ? "true" : "false"}
+            style={{
+                background: "white", borderRadius: "12px", overflow: "hidden", marginBottom: "1.25rem",
+                border: isInvalid 
+                    ? "2.5px solid #ef4444" 
+                    : isMySection 
+                        ? "2px solid #818cf8" 
+                        : "1px solid #e2e8f0",
+                boxShadow: isInvalid
+                    ? "0 0 0 2px rgba(254, 242, 242, 0.5)"
+                    : isMySection 
+                        ? "0 0 0 2px rgba(238, 242, 255, 0.5)" 
+                        : "none",
+                transition: "all 0.2s"
+            }} className={isInvalid ? "bg-red-50/10" : isMySection ? "" : "bg-white rounded-xl"}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", background: isInvalid ? "#fee2e2" : isMySection ? "#eef2ff" : "#f8fafc" }}>
                 <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }} className="font-bold text-slate-900 m-0">{title}</h2>
             </div>
             <div className="p-4 sm:p-6 flex flex-col gap-4">
@@ -713,6 +724,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [teamSubmission, setTeamSubmission] = useState<any>(null);
     const [isReopening, setIsReopening] = useState<string | null>(null);
     const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+    const [attemptedSectionSubmit, setAttemptedSectionSubmit] = useState(false);
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         title: string;
@@ -821,6 +833,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         setSectionContributions({});
         setPendingSectionSaves({});
         serverSnapshot.current = {};
+        setAttemptedSectionSubmit(false);
     }, [studentId, reportCycleId, formType]);
 
     // ─── Real-time collaboration ────────────────────────────────────────────
@@ -1578,6 +1591,43 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             toast.error(message);
             return;
         }
+
+        // Check for empty assigned sections
+        const isSectionEmpty = (sec: any): boolean => {
+            const dataKey = dataKeyFor(sec);
+            const sectionData = formData[dataKey] || {};
+            if (!sec.fields || sec.fields.length === 0) return true;
+            return sec.fields.every((field: any) => {
+                const val = sectionData[field.id];
+                return isFieldEmpty(field, val);
+            });
+        };
+
+        const emptyAssignedSections = (schema.sections || []).filter((sec: any) => {
+            const owner = getSectionOwner(formType, sec.id);
+            const isAssigned = owner && owner !== SHARED && owner !== "MIXED" && editableSpecialties.includes(owner);
+            return isAssigned && isSectionEmpty(sec);
+        });
+
+        if (emptyAssignedSections.length > 0) {
+            setAttemptedSectionSubmit(true);
+            const labels = emptyAssignedSections.map((sec: any) => {
+                return sec.title?.split("—")?.[0]?.trim() || sec.id;
+            });
+            const message = `You must complete your assigned sections before submitting: ${labels.join(", ")}`;
+            setErrorMsg(message);
+            toast.error(message, { id: "validation-error", duration: 7000 });
+
+            // Scroll beautifully to the first invalid section card
+            setTimeout(() => {
+                const firstInvalidElement = document.querySelector('[data-section-card="true"][data-invalid="true"]');
+                if (firstInvalidElement) {
+                    firstInvalidElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }, 100);
+            return;
+        }
+
         if (!hasSomethingToSubmit) {
             setSuccessMsg("Nothing to submit — no draft sections.");
             return;
@@ -2027,8 +2077,18 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 : sectionOwner === SHARED ? "Shared"
                                 : sectionOwner === "MIXED" ? "Per-field"
                                 : specialtyShortLabel(sectionOwner);
+                            const isSectionEmpty = (sec: any): boolean => {
+                                const dk = dataKeyFor(sec);
+                                const sectionData = formData[dk] || {};
+                                if (!sec.fields || sec.fields.length === 0) return true;
+                                return sec.fields.every((field: any) => {
+                                    const val = sectionData[field.id];
+                                    return isFieldEmpty(field, val);
+                                });
+                            };
+                            const isInvalidSection = attemptedSectionSubmit && isMySection && isSectionEmpty(section);
                             return (
-                            <SectionCard key={section.id} title={section.title} isMySection={isMySection}>
+                            <SectionCard key={section.id} title={section.title} isMySection={isMySection} isInvalid={isInvalidSection}>
                                 {ownerLabel && !isViewMode && (
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "-4px", marginBottom: "4px" }}>
                                         <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px", textTransform: "uppercase", letterSpacing: "0.4px" }}>

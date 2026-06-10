@@ -511,7 +511,7 @@ def submit_all_sections(
             labels = [SECTION_KEY_LABELS.get(key, key) for key in missing]
             label_str = ", ".join(labels)
             raise SectionValidationError(
-                f"Please fill out your assigned section(s) before submitting: {label_str}"
+                f"You must complete your assigned sections before submitting: {label_str}"
             )
 
         # Submit every draft contribution where this user is the latest editor.
