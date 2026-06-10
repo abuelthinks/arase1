@@ -92,6 +92,11 @@ function getFieldOwner(formType: string, sectionId: string, fieldId: string): Se
     }
     if (formType === "multidisciplinary-tracker") {
         if (sectionId === "section_c") return TRACKER_C_FIELD_OWNERS[fieldId] ?? SHARED;
+        if (sectionId === "section_c_slp") return SLP;
+        if (sectionId === "section_c_ot") return OT;
+        if (sectionId === "section_c_pt") return PT;
+        if (sectionId === "section_c_aba") return ABA;
+        if (sectionId === "section_c_developmental_psychology") return DEV_PSY;
         return TRACKER_SECTION_OWNER_MAP[sectionId] ?? null;
     }
     return null;
@@ -103,6 +108,11 @@ function getSectionOwner(formType: string, sectionId: string): SectionOwner | "M
     }
     if (formType === "multidisciplinary-tracker") {
         if (sectionId === "section_c") return "MIXED";
+        if (sectionId === "section_c_slp") return SLP;
+        if (sectionId === "section_c_ot") return OT;
+        if (sectionId === "section_c_pt") return PT;
+        if (sectionId === "section_c_aba") return ABA;
+        if (sectionId === "section_c_developmental_psychology") return DEV_PSY;
         return TRACKER_SECTION_OWNER_MAP[sectionId] ?? null;
     }
     return null;
