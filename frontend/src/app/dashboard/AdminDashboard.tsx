@@ -1193,7 +1193,7 @@ export default function AdminDashboard() {
                                                     </th>
                                                     <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                            NAME
+                                                            STUDENT
                                                             <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
                                                                 {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
@@ -2077,11 +2077,6 @@ export default function AdminDashboard() {
                         
                         <form onSubmit={handleInviteUser} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                             <div>
-                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
-                                <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: "0.9rem", transition: "all 0.2s" }} />
-                            </div>
-
-                            <div>
                                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Account Role <span style={{ color: "#ef4444" }}>*</span></label>
                                 <CustomSelect 
                                     value={inviteRole}
@@ -2093,6 +2088,11 @@ export default function AdminDashboard() {
                                         { value: 'SPECIALIST', label: 'Specialist' }
                                     ]}
                                 />
+                            </div>
+
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
+                                <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: "0.9rem", transition: "all 0.2s" }} />
                             </div>
                             
                             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
