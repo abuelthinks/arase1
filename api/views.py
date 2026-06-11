@@ -27,6 +27,7 @@ from .services.notification_service import (
     notify_student_status_change, notify_new_user_registered,
     notify_assessment_scheduled, notify_assessment_cancelled,
     notify_parent_assessment_unlock_requested, notify_parent_assessment_unlocked,
+    notify_specialist_assessment_unlock_requested, notify_specialist_tracker_unlock_requested,
 )
 from .services.workflow_state_service import has_finalized_iep, has_finalized_multidisciplinary_assessment
 from .serializers import (
@@ -902,18 +903,8 @@ class AssessmentRequestUnlockView(APIView):
         assessment.save(update_fields=['unlock_requested'])
         
         # Notify admins
-        from .models import User, Notification
-        admins = User.objects.filter(role='ADMIN')
         student = assessment.student
-        for admin in admins:
-            Notification.objects.create(
-                recipient=admin,
-                notification_type='UNLOCK_REQUESTED',
-                title='Unlock Request',
-                message=f'{request.user.first_name} {request.user.last_name} has requested to unlock the specialist assessment for {student.first_name} {student.last_name}.',
-                link=f'/workspace?studentId={student.id}&workspace=forms&tab=multi_assessment',
-                actor_name=f'{request.user.first_name} {request.user.last_name}'
-            )
+        notify_specialist_assessment_unlock_requested(request.user, student)
             
         return Response({"status": "Unlock requested successfully."})
 
@@ -988,18 +979,8 @@ class TrackerRequestUnlockView(APIView):
         tracker.save(update_fields=['unlock_requested'])
         
         # Notify admins
-        from .models import User, Notification
-        admins = User.objects.filter(role='ADMIN')
         student = tracker.student
-        for admin in admins:
-            Notification.objects.create(
-                recipient=admin,
-                notification_type='UNLOCK_REQUESTED',
-                title='Unlock Request',
-                message=f'{request.user.first_name} {request.user.last_name} has requested to unlock the specialist progress tracker for {student.first_name} {student.last_name}.',
-                link=f'/workspace?studentId={student.id}&workspace=forms&tab=multi_tracker',
-                actor_name=f'{request.user.first_name} {request.user.last_name}'
-            )
+        notify_specialist_tracker_unlock_requested(request.user, student)
             
         return Response({"status": "Unlock requested successfully."})
 

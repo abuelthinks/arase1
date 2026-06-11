@@ -177,6 +177,32 @@ def notify_parent_assessment_unlock_requested(parent_user, student):
     )
 
 
+def notify_specialist_assessment_unlock_requested(specialist_user, student):
+    """Notify admins that a specialist asked to unlock the multidisciplinary assessment."""
+    student_name = f"{student.first_name} {student.last_name}".strip()
+    actor = _user_display_name(specialist_user)
+    notify_admins_in_app(
+        notification_type='UNLOCK_REQUESTED',
+        title='Unlock Request',
+        message=f"{actor} has requested to unlock the specialist assessment for {student_name}.",
+        link=f"/workspace?studentId={student.id}&workspace=forms&tab=multi_assessment",
+        actor_name=actor,
+    )
+
+
+def notify_specialist_tracker_unlock_requested(specialist_user, student):
+    """Notify admins that a specialist asked to unlock the multidisciplinary progress tracker."""
+    student_name = f"{student.first_name} {student.last_name}".strip()
+    actor = _user_display_name(specialist_user)
+    notify_admins_in_app(
+        notification_type='UNLOCK_REQUESTED',
+        title='Unlock Request',
+        message=f"{actor} has requested to unlock the specialist progress tracker for {student_name}.",
+        link=f"/workspace?studentId={student.id}&workspace=forms&tab=multi_tracker",
+        actor_name=actor,
+    )
+
+
 def notify_parent_assessment_unlocked(parent_user, student, unlocked_by=None):
     """Notify a parent that an admin unlocked their submitted parent assessment."""
     if not parent_user or parent_user.role != 'PARENT':

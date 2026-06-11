@@ -317,6 +317,54 @@ class SecurityHardeningTests(APITestCase):
             message__icontains='has been unlocked',
         ).exists())
 
+    def test_specialist_assessment_unlock_flow_notifies_admin(self):
+        MultidisciplinaryAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.specialist,
+            form_data={'notes': 'submitted'},
+            finalized_at=timezone.now(),
+            finalized_by=self.specialist,
+        )
+
+        self.client.force_authenticate(user=self.specialist)
+        request_response = self.client.post('/api/inputs/multidisciplinary-assessment/request-unlock/', {
+            'student_id': self.student.id,
+            'report_cycle_id': self.active_cycle.id,
+        }, format='json')
+
+        self.assertEqual(request_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin,
+            notification_type='UNLOCK_REQUESTED',
+            title='Unlock Request',
+            message__icontains='requested to unlock the specialist assessment',
+        ).exists())
+
+    def test_specialist_tracker_unlock_flow_notifies_admin(self):
+        MultidisciplinaryProgressTracker.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.specialist,
+            form_data={'notes': 'submitted'},
+            finalized_at=timezone.now(),
+            finalized_by=self.specialist,
+        )
+
+        self.client.force_authenticate(user=self.specialist)
+        request_response = self.client.post('/api/inputs/multidisciplinary-tracker/request-unlock/', {
+            'student_id': self.student.id,
+            'report_cycle_id': self.active_cycle.id,
+        }, format='json')
+
+        self.assertEqual(request_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin,
+            notification_type='UNLOCK_REQUESTED',
+            title='Unlock Request',
+            message__icontains='requested to unlock the specialist progress tracker',
+        ).exists())
+
     def test_progress_tracker_requires_enrolled_student(self):
         self.student.status = 'ASSESSED'
         self.student.save(update_fields=['status'])
