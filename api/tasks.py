@@ -24,8 +24,28 @@ def generate_iep_task(self, student_id, cycle_id, user_id=None):
                 record_document_version(doc, user, 'GENERATED')
             except User.DoesNotExist:
                 pass
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_READY',
+            title=f"IEP draft ready for {doc.student}",
+            student=doc.student,
+            metadata={'document_id': doc.id, 'document_type': 'IEP'},
+        )
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
+        try:
+            from api.models import Student
+            from api.services.realtime_service import create_activity_event
+            student = Student.objects.filter(id=student_id).first()
+            create_activity_event(
+                event_type='REPORT_FAILED',
+                title="IEP generation failed",
+                message=str(exc),
+                student=student,
+                metadata={'document_type': 'IEP', 'toast': 'error'},
+            )
+        except Exception:
+            pass
         raise self.retry(exc=exc)
 
 
@@ -47,8 +67,28 @@ def generate_monthly_report_task(self, student_id, cycle_id, user_id=None):
                 record_document_version(doc, user, 'GENERATED')
             except User.DoesNotExist:
                 pass
+        from api.services.realtime_service import create_activity_event
+        create_activity_event(
+            event_type='REPORT_READY',
+            title=f"Monthly report draft ready for {doc.student}",
+            student=doc.student,
+            metadata={'document_id': doc.id, 'document_type': 'MONTHLY'},
+        )
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
+        try:
+            from api.models import Student
+            from api.services.realtime_service import create_activity_event
+            student = Student.objects.filter(id=student_id).first()
+            create_activity_event(
+                event_type='REPORT_FAILED',
+                title="Monthly report generation failed",
+                message=str(exc),
+                student=student,
+                metadata={'document_type': 'MONTHLY', 'toast': 'error'},
+            )
+        except Exception:
+            pass
         raise self.retry(exc=exc)
 
 
