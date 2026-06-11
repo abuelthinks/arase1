@@ -139,6 +139,61 @@ def notify_user_in_app(user, notification_type, title, message, link='', actor_n
 
 # ─── Form Submission Notifications ────────────────────────────────────────────
 
+def notify_parent_welcome_to_register_child(user, student=None):
+    """Welcome a newly invited parent and point them to child onboarding."""
+    if user.role != 'PARENT':
+        return None
+
+    first_name = (user.first_name or '').strip()
+    title = f"Welcome to ARASE{f', {first_name}' if first_name else ''}"
+    link = f"/parent-onboarding?studentId={student.id}" if student else "/parent-onboarding"
+    message = (
+        f"Start by registering {student.first_name} and completing the parent assessment."
+        if student
+        else "Start by registering your child and completing the parent assessment."
+    )
+
+    return notify_user_in_app(
+        user=user,
+        notification_type='SYSTEM',
+        title=title,
+        message=message,
+        link=link,
+        actor_name="ARASE",
+        dedupe_key=f"parent-welcome-register-child:{user.id}",
+    )
+
+
+def notify_parent_assessment_unlock_requested(parent_user, student):
+    """Notify admins that a parent asked to edit a submitted parent assessment."""
+    student_name = f"{student.first_name} {student.last_name}".strip()
+    actor = _user_display_name(parent_user)
+    notify_admins_in_app(
+        notification_type='UNLOCK_REQUESTED',
+        title='Parent assessment unlock requested',
+        message=f"{actor} requested to unlock the parent assessment for {student_name}.",
+        link=f"/workspace?studentId={student.id}&workspace=forms&tab=parent_assessment",
+        actor_name=actor,
+    )
+
+
+def notify_parent_assessment_unlocked(parent_user, student, unlocked_by=None):
+    """Notify a parent that an admin unlocked their submitted parent assessment."""
+    if not parent_user or parent_user.role != 'PARENT':
+        return None
+
+    student_name = f"{student.first_name} {student.last_name}".strip()
+    actor = _user_display_name(unlocked_by) if unlocked_by else 'Admin'
+    return notify_user_in_app(
+        user=parent_user,
+        notification_type='SYSTEM',
+        title='Parent assessment unlocked',
+        message=f"Your parent assessment for {student_name} has been unlocked. You can edit and resubmit it now.",
+        link=f"/workspace?studentId={student.id}&workspace=forms&tab=parent_assessment",
+        actor_name=actor,
+    )
+
+
 def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
     """
     Notify admins when any user submits a form.

@@ -499,7 +499,7 @@ export function ParentFormContent({
                 unlock_requested: false,
                 unlocked_at: new Date().toISOString(),
             } : prev);
-            setSuccessMsg("Parent assessment unlocked.");
+            setSuccessMsg("Parent assessment unlocked. The parent has been notified.");
             await propOnUnlocked?.();
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Could not unlock the parent assessment. Please try again.");
@@ -647,12 +647,12 @@ export function ParentFormContent({
                 {showParentUnlockPanel && (
                     <div className="mb-5">
                         {user?.role === "ADMIN" ? (
-                            <div className={formBannerClass(specialistSubmitted ? "neutral" : "warning")}>
+                            <div className={formBannerClass(specialistSubmitted ? "neutral" : fullSubmission?.unlocked_at ? "success" : "warning")}>
                                 <div className="text-sm">
                                     {specialistSubmitted ? (
                                         <span>This form can no longer be unlocked because the specialist assessment has been submitted.</span>
                                     ) : fullSubmission?.unlocked_at ? (
-                                        <span>This parent assessment is unlocked for parent edits.</span>
+                                        <span>The parent can now edit and resubmit this assessment.</span>
                                     ) : fullSubmission?.unlock_requested ? (
                                         <strong>Unlock requested by parent.</strong>
                                     ) : (

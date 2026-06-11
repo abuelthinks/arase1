@@ -26,6 +26,7 @@ from .services.notification_service import (
     notify_admins_in_app, notify_form_submitted, notify_tracker_progress,
     notify_student_status_change, notify_new_user_registered,
     notify_assessment_scheduled, notify_assessment_cancelled,
+    notify_parent_assessment_unlock_requested, notify_parent_assessment_unlocked,
 )
 from .services.workflow_state_service import has_finalized_iep, has_finalized_multidisciplinary_assessment
 from .serializers import (
@@ -1074,18 +1075,8 @@ class ParentAssessmentRequestUnlockView(APIView):
         assessment.unlock_requested = True
         assessment.save(update_fields=['unlock_requested'])
 
-        admins = User.objects.filter(role='ADMIN')
         student = assessment.student
-        actor_name = f'{request.user.first_name} {request.user.last_name}'.strip() or request.user.email
-        for admin in admins:
-            Notification.objects.create(
-                recipient=admin,
-                notification_type='UNLOCK_REQUESTED',
-                title='Unlock Request',
-                message=f'{actor_name} has requested to unlock the parent assessment for {student.first_name} {student.last_name}.',
-                link=f'/workspace?studentId={student.id}&workspace=forms&tab=parent_assessment',
-                actor_name=actor_name,
-            )
+        notify_parent_assessment_unlock_requested(request.user, student)
 
         return Response({"status": "Unlock requested successfully."})
 
@@ -1124,6 +1115,7 @@ class ParentAssessmentUnlockView(APIView):
         assessment.unlocked_at = timezone.now()
         assessment.unlocked_by = request.user
         assessment.save(update_fields=['unlock_requested', 'unlocked_at', 'unlocked_by'])
+        notify_parent_assessment_unlocked(assessment.submitted_by, assessment.student, unlocked_by=request.user)
 
         return Response({"status": "Parent assessment unlocked successfully."})
 
