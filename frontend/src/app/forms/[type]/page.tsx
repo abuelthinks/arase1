@@ -1826,7 +1826,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             actionVariant: "primary",
             onConfirm: async () => {
                 try {
-                    await api.post("/api/inputs/multidisciplinary-assessment/request-unlock/", {
+                    await api.post(`/api/inputs/${formType}/request-unlock/`, {
                         student_id: parseInt(studentId || "0"),
                         report_cycle_id: parseInt(reportCycleId)
                     });
@@ -1848,11 +1848,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             actionVariant: "warning",
             onConfirm: async () => {
                 try {
-                    await api.post("/api/inputs/multidisciplinary-assessment/unlock/", {
+                    await api.post(`/api/inputs/${formType}/unlock/`, {
                         student_id: parseInt(studentId || "0"),
                         report_cycle_id: parseInt(reportCycleId)
                     });
-                    toast.success("Assessment unlocked successfully.");
+                    toast.success(`${formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"} unlocked successfully.`);
                     await refetchTeamSubmission();
                 } catch (err: any) {
                     toast.error(extractApiError(err));
@@ -1953,12 +1953,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                                 <span>This form is finalized and locked.</span>
                                             )}
                                         </div>
-                                        <button
-                                            onClick={adminUnlockForm}
-                                            className="shrink-0 rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100"
-                                        >
-                                            Unlock Form
-                                        </button>
+                                        {teamSubmission?.unlock_requested && (
+                                            <button
+                                                onClick={adminUnlockForm}
+                                                className="shrink-0 rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100"
+                                            >
+                                                Unlock Form
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     user?.role === "SPECIALIST" && !studentProfile?.generated_documents?.some((doc: any) => doc.document_type === "IEP") && (
