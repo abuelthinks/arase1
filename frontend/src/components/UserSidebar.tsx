@@ -45,21 +45,24 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
             pathname.match(/^\/students\/(\d+)/)?.[1] ||
             window.localStorage.getItem("arase:last-parent-student-id");
 
-        if (currentStudentId) {
-            setLastParentStudentId(currentStudentId);
-            window.localStorage.setItem("arase:last-parent-student-id", currentStudentId);
-        } else {
-            setLastParentStudentId(window.localStorage.getItem("arase:last-parent-student-id"));
-        }
-
         api.get("/api/students/").then(res => {
             const firstEnrolled = res.data?.find((student: any) => student.status === "ENROLLED")?.id;
             const firstAny = res.data?.[0]?.id;
             const chosen = firstEnrolled || firstAny;
+            const currentIsAccessible = currentStudentId && res.data?.some((student: any) => String(student.id) === String(currentStudentId));
+            const resolvedStudentId = currentIsAccessible ? String(currentStudentId) : chosen ? String(chosen) : null;
+
             setFallbackParentStudentId(chosen ? String(chosen) : null);
+            setLastParentStudentId(resolvedStudentId);
+
+            if (resolvedStudentId) {
+                window.localStorage.setItem("arase:last-parent-student-id", resolvedStudentId);
+            } else {
+                window.localStorage.removeItem("arase:last-parent-student-id");
+            }
             
             // Check if progress should be locked for the relevant child
-            const studentIdToCheck = currentStudentId || chosen;
+            const studentIdToCheck = resolvedStudentId || chosen;
             const studentToCheck = res.data?.find((s: any) => String(s.id) === String(studentIdToCheck)) || res.data?.[0];
             if (studentToCheck) {
                 // If they haven't submitted the initial assessment yet, lock the progress page

@@ -129,6 +129,9 @@ export default function DashboardPage() {
                 return `You have ${parts.join(" and ")}.`;
             }
             case "PARENT": {
+                if (students.length === 0) {
+                    return "Register your child to begin the parent assessment.";
+                }
                 const needsAssessment = students.filter(s => s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment).length;
                 const needsTracker = students.filter(s => s.status === "ENROLLED" && !s.parent_current_tracker_submitted).length;
                 const totalActions = needsAssessment + needsTracker;

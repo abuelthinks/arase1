@@ -20,7 +20,7 @@ interface WelcomeBannerProps {
 }
 
 interface BannerContent {
-    student: Student;
+    student?: Student;
     priority: number;
     tone: "action" | "waiting" | "ready" | "neutral";
     label: string;
@@ -178,22 +178,38 @@ function getBannerContent(student: Student): BannerContent | null {
     return null;
 }
 
+function getInitialParentBannerContent(firstName?: string): BannerContent {
+    return {
+        priority: 0,
+        tone: "action",
+        label: "Welcome",
+        title: `Welcome to ARASE${firstName ? `, ${firstName}` : ""}`,
+        body: "Start by registering your child and completing the parent assessment. Your answers help our team understand your child and prepare the right support.",
+        href: "/parent-onboarding",
+        cta: "Register a Child",
+        note: "This is the first step before our team can begin the evaluation.",
+    };
+}
+
 export default function WelcomeBanner({ students }: WelcomeBannerProps) {
     const { user } = useAuth();
     const [dismissed, setDismissed] = useState(false);
 
     if (user?.role !== "PARENT") return null;
-    if (!students || students.length === 0) return null;
 
-    const content = students
-        .map(getBannerContent)
-        .filter((item): item is BannerContent => Boolean(item))
-        .sort((a, b) => a.priority - b.priority)[0];
+    const content = students?.length
+        ? students
+            .map(getBannerContent)
+            .filter((item): item is BannerContent => Boolean(item))
+            .sort((a, b) => a.priority - b.priority)[0]
+        : getInitialParentBannerContent(user?.first_name);
 
     if (!content) return null;
 
     const style = toneStyles[content.tone];
-    const fullName = `${content.student.first_name} ${content.student.last_name}`.trim();
+    const fullName = content.student
+        ? `${content.student.first_name} ${content.student.last_name}`.trim()
+        : "Get started";
 
     if (dismissed) {
         return (
@@ -220,7 +236,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
         <section
             className="relative mb-8 overflow-hidden rounded-2xl border p-6 shadow-sm transition-all duration-300 md:p-8"
             style={{ background: style.bg, borderColor: style.border }}
-            aria-label={`Next step for ${fullName}`}
+            aria-label={content.student ? `Next step for ${fullName}` : "Welcome next step"}
         >
             <button
                 type="button"
