@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.core import mail
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
@@ -279,6 +280,42 @@ class SecurityHardeningTests(APITestCase):
             'form_data': {'notes': 'bad cycle'},
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_parent_assessment_unlock_flow_notifies_admin_and_parent(self):
+        ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'submitted'},
+        )
+
+        self.client.force_authenticate(user=self.parent)
+        request_response = self.client.post('/api/inputs/parent-assessment/request-unlock/', {
+            'student_id': self.student.id,
+            'report_cycle_id': self.active_cycle.id,
+        }, format='json')
+
+        self.assertEqual(request_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin,
+            notification_type='UNLOCK_REQUESTED',
+            title='Parent assessment unlock requested',
+            message__icontains='requested to unlock the parent assessment',
+        ).exists())
+
+        self.client.force_authenticate(user=self.admin)
+        unlock_response = self.client.post('/api/inputs/parent-assessment/unlock/', {
+            'student_id': self.student.id,
+            'report_cycle_id': self.active_cycle.id,
+        }, format='json')
+
+        self.assertEqual(unlock_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.parent,
+            notification_type='SYSTEM',
+            title='Parent assessment unlocked',
+            message__icontains='has been unlocked',
+        ).exists())
 
     def test_progress_tracker_requires_enrolled_student(self):
         self.student.status = 'ASSESSED'
@@ -638,6 +675,28 @@ class StudentAccessTests(APITestCase):
 
 @override_settings(ROOT_URLCONF='backend.urls')
 class InvitationFlowTests(APITestCase):
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_revoke_invitation_sends_notice_email(self):
+        admin = User.objects.create_user(
+            email='admin_invites@example.com',
+            password='Pass123!',
+            role='ADMIN',
+        )
+        invitation = Invitation.objects.create(
+            email='revoked@example.com',
+            role='PARENT',
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.delete(f'/api/invitations/{invitation.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Invitation.objects.filter(id=invitation.id).exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['revoked@example.com'])
+        self.assertIn('no longer active', mail.outbox[0].subject)
+        self.assertIn('no longer active', mail.outbox[0].body)
+
     def test_expired_token_returns_410(self):
         invitation = Invitation.objects.create(
             email='late@example.com',
@@ -679,6 +738,62 @@ class InvitationFlowTests(APITestCase):
         self.assertEqual(user.role, 'PARENT')
         invitation.refresh_from_db()
         self.assertTrue(invitation.is_used)
+
+    def test_parent_invite_accept_creates_welcome_register_child_notification(self):
+        invitation = Invitation.objects.create(
+            email='welcomeparent@example.com',
+            role='PARENT',
+        )
+
+        response = self.client.post('/api/invitations/accept/', {
+            'token': str(invitation.token),
+            'password': 'NewPass123!',
+            'first_name': 'Amelia',
+            'last_name': 'Parent',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email='welcomeparent@example.com')
+        notification = Notification.objects.get(recipient=user, dedupe_key=f'parent-welcome-register-child:{user.id}')
+        self.assertEqual(notification.notification_type, 'SYSTEM')
+        self.assertEqual(notification.title, 'Welcome to ARASE, Amelia')
+        self.assertIn('registering your child', notification.message)
+        self.assertEqual(notification.link, '/parent-onboarding')
+        self.assertEqual(notification.actor_name, 'ARASE')
+
+    def test_non_parent_invite_accept_does_not_create_parent_welcome_notification(self):
+        invitation = Invitation.objects.create(
+            email='welcomespecialist@example.com',
+            role='SPECIALIST',
+        )
+
+        response = self.client.post('/api/invitations/accept/', {
+            'token': str(invitation.token),
+            'password': 'NewPass123!',
+            'first_name': 'Grace',
+            'last_name': 'Smith',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email='welcomespecialist@example.com')
+        self.assertFalse(Notification.objects.filter(recipient=user, dedupe_key=f'parent-welcome-register-child:{user.id}').exists())
+
+    def test_notification_list_backfills_missing_parent_welcome_notification(self):
+        parent = User.objects.create_user(
+            email='existingparent@example.com',
+            password='Pass123!',
+            first_name='Existing',
+            role='PARENT',
+        )
+        self.client.force_authenticate(user=parent)
+
+        response = self.client.get('/api/notifications/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        notification = Notification.objects.get(recipient=parent, dedupe_key=f'parent-welcome-register-child:{parent.id}')
+        self.assertEqual(notification.title, 'Welcome to ARASE, Existing')
+        self.assertEqual(notification.link, '/parent-onboarding')
+        self.assertEqual(response.data['unread_count'], 1)
 
     def test_valid_token_cannot_be_reused(self):
         invitation = Invitation.objects.create(
