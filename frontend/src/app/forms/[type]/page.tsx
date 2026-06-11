@@ -715,6 +715,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const [errorMsg, setErrorMsg] = useState("");
     const [reportCycleId, setReportCycleId] = useState("");
     const [schema, setSchema] = useState<any>(null);
+    const [formInitializing, setFormInitializing] = useState(true);
     const [formData, setFormData] = useState<any>({});
     const [studentProfile, setStudentProfile] = useState<any>(null);
     const [showDescriptions, setShowDescriptions] = useState<Record<string, boolean>>({});
@@ -827,6 +828,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     // shell. Without this, a previous student's teamSubmission (incl. its
     // finalized_at) bleeds into the new student's view.
     useEffect(() => {
+        setFormInitializing(true);
         setTeamSubmission(null);
         setFullSubmission(null);
         setFormData({});
@@ -1254,7 +1256,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             // Seed snapshot with initial form state (including defaults like [] or "")
             // so that peer merges correctly see these untouched fields as clean.
             serverSnapshot.current = JSON.parse(JSON.stringify(mergedData));
-            setFormData(mergedData);
+            if (isMounted) {
+                setFormData(mergedData);
+                setFormInitializing(false);
+            }
         };
 
         loadForm();
@@ -1858,6 +1863,16 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
     if (!studentId) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing student context. Return to dashboard.</div>;
     if (!schema) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading form…</div>;
+    if (propHideNavigation && formInitializing) {
+        return (
+            <div className="flex min-h-[360px] items-center justify-center px-6 py-12 text-center">
+                <div>
+                    <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-slate-100 border-t-indigo-500 animate-spin" />
+                    <p className="m-0 text-sm font-semibold text-slate-500">Loading student form...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <ProtectedRoute>

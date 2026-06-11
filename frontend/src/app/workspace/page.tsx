@@ -16,7 +16,7 @@ import { extractApiError, toastPromise } from "@/lib/toast-utils";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
-import { semanticToneClass, statusColorHex, statusLabel, studentRowActionPillClass, type SemanticTone } from "@/lib/role-colors";
+import { semanticToneClass, statusColorClass, statusColorHex, statusLabel, studentRowActionPillClass, type SemanticTone } from "@/lib/role-colors";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 // Inputs
@@ -1748,13 +1748,14 @@ function UnifiedWorkspaceContent() {
                         <div className="w-full">
                             {activeFormTab === "parent_assessment" ? (
                                 <ParentFormContent
+                                    key={`${studentId}-${activeFormTab}-edit`}
                                     propHideNavigation={true}
                                     propStudentId={studentId as string}
                                     propSubmissionId={canEditUnlockedParentAssessment ? currentStatus.id?.toString() : undefined}
                                     propOnSubmitted={handleEmbeddedFormSubmitted}
                                 />
                             ) : (
-                                <FormEntryContent propType={currentTabConf?.formType as string} propHideNavigation={true} propStudentId={studentId as string} propOnSubmitted={handleEmbeddedFormSubmitted} />
+                                <FormEntryContent key={`${studentId}-${activeFormTab}-edit`} propType={currentTabConf?.formType as string} propHideNavigation={true} propStudentId={studentId as string} propOnSubmitted={handleEmbeddedFormSubmitted} />
                             )}
                         </div>
                     ) : !currentStatus?.submitted ? (
@@ -1769,6 +1770,7 @@ function UnifiedWorkspaceContent() {
                         <div className="w-full">
                             {activeFormTab === "parent_assessment" ? (
                                 <ParentFormContent
+                                    key={`${studentId}-${activeFormTab}-view`}
                                     propMode="view"
                                     propHideNavigation={true}
                                     propStudentId={studentId as string}
@@ -1779,7 +1781,7 @@ function UnifiedWorkspaceContent() {
                                     propOnUnlocked={() => setProfileRefreshKey(key => key + 1)}
                                 />
                             ) : (
-                                <FormEntryContent propType={currentTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} />
+                                <FormEntryContent key={`${studentId}-${activeFormTab}-view`} propType={currentTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} />
                             )}
                         </div>
                     )}
@@ -3040,8 +3042,9 @@ function UnifiedWorkspaceContent() {
                                         filteredStudents.map(s => {
                                             const isCurrent = s.id.toString() === studentId;
                                             const dot = statusColorHex(s.status || "ARCHIVED").color;
-                                            const statusLabel = STATUS_COLORS[s.status?.toUpperCase()]?.label || s.status?.replace(/_/g, ' ');
+                                            const sidebarStatusLabel = statusLabel(s.status);
                                             const nextAction = user?.role === "ADMIN" ? s.next_action : null;
+                                            const showStatusPill = user?.role !== "ADMIN" || !nextAction;
                                             return (
                                                 <div
                                                     key={s.id}
@@ -3058,7 +3061,7 @@ function UnifiedWorkspaceContent() {
                                                         isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-slate-50'
                                                     }`}
                                                     style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                    title={`${s.first_name} ${s.last_name} — ${statusLabel}`}
+                                                    title={`${s.first_name} ${s.last_name} — ${sidebarStatusLabel}`}
                                                 >
                                                     {isCurrent && (
                                                         <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />
@@ -3070,6 +3073,11 @@ function UnifiedWorkspaceContent() {
                                                         <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-slate-700'}`}>
                                                             {s.first_name} {s.last_name}
                                                         </span>
+                                                        {showStatusPill && (
+                                                            <span className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold ${statusColorClass(s.status || "ARCHIVED")}`}>
+                                                                {sidebarStatusLabel}
+                                                            </span>
+                                                        )}
                                                         {nextAction && (
                                                             <button
                                                                 type="button"
@@ -3091,7 +3099,7 @@ function UnifiedWorkspaceContent() {
                                                             </button>
                                                         )}
                                                     </div>
-                                                    <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={statusLabel}></span>
+                                                    <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={sidebarStatusLabel}></span>
                                                 </div>
                                             );
                                         })
