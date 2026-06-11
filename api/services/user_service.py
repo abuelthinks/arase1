@@ -67,6 +67,44 @@ def send_invitation_email(invitation):
     msg.send()
 
 
+def send_invitation_revoked_email(invitation):
+    """
+    Tells an invitee their invitation is no longer active.
+    """
+    from django.core.mail import EmailMultiAlternatives
+    from django.conf import settings
+
+    subject = "Your ARASE invitation is no longer active"
+    role_label = invitation.role.title()
+
+    text_body = (
+        "Hello,\n\n"
+        f"Your invitation to join ARASE as a {role_label} is no longer active.\n\n"
+        "If you believe this was a mistake, please contact the administrator who invited you.\n\n"
+        "- The ARASE Team"
+    )
+
+    html_body = f"""
+    <div style="font-family: Inter, Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f8fafc; padding: 32px; border-radius: 12px;">
+      <div style="background: white; border-radius: 10px; padding: 32px; border: 1px solid #e2e8f0;">
+        <h1 style="margin: 0 0 8px 0; font-size: 1.5rem; color: #1e293b;">Invitation no longer active</h1>
+        <p style="color: #475569; margin: 0 0 16px 0;">Your invitation to join ARASE as a <strong>{role_label}</strong> is no longer active.</p>
+        <p style="color: #64748b; margin: 0;">If you believe this was a mistake, please contact the administrator who invited you.</p>
+      </div>
+      <p style="text-align: center; color: #cbd5e1; font-size: 0.75rem; margin-top: 16px;">ARASE - Automated Reporting App for SPED</p>
+    </div>
+    """
+
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[invitation.email],
+    )
+    msg.attach_alternative(html_body, "text/html")
+    msg.send()
+
+
 def resend_invitation(old_invitation):
     """
     Revokes the old invitation and issues a fresh one with a new 72-hour TTL.
