@@ -659,7 +659,7 @@ export function ParentFormContent({
                                         <span>This parent assessment is submitted and locked.</span>
                                     )}
                                 </div>
-                                {!specialistSubmitted && !fullSubmission?.unlocked_at && (
+                                {!specialistSubmitted && !fullSubmission?.unlocked_at && fullSubmission?.unlock_requested && (
                                     <button
                                         type="button"
                                         onClick={adminUnlockParentAssessment}
