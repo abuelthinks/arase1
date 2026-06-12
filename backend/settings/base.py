@@ -202,6 +202,7 @@ REST_FRAMEWORK = {
         'anon': '30/minute',
         'user': '200/minute',
         'sms': '5/hour',
+        'sms_verify': '10/hour',
     },
 }
 

@@ -124,6 +124,16 @@ class StudentViewSet(viewsets.ModelViewSet):
         )
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
+    def update(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can modify students."}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can modify students."}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
     def destroy(self, request, *args, **kwargs):
         if request.user.role != 'ADMIN':
             return Response({"error": "Only admins can delete students."}, status=status.HTTP_403_FORBIDDEN)
@@ -936,6 +946,10 @@ class AssessmentUnlockView(APIView):
         assessment.finalized_by = None
         assessment.unlock_requested = False
         assessment.save(update_fields=['finalized_at', 'finalized_by', 'unlock_requested'])
+        
+        # Reconcile student's workflow state now that the assessment is unlocked/unfinalized
+        from .services.workflow_state_service import reconcile_student_assessment_state
+        reconcile_student_assessment_state(assessment.student, apply=True)
         
         from .services.collaboration_service import broadcast_lock_changed
         broadcast_lock_changed("assessment", assessment.id)
@@ -2096,6 +2110,8 @@ class SendVerificationSMSView(APIView):
 
 class VerifySMSView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'sms_verify'
 
     def post(self, request):
         user = request.user

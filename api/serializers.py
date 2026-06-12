@@ -199,7 +199,13 @@ class StudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = '__all__'
+        fields = [
+            'id', 'first_name', 'last_name', 'date_of_birth', 'grade', 'status',
+            'has_parent_assessment', 'has_specialist_assessment',
+            'parent_current_tracker_submitted', 'specialist_current_tracker_submitted',
+            'teacher_current_tracker_submitted', 'active_cycle_label',
+            'latest_final_monthly_report_id', 'recent_activity_at', 'next_action',
+        ]
 
     def get_has_parent_assessment(self, obj):
         return ParentAssessment.objects.filter(student=obj).exists()
