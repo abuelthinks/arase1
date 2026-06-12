@@ -418,6 +418,72 @@ class SecurityHardeningTests(APITestCase):
             message__icontains='requested to unlock the specialist progress tracker',
         ).exists())
 
+    def test_parent_assessment_resubmit_notifies_admin(self):
+        assessment = ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'original'},
+            unlock_requested=False,
+            unlocked_at=timezone.now(),
+            unlocked_by=self.admin,
+        )
+
+        Notification.objects.create(
+            recipient=self.admin,
+            notification_type='FORM_SUBMITTED',
+            title='Parent Assessment submitted for ' + f"{self.student.first_name} {self.student.last_name}",
+            message=f"{self.parent.first_name} {self.parent.last_name} submitted the parent assessment.",
+            dedupe_key=f"form-submitted:parent-assessment:{assessment.id}"
+        )
+
+        self.client.force_authenticate(user=self.parent)
+        response = self.client.post('/api/inputs/parent-assessment/', {
+            'student': self.student.id,
+            'report_cycle': self.active_cycle.id,
+            'form_data': {'notes': 'corrected'},
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin,
+            notification_type='FORM_SUBMITTED',
+            title__icontains='Parent Assessment resubmitted',
+            message__icontains='resubmitted the parent assessment'
+        ).exists())
+
+    def test_specialist_assessment_refinalize_notifies_admin(self):
+        from api.services.notification_service import notify_specialist_form_finalized
+        notify_specialist_form_finalized(
+            self.specialist,
+            self.student,
+            self.active_cycle,
+            'Specialist Assessment'
+        )
+
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin,
+            notification_type='FORM_SUBMITTED',
+            title__icontains='Specialist Assessment finalized',
+            message__icontains='finalized the specialist assessment',
+            dedupe_key=f"specialist-form-finalized:Specialist Assessment:{self.student.id}:{self.active_cycle.id}"
+        ).exists())
+
+        notify_specialist_form_finalized(
+            self.specialist,
+            self.student,
+            self.active_cycle,
+            'Specialist Assessment'
+        )
+
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin,
+            notification_type='FORM_SUBMITTED',
+            title__icontains='Specialist Assessment refinalized',
+            message__icontains='refinalized the specialist assessment'
+        ).exists())
+
     def test_progress_tracker_requires_enrolled_student(self):
         self.student.status = 'ASSESSED'
         self.student.save(update_fields=['status'])

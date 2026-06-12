@@ -405,6 +405,8 @@ class ParentAssessmentViewSet(BaseInputViewSet):
                     .filter(student=student, report_cycle=report_cycle)
                     .order_by('created_at')
                     .first())
+        is_resubmission = bool(existing and existing.unlocked_at)
+
         if existing is not None:
             serializer.instance = existing
             instance = serializer.save(
@@ -416,11 +418,18 @@ class ParentAssessmentViewSet(BaseInputViewSet):
         else:
             instance = serializer.save(submitted_by=user)
 
+        if is_resubmission:
+            from django.utils import timezone
+            dedupe_key = f"form-submitted:parent-assessment:{instance.id}:resubmit-{timezone.now().timestamp()}"
+        else:
+            dedupe_key = f"form-submitted:parent-assessment:{instance.id}"
+
         notify_form_submitted(
             user,
             instance.student,
             'Parent Assessment',
-            dedupe_key=f"form-submitted:parent-assessment:{instance.id}",
+            dedupe_key=dedupe_key,
+            is_resubmission=is_resubmission,
         )
         from .services.cycle_service import check_and_trigger_iep_generation
         check_and_trigger_iep_generation(instance.student, instance.report_cycle)

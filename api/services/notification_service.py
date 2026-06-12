@@ -220,7 +220,7 @@ def notify_parent_assessment_unlocked(parent_user, student, unlocked_by=None):
     )
 
 
-def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
+def notify_form_submitted(user, student, form_label, link='', dedupe_key='', is_resubmission=False):
     """
     Notify admins when any user submits a form.
     Also notify relevant assigned users (specialists, teachers) about
@@ -245,11 +245,13 @@ def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
     if form_tab:
         default_link += f"&tab={form_tab}"
 
+    verb = "resubmitted" if is_resubmission else "submitted"
+
     # Notify admins (exclude the submitter if they are an admin)
     notify_admins_in_app(
         notification_type='FORM_SUBMITTED',
-        title=f"{form_label} submitted for {student_name}",
-        message=f"{actor} submitted the {form_label.lower()}.",
+        title=f"{form_label} {verb} for {student_name}",
+        message=f"{actor} {verb} the {form_label.lower()}.",
         link=link or default_link,
         exclude_user=user,
         actor_name=actor,
@@ -268,8 +270,8 @@ def notify_form_submitted(user, student, form_label, link='', dedupe_key=''):
         notify_user_in_app(
             user=sa.user,
             notification_type='FORM_SUBMITTED',
-            title=f"{form_label} submitted for {student_name}",
-            message=f"{actor} submitted the {form_label.lower()}.",
+            title=f"{form_label} {verb} for {student_name}",
+            message=f"{actor} {verb} the {form_label.lower()}.",
             link=link or default_link,
             actor_name=actor,
             dedupe_key=dedupe_key,
@@ -506,6 +508,9 @@ def notify_parent_team_member_removed(student, staff_user, role_label, unassigne
 
 def notify_specialist_form_finalized(user, student, cycle, form_label):
     """Notify admins once the full specialist-owned assessment/tracker is finalized."""
+    from api.models import Notification
+    from django.utils import timezone
+
     student_name = f"{student.first_name} {student.last_name}"
     actor = _user_display_name(user) if user else "Specialist team"
     form_tab_map = {
@@ -516,14 +521,25 @@ def notify_specialist_form_finalized(user, student, cycle, form_label):
     link = f"/workspace?studentId={student.id}&workspace=forms"
     if form_tab:
         link += f"&tab={form_tab}"
+
+    base_dedupe_key = f"specialist-form-finalized:{form_label}:{student.id}:{cycle.id}"
+    is_refinalization = Notification.objects.filter(dedupe_key=base_dedupe_key).exists()
+
+    if is_refinalization:
+        verb = "refinalized"
+        dedupe_key = f"{base_dedupe_key}:refinalize-{timezone.now().timestamp()}"
+    else:
+        verb = "finalized"
+        dedupe_key = base_dedupe_key
+
     notify_admins_in_app(
         notification_type='FORM_SUBMITTED',
-        title=f"{form_label} finalized for {student_name}",
-        message=f"{actor} finalized the {form_label.lower()}.",
+        title=f"{form_label} {verb} for {student_name}",
+        message=f"{actor} {verb} the {form_label.lower()}.",
         link=link,
         exclude_user=user,
         actor_name=actor,
-        dedupe_key=f"specialist-form-finalized:{form_label}:{student.id}:{cycle.id}",
+        dedupe_key=dedupe_key,
     )
 
 
