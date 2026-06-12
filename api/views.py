@@ -392,15 +392,38 @@ class ParentAssessmentViewSet(BaseInputViewSet):
     allowed_submitter_roles = ('PARENT',)
 
     def perform_create(self, serializer):
-        instance = serializer.save(submitted_by=self.request.user)
+        user = self.request.user
+        student = serializer.validated_data.get('student')
+        report_cycle = serializer.validated_data.get('report_cycle')
+
+        # Upsert: a parent assessment is unique per (student, cycle). On
+        # re-submission (e.g. after an admin unlock) update the existing
+        # canonical row instead of inserting a duplicate — otherwise IEP and
+        # monthly-report generation, which read the oldest row, would keep
+        # using the parent's original answers and silently drop their edits.
+        existing = (ParentAssessment.objects
+                    .filter(student=student, report_cycle=report_cycle)
+                    .order_by('created_at')
+                    .first())
+        if existing is not None:
+            serializer.instance = existing
+            instance = serializer.save(
+                submitted_by=user,
+                unlock_requested=False,
+                unlocked_at=None,
+                unlocked_by=None,
+            )
+        else:
+            instance = serializer.save(submitted_by=user)
+
         notify_form_submitted(
-            self.request.user,
+            user,
             instance.student,
             'Parent Assessment',
             dedupe_key=f"form-submitted:parent-assessment:{instance.id}",
         )
-        from .services.cycle_service import check_and_trigger_assessment_generation
-        check_and_trigger_assessment_generation(instance.student, instance.report_cycle)
+        from .services.cycle_service import check_and_trigger_iep_generation
+        check_and_trigger_iep_generation(instance.student, instance.report_cycle)
 
 
 class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):

@@ -317,6 +317,35 @@ class SecurityHardeningTests(APITestCase):
             message__icontains='has been unlocked',
         ).exists())
 
+    def test_parent_assessment_resubmit_updates_in_place(self):
+        ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'original'},
+            unlock_requested=True,
+            unlocked_at=timezone.now(),
+            unlocked_by=self.admin,
+        )
+
+        self.client.force_authenticate(user=self.parent)
+        response = self.client.post('/api/inputs/parent-assessment/', {
+            'student': self.student.id,
+            'report_cycle': self.active_cycle.id,
+            'form_data': {'notes': 'corrected'},
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # No duplicate row, and the edit is the one IEP/report generation reads.
+        rows = ParentAssessment.objects.filter(
+            student=self.student, report_cycle=self.active_cycle,
+        )
+        self.assertEqual(rows.count(), 1)
+        row = rows.first()
+        self.assertEqual(row.form_data, {'notes': 'corrected'})
+        self.assertFalse(row.unlock_requested)
+        self.assertIsNone(row.unlocked_at)
+
     def test_specialist_assessment_unlock_flow_notifies_admin(self):
         MultidisciplinaryAssessment.objects.create(
             student=self.student,

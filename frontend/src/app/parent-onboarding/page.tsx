@@ -475,7 +475,6 @@ export function ParentFormContent({
                 report_cycle_id: reportCycleId,
             });
             setFullSubmission((prev: any) => prev ? { ...prev, unlock_requested: true } : prev);
-            setSuccessMsg("Unlock request sent to admin.");
             await propOnUnlocked?.();
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Could not request unlock. Please try again.");
@@ -499,7 +498,6 @@ export function ParentFormContent({
                 unlock_requested: false,
                 unlocked_at: new Date().toISOString(),
             } : prev);
-            setSuccessMsg("Parent assessment unlocked. The parent has been notified.");
             await propOnUnlocked?.();
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Could not unlock the parent assessment. Please try again.");
@@ -647,37 +645,37 @@ export function ParentFormContent({
                 {showParentUnlockPanel && (
                     <div className="mb-5">
                         {user?.role === "ADMIN" ? (
-                            <div className={formBannerClass(specialistSubmitted ? "neutral" : fullSubmission?.unlocked_at ? "success" : "warning")}>
-                                <div className="text-sm">
-                                    {specialistSubmitted ? (
-                                        <span>This form can no longer be unlocked because the specialist assessment has been submitted.</span>
-                                    ) : fullSubmission?.unlocked_at ? (
-                                        <span>The parent can now edit and resubmit this assessment.</span>
-                                    ) : fullSubmission?.unlock_requested ? (
-                                        <strong>Unlock requested by parent.</strong>
-                                    ) : (
-                                        <span>This parent assessment is submitted and locked.</span>
+                            (fullSubmission?.unlock_requested || fullSubmission?.unlocked_at) && (
+                                <div className={formBannerClass(specialistSubmitted ? "neutral" : fullSubmission?.unlocked_at ? "success" : "warning")}>
+                                    <div className="text-sm">
+                                        {specialistSubmitted ? (
+                                            <span>This form can no longer be unlocked because the specialist assessment has been submitted.</span>
+                                        ) : fullSubmission?.unlocked_at ? (
+                                            <span>Parent assessment unlocked. The parent has been notified and can now edit and resubmit this assessment.</span>
+                                        ) : (
+                                            <strong>Unlock requested by parent.</strong>
+                                        )}
+                                    </div>
+                                    {!specialistSubmitted && !fullSubmission?.unlocked_at && (
+                                        <button
+                                            type="button"
+                                            onClick={adminUnlockParentAssessment}
+                                            disabled={unlockLoading}
+                                            className="shrink-0 rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {unlockLoading ? "Unlocking..." : "Unlock Form"}
+                                        </button>
                                     )}
                                 </div>
-                                {!specialistSubmitted && !fullSubmission?.unlocked_at && fullSubmission?.unlock_requested && (
-                                    <button
-                                        type="button"
-                                        onClick={adminUnlockParentAssessment}
-                                        disabled={unlockLoading}
-                                        className="shrink-0 rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                    >
-                                        {unlockLoading ? "Unlocking..." : "Unlock Form"}
-                                    </button>
-                                )}
-                            </div>
+                            )
                         ) : (
                             user?.role === "PARENT" && !specialistSubmitted && (
-                                <div className={formBannerClass("neutral")}>
+                                <div className={formBannerClass(fullSubmission?.unlocked_at ? "success" : fullSubmission?.unlock_requested ? "success" : "neutral")}>
                                     <div className="text-sm">
                                         {fullSubmission?.unlocked_at ? (
                                             <span>This form has been unlocked. You can edit and resubmit it.</span>
                                         ) : fullSubmission?.unlock_requested ? (
-                                            <span>You have requested an admin to unlock this form.</span>
+                                            <span>Unlock request sent to admin. You have requested an admin to unlock this form.</span>
                                         ) : (
                                             <span>Need to make changes?</span>
                                         )}

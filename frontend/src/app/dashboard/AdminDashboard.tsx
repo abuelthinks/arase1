@@ -82,6 +82,7 @@ interface StudentData {
     status: string;
     has_parent_assessment?: boolean;
     has_specialist_assessment?: boolean;
+    parent_assessment_unlocked?: boolean;
     parent_current_tracker_submitted?: boolean;
     specialist_current_tracker_submitted?: boolean;
     teacher_current_tracker_submitted?: boolean;
@@ -116,11 +117,13 @@ const getActionTypeStyle = (type: DashboardAction["type"]) => {
     return { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
 };
 
-const getFormPillClass = (isSubmitted?: boolean) => {
+const getFormPillClass = (isSubmitted?: boolean, isUnlocked?: boolean) => {
     return `cursor-pointer text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-colors duration-200 ${
-        isSubmitted 
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300" 
-            : "border-slate-300 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-400"
+        isUnlocked
+            ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300"
+            : isSubmitted 
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300" 
+                : "border-slate-300 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-400"
     }`;
 };
 
@@ -1126,9 +1129,31 @@ export default function AdminDashboard() {
 
                             <div className="w-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
-                                    <div className="flex justify-end">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        {statusFilterOptions.length > 0 && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {statusFilterOptions.map(option => {
+                                                    const isActive = effectiveStatusTab === option.status;
+                                                    return (
+                                                        <button
+                                                            key={option.status}
+                                                            onClick={() => { setActiveStatusTab(option.status); setStudentPage(1); }}
+                                                            aria-pressed={isActive}
+                                                            className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 text-xs font-bold transition-colors duration-200 ${isActive ? 'shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'}`}
+                                                            style={isActive ? { background: option.style.bg, borderColor: option.style.color, color: option.style.color, cursor: 'pointer' } : { cursor: 'pointer' }}
+                                                        >
+                                                            <span className="h-2.5 w-2.5 rounded-full" style={{ background: option.style.color }} />
+                                                            <span className="uppercase">{option.label}</span>
+                                                            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-white/75' : 'bg-slate-100 text-slate-500'}`}>
+                                                                {option.count}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                         {students.length > 10 && (
-                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 shrink-0">
                                                 <span>Show</span>
                                                 <select
                                                     value={studentItemsPerPage}
@@ -1143,28 +1168,6 @@ export default function AdminDashboard() {
                                             </div>
                                         )}
                                     </div>
-                                    {statusFilterOptions.length > 0 && (
-                                        <div className={`${students.length > 10 ? 'mt-3' : ''} flex flex-wrap gap-2`}>
-                                            {statusFilterOptions.map(option => {
-                                                const isActive = effectiveStatusTab === option.status;
-                                                return (
-                                                    <button
-                                                        key={option.status}
-                                                        onClick={() => { setActiveStatusTab(option.status); setStudentPage(1); }}
-                                                        aria-pressed={isActive}
-                                                        className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 text-xs font-bold transition-colors duration-200 ${isActive ? 'shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'}`}
-                                                        style={isActive ? { background: option.style.bg, borderColor: option.style.color, color: option.style.color, cursor: 'pointer' } : { cursor: 'pointer' }}
-                                                    >
-                                                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: option.style.color }} />
-                                                        <span className="uppercase">{option.label}</span>
-                                                        <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-white/75' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {option.count}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
                                 </div>
                                 <div className="p-0">
                                     {processedStudents.length === 0 ? (
@@ -1230,7 +1233,7 @@ export default function AdminDashboard() {
                                                                     {s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
                                                                         <>
                                                                             <div
-                                                                                className={getFormPillClass(s.has_parent_assessment)}
+                                                                                className={getFormPillClass(s.has_parent_assessment, s.parent_assessment_unlocked)}
                                                                                 onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
                                                                             >Parent</div>
                                                                             <div
@@ -1350,7 +1353,7 @@ export default function AdminDashboard() {
                                                                 {s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
                                                                     <>
                                                                         <div
-                                                                            className={getFormPillClass(s.has_parent_assessment)}
+                                                                            className={getFormPillClass(s.has_parent_assessment, s.parent_assessment_unlocked)}
                                                                             onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
                                                                         >Parent</div>
                                                                         <div
