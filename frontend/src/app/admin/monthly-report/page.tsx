@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -7,13 +7,13 @@ import api, { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { semanticToneHex, type SemanticTone } from "@/lib/role-colors";
 
-/* ─── UI Helpers ─────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ UI Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "1.25rem" }}>
-            <div style={{ padding: "0.75rem 1.25rem", borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{title}</h2>
+        <div style={{ background: "var(--bg-secondary)", borderRadius: "14px", border: "1px solid var(--border-light)", overflow: "hidden", marginBottom: "1.25rem" }}>
+            <div style={{ padding: "0.75rem 1.25rem", borderBottom: "1px solid var(--border-light)", background: "var(--bg-primary)" }}>
+                <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{title}</h2>
             </div>
             <div style={{ padding: "1.15rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>{children}</div>
         </div>
@@ -46,7 +46,7 @@ function ProgressSection({ title, data }: { title: string; data: any }) {
     if (!data || (!data.summary && !data.highlights?.length && !data.concerns?.length)) return null;
     return (
         <SectionCard title={title}>
-            {data.summary && <p style={{ fontSize: "0.85rem", color: "#1e293b", lineHeight: 1.6, margin: 0 }}>{data.summary}</p>}
+            {data.summary && <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", lineHeight: 1.6, margin: 0 }}>{data.summary}</p>}
             {data.highlights?.length > 0 && (
                 <div>
                     <p style={sectionLabelStyle("success")}>Highlights</p>
@@ -67,7 +67,7 @@ function ProgressSection({ title, data }: { title: string; data: any }) {
     );
 }
 
-/* ─── Types ───────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 interface MonthlyReportData {
     student_info: Record<string, string>;
@@ -96,7 +96,7 @@ const formatDocumentDateTime = (value?: string | null) => {
     });
 };
 
-/* ─── Main Component ──────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: string; propHideNavigation?: boolean }) {
     const searchParams = useSearchParams();
@@ -127,8 +127,8 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
             .finally(() => setLoading(false));
     }, [reportId]);
 
-    if (!reportId) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing Report ID.</div>;
-    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading Monthly Report…</div>;
+    if (!reportId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing Report ID.</div>;
+    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading Monthly Reportâ€¦</div>;
     if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
     if (!report || !meta) return null;
 
@@ -184,17 +184,17 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
             {!propHideNavigation && (
                 <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
                 <button type="button" onClick={() => router.back()}
-                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
                     onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
-                    onMouseOut={(e) => e.currentTarget.style.color = "#64748b"}
+                    onMouseOut={(e) => e.currentTarget.style.color = "var(--text-secondary)"}
                 >
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
                     Back to Student Profile
                 </button>
-                <span style={{ color: "#cbd5e1" }}>›</span>
-                <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>
+                <span style={{ color: "var(--text-muted)" }}>â€º</span>
+                <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>
                     Monthly Report for {meta.student_name}
                 </span>
             </div>
@@ -203,36 +203,36 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                        📊 Monthly Progress Report
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                        ðŸ“Š Monthly Progress Report
                         <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatusStyle.bg, color: reportStatusStyle.color, border: `1px solid ${reportStatusStyle.border}` }}>
                             {reportStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
                     </h1>
-                    <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
-                        {meta.student_name} · {report.report_period || "Progress Report"} · Generated {formatDocumentDateTime(meta.created_at)}
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
+                        {meta.student_name} Â· {report.report_period || "Progress Report"} Â· Generated {formatDocumentDateTime(meta.created_at)}
                     </p>
                 </div>
                 {user?.role === "ADMIN" && (
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                         <button onClick={fetchAuditHistory}
-                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
-                            ⏱️ Audit History
+                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-secondary)", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)" }}>
+                            â±ï¸ Audit History
                         </button>
                         <button onClick={handleDownload}
-                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
-                            📥 Download PDF
+                            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-secondary)", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)" }}>
+                            ðŸ“¥ Download PDF
                         </button>
-                        <span className="hidden md:block" style={{ width: "1px", height: "24px", background: "#cbd5e1", margin: "0 4px" }}></span>
+                        <span className="hidden md:block" style={{ width: "1px", height: "24px", background: "var(--text-muted)", margin: "0 4px" }}></span>
                         {reportStatus !== "FINAL" ? (
                             <button onClick={() => handleSaveStatus("FINAL")} disabled={saving}
                                 style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: semanticToneHex("success").color, color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                {saving ? "Saving…" : "✅ Finalize"}
+                                {saving ? "Savingâ€¦" : "âœ… Finalize"}
                             </button>
                         ) : (
                             <button onClick={() => handleSaveStatus("DRAFT")} disabled={saving}
-                                style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#64748b", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                {saving ? "Saving…" : "Revert to Draft"}
+                                style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-primary)", color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                                {saving ? "Savingâ€¦" : "Revert to Draft"}
                             </button>
                         )}
                     </div>
@@ -244,8 +244,8 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     {[["Student Name", si.student_name], ["Date of Birth", si.date_of_birth], ["Grade/Level", si.grade_level], ["Report Period", report.report_period]].map(([label, val]) => (
                         <div key={label}>
-                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "3px" }}>{label}</p>
-                            <p style={{ fontSize: "0.85rem", color: "#1e293b", margin: 0 }}>{val || "—"}</p>
+                            <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--text-secondary)", marginBottom: "3px" }}>{label}</p>
+                            <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}>{val || "â€”"}</p>
                         </div>
                     ))}
                 </div>
@@ -253,7 +253,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
 
             {/* Executive Summary */}
             <SectionCard title="Executive Summary">
-                <p style={{ fontSize: "0.9rem", color: "#1e293b", lineHeight: 1.7, margin: 0 }}>{report.executive_summary || "No summary available."}</p>
+                <p style={{ fontSize: "0.9rem", color: "var(--text-primary)", lineHeight: 1.7, margin: 0 }}>{report.executive_summary || "No summary available."}</p>
             </SectionCard>
 
             {/* Progress Sections */}
@@ -270,13 +270,13 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                         {gas.map((g, i) => {
                             const sc = scoreColor(g.score);
                             return (
-                                <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                                <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", border: "1px solid var(--border-light)", background: "var(--bg-primary)" }}>
                                     <div style={{ width: 36, height: 36, borderRadius: "8px", background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", fontWeight: 800, flexShrink: 0 }}>
                                         {g.score}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>{g.goal_id} — {g.domain}</p>
-                                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>{g.note}</p>
+                                        <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{g.goal_id} â€” {g.domain}</p>
+                                        <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", margin: 0 }}>{g.note}</p>
                                     </div>
                                 </div>
                             );
@@ -291,19 +291,19 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         {[["Discipline", tss.discipline], ["Sessions Completed", tss.sessions_completed], ["Attendance", tss.attendance]].map(([label, val]) => (
                             <div key={label as string}>
-                                <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#64748b", marginBottom: "3px" }}>{label}</p>
-                                <p style={{ fontSize: "0.85rem", color: "#1e293b", margin: 0 }}>{String(val) || "—"}</p>
+                                <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--text-secondary)", marginBottom: "3px" }}>{label}</p>
+                                <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}>{String(val) || "â€”"}</p>
                             </div>
                         ))}
                     </div>
-                    {tss.key_progress && <p style={{ fontSize: "0.85rem", color: "#1e293b", lineHeight: 1.6, margin: 0 }}><strong>Key Progress:</strong> {tss.key_progress}</p>}
+                    {tss.key_progress && <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", lineHeight: 1.6, margin: 0 }}><strong>Key Progress:</strong> {tss.key_progress}</p>}
                 </SectionCard>
             )}
 
             {/* Parent Observations */}
             {po.overall_comparison && (
                 <SectionCard title="Parent Observations">
-                    <p style={{ fontSize: "0.85rem", color: "#1e293b", margin: 0 }}><strong>Overall:</strong> {po.overall_comparison}</p>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}><strong>Overall:</strong> {po.overall_comparison}</p>
                     {po.top_concerns?.length > 0 && (
                         <div>
                             <p style={sectionLabelStyle("danger")}>Concerns</p>
@@ -329,7 +329,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     {recs.classroom?.length > 0 && (
                         <div>
                             <p style={{ fontSize: "0.78rem", fontWeight: 700, color: semanticToneHex("primary").color, marginBottom: "4px" }}>Classroom</p>
-                            <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
+                            <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "var(--text-primary)" }}>
                                 {recs.classroom.map((r: string, i: number) => <li key={i}>{r}</li>)}
                             </ul>
                         </div>
@@ -337,7 +337,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     {recs.home_program?.length > 0 && (
                         <div>
                             <p style={{ fontSize: "0.78rem", fontWeight: 700, color: semanticToneHex("success").color, marginBottom: "4px" }}>Home Program</p>
-                            <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
+                            <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "var(--text-primary)" }}>
                                 {recs.home_program.map((r: string, i: number) => <li key={i}>{r}</li>)}
                             </ul>
                         </div>
@@ -345,7 +345,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     {recs.therapy_adjustments?.length > 0 && (
                         <div>
                             <p style={{ fontSize: "0.78rem", fontWeight: 700, color: semanticToneHex("danger").color, marginBottom: "4px" }}>Therapy Adjustments</p>
-                            <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "#1e293b" }}>
+                            <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.85rem", color: "var(--text-primary)" }}>
                                 {recs.therapy_adjustments.map((r: string, i: number) => <li key={i}>{r}</li>)}
                             </ul>
                         </div>
@@ -367,25 +367,25 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
             {/* Audit History Modal */}
             {showAuditModal && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => setShowAuditModal(false)}>
-                    <div style={{ background: "white", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "500px", position: "relative", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowAuditModal(false)} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#64748b" }}>×</button>
-                        <h2 style={{ margin: "0 0 1.5rem 0", fontSize: "1.25rem", color: "#0f172a", fontWeight: 800 }}>Document Audit History</h2>
+                    <div style={{ background: "var(--bg-secondary)", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "500px", position: "relative", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowAuditModal(false)} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--text-secondary)" }}>Ã—</button>
+                        <h2 style={{ margin: "0 0 1.5rem 0", fontSize: "1.25rem", color: "var(--text-primary)", fontWeight: 800 }}>Document Audit History</h2>
                         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxHeight: "60vh", overflowY: "auto", paddingRight: "0.5rem" }}>
                             {auditHistory.length === 0 ? (
-                                <p style={{ color: "#64748b", margin: 0, fontSize: "0.9rem" }}>No history found.</p>
+                                <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>No history found.</p>
                             ) : (
                                 auditHistory.map((item, idx) => (
                                     <div key={item.id} style={{ display: "flex", gap: "1rem", position: "relative" }}>
-                                        {idx !== auditHistory.length - 1 && <div style={{ position: "absolute", width: "2px", background: "#e2e8f0", top: "24px", bottom: "-16px", left: "11px" }} />}
+                                        {idx !== auditHistory.length - 1 && <div style={{ position: "absolute", width: "2px", background: "var(--border-light)", top: "24px", bottom: "-16px", left: "11px" }} />}
                                         <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: semanticToneHex("primary").bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
                                             <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: semanticToneHex("primary").color }} />
                                         </div>
                                         <div>
-                                            <p style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "#0f172a", fontWeight: 700 }}>
+                                            <p style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "var(--text-primary)", fontWeight: 700 }}>
                                                 {item.action === "GENERATED" ? "AI Generated Draft" : item.action === "EDITED_DRAFT" ? "Draft Saved" : "Document Finalized"}
                                             </p>
-                                            <p style={{ margin: "0 0 2px 0", fontSize: "0.8rem", color: "#475569" }}>By {item.edited_by}</p>
-                                            <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>{new Date(item.created_at).toLocaleString()}</p>
+                                            <p style={{ margin: "0 0 2px 0", fontSize: "0.8rem", color: "var(--text-secondary)" }}>By {item.edited_by}</p>
+                                            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>{new Date(item.created_at).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 ))
@@ -417,12 +417,12 @@ function MonthlyReportRedirect() {
         }
     }, [searchParams, router]);
 
-    return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
+    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Redirecting to workspaceâ€¦</div>;
 }
 
 export default function MonthlyReportPage() {
     return (
-        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading…</div>}>
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loadingâ€¦</div>}>
             <MonthlyReportRedirect />
         </Suspense>
     );

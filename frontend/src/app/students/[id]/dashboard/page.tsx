@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ export default function LegacyStudentDashboardRedirect() {
     }, [router, studentId]);
 
     return (
-        <div className="flex h-full min-h-[320px] items-center justify-center text-sm font-semibold text-slate-500">
+        <div className="flex h-full min-h-[320px] items-center justify-center text-sm font-semibold text-muted">
             Opening specialist assessment...
         </div>
     );

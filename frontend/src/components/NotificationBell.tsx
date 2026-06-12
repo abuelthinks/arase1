@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Bell, Check, CheckCheck, ClipboardList, FileText, UserPlus, Calendar, X, AlertCircle, Sparkles } from "lucide-react";
@@ -32,7 +32,7 @@ function normalizeNotificationLink(notif: Notification) {
     return notif.link;
 }
 
-/* ─── Type-based styling ──────────────────────────────────────────────────── */
+/* â”€â”€â”€ Type-based styling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 interface TypeStyle {
     icon: React.ReactNode;
@@ -111,7 +111,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-1.5 text-slate-500 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center cursor-pointer border-none bg-transparent"
+                className="relative p-1.5 text-muted hover:bg-subtle-soft rounded-full transition-colors flex items-center justify-center cursor-pointer border-none bg-transparent"
                 aria-label="Notifications"
             >
                 <Bell size={18} strokeWidth={1.6} />
@@ -123,11 +123,11 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
             </button>
 
             {isOpen && (
-                <div className={`absolute ${alignOffset} w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-[999] flex flex-col max-h-[85vh] origin-bottom-right ${
+                <div className={`absolute ${alignOffset} w-80 max-w-[calc(100vw-2rem)] bg-card rounded-xl shadow-lg border border-line overflow-hidden z-[999] flex flex-col max-h-[85vh] origin-bottom-right ${
                     direction === 'up' ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]'
                 }`}>
-                    <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
-                        <h3 className="font-bold text-slate-800 m-0">Notifications</h3>
+                    <div className="px-4 py-3 border-b border-line flex justify-between items-center bg-app/50 shrink-0">
+                        <h3 className="font-bold text-fg m-0">Notifications</h3>
                         {unreadCount > 0 && (
                             <button
                                 onClick={markAllAsRead}
@@ -141,7 +141,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                     
                     <div className="overflow-y-auto flex-1 min-h-[100px]">
                         {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-slate-500 text-sm">
+                            <div className="p-8 text-center text-muted text-sm">
                                 <Bell className="mx-auto mb-2 opacity-20" size={32} />
                                 No notifications yet
                             </div>
@@ -167,7 +167,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                     return (
                                         <div
                                             key={notif.id}
-                                            className={`p-3 transition-colors relative group ${notif.is_read ? 'bg-white hover:bg-slate-50' : 'bg-indigo-50/40 hover:bg-indigo-50/60'}`}
+                                            className={`p-3 transition-colors relative group ${notif.is_read ? 'bg-card hover:bg-app' : 'bg-indigo-50/40 hover:bg-indigo-50/60'}`}
                                         >
                                             {!notif.is_read && (
                                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r shadow-sm" />
@@ -183,7 +183,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                         <Link 
                                                             href={notificationLink}
                                                             onClick={() => handleNotificationClick(notif)}
-                                                            className="block text-slate-800 hover:text-indigo-600 focus:outline-none"
+                                                            className="block text-fg hover:text-indigo-600 focus:outline-none"
                                                         >
                                                             <p className={`text-sm m-0 leading-snug ${!notif.is_read ? 'font-semibold' : 'font-medium'}`}>
                                                                 {notif.title}
@@ -194,7 +194,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                             onClick={() => handleNotificationClick(notif)}
                                                             className="block cursor-pointer outline-none"
                                                         >
-                                                            <p className={`text-sm m-0 leading-snug ${!notif.is_read ? 'font-semibold' : 'font-medium text-slate-800'}`}>
+                                                            <p className={`text-sm m-0 leading-snug ${!notif.is_read ? 'font-semibold' : 'font-medium text-fg'}`}>
                                                                 {notif.title}
                                                             </p>
                                                         </div>
@@ -206,7 +206,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                             onClick={handleToggleExpand}
                                                             title={isExpanded ? "Click to collapse" : "Click to expand"}
                                                         >
-                                                            <p className={`text-xs text-slate-500 m-0 whitespace-pre-wrap ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                                                            <p className={`text-xs text-muted m-0 whitespace-pre-wrap ${!isExpanded ? 'line-clamp-2' : ''}`}>
                                                                 {notif.message}
                                                             </p>
                                                             {notif.message.length > 60 && (
@@ -219,12 +219,12 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
 
                                                     <div className="flex items-center gap-2 mt-1.5">
                                                         {notif.actor_name && (
-                                                            <span className="text-[10px] text-slate-400 font-medium">
+                                                            <span className="text-[10px] text-faint font-medium">
                                                                 by {notif.actor_name}
                                                             </span>
                                                         )}
-                                                        {notif.actor_name && <span className="text-[10px] text-slate-300">·</span>}
-                                                        <span className="text-[10px] text-slate-400 font-medium">
+                                                        {notif.actor_name && <span className="text-[10px] text-faint">Â·</span>}
+                                                        <span className="text-[10px] text-faint font-medium">
                                                             {timeAgo(notif.created_at)}
                                                         </span>
                                                     </div>
@@ -239,7 +239,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                                 e.stopPropagation();
                                                                 markAsRead(notif.id);
                                                             }}
-                                                            className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-100 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
+                                                            className="w-6 h-6 rounded-full flex items-center justify-center text-faint hover:text-indigo-600 hover:bg-indigo-100 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
                                                             title="Mark as read"
                                                         >
                                                             <Check size={13} strokeWidth={2.5} />
@@ -251,7 +251,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                             e.stopPropagation();
                                                             deleteNotification(notif.id);
                                                         }}
-                                                        className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
+                                                        className="w-6 h-6 rounded-full flex items-center justify-center text-faint hover:text-red-600 hover:bg-red-50 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
                                                         title="Delete"
                                                     >
                                                         <X size={13} strokeWidth={2.5} />

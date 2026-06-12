@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { Eye, Sun, Moon, ChevronDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
@@ -116,7 +116,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
           justifyContent: "center",
           gap: "5px",
           backgroundColor: "transparent",
-          color: "var(--text-secondary, #64748b)",
+          color: "var(--text-secondary, var(--text-secondary))",
           border: "none",
           borderRadius: "8px",
           padding: "6px 10px",
@@ -125,7 +125,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
           cursor: "pointer",
           transition: "all 0.15s ease",
         }}
-        className="hover:bg-slate-100"
+        className="hover:bg-subtle-soft"
         aria-label="Accessibility options"
         title="Accessibility options"
       >
@@ -144,14 +144,14 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
             backgroundColor: theme === "dark" ? "#161e2f" : "#ffffff",
             border: highContrast
               ? "2px solid #000000"
-              : `1px solid ${theme === "dark" ? "#2d3748" : "#e2e8f0"}`,
+              : `1px solid ${theme === "dark" ? "#2d3748" : "var(--border-light)"}`,
             borderRadius: "12px",
             padding: "14px",
             boxShadow: "0 12px 28px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0,0,0,0.06)",
             display: "flex",
             flexDirection: "column",
             gap: "12px",
-            color: theme === "dark" ? "#f1f5f9" : "#0f172a",
+            color: theme === "dark" ? "var(--bg-neutral-light)" : "var(--text-primary)",
           }}
         >
           <p
@@ -161,7 +161,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
               fontWeight: 800,
               textTransform: "uppercase",
               letterSpacing: "0.5px",
-              color: theme === "dark" ? "#cbd5e1" : "#64748b",
+              color: theme === "dark" ? "var(--text-muted)" : "var(--text-secondary)",
             }}
           >
             Accessibility Options
@@ -192,7 +192,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                     : "transparent",
                   color: theme === "light"
                     ? "var(--accent-primary, #3b82f6)"
-                    : (theme === "dark" ? "#f1f5f9" : "#64748b"),
+                    : (theme === "dark" ? "var(--bg-neutral-light)" : "var(--text-secondary)"),
                 }}
               >
                 <Sun size={14} />
@@ -213,13 +213,13 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                   cursor: "pointer",
                   border: theme === "dark"
                     ? "2px solid var(--accent-primary, #3b82f6)"
-                    : "1px solid #e2e8f0",
+                    : "1px solid var(--border-light)",
                   backgroundColor: theme === "dark"
                     ? "#2d3748"
                     : "transparent",
                   color: theme === "dark"
                     ? "#ffffff"
-                    : "#64748b",
+                    : "var(--text-secondary)",
                 }}
               >
                 <Moon size={14} />
@@ -248,13 +248,13 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                   whiteSpace: "nowrap",
                   border: placement === "top-right"
                     ? "2px solid var(--accent-primary, #3b82f6)"
-                    : `1px solid ${theme === "dark" ? "#2d3748" : "#cbd5e1"}`,
+                    : `1px solid ${theme === "dark" ? "#2d3748" : "var(--text-muted)"}`,
                   backgroundColor: placement === "top-right"
                     ? (theme === "dark" ? "#1e3a8a" : "#eff6ff")
                     : "transparent",
                   color: placement === "top-right"
                     ? (theme === "dark" ? "#60a5fa" : "var(--accent-primary, #3b82f6)")
-                    : (theme === "dark" ? "#f1f5f9" : "#64748b"),
+                    : (theme === "dark" ? "var(--bg-neutral-light)" : "var(--text-secondary)"),
                 }}
               >
                 <ArrowUpRight size={14} />
@@ -276,13 +276,13 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                   whiteSpace: "nowrap",
                   border: placement === "bottom-right"
                     ? "2px solid var(--accent-primary, #3b82f6)"
-                    : `1px solid ${theme === "dark" ? "#2d3748" : "#cbd5e1"}`,
+                    : `1px solid ${theme === "dark" ? "#2d3748" : "var(--text-muted)"}`,
                   backgroundColor: placement === "bottom-right"
                     ? (theme === "dark" ? "#1e3a8a" : "#eff6ff")
                     : "transparent",
                   color: placement === "bottom-right"
                     ? (theme === "dark" ? "#60a5fa" : "var(--accent-primary, #3b82f6)")
-                    : (theme === "dark" ? "#f1f5f9" : "#64748b"),
+                    : (theme === "dark" ? "var(--bg-neutral-light)" : "var(--text-secondary)"),
                 }}
               >
                 <ArrowDownRight size={14} />
@@ -304,9 +304,9 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                 cursor: "pointer",
                 border: highContrast
                   ? "2px solid #ef4444"
-                  : `1px solid ${theme === "dark" ? "#2d3748" : "#cbd5e1"}`,
+                  : `1px solid ${theme === "dark" ? "#2d3748" : "var(--text-muted)"}`,
                 backgroundColor: highContrast ? "#fee2e2" : "transparent",
-                color: highContrast ? "#ef4444" : (theme === "dark" ? "#cbd5e1" : "#475569"),
+                color: highContrast ? "#ef4444" : (theme === "dark" ? "var(--text-muted)" : "var(--text-secondary)"),
               }}
             >
               {highContrast ? "Enabled" : "Disabled"}
@@ -326,7 +326,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                   fontWeight: 700,
                   borderRadius: "6px",
                   cursor: "pointer",
-                  border: fontScale === "standard" ? "1.5px solid var(--accent-primary, #3b82f6)" : "1px solid #cbd5e1",
+                  border: fontScale === "standard" ? "1.5px solid var(--accent-primary, #3b82f6)" : "1px solid var(--text-muted)",
                   backgroundColor: fontScale === "standard" ? "#eff6ff" : "transparent",
                   color: fontScale === "standard" ? "var(--accent-primary, #3b82f6)" : "inherit",
                 }}
@@ -342,7 +342,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                   fontWeight: 700,
                   borderRadius: "6px",
                   cursor: "pointer",
-                  border: fontScale === "large" ? "1.5px solid var(--accent-primary, #3b82f6)" : "1px solid #cbd5e1",
+                  border: fontScale === "large" ? "1.5px solid var(--accent-primary, #3b82f6)" : "1px solid var(--text-muted)",
                   backgroundColor: fontScale === "large" ? "#eff6ff" : "transparent",
                   color: fontScale === "large" ? "var(--accent-primary, #3b82f6)" : "inherit",
                 }}
@@ -358,7 +358,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                   fontWeight: 700,
                   borderRadius: "6px",
                   cursor: "pointer",
-                  border: fontScale === "xlarge" ? "1.5px solid var(--accent-primary, #3b82f6)" : "1px solid #cbd5e1",
+                  border: fontScale === "xlarge" ? "1.5px solid var(--accent-primary, #3b82f6)" : "1px solid var(--text-muted)",
                   backgroundColor: fontScale === "xlarge" ? "#eff6ff" : "transparent",
                   color: fontScale === "xlarge" ? "var(--accent-primary, #3b82f6)" : "inherit",
                 }}

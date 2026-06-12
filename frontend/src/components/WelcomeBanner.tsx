@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -40,30 +40,30 @@ const toneStyles = {
         buttonClass: "bg-indigo-600 hover:bg-indigo-700 text-white",
     },
     waiting: {
-        bg: "linear-gradient(135deg, #fffbeb 0%, #f8fafc 100%)",
+        bg: "linear-gradient(135deg, #fffbeb 0%, var(--bg-primary) 100%)",
         border: "#fde68a",
         labelBg: "#fef3c7",
         labelText: "#92400e",
         buttonClass: "bg-amber-600 hover:bg-amber-700 text-white",
     },
     ready: {
-        bg: "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)",
+        bg: "linear-gradient(135deg, #f0fdf4 0%, var(--bg-primary) 100%)",
         border: "#bbf7d0",
         labelBg: "#dcfce7",
         labelText: "#166534",
         buttonClass: "bg-emerald-600 hover:bg-emerald-700 text-white",
     },
     neutral: {
-        bg: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)",
-        border: "#e2e8f0",
-        labelBg: "#f1f5f9",
-        labelText: "#475569",
+        bg: "linear-gradient(135deg, var(--bg-primary) 0%, #eef2ff 100%)",
+        border: "var(--border-light)",
+        labelBg: "var(--bg-neutral-light)",
+        labelText: "var(--text-secondary)",
         buttonClass: "bg-slate-600 hover:bg-slate-700 text-white",
     },
 };
 
 function getWorkspaceHref(studentId: number, tab: string) {
-    // Parents use a unified workspace — no workspace/tab params needed
+    // Parents use a unified workspace â€” no workspace/tab params needed
     if (tab === "parent_tracker") {
         return `/workspace?studentId=${studentId}`;
     }
@@ -86,10 +86,10 @@ function getBannerContent(student: Student): BannerContent | null {
             tone: "action",
             label: "Your input is needed",
             title: `Tell us about ${firstName}`,
-            body: "Share your insights about your child — their strengths, daily routines, and any concerns. This helps our team understand how to best support them.",
+            body: "Share your insights about your child â€” their strengths, daily routines, and any concerns. This helps our team understand how to best support them.",
             href: `/parent-onboarding?studentId=${student.id}`,
             cta: isDraft ? "Continue Assessment" : "Get Started",
-            note: "Usually takes about 10–15 minutes.",
+            note: "Usually takes about 10â€“15 minutes.",
         };
     }
 
@@ -101,7 +101,7 @@ function getBannerContent(student: Student): BannerContent | null {
             tone: "action",
             label: "Monthly update due",
             title: `How is ${firstName} doing at home?`,
-            body: `Share your observations for ${cycleLabel} — what's going well, any changes, and milestones you've noticed. This helps the team prepare the monthly progress report.`,
+            body: `Share your observations for ${cycleLabel} â€” what's going well, any changes, and milestones you've noticed. This helps the team prepare the monthly progress report.`,
             href: getWorkspaceHref(student.id, "parent_tracker"),
             cta: "Share Update",
             note: "One update per month keeps the team in sync.",
@@ -128,7 +128,7 @@ function getBannerContent(student: Student): BannerContent | null {
             tone: "waiting",
             label: "Evaluation in progress",
             title: `${firstName}'s evaluation is underway`,
-            body: "Our specialist team is working on the assessment. No action is needed from you right now — we'll let you know when there's an update.",
+            body: "Our specialist team is working on the assessment. No action is needed from you right now â€” we'll let you know when there's an update.",
             href: `/students/${student.id}`,
             cta: "View Details",
         };
@@ -156,7 +156,7 @@ function getBannerContent(student: Student): BannerContent | null {
             title: `${firstName} is on track`,
             body: student.latest_final_monthly_report_id
                 ? "Your monthly update is submitted. You can review finalized reports, goals, and progress from the profile."
-                : "Your monthly update is submitted. The team is preparing the progress report — check back soon!",
+                : "Your monthly update is submitted. The team is preparing the progress report â€” check back soon!",
             href: `/students/${student.id}`,
             cta: "View Progress",
         };
@@ -241,7 +241,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
             <button
                 type="button"
                 onClick={() => setDismissed(true)}
-                className="absolute right-4 top-4 border-none bg-transparent p-1 text-slate-400 transition-colors hover:text-slate-700"
+                className="absolute right-4 top-4 border-none bg-transparent p-1 text-faint transition-colors hover:text-fg"
                 aria-label="Dismiss banner"
                 title="Dismiss banner"
             >
@@ -258,14 +258,14 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
                     >
                         {content.label}
                     </div>
-                    <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
+                    <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-fg md:text-3xl">
                         {content.title}
                     </h2>
-                    <p className="m-0 text-base font-medium leading-relaxed text-slate-600 md:text-lg">
+                    <p className="m-0 text-base font-medium leading-relaxed text-muted md:text-lg">
                         {content.body}
                     </p>
                     {content.note && (
-                        <p className="mt-3 text-sm font-semibold text-slate-500">
+                        <p className="mt-3 text-sm font-semibold text-muted">
                             {content.note}
                         </p>
                     )}
@@ -281,7 +281,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                     </Link>
-                    <span className="text-center text-xs font-bold uppercase tracking-wide text-slate-400 md:text-right">
+                    <span className="text-center text-xs font-bold uppercase tracking-wide text-faint md:text-right">
                         {fullName}
                     </span>
                 </div>

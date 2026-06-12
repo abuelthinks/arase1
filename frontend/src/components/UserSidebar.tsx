@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -87,7 +87,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className={`hidden md:flex flex-col bg-white border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[180px] p-4'}`}>
+            <aside className={`hidden md:flex flex-col bg-card border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[180px] p-4'}`}>
                 {/* Logo / Branding */}
                 <div
                     className={`cursor-pointer ${collapsed ? 'mb-4 px-0 flex items-center justify-center' : 'mb-8 px-1'}`}
@@ -115,7 +115,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                             type="button"
                             onClick={() => !isProgressLocked && openMonthlyProgress()}
                             disabled={isProgressLocked}
-                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProgressLocked ? 'text-slate-400 cursor-not-allowed opacity-70' : isParentMonthlyProgress ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`}
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProgressLocked ? 'text-faint cursor-not-allowed opacity-70' : isParentMonthlyProgress ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`}
                             title={isProgressLocked ? "Available after initial assessment" : "Progress"}
                         >
                             <LayoutTemplate size={18} />
@@ -129,13 +129,13 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                     )}
 
                     {(isTeacher || isSpecialist) && (
-                        <Link href="/workspace" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isWorkspace ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} aria-current={isWorkspace ? "page" : undefined} title="Workspace">
+                        <Link href="/workspace" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isWorkspace ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} aria-current={isWorkspace ? "page" : undefined} title="Workspace">
                             <LayoutTemplate size={18} />
                             {!collapsed && <span className="truncate">Workspace</span>}
                         </Link>
                     )}
 
-                    <Link href="/dashboard" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isMyChildren ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} aria-current={isMyChildren ? "page" : undefined} title={isTeacher || isSpecialist ? "My Students" : "My Children"}>
+                    <Link href="/dashboard" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isMyChildren ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} aria-current={isMyChildren ? "page" : undefined} title={isTeacher || isSpecialist ? "My Students" : "My Children"}>
                         <BookOpen size={18} />
                         {!collapsed && <span className="truncate">{isTeacher || isSpecialist ? "My Students" : "My Children"}</span>}
                     </Link>
@@ -145,11 +145,11 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                             Account
                         </div>
                     )}
-                    {collapsed && <div className="my-2 h-px bg-slate-200" />}
+                    {collapsed && <div className="my-2 h-px bg-subtle-soft" />}
 
                     {user && (
                         isProgressLocked ? (
-                            <button disabled className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 text-slate-400 cursor-not-allowed opacity-70 ${collapsed ? 'justify-center px-0' : ''}`} title="Available after initial assessment">
+                            <button disabled className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 text-faint cursor-not-allowed opacity-70 ${collapsed ? 'justify-center px-0' : ''}`} title="Available after initial assessment">
                                 <User size={18} />
                                 {!collapsed && (
                                     <div className="flex items-center justify-between w-full">
@@ -159,7 +159,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                                 )}
                             </button>
                         ) : (
-                            <Link href={`/users/${user.user_id}`} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="My Profile">
+                            <Link href={`/users/${user.user_id}`} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="My Profile">
                                 <User size={18} />
                                 {!collapsed && <span className="truncate">My Profile</span>}
                             </Link>
@@ -172,7 +172,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                     <button
                         onClick={logout}
                         title="Log Out"
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         <LogOut size={18} />
                         {!collapsed && <span className="truncate">Log Out</span>}
@@ -180,7 +180,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                     <button
                         onClick={onToggle}
                         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-faint hover:text-fg hover:bg-subtle-soft transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
                         {!collapsed && <span className="truncate">Collapse</span>}
@@ -189,18 +189,18 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+            <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-card border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
                 {isParent && (
                     <button
                         type="button"
                         onClick={() => !isProgressLocked && openMonthlyProgress()}
                         disabled={isProgressLocked}
-                        className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProgressLocked ? "text-slate-400 opacity-60 cursor-not-allowed" : isParentMonthlyProgress ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}
+                        className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${isProgressLocked ? "text-faint opacity-60 cursor-not-allowed" : isParentMonthlyProgress ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}
                     >
                         <div className="relative">
                             <LayoutTemplate size={20} className={isParentMonthlyProgress && !isProgressLocked ? "stroke-[2.5px]" : ""} />
                             {isProgressLocked && (
-                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-[1px]">
+                                <div className="absolute -bottom-1 -right-1 bg-card rounded-full p-[1px]">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                                 </div>
                             )}
@@ -221,10 +221,10 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                 {user && (
                         <>
                             {isProgressLocked ? (
-                                <button disabled className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 text-slate-400 opacity-60 cursor-not-allowed`}>
+                                <button disabled className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 text-faint opacity-60 cursor-not-allowed`}>
                                     <div className="relative">
                                         <User size={20} />
-                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-[1px]">
+                                        <div className="absolute -bottom-1 -right-1 bg-card rounded-full p-[1px]">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                                         </div>
                                     </div>

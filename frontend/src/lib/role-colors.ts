@@ -27,14 +27,17 @@ export const SEMANTIC_TONE_HEX: Record<SemanticTone, { bg: string; color: string
     neutral: { bg: "#f1f5f9", color: "#475569", border: "#e2e8f0" },
 };
 
+// Token-backed Tailwind classes (see tailwind.config.js). These swap to the
+// correct values in dark mode automatically because the underlying CSS
+// variables are redefined under .dark-theme.
 export const SEMANTIC_TONE_CLASS: Record<SemanticTone, string> = {
-    primary: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    info: "bg-blue-50 text-blue-700 border-blue-200",
-    success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    warning: "bg-amber-50 text-amber-700 border-amber-200",
-    danger: "bg-red-50 text-red-700 border-red-200",
-    attention: "bg-pink-50 text-pink-700 border-pink-200",
-    neutral: "bg-slate-50 text-slate-600 border-slate-200",
+    primary: "bg-accent-soft text-accent-text border-accent-border",
+    info: "bg-info-soft text-info border-info-line",
+    success: "bg-success-soft text-success border-success-line",
+    warning: "bg-warning-soft text-warning border-warning-line",
+    danger: "bg-danger-soft text-danger border-danger-line",
+    attention: "bg-attention-soft text-attention border-attention-line",
+    neutral: "bg-subtle-soft text-subtle border-subtle-line",
 };
 
 export function semanticToneHex(tone: SemanticTone): { bg: string; color: string; border: string } {
@@ -60,15 +63,17 @@ export function roleColorHex(role: RoleKey): { bg: string; color: string } {
     return ROLE_COLOR_HEX[role?.toUpperCase()] ?? { bg: "#f1f5f9", color: "#475569" };
 }
 
+// Mapped onto the shared semantic tones so role badges are dark-mode-correct
+// and consistent with status badges.
 export const ROLE_COLOR_CLASS: Record<string, string> = {
-    ADMIN: "bg-violet-100 text-violet-800 border-violet-200",
-    TEACHER: "bg-blue-100 text-blue-800 border-blue-200",
-    SPECIALIST: "bg-emerald-100 text-emerald-800 border-emerald-200",
-    PARENT: "bg-amber-100 text-amber-800 border-amber-200",
+    ADMIN: SEMANTIC_TONE_CLASS.primary,
+    TEACHER: SEMANTIC_TONE_CLASS.info,
+    SPECIALIST: SEMANTIC_TONE_CLASS.success,
+    PARENT: SEMANTIC_TONE_CLASS.warning,
 };
 
 export function roleColorClass(role: RoleKey): string {
-    return ROLE_COLOR_CLASS[role?.toUpperCase()] ?? "bg-slate-100 text-slate-700 border-slate-200";
+    return ROLE_COLOR_CLASS[role?.toUpperCase()] ?? SEMANTIC_TONE_CLASS.neutral;
 }
 
 export const STATUS_COLOR_HEX: Record<string, { bg: string; color: string }> = {
@@ -116,14 +121,17 @@ export function statusColorClass(status: StatusKey): string {
     return semanticToneClass(statusTone(status));
 }
 
+// Theme-agnostic hover: subtly intensify the soft background. Works in both
+// light and dark mode without hardcoded palette colors.
+const TONE_HOVER = "hover:brightness-95 dark:hover:brightness-125";
 export const SEMANTIC_TONE_HOVER_CLASS: Record<SemanticTone, string> = {
-    primary: "hover:bg-indigo-100 hover:border-indigo-300",
-    info: "hover:bg-blue-100 hover:border-blue-300",
-    success: "hover:bg-emerald-100 hover:border-emerald-300",
-    warning: "hover:bg-amber-100 hover:border-amber-300",
-    danger: "hover:bg-red-100 hover:border-red-300",
-    attention: "hover:bg-pink-100 hover:border-pink-300",
-    neutral: "hover:bg-slate-100 hover:border-slate-300",
+    primary: TONE_HOVER,
+    info: TONE_HOVER,
+    success: TONE_HOVER,
+    warning: TONE_HOVER,
+    danger: TONE_HOVER,
+    attention: TONE_HOVER,
+    neutral: TONE_HOVER,
 };
 
 export function statusActionPillClass(status: StatusKey): string {
@@ -131,8 +139,8 @@ export function statusActionPillClass(status: StatusKey): string {
     return `${statusColorClass(status)} ${SEMANTIC_TONE_HOVER_CLASS[tone]}`;
 }
 
-export const STUDENT_WAITING_ACTION_CLASS = "bg-slate-50 text-slate-500 border-slate-100";
-export const STUDENT_WAITING_ACTION_HOVER_CLASS = "hover:bg-slate-100 hover:border-slate-200";
+export const STUDENT_WAITING_ACTION_CLASS = "bg-subtle-soft text-faint border-subtle-line";
+export const STUDENT_WAITING_ACTION_HOVER_CLASS = "hover:brightness-95 dark:hover:brightness-125";
 
 export function studentRowActionPillClass(status: StatusKey, tone?: string | null): string {
     if ((tone || "").toLowerCase() === "waiting") {

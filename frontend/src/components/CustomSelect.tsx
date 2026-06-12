@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
@@ -37,18 +37,18 @@ export default function CustomSelect({ value, onChange, options, disabled }: Cus
                 type="button"
                 disabled={disabled}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsOpen(!isOpen); }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 border ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-300'} rounded-xl text-slate-800 text-sm font-medium transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-indigo-400'}`}
+                className={`w-full flex items-center justify-between px-3 py-2.5 bg-app border ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-line'} rounded-xl text-fg text-sm font-medium transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-indigo-400'}`}
                 style={{ height: "42px" }}
             >
                 <span>{selectedOption?.label}</span>
                 <ChevronDown 
-                    className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180 text-indigo-500' : ''}`}
+                    className={`w-4 h-4 text-muted transition-transform duration-200 ${isOpen ? 'rotate-180 text-indigo-500' : ''}`}
                 />
             </button>
 
             {isOpen && (
                 <div 
-                    className="absolute z-[1000] w-full mt-2 bg-white border border-indigo-200 rounded-xl shadow-[0_10px_25px_-5px_rgba(79,70,229,0.15)] overflow-hidden"
+                    className="absolute z-[1000] w-full mt-2 bg-card border border-indigo-200 rounded-xl shadow-[0_10px_25px_-5px_rgba(79,70,229,0.15)] overflow-hidden"
                     style={{ transformOrigin: "top" }}
                 >
                     {options.map((option, index) => {
@@ -79,7 +79,7 @@ export default function CustomSelect({ value, onChange, options, disabled }: Cus
                                     onChange(option.value);
                                     setIsOpen(false);
                                 }}
-                                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors border-y ${isSelected ? `bg-indigo-50 text-indigo-700 font-bold ${borderClasses}` : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 border-transparent'}`}
+                                className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors border-y ${isSelected ? `bg-indigo-50 text-indigo-700 font-bold ${borderClasses}` : 'text-fg hover:bg-app hover:text-fg border-transparent'}`}
                             >
                                 <span>{option.label}</span>
                                 {isSelected && <Check className="w-4 h-4 text-indigo-600" />}

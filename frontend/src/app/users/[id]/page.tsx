@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -58,7 +58,7 @@ interface UserData {
 }
 
 const inputCls =
-    "w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition-colors hover:bg-white focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/15";
+    "w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg placeholder:text-faint transition-colors hover:bg-card focus:border-indigo-400 focus:bg-card focus:outline-none focus:ring-4 focus:ring-indigo-500/15";
 
 const profileCache = new Map<string, UserData>();
 
@@ -92,7 +92,7 @@ function getRoleSummary(role: string): string {
 
 function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
     return (
-        <section className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-7 ${className}`}>
+        <section className={`rounded-2xl border border-line bg-card p-6 shadow-sm md:p-7 ${className}`}>
             {children}
         </section>
     );
@@ -110,8 +110,8 @@ function SectionHeader({
     return (
         <div className="mb-5 flex flex-col gap-3 border-b border-indigo-100/60 pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-                <h2 className="m-0 text-lg font-extrabold text-slate-900">{title}</h2>
-                {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+                <h2 className="m-0 text-lg font-extrabold text-fg">{title}</h2>
+                {description && <p className="mt-1 text-sm text-muted">{description}</p>}
             </div>
             {action && <div className="shrink-0">{action}</div>}
         </div>
@@ -185,7 +185,7 @@ export default function UserProfile() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center gap-2 p-12 text-sm text-slate-500">
+            <div className="flex items-center justify-center gap-2 p-12 text-sm text-muted">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 Loading profile...
             </div>
@@ -197,7 +197,7 @@ export default function UserProfile() {
     }
 
     if (!user) {
-        return <div className="p-12 text-center text-sm text-slate-500">User not found.</div>;
+        return <div className="p-12 text-center text-sm text-muted">User not found.</div>;
     }
 
     const displayName = user.first_name || user.last_name
@@ -256,21 +256,21 @@ export default function UserProfile() {
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 md:px-0">
             {viewerIsParent && !hasSeenProfileExplainer && (
                 <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
+                    <div className="bg-card rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
                             <div className="p-8 text-center relative">
-                                <div className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors p-1" onClick={() => { setHasSeenProfileExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-profile-explainer", "true"); }}>
+                                <div className="absolute top-4 right-4 text-faint hover:text-muted cursor-pointer transition-colors p-1" onClick={() => { setHasSeenProfileExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-profile-explainer", "true"); }}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </div>
                                 
                                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-indigo-100">
                                     <User className="w-6 h-6 text-indigo-600" strokeWidth={2} />
                                 </div>
-                                <h2 className="text-xl font-extrabold text-slate-900 mb-4 tracking-tight">Welcome to your Profile!</h2>
+                                <h2 className="text-xl font-extrabold text-fg mb-4 tracking-tight">Welcome to your Profile!</h2>
                                 
-                                <p className="text-slate-600 text-[15px] leading-relaxed mb-8">
+                                <p className="text-muted text-[15px] leading-relaxed mb-8">
                                     This is where you manage your account settings, notification preferences, and contact information. 
                                     <br/><br/>
-                                    <strong className="text-slate-800 font-bold">Keeping your details up to date ensures you never miss an important update regarding your child's progress or upcoming assessments.</strong>
+                                    <strong className="text-fg font-bold">Keeping your details up to date ensures you never miss an important update regarding your child's progress or upcoming assessments.</strong>
                                 </p>
                                 
                                 <button
@@ -294,7 +294,7 @@ export default function UserProfile() {
                     <button
                         type="button"
                         onClick={() => router.back()}
-                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted transition-colors hover:bg-app"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                         Back
@@ -303,7 +303,7 @@ export default function UserProfile() {
                         <div className="flex flex-wrap gap-2">
                             <Link
                                 href={`/users/${user.id}/activity`}
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 no-underline transition-colors hover:bg-slate-50"
+                                className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-fg no-underline transition-colors hover:bg-app"
                             >
                                 <ActivityIcon className="h-3.5 w-3.5" aria-hidden="true" />
                                 View Activity
@@ -311,7 +311,7 @@ export default function UserProfile() {
                             {canViewPrivateContact && user.email && (
                                 <a
                                     href={`mailto:${user.email}`}
-                                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 no-underline transition-colors hover:bg-slate-50"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-fg no-underline transition-colors hover:bg-app"
                                 >
                                     <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                                     Email User
@@ -327,25 +327,25 @@ export default function UserProfile() {
                     </div>
                     <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-3">
-                            <h1 className="m-0 text-2xl font-extrabold leading-tight text-slate-900">
+                            <h1 className="m-0 text-2xl font-extrabold leading-tight text-fg">
                                 {displayName}
                             </h1>
                             <span className={`rounded-full border px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide ${semanticToneClass("primary")}`}>
                                 {role}
                             </span>
                         </div>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                        <p className="mt-2 text-sm leading-relaxed text-muted">
                             {getRoleSummary(role)}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                             {canViewPrivateContact && user.email && (
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-app px-3 py-1 text-xs font-semibold text-muted">
                                     <Mail className="h-3 w-3" aria-hidden="true" />
                                     {user.email}
                                 </span>
                             )}
                             {canViewPrivateContact && user.phone_number && (
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-app px-3 py-1 text-xs font-semibold text-muted">
                                     <PhoneCall className="h-3 w-3" aria-hidden="true" />
                                     {user.phone_number}
                                 </span>
@@ -367,12 +367,12 @@ export default function UserProfile() {
             {statCards.length > 0 && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {statCards.map(card => (
-                        <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div key={card.label} className="rounded-2xl border border-line bg-card p-5 shadow-sm">
                             <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border text-lg font-extrabold ${semanticToneClass(card.tone)}`}>
                                 {card.value}
                             </div>
-                            <p className="m-0 text-xs font-bold uppercase tracking-wide text-slate-500">{card.label}</p>
-                            <p className="mt-1 text-sm text-slate-500">{card.note}</p>
+                            <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">{card.label}</p>
+                            <p className="mt-1 text-sm text-muted">{card.note}</p>
                         </div>
                     ))}
                 </div>
@@ -408,8 +408,8 @@ export default function UserProfile() {
                                 const Icon = item.icon;
                                 return (
                                     <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5">
-                                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500">
-                                            {Icon && <Icon className="h-4 w-4 text-slate-400" aria-hidden="true" />}
+                                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-muted">
+                                            {Icon && <Icon className="h-4 w-4 text-faint" aria-hidden="true" />}
                                             {item.label}
                                         </span>
                                         {item.href ? (
@@ -417,7 +417,7 @@ export default function UserProfile() {
                                                 {item.value}
                                             </a>
                                         ) : (
-                                            <span className="text-right text-sm font-bold text-slate-900">{item.value}</span>
+                                            <span className="text-right text-sm font-bold text-fg">{item.value}</span>
                                         )}
                                     </div>
                                 );
@@ -433,13 +433,13 @@ export default function UserProfile() {
                             />
                             <div className="flex flex-col gap-3">
                                 {canViewPrivateContact && (
-                                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                                        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                                    <div className="rounded-2xl border border-line bg-app/70 p-4">
+                                        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
                                             <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" />
                                             Phone Verification
                                         </p>
                                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                                            <span className="text-sm font-bold text-slate-900">
+                                            <span className="text-sm font-bold text-fg">
                                                 {user.phone_number || "No phone number on file"}
                                             </span>
                                             <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${semanticToneClass(user.is_phone_verified ? "success" : "warning")}`}>
@@ -449,8 +449,8 @@ export default function UserProfile() {
                                     </div>
                                 )}
 
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                                    <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                                <div className="rounded-2xl border border-line bg-app/70 p-4">
+                                    <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
                                         <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                                         Area of Practice
                                     </p>
@@ -466,14 +466,14 @@ export default function UserProfile() {
                                                 {user.specialty}
                                             </span>
                                         ) : (
-                                            <span className="text-sm italic text-slate-400">Not configured yet</span>
+                                            <span className="text-sm italic text-faint">Not configured yet</span>
                                         )}
                                     </div>
                                 </div>
 
                                 {role === "SPECIALIST" && (
-                                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                                        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                                    <div className="rounded-2xl border border-line bg-app/70 p-4">
+                                        <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
                                             <Languages className="h-3.5 w-3.5" aria-hidden="true" />
                                             Session Languages
                                         </p>
@@ -485,7 +485,7 @@ export default function UserProfile() {
                                                     </span>
                                                 ))
                                             ) : (
-                                                <span className="text-sm italic text-slate-400">Not configured yet</span>
+                                                <span className="text-sm italic text-faint">Not configured yet</span>
                                             )}
                                         </div>
                                     </div>
@@ -508,7 +508,7 @@ export default function UserProfile() {
                                             setLanguages(initialLanguages(user));
                                             setLanguageOther("");
                                         }}
-                                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                        className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-fg transition-colors hover:bg-app"
                                     >
                                         {isEditingLanguages ? "Close" : "Edit"}
                                     </button>
@@ -533,7 +533,7 @@ export default function UserProfile() {
                                                     aria-pressed={checked}
                                                     className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
                                                         ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
-                                                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+                                                        : "border-line bg-card text-muted hover:border-line hover:bg-app hover:shadow-sm"
                                                         }`}
                                                 >
                                                     {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
@@ -558,7 +558,7 @@ export default function UserProfile() {
                                                 setLanguageOther("");
                                             }}
                                             disabled={!languageOther.trim()}
-                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-card px-4 py-2 text-sm font-bold text-fg transition-colors hover:bg-app disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             <Plus className="h-4 w-4" aria-hidden="true" />
                                             Add
@@ -570,13 +570,13 @@ export default function UserProfile() {
                                             {languages
                                                 .filter(l => !knownLanguageSet.has(l.toLowerCase()))
                                                 .map(language => (
-                                                    <span key={language} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1 text-xs font-semibold text-slate-700">
+                                                    <span key={language} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-app py-1 pl-3 pr-1 text-xs font-semibold text-fg">
                                                         {language}
                                                         <button
                                                             type="button"
                                                             onClick={() => setLanguages(prev => prev.filter(l => l !== language))}
                                                             aria-label={`Remove ${language}`}
-                                                            className="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                                                            className="flex h-5 w-5 items-center justify-center rounded-full text-faint hover:bg-subtle-soft hover:text-fg"
                                                         >
                                                             <X className="h-3 w-3" aria-hidden="true" />
                                                         </button>
@@ -629,7 +629,7 @@ export default function UserProfile() {
                                                 setLanguageOther("");
                                                 setLanguageError("");
                                             }}
-                                            className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                            className="flex-1 rounded-xl border border-line px-5 py-3 text-sm font-bold text-fg transition-colors hover:bg-app"
                                         >
                                             Cancel
                                         </button>
@@ -644,7 +644,7 @@ export default function UserProfile() {
                                             </span>
                                         ))
                                     ) : (
-                                        <span className="text-sm italic text-slate-400">No session languages configured yet.</span>
+                                        <span className="text-sm italic text-faint">No session languages configured yet.</span>
                                     )}
                                 </div>
                             )}
@@ -664,7 +664,7 @@ export default function UserProfile() {
                                             setIsEditingSpecialty(current => !current);
                                             setSpecialties(initialSpecialties(user));
                                         }}
-                                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                        className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-fg transition-colors hover:bg-app"
                                     >
                                         {isEditingSpecialty ? "Close" : "Edit"}
                                     </button>
@@ -685,7 +685,7 @@ export default function UserProfile() {
                                                     aria-pressed={checked}
                                                     className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
                                                         ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
-                                                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+                                                        : "border-line bg-card text-muted hover:border-line hover:bg-app hover:shadow-sm"
                                                         }`}
                                                 >
                                                     {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
@@ -737,7 +737,7 @@ export default function UserProfile() {
                                                 setSpecialties(initialSpecialties(user));
                                                 setSpecialtyError("");
                                             }}
-                                            className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                            className="flex-1 rounded-xl border border-line px-5 py-3 text-sm font-bold text-fg transition-colors hover:bg-app"
                                         >
                                             Cancel
                                         </button>
@@ -752,7 +752,7 @@ export default function UserProfile() {
                                             </span>
                                         ))
                                     ) : (
-                                        <span className="text-sm italic text-slate-400">No specialty configured yet.</span>
+                                        <span className="text-sm italic text-faint">No specialty configured yet.</span>
                                     )}
                                 </div>
                             )}
@@ -767,21 +767,21 @@ export default function UserProfile() {
                                 title={isParent ? "Children" : "Assigned Students"}
                                 description={isParent ? "Children connected to this account." : "Students this user is currently responsible for supporting."}
                                 action={!isParent ? (
-                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
-                                        {activeCount} Active · {pendingCount} Pending · {assessedCount} Assessed
+                                    <span className="inline-flex rounded-full border border-line bg-app px-3 py-1 text-xs font-bold text-muted">
+                                        {activeCount} Active Â· {pendingCount} Pending Â· {assessedCount} Assessed
                                     </span>
                                 ) : undefined}
                             />
 
                             {studentCount === 0 ? (
-                                <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 py-10 text-center">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                                <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-app/40 py-10 text-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card text-faint shadow-sm">
                                         <Users className="h-5 w-5" aria-hidden="true" />
                                     </div>
-                                    <p className="m-0 text-sm font-bold text-slate-700">
+                                    <p className="m-0 text-sm font-bold text-fg">
                                         {isParent ? "No children linked yet" : "No students assigned yet"}
                                     </p>
-                                    <p className="m-0 max-w-sm text-xs text-slate-500">
+                                    <p className="m-0 max-w-sm text-xs text-muted">
                                         {isParent
                                             ? "Once your child is added by the administrator, their profile will appear here."
                                             : "This profile will become more useful once students are linked to the account."}
@@ -795,13 +795,13 @@ export default function UserProfile() {
                                             <Link
                                                 key={student.id}
                                                 href={`/students/${student.id}`}
-                                                className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                                className="group flex items-center justify-between gap-3 rounded-xl border border-line bg-card p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
                                             >
                                                 <div>
-                                                    <p className="m-0 text-sm font-bold text-slate-900 group-hover:text-indigo-700">
+                                                    <p className="m-0 text-sm font-bold text-fg group-hover:text-indigo-700">
                                                         {student.first_name} {student.last_name}
                                                     </p>
-                                                    <p className="m-0 text-xs text-slate-500">Grade: {student.grade || "TBD"}</p>
+                                                    <p className="m-0 text-xs text-muted">Grade: {student.grade || "TBD"}</p>
                                                 </div>
                                                 <span className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-extrabold uppercase tracking-wide ${statusCls}`}>
                                                     {student.status?.replace(/_/g, " ")}
@@ -880,7 +880,7 @@ export default function UserProfile() {
                                         )}
                                     </>
                                 ) : (
-                                    <p className="m-0 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                                    <p className="m-0 rounded-xl border border-line bg-app p-3 text-sm text-muted">
                                         This profile is limited to public information.
                                     </p>
                                 )}
@@ -900,7 +900,7 @@ export default function UserProfile() {
                                 </p>
                                 <Link
                                     href={`/users/${user.id}/activity`}
-                                    className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800 no-underline transition-colors hover:border-amber-400 hover:bg-amber-100"
+                                    className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-300 bg-card px-4 py-2 text-sm font-bold text-amber-800 no-underline transition-colors hover:border-amber-400 hover:bg-amber-100"
                                 >
                                     Open Audit Trail
                                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -934,15 +934,15 @@ function ActionRow({
                     <Icon className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <div>
-                    <p className="m-0 text-sm font-bold text-slate-900">{title}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{copy}</p>
+                    <p className="m-0 text-sm font-bold text-fg">{title}</p>
+                    <p className="mt-0.5 text-xs text-muted">{copy}</p>
                 </div>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
         </>
     );
 
-    const cls = "flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30";
+    const cls = "flex items-center justify-between gap-3 rounded-xl border border-line bg-card p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30";
 
     if (external) {
         return (

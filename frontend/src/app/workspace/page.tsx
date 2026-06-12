@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -55,7 +55,7 @@ const workspaceMainTabClass = (active: boolean) =>
     `workspace-tab flex h-8 items-center px-3 text-sm font-bold border-b-2 transition-colors ${
         active
             ? "border-indigo-600 bg-indigo-50/40 text-indigo-700"
-            : "border-transparent text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+            : "border-transparent text-muted hover:border-line hover:bg-app hover:text-fg"
     }`;
 
 const workspaceSecondaryTabClass = ({
@@ -70,24 +70,24 @@ const workspaceSecondaryTabClass = ({
     attention?: boolean;
 }) => {
     const base = "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors";
-    if (disabled) return `${base} cursor-not-allowed border-transparent text-slate-400 opacity-70`;
+    if (disabled) return `${base} cursor-not-allowed border-transparent text-faint opacity-70`;
     if (attention) return `${base} ${semanticToneClass("warning")} shadow-sm hover:bg-amber-100 hover:border-amber-300`;
-    if (active) return `${base} ${semanticToneClass(tone)} bg-white shadow-sm`;
-    return `${base} border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900`;
+    if (active) return `${base} ${semanticToneClass(tone)} bg-card shadow-sm`;
+    return `${base} border-transparent text-muted hover:border-line hover:bg-card hover:text-fg`;
 };
 
 const workspaceSegmentButtonClass = (active: boolean) =>
     `inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-bold transition-colors ${
         active
-            ? "bg-white text-indigo-700 shadow-sm"
-            : "text-slate-500 hover:bg-white/60 hover:text-slate-800"
+            ? "bg-card text-indigo-700 shadow-sm"
+            : "text-muted hover:bg-white/60 hover:text-fg"
     }`;
 
 const workspacePrimaryButtonClass =
-    "inline-flex h-7 items-center gap-1.5 rounded-md bg-indigo-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500";
+    "inline-flex h-7 items-center gap-1.5 rounded-md bg-indigo-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-muted";
 
 const workspaceSecondaryButtonClass =
-    "h-7 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60";
+    "h-7 rounded-md border border-line bg-card px-3 text-xs font-bold text-muted transition-colors hover:border-line hover:bg-app disabled:opacity-60";
 
 const toneDotClass: Record<SemanticTone, string> = {
     primary: "bg-indigo-500",
@@ -770,7 +770,7 @@ function UnifiedWorkspaceContent() {
         try {
             await toastPromise(api.post(`/api/students/${studentId}/parent-assessment-reminder/`), {
                 id: `parent-reminder-${studentId}`,
-                loading: 'Sending reminder…',
+                loading: 'Sending reminderâ€¦',
                 success: (res: any) => res.data.message || 'Reminder sent.',
                 error: (err: any) => extractApiError(err, 'Failed to send reminder.'),
             });
@@ -792,7 +792,7 @@ function UnifiedWorkspaceContent() {
         try {
             await toastPromise(api.post(`/api/students/${studentId}/enroll/`), {
                 id: `enroll-${studentId}`,
-                loading: 'Enrolling student…',
+                loading: 'Enrolling studentâ€¦',
                 success: (res: any) => res.data.message || 'Student enrolled.',
                 error: (err: any) => extractApiError(err, 'Failed to enroll student.'),
             });
@@ -819,7 +819,7 @@ function UnifiedWorkspaceContent() {
         try {
             await toastPromise(api.post(`/api/students/${studentId}/integrate/`), {
                 id: `integrate-${studentId}`,
-                loading: 'Processing integration…',
+                loading: 'Processing integrationâ€¦',
                 success: (res: any) => res.data.message || 'Student integrated into mainstream school.',
                 error: (err: any) => extractApiError(err, 'Failed to integrate student.'),
             });
@@ -846,18 +846,18 @@ function UnifiedWorkspaceContent() {
     }
 
     if (loading) {
-        return <div className="p-8 h-full flex items-center justify-center text-slate-500">Loading workspace...</div>;
+        return <div className="p-8 h-full flex items-center justify-center text-muted">Loading workspace...</div>;
     }
 
     if (loadError) {
         return (
             <div className="flex w-full h-full items-center justify-center bg-[var(--bg-lighter)]">
-                <div className="flex max-w-md flex-col items-center bg-white p-12 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex max-w-md flex-col items-center bg-card p-12 rounded-xl shadow-sm border border-line">
                     <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
                         <span className="text-2xl font-bold">!</span>
                     </div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">Workspace Unavailable</h2>
-                    <p className="text-slate-500 text-center">{loadError}</p>
+                    <h2 className="text-xl font-bold text-fg mb-2">Workspace Unavailable</h2>
+                    <p className="text-muted text-center">{loadError}</p>
                 </div>
             </div>
         );
@@ -867,12 +867,12 @@ function UnifiedWorkspaceContent() {
     if (!studentId && allStudents.length === 0) {
         return (
             <div className="flex w-full h-full items-center justify-center bg-[var(--bg-lighter)]">
-                <div className="flex flex-col items-center bg-white p-12 rounded-xl shadow-sm border border-slate-200">
-                    <svg className="w-16 h-16 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex flex-col items-center bg-card p-12 rounded-xl shadow-sm border border-line">
+                    <svg className="w-16 h-16 text-faint mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">No Students Found</h2>
-                    <p className="text-slate-500 max-w-sm text-center">Your caseload is currently empty. You must be assigned students before accessing the workspace.</p>
+                    <h2 className="text-xl font-bold text-fg mb-2">No Students Found</h2>
+                    <p className="text-muted max-w-sm text-center">Your caseload is currently empty. You must be assigned students before accessing the workspace.</p>
                 </div>
             </div>
         );
@@ -938,7 +938,7 @@ function UnifiedWorkspaceContent() {
     const submitterLabel = (submittedBy?: { name?: string; role?: string } | null) => {
         if (!submittedBy) return "Submitted";
         const role = submittedBy.role ? submittedBy.role.toLowerCase() : "user";
-        return `${submittedBy.name || "User"} • ${role}`;
+        return `${submittedBy.name || "User"} â€¢ ${role}`;
     };
 
     const formatActivityEventTitle = (event: any) => {
@@ -1095,7 +1095,7 @@ function UnifiedWorkspaceContent() {
 
         return (
             <div className={wrapperClass}>
-                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1 px-1">Actions</p>
+                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-1 px-1">Actions</p>
                 {actions.map((action, idx) => {
                     const Icon = action.Icon || ClipboardList;
                     const isPositive = action.tone === "positive";
@@ -1141,15 +1141,15 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="hidden">
-                    <div className="px-5 py-4 border-b border-slate-200">
-                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                    <div className="px-5 py-4 border-b border-line">
+                        <h1 className="text-xl font-extrabold text-fg m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
                             <span style={{
                                 display: "inline-block", marginTop: 8,
                                 fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
                                 padding: "3px 9px", borderRadius: "999px",
-                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)",
                             }}>
                                 {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                             </span>
@@ -1163,16 +1163,16 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative flex flex-col overflow-hidden">
+                <div className="flex-1 bg-card relative flex flex-col overflow-hidden">
                     {tabBar}
                     <div className="flex-1 overflow-y-auto p-5 md:p-6">
 
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Action Queue */}
-                        <section className="rounded-xl border border-slate-200 shadow-sm p-4 lg:col-span-2 bg-white">
+                        <section className="rounded-xl border border-line shadow-sm p-4 lg:col-span-2 bg-card">
                             <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-base font-bold text-slate-900 m-0 flex items-center gap-2">
+                                <h2 className="text-base font-bold text-fg m-0 flex items-center gap-2">
                                     Action Queue
                                 </h2>
                                 {actions.length > 0 && (
@@ -1182,9 +1182,9 @@ function UnifiedWorkspaceContent() {
                                 )}
                             </div>
                             {actions.length === 0 ? (
-                                <div className="flex items-center gap-2 text-sm text-slate-500 py-4 px-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                                <div className="flex items-center gap-2 text-sm text-muted py-4 px-3 rounded-lg bg-emerald-50 border border-emerald-100">
                                     <CheckCircle2 size={16} className="text-emerald-600" />
-                                    All caught up — no urgent admin follow-ups.
+                                    All caught up â€” no urgent admin follow-ups.
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-2">
@@ -1205,7 +1205,7 @@ function UnifiedWorkspaceContent() {
                                                             </span>
                                                             <div>
                                                                 <p className="text-sm font-extrabold text-slate-950 m-0">{action.title}</p>
-                                                                <p className="text-[0.7rem] font-medium text-slate-500 m-0">Specialist tracking is updated in real-time</p>
+                                                                <p className="text-[0.7rem] font-medium text-muted m-0">Specialist tracking is updated in real-time</p>
                                                             </div>
                                                         </div>
                                                         <button onClick={action.onClick} className="shrink-0 text-xs font-extrabold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow transition-colors flex items-center gap-1.5">
@@ -1221,14 +1221,14 @@ function UnifiedWorkspaceContent() {
                                                             const specialistName = specialist ? getStaffName(specialist) : "Unassigned";
 
                                                             return (
-                                                                <div key={sec.key} className="flex flex-col justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-slate-350 transition-all shadow-xs relative">
+                                                                <div key={sec.key} className="flex flex-col justify-between p-3 rounded-xl border border-line bg-card hover:border-slate-350 transition-all shadow-xs relative">
                                                                     <div className="mb-2">
-                                                                        <span className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Section {sec.key}</span>
-                                                                        <h4 className="text-xs font-bold text-slate-900 line-clamp-1 leading-snug" title={sec.label}>
+                                                                        <span className="text-[0.6rem] font-bold text-faint uppercase tracking-wider block mb-0.5">Section {sec.key}</span>
+                                                                        <h4 className="text-xs font-bold text-fg line-clamp-1 leading-snug" title={sec.label}>
                                                                             {sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych"}
                                                                         </h4>
-                                                                        <p className="text-[0.7rem] font-semibold text-slate-500 mt-1 truncate" title={specialistName}>
-                                                                            👤 {specialistName}
+                                                                        <p className="text-[0.7rem] font-semibold text-muted mt-1 truncate" title={specialistName}>
+                                                                            ðŸ‘¤ {specialistName}
                                                                         </p>
                                                                     </div>
                                                                     <div className={`mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[0.65rem] font-bold w-fit ${statusInfo.bg}`}>
@@ -1250,7 +1250,7 @@ function UnifiedWorkspaceContent() {
                                                     <span className={`w-7 h-7 rounded-md ${accent.iconBg} ${accent.iconColor} flex items-center justify-center shrink-0`}>
                                                         <Icon size={15} />
                                                     </span>
-                                                    <p className="text-sm font-bold text-slate-800 m-0 truncate">{action.title}</p>
+                                                    <p className="text-sm font-bold text-fg m-0 truncate">{action.title}</p>
                                                 </div>
                                                 <button onClick={action.onClick} className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-md transition-colors ${accent.btn}`}>
                                                     {action.label}
@@ -1264,31 +1264,31 @@ function UnifiedWorkspaceContent() {
 
 
                         {/* Student Snapshot */}
-                        <section className="rounded-xl border border-slate-200 shadow-sm p-4 bg-white">
-                            <h2 className="text-base font-bold text-slate-900 mb-3 m-0">Student Snapshot</h2>
+                        <section className="rounded-xl border border-line shadow-sm p-4 bg-card">
+                            <h2 className="text-base font-bold text-fg mb-3 m-0">Student Snapshot</h2>
                             <div className="grid grid-cols-2 gap-3 mb-3">
                                 <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0">Grade</p>
-                                    <p className="text-sm font-bold text-slate-800 m-0">{studentDetails?.grade || "TBD"}</p>
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-faint m-0">Grade</p>
+                                    <p className="text-sm font-bold text-fg m-0">{studentDetails?.grade || "TBD"}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0">Age</p>
-                                    <p className="text-sm font-bold text-slate-800 m-0">{calculateAge(studentDetails?.date_of_birth)}</p>
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-faint m-0">Age</p>
+                                    <p className="text-sm font-bold text-fg m-0">{calculateAge(studentDetails?.date_of_birth)}</p>
                                 </div>
                                 <div className="col-span-2">
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 m-0 flex items-center gap-1.5">
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-faint m-0 flex items-center gap-1.5">
                                         <Calendar size={11} /> Date of Birth
                                     </p>
-                                    <p className="text-sm font-bold text-slate-800 m-0">{formatDate(studentDetails?.date_of_birth)}</p>
+                                    <p className="text-sm font-bold text-fg m-0">{formatDate(studentDetails?.date_of_birth)}</p>
                                 </div>
                             </div>
-                            <div className="border-t border-slate-100 pt-3">
+                            <div className="border-t border-line pt-3">
                                 <button onClick={() => setWorkspace("reports")} className="w-full text-left rounded-lg p-1 -m-1">
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <p className="text-xs font-bold text-slate-600 m-0">Form completion</p>
+                                        <p className="text-xs font-bold text-muted m-0">Form completion</p>
                                         <span className="text-xs font-bold text-indigo-600">{submittedForms}/5</span>
                                     </div>
-                                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                    <div className="h-1.5 w-full rounded-full bg-subtle-soft overflow-hidden">
                                         <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all" style={{ width: `${formsPct}%` }} />
                                     </div>
                                 </button>
@@ -1296,27 +1296,27 @@ function UnifiedWorkspaceContent() {
                         </section>
 
                         {/* Recent Activity (timeline) */}
-                        <section className="rounded-xl border border-slate-200 shadow-sm p-4 lg:col-span-2 bg-white">
+                        <section className="rounded-xl border border-line shadow-sm p-4 lg:col-span-2 bg-card">
                             <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-base font-bold text-slate-900 m-0">Recent Activity</h2>
+                                <h2 className="text-base font-bold text-fg m-0">Recent Activity</h2>
                                 <button onClick={() => setIsActivityDrawerOpen(true)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 rounded-lg p-1 -m-1">
-                                    View all →
+                                    View all â†’
                                 </button>
                             </div>
                             {recentActivity.length === 0 ? (
-                                <p className="text-sm text-slate-500">No recorded form or document activity yet.</p>
+                                <p className="text-sm text-muted">No recorded form or document activity yet.</p>
                             ) : (
                                 <div className="relative max-h-72 overflow-y-auto pr-2 custom-scrollbar">
-                                    <span className="absolute left-[7px] top-2 bottom-2 w-px bg-slate-200" aria-hidden />
+                                    <span className="absolute left-[7px] top-2 bottom-2 w-px bg-subtle-soft" aria-hidden />
                                     <div className="flex flex-col">
                                         {recentActivity.map((item: any) => (
                                             <div key={item.id} className="relative flex items-start gap-3 pl-1 py-2.5 group">
                                                 <span className={`relative z-10 mt-1.5 h-3 w-3 shrink-0 rounded-full ring-2 ring-white ${item.tone === "document" ? "bg-indigo-500" : "bg-emerald-500"}`} />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="m-0 truncate text-sm font-bold text-slate-800">{item.title}</p>
-                                                    <p className="m-0 truncate text-xs font-semibold text-slate-500">{item.meta}</p>
+                                                    <p className="m-0 truncate text-sm font-bold text-fg">{item.title}</p>
+                                                    <p className="m-0 truncate text-xs font-semibold text-muted">{item.meta}</p>
                                                 </div>
-                                                <span className="shrink-0 text-xs font-mono font-semibold text-slate-400 mt-0.5" title={formatActivityTime(item.timestamp)}>
+                                                <span className="shrink-0 text-xs font-mono font-semibold text-faint mt-0.5" title={formatActivityTime(item.timestamp)}>
                                                     {formatRelativeTime(item.timestamp)}
                                                 </span>
                                             </div>
@@ -1327,25 +1327,25 @@ function UnifiedWorkspaceContent() {
                         </section>
 
                         {/* Parent */}
-                        <section className="rounded-xl border border-slate-200 shadow-sm p-4 bg-white">
-                            <h2 className="text-base font-bold text-slate-900 mb-3 m-0">Parent</h2>
-                            <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100">
+                        <section className="rounded-xl border border-line shadow-sm p-4 bg-card">
+                            <h2 className="text-base font-bold text-fg mb-3 m-0">Parent</h2>
+                            <div className="flex items-center gap-3 mb-3 pb-3 border-b border-line">
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
                                     {parentInitials}
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-bold text-slate-800 m-0 truncate">{studentDetails?.parent_guardian_name || "Not provided"}</p>
-                                    <p className="text-[0.7rem] font-semibold text-slate-400 m-0">Primary contact</p>
+                                    <p className="text-sm font-bold text-fg m-0 truncate">{studentDetails?.parent_guardian_name || "Not provided"}</p>
+                                    <p className="text-[0.7rem] font-semibold text-faint m-0">Primary contact</p>
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
                                 {parentRows.slice(1).map(row => (
                                     <div key={row.label} className="flex items-center justify-between gap-3">
-                                        <span className="text-xs font-semibold text-slate-500">{row.label}</span>
+                                        <span className="text-xs font-semibold text-muted">{row.label}</span>
                                         {row.href ? (
                                             <a href={row.href} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 truncate">{row.value}</a>
                                         ) : (
-                                            <span className="text-xs font-bold text-slate-800 truncate">{row.value}</span>
+                                            <span className="text-xs font-bold text-fg truncate">{row.value}</span>
                                         )}
                                     </div>
                                 ))}
@@ -1353,11 +1353,11 @@ function UnifiedWorkspaceContent() {
                         </section>
 
                         {/* Team & Documents */}
-                        <section className="rounded-xl border border-slate-200 shadow-sm p-4 lg:col-span-2 bg-white">
-                            <h2 className="text-base font-bold text-slate-900 mb-3 m-0">Team & Documents</h2>
+                        <section className="rounded-xl border border-line shadow-sm p-4 lg:col-span-2 bg-card">
+                            <h2 className="text-base font-bold text-fg mb-3 m-0">Team & Documents</h2>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-faint mb-1.5 flex items-center gap-1.5">
                                         <Users size={11} /> Specialists
                                     </p>
                                     {specialists.length === 0 ? (
@@ -1384,7 +1384,7 @@ function UnifiedWorkspaceContent() {
                                                         <span className="w-5 h-5 rounded-full bg-indigo-200 text-indigo-800 text-[0.6rem] font-bold flex items-center justify-center">{initials}</span>
                                                         <span className="text-[0.7rem] font-bold text-indigo-800 truncate max-w-[8rem]">{fullName}</span>
                                                         {specs.length > 0 && (
-                                                            <span className="text-[0.6rem] font-bold text-indigo-600 bg-white px-1 rounded">{shortLabel(specs[0])}</span>
+                                                            <span className="text-[0.6rem] font-bold text-indigo-600 bg-card px-1 rounded">{shortLabel(specs[0])}</span>
                                                         )}
                                                     </span>
                                                 );
@@ -1393,7 +1393,7 @@ function UnifiedWorkspaceContent() {
                                     )}
                                 </div>
                                 <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-faint mb-1.5 flex items-center gap-1.5">
                                         <GraduationCap size={11} /> Teachers
                                     </p>
                                     {teachers.length === 0 ? (
@@ -1416,7 +1416,7 @@ function UnifiedWorkspaceContent() {
                                     )}
                                 </div>
                                 <div>
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-faint mb-1.5 flex items-center gap-1.5">
                                         <FileCheck2 size={11} /> Latest document
                                     </p>
                                     {!latestDoc ? (
@@ -1425,16 +1425,16 @@ function UnifiedWorkspaceContent() {
                                         </button>
                                     ) : (
                                         <button onClick={() => handleReportMenuChange("history")} className="text-left rounded-lg p-1 -m-1">
-                                            <p className="text-sm font-bold text-slate-800 m-0">{latestDoc.type}</p>
-                                            <p className="text-[0.7rem] font-semibold text-slate-500 m-0">{formatDocumentDateTime(latestDoc.created_at)}</p>
+                                            <p className="text-sm font-bold text-fg m-0">{latestDoc.type}</p>
+                                            <p className="text-[0.7rem] font-semibold text-muted m-0">{formatDocumentDateTime(latestDoc.created_at)}</p>
                                         </button>
                                     )}
                                 </div>
                             </div>
 
                             {(formStatuses?.parent_assessment?.submitted || formStatuses?.multi_assessment?.submitted) && (
-                                <div className="border-t border-slate-100 mt-4 pt-3">
-                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                                <div className="border-t border-line mt-4 pt-3">
+                                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-faint mb-2 flex items-center gap-1.5">
                                         <ClipboardList size={11} /> Initial Assessments
                                     </p>
                                     <div className="flex flex-wrap gap-3">
@@ -1446,7 +1446,7 @@ function UnifiedWorkspaceContent() {
                                                     url.searchParams.set("tab", "parent_assessment");
                                                     navigateWithTeamGuard(url.pathname + url.search);
                                                 }}
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors cursor-pointer"
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-app hover:bg-subtle-soft hover:border-line px-3 py-1.5 text-xs font-bold text-fg shadow-sm transition-colors cursor-pointer"
                                             >
                                                 <FileText size={12} className="text-indigo-500" />
                                                 Parent Assessment
@@ -1460,7 +1460,7 @@ function UnifiedWorkspaceContent() {
                                                     url.searchParams.set("tab", "multi_assessment");
                                                     navigateWithTeamGuard(url.pathname + url.search);
                                                 }}
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors cursor-pointer"
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-app hover:bg-subtle-soft hover:border-line px-3 py-1.5 text-xs font-bold text-fg shadow-sm transition-colors cursor-pointer"
                                             >
                                                 <FileText size={12} className="text-indigo-500" />
                                                 Specialist Assessment
@@ -1483,23 +1483,23 @@ function UnifiedWorkspaceContent() {
                       onClick={() => setIsActivityDrawerOpen(false)} 
                     />
                     <div 
-                      className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200"
+                      className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-card shadow-2xl flex flex-col border-l border-line"
                       style={{ 
                         zIndex: 99999, 
                         backgroundColor: "var(--bg-secondary, #ffffff)",
-                        color: "var(--text-primary, #0f172a)",
-                        borderLeftColor: "var(--border-light, #e2e8f0)"
+                        color: "var(--text-primary, var(--text-primary))",
+                        borderLeftColor: "var(--border-light, var(--border-light))"
                       }}
                     >
                       <div 
                         className="flex items-center justify-between border-b px-6 py-4"
-                        style={{ borderBottomColor: "var(--border-light, #e2e8f0)" }}
+                        style={{ borderBottomColor: "var(--border-light, var(--border-light))" }}
                       >
                         <div>
-                          <h3 className="text-base font-extrabold m-0" style={{ color: "var(--text-primary, #0f172a)" }}>
+                          <h3 className="text-base font-extrabold m-0" style={{ color: "var(--text-primary, var(--text-primary))" }}>
                             Activity History
                           </h3>
-                          <p className="text-[0.7rem] font-semibold text-slate-400 m-0">
+                          <p className="text-[0.7rem] font-semibold text-faint m-0">
                             {studentName}'s complete operational logs
                           </p>
                         </div>
@@ -1507,8 +1507,8 @@ function UnifiedWorkspaceContent() {
                           onClick={() => setIsActivityDrawerOpen(false)} 
                           className="p-1.5 rounded-lg border-none cursor-pointer flex items-center justify-center transition-colors"
                           style={{
-                            backgroundColor: "var(--bg-primary, #f8fafc)",
-                            color: "var(--text-secondary, #475569)"
+                            backgroundColor: "var(--bg-primary, var(--bg-primary))",
+                            color: "var(--text-secondary, var(--text-secondary))"
                           }}
                         >
                           <X size={16} />
@@ -1517,14 +1517,14 @@ function UnifiedWorkspaceContent() {
 
                       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                         {activityEvents.length === 0 ? (
-                          <p className="text-sm text-slate-400 text-center py-12">
+                          <p className="text-sm text-faint text-center py-12">
                             No recorded timeline events for this student.
                           </p>
                         ) : (
                           <div className="relative pl-3">
                             <span 
                               className="absolute left-[7px] top-2 bottom-2 w-px" 
-                              style={{ backgroundColor: "var(--border-light, #e2e8f0)" }}
+                              style={{ backgroundColor: "var(--border-light, var(--border-light))" }}
                               aria-hidden 
                             />
                             <div className="flex flex-col gap-6">
@@ -1543,19 +1543,19 @@ function UnifiedWorkspaceContent() {
                                       }}
                                     />
                                     <div className="flex items-start justify-between gap-3">
-                                      <p className="text-xs font-bold m-0 leading-snug" style={{ color: "var(--text-primary, #0f172a)" }}>
+                                      <p className="text-xs font-bold m-0 leading-snug" style={{ color: "var(--text-primary, var(--text-primary))" }}>
                                         {event.message}
                                       </p>
-                                      <span className="text-[0.6rem] font-mono font-semibold text-slate-400 whitespace-nowrap">
+                                      <span className="text-[0.6rem] font-mono font-semibold text-faint whitespace-nowrap">
                                         {formatRelativeTime(event.created_at || event.timestamp)}
                                       </span>
                                     </div>
                                     {event.actor_email && (
-                                      <p className="text-[0.65rem] text-slate-400 m-0 font-medium">
-                                        👤 Performed by: {event.actor_email}
+                                      <p className="text-[0.65rem] text-faint m-0 font-medium">
+                                        ðŸ‘¤ Performed by: {event.actor_email}
                                       </p>
                                     )}
-                                    <span className="text-[0.65rem] text-slate-400 font-mono" title={formatActivityTime(event.created_at || event.timestamp)}>
+                                    <span className="text-[0.65rem] text-faint font-mono" title={formatActivityTime(event.created_at || event.timestamp)}>
                                       {formatActivityTime(event.created_at || event.timestamp)}
                                     </span>
                                   </div>
@@ -1616,15 +1616,15 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="hidden">
-                    <div className="px-5 py-4 border-b border-slate-200">
-                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                    <div className="px-5 py-4 border-b border-line">
+                        <h1 className="text-xl font-extrabold text-fg m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
                             <span style={{
                                 display: "inline-block", marginTop: 8,
                                 fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
                                 padding: "3px 9px", borderRadius: "999px",
-                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)",
                             }}>
                                 {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                             </span>
@@ -1635,18 +1635,18 @@ function UnifiedWorkspaceContent() {
                         {renderAdminWorkspaceSidebarActions("forms")}
                         {assessmentTabs.length > 0 && (
                             <div className="px-3 mb-4">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Your Input" : "Assessments"}</p>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Your Input" : "Assessments"}</p>
                                 <div className="flex flex-col gap-1">
                                     {assessmentTabs.map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
                                         const isActive = activeFormTab === tab.id;
                                         const isLocked = user?.role === "ADMIN" && !isSub;
                                         return (
-                                            <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                            <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{user?.role === "PARENT" && tab.id === "parent_assessment" ? "About Your Child" : tab.label}</span>
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-indigo-800' : 'text-fg'}`}>{user?.role === "PARENT" && tab.id === "parent_assessment" ? "About Your Child" : tab.label}</span>
                                                 {isLocked ? (
-                                                    <Lock className="w-4 h-4 text-slate-400 shrink-0 ml-2" aria-hidden="true" />
+                                                    <Lock className="w-4 h-4 text-faint shrink-0 ml-2" aria-hidden="true" />
                                                 ) : isSub && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} aria-hidden="true" />}
                                             </button>
                                         );
@@ -1656,18 +1656,18 @@ function UnifiedWorkspaceContent() {
                         )}
 
                         <div className="px-3 pb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Monthly Updates" : "Progress Trackers"}</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Monthly Updates" : "Progress Trackers"}</p>
                             <div className="flex flex-col gap-1">
                                 {progressTabs.map((tab) => {
                                     const isSub = formStatuses[tab.id]?.submitted;
                                     const isActive = activeFormTab === tab.id;
                                     const isLocked = !isStudentEnrolled || (tab.id === "sped_tracker" && studentStatus?.toUpperCase() !== "INTEGRATED");
                                     return (
-                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment/integration" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment/integration" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{user?.role === "PARENT" && tab.id === "parent_tracker" ? "Home Update" : tab.label}</span>
+                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-emerald-800' : 'text-fg'}`}>{user?.role === "PARENT" && tab.id === "parent_tracker" ? "Home Update" : tab.label}</span>
                                             {isLocked ? (
-                                                <Lock className="w-4 h-4 text-slate-400 shrink-0 ml-2" aria-hidden="true" />
+                                                <Lock className="w-4 h-4 text-faint shrink-0 ml-2" aria-hidden="true" />
                                             ) : isSub && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} aria-hidden="true" />}
                                         </button>
                                     );
@@ -1677,7 +1677,7 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
+                <div className="flex-1 bg-card relative overflow-y-auto flex flex-col">
                     {tabBar}
                     <div className="flex-1 overflow-y-auto">
                     {specialistOnboardingIncomplete && (
@@ -1699,19 +1699,19 @@ function UnifiedWorkspaceContent() {
                     )}
                     {isAdminAssessmentLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Assessment Locked</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">This assessment will be available for admin review after it is submitted.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Assessment Locked</h3>
+                            <p className="text-sm text-muted max-w-sm">This assessment will be available for admin review after it is submitted.</p>
                         </div>
                     ) : isSpecialistOnboardingLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
                             <div className="w-16 h-16 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center mb-4 text-amber-500">
                                 <Calendar className="w-8 h-8" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Finish profile setup first</h3>
-                            <p className="text-sm text-slate-500 max-w-md">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Finish profile setup first</h3>
+                            <p className="text-sm text-muted max-w-md">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
                             <button
                                 type="button"
                                 onClick={() => router.push("/specialist-onboarding")}
@@ -1722,27 +1722,27 @@ function UnifiedWorkspaceContent() {
                         </div>
                     ) : isAdminProgressLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Progress Locked</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">Progress trackers are available after the student is enrolled.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Progress Locked</h3>
+                            <p className="text-sm text-muted max-w-sm">Progress trackers are available after the student is enrolled.</p>
                         </div>
                     ) : isSpecialistProgressLocked || isTeacherProgressLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Progress Locked</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">{user?.role === "TEACHER" ? "Teacher progress" : "Specialist progress"} can be submitted after the student is enrolled.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Progress Locked</h3>
+                            <p className="text-sm text-muted max-w-sm">{user?.role === "TEACHER" ? "Teacher progress" : "Specialist progress"} can be submitted after the student is enrolled.</p>
                         </div>
                     ) : isParentProgressLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Nothing to do here yet</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">Any progress tracking items will appear here once your child is fully enrolled. If you haven't yet, please fill out the parent assessment from the dashboard.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Nothing to do here yet</h3>
+                            <p className="text-sm text-muted max-w-sm">Any progress tracking items will appear here once your child is fully enrolled. If you haven't yet, please fill out the parent assessment from the dashboard.</p>
                         </div>
                     ) : canCreateCurrentForm ? (
                         <div className="w-full">
@@ -1760,11 +1760,11 @@ function UnifiedWorkspaceContent() {
                         </div>
                     ) : !currentStatus?.submitted ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Form Not Submitted</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">No completed submission exists yet for {currentTabConf?.label}.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Form Not Submitted</h3>
+                            <p className="text-sm text-muted max-w-sm">No completed submission exists yet for {currentTabConf?.label}.</p>
                         </div>
                     ) : (
                         <div className="w-full">
@@ -1813,7 +1813,7 @@ function UnifiedWorkspaceContent() {
             && !!formStatuses?.multi_assessment?.submitted
             && iepDocs.length === 0;
         const reportSecondaryTabs = (
-            <div className="shrink-0 border-b border-slate-200 bg-slate-50/70 px-4 py-2 md:px-6">
+            <div className="shrink-0 border-b border-line bg-app/70 px-4 py-2 md:px-6">
                 <div className="flex items-center gap-2 overflow-x-auto secondary-header-scrollbar">
                     {user?.role === "ADMIN" && (
                         <button
@@ -1834,7 +1834,7 @@ function UnifiedWorkspaceContent() {
 
                     {user?.role === "ADMIN" && (
                         <>
-                            <div className="mx-1 h-6 w-px shrink-0 bg-slate-200" />
+                            <div className="mx-1 h-6 w-px shrink-0 bg-subtle-soft" />
                             {statusFilteredTabs.map((tab) => {
                                 const isSub = formStatuses?.[tab.id]?.submitted;
                                 const isActive = reportView === tab.id;
@@ -1867,7 +1867,7 @@ function UnifiedWorkspaceContent() {
                         </>
                     )}
 
-                    <div className="mx-1 h-6 w-px shrink-0 bg-slate-200" />
+                    <div className="mx-1 h-6 w-px shrink-0 bg-subtle-soft" />
                     <button
                         type="button"
                         disabled={iepDocs.length === 0}
@@ -1899,15 +1899,15 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="hidden">
-                    <div className="px-5 py-4 border-b border-slate-200">
-                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                    <div className="px-5 py-4 border-b border-line">
+                        <h1 className="text-xl font-extrabold text-fg m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
                             <span style={{
                                 display: "inline-block", marginTop: 8,
                                 fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
                                 padding: "3px 9px", borderRadius: "999px",
-                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)",
                             }}>
                                 {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                             </span>
@@ -1919,8 +1919,8 @@ function UnifiedWorkspaceContent() {
 
                         {user?.role === "ADMIN" && (
                             <div className="px-4 mb-6">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">Tools</p>
-                                <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'}`}>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-1">Tools</p>
+                                <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-card text-fg border-line hover:bg-subtle-soft hover:border-line'}`}>
                                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                     Report Generator
                                 </button>
@@ -1929,7 +1929,7 @@ function UnifiedWorkspaceContent() {
 
                         {user?.role === "ADMIN" && (
                             <div className="px-3 mb-6">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Input Forms</p>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Input Forms</p>
                                 <div className="flex flex-col gap-1">
                                     {statusFilteredTabs.map((tab) => {
                                         const isSub = formStatuses?.[tab.id]?.submitted;
@@ -1945,15 +1945,15 @@ function UnifiedWorkspaceContent() {
                                                 key={tab.id}
                                                 disabled={isLocked}
                                                 onClick={() => handleReportMenuChange(tab.id)}
-                                                className={`w-full flex items-center justify-between text-left px-4 py-2.5 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-60' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
+                                                className={`w-full flex items-center justify-between text-left px-4 py-2.5 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-60' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}
                                                 title={isLocked ? "Available after enrollment/integration" : undefined}
                                             >
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-indigo-800' : 'text-fg'}`}>
                                                     {tab.label}
                                                 </span>
                                                 {isLocked ? (
-                                                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                                                    <Lock className="w-3.5 h-3.5 text-faint shrink-0 ml-2" />
                                                 ) : isSub ? (
                                                     <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} />
                                                 ) : (
@@ -1967,23 +1967,23 @@ function UnifiedWorkspaceContent() {
                         )}
 
                         <div className="px-3 mb-6">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Learning Plans" : "IEP Documents"}</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Learning Plans" : "IEP Documents"}</p>
                             {iepDocs.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic px-2">No IEPs generated yet.</p>
+                                <p className="text-xs text-faint italic px-2">No IEPs generated yet.</p>
                             ) : (() => {
                                 const doc = iepDocs[0];
                                 const isActive = reportView === "iep";
                                 return (
                                     <div className="flex flex-col gap-1">
-                                        <button onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                             <div className="flex justify-between items-center w-full">
-                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Current IEP" : "IEP Master"}</span>
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-fg'}`}>{user?.role === "PARENT" ? "Current IEP" : "IEP Master"}</span>
                                                 {iepDocs.length > 1 && (
                                                     <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{iepDocs.length} versions</span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-slate-500 truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
+                                            <span className="text-xs text-muted truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
                                         </button>
                                     </div>
                                 );
@@ -1991,23 +1991,23 @@ function UnifiedWorkspaceContent() {
                         </div>
 
                         <div className="px-3 pb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Monthly Reports" : "Monthly Progress"}</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">{user?.role === "PARENT" ? "Monthly Reports" : "Monthly Progress"}</p>
                             {monthlyDocs.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic px-2">No monthly reports yet.</p>
+                                <p className="text-xs text-faint italic px-2">No monthly reports yet.</p>
                             ) : (() => {
                                 const doc = monthlyDocs[0];
                                 const isActive = reportView === "monthly";
                                 return (
                                     <div className="flex flex-col gap-1">
-                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
                                             <div className="flex justify-between items-center w-full">
-                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{user?.role === "PARENT" ? "Monthly Report" : "Progress Reports"}</span>
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>{user?.role === "PARENT" ? "Monthly Report" : "Progress Reports"}</span>
                                                 {monthlyDocs.length > 1 && (
                                                     <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{monthlyDocs.length} versions</span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-slate-500 truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
+                                            <span className="text-xs text-muted truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
                                         </button>
                                     </div>
                                 );
@@ -2016,7 +2016,7 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
+                <div className="flex-1 bg-card relative overflow-y-auto flex flex-col">
                     {tabBar}
                     {reportSecondaryTabs}
                     <div className="flex-1 overflow-y-auto">
@@ -2036,11 +2036,11 @@ function UnifiedWorkspaceContent() {
                             if (isLocked) {
                                 return (
                                     <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                                        <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                        <div className="w-16 h-16 bg-app border border-slate-105 rounded-full flex items-center justify-center mb-4 text-faint">
                                             <Lock className="w-8 h-8" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-slate-700 mb-1">Form Locked</h3>
-                                        <p className="text-sm text-slate-500 max-w-sm">
+                                        <h3 className="text-lg font-bold text-fg mb-1">Form Locked</h3>
+                                        <p className="text-sm text-muted max-w-sm">
                                             This form is locked for Admin review until the student is {tab.id === "sped_tracker" ? "integrated" : "enrolled"}.
                                         </p>
                                     </div>
@@ -2050,11 +2050,11 @@ function UnifiedWorkspaceContent() {
                             if (!isSub) {
                                 return (
                                     <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                                        <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                        <div className="w-16 h-16 bg-app border border-slate-105 rounded-full flex items-center justify-center mb-4 text-faint">
                                             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                         </div>
-                                        <h3 className="text-lg font-bold text-slate-700 mb-1">Awaiting Submission</h3>
-                                        <p className="text-sm text-slate-500 max-w-sm">
+                                        <h3 className="text-lg font-bold text-fg mb-1">Awaiting Submission</h3>
+                                        <p className="text-sm text-muted max-w-sm">
                                             This form has not been submitted by the clinical team or parent yet.
                                         </p>
                                     </div>
@@ -2074,15 +2074,15 @@ function UnifiedWorkspaceContent() {
                         {reportView === "iep" && selectedDocId && (
                             <div className="flex-1 overflow-y-auto">
                                 {iepDocs.length > 1 && (
-                                    <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1.5 text-slate-500">
+                                    <div className="bg-app border-b border-line px-4 py-1.5 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 text-muted">
                                             <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                         </div>
                                         <select
                                             value={selectedDocId}
                                             onChange={(e) => handleReportMenuChange("iep", e.target.value)}
-                                            className="text-[0.75rem] font-bold text-slate-700 bg-white border border-slate-200 rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                            className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
                                             style={{
                                                 backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
                                                 backgroundPosition: "right 0.4rem center",
@@ -2092,7 +2092,7 @@ function UnifiedWorkspaceContent() {
                                         >
                                             {iepDocs.map((doc, idx) => (
                                                 <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
+                                                    {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
                                                 </option>
                                             ))}
                                         </select>
@@ -2104,15 +2104,15 @@ function UnifiedWorkspaceContent() {
                         {reportView === "monthly" && selectedDocId && (
                             <div className="flex-1 overflow-y-auto">
                                 {monthlyDocs.length > 1 && (
-                                    <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1.5 text-slate-500">
+                                    <div className="bg-app border-b border-line px-4 py-1.5 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 text-muted">
                                             <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                         </div>
                                         <select
                                             value={selectedDocId}
                                             onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
-                                            className="text-[0.75rem] font-bold text-slate-700 bg-white border border-slate-200 rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                            className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
                                             style={{
                                                 backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
                                                 backgroundPosition: "right 0.4rem center",
@@ -2122,7 +2122,7 @@ function UnifiedWorkspaceContent() {
                                         >
                                             {monthlyDocs.map((doc, idx) => (
                                                 <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
+                                                    {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
                                                 </option>
                                             ))}
                                         </select>
@@ -2133,11 +2133,11 @@ function UnifiedWorkspaceContent() {
                         )}
                         {isEmptyState && (
                             <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                                <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-700 mb-1">No Reports Yet</h3>
-                                <p className="text-sm text-slate-500 max-w-sm">There are no reports or documents associated with this student yet.</p>
+                                <h3 className="text-lg font-bold text-fg mb-1">No Reports Yet</h3>
+                                <p className="text-sm text-muted max-w-sm">There are no reports or documents associated with this student yet.</p>
                             </div>
                         )}
                     </div>
@@ -2189,11 +2189,11 @@ function UnifiedWorkspaceContent() {
             if (isParentTrackerLocked) {
                 return (
                     <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                        <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                        <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-700 mb-1">Nothing to do here yet</h3>
-                        <p className="text-sm text-slate-500 max-w-sm">Monthly updates will appear here once your child is fully enrolled. If you haven&apos;t yet, please fill out the parent assessment from the dashboard.</p>
+                        <h3 className="text-lg font-bold text-fg mb-1">Nothing to do here yet</h3>
+                        <p className="text-sm text-muted max-w-sm">Monthly updates will appear here once your child is fully enrolled. If you haven&apos;t yet, please fill out the parent assessment from the dashboard.</p>
                     </div>
                 );
             }
@@ -2213,11 +2213,11 @@ function UnifiedWorkspaceContent() {
             }
             return (
                 <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                    <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                    <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     </div>
-                    <h3 className="text-lg font-bold text-slate-700 mb-1">No Update Submitted</h3>
-                    <p className="text-sm text-slate-500 max-w-sm">No monthly home update has been submitted for this cycle yet.</p>
+                    <h3 className="text-lg font-bold text-fg mb-1">No Update Submitted</h3>
+                    <p className="text-sm text-muted max-w-sm">No monthly home update has been submitted for this cycle yet.</p>
                 </div>
             );
         };
@@ -2264,16 +2264,16 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 {/* Unified Sidebar */}
-                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200">
-                        <h2 className="text-2xl font-extrabold text-slate-900 m-0 leading-tight truncate tracking-tight" title={studentName}>{studentName}</h2>
+                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-line bg-app flex flex-col shrink-0">
+                    <div className="p-6 border-b border-line">
+                        <h2 className="text-2xl font-extrabold text-fg m-0 leading-tight truncate tracking-tight" title={studentName}>{studentName}</h2>
                         {studentStatus && (
                             <span style={{
                                 display: "inline-block", marginTop: 10,
                                 fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
                                 padding: "4px 10px", borderRadius: "999px",
-                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)",
                             }}>
                                 {getParentStatusLabel()}
                             </span>
@@ -2284,14 +2284,14 @@ function UnifiedWorkspaceContent() {
                         {/* Your Input section */}
                         {!isStudentEnrolled && (
                             <div className="px-4 mb-6">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Your Input</p>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Your Input</p>
                                 <div className="flex flex-col gap-1">
                                     <button
                                         onClick={() => handleParentPanelChange("assessment")}
-                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}
+                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}
                                     >
                                         {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-slate-700'}`}>About Your Child</span>
+                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-fg'}`}>About Your Child</span>
                                         {assessmentStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
                                     </button>
                                 </div>
@@ -2301,14 +2301,14 @@ function UnifiedWorkspaceContent() {
                         {/* Monthly Updates section */}
                         {isStudentEnrolled && (
                             <div className="px-4 mb-6">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Updates</p>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Monthly Updates</p>
                                 <div className="flex flex-col gap-1">
                                     <button
                                         onClick={() => handleParentPanelChange("tracker")}
-                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "tracker" ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}
+                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "tracker" ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}
                                     >
                                         {parentActivePanel === "tracker" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "tracker" ? 'text-emerald-800' : 'text-slate-700'}`}>Home Update</span>
+                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "tracker" ? 'text-emerald-800' : 'text-fg'}`}>Home Update</span>
                                         {trackerStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
                                     </button>
                                 </div>
@@ -2318,14 +2318,14 @@ function UnifiedWorkspaceContent() {
                         {/* History section */}
                         {isStudentEnrolled && assessmentStatus?.submitted && (
                             <div className="px-4 mb-6">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">History</p>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">History</p>
                                 <div className="flex flex-col gap-1">
                                     <button
                                         onClick={() => handleParentPanelChange("assessment")}
-                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}
+                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "assessment" ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}
                                     >
                                         {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-slate-700'}`}>About Your Child</span>
+                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-fg'}`}>About Your Child</span>
                                         <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />
                                     </button>
                                 </div>
@@ -2334,22 +2334,22 @@ function UnifiedWorkspaceContent() {
 
                         {/* Learning Plans section */}
                         <div className="px-4 mb-6">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Learning Plans</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Learning Plans</p>
                             {iepDocs.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic px-2">No learning plans generated yet.</p>
+                                <p className="text-xs text-faint italic px-2">No learning plans generated yet.</p>
                             ) : (
                                 <div className="flex flex-col gap-1">
                                     {iepDocs.map((doc, idx) => {
                                         const isActive = parentActivePanel === "iep" && docIdParam === doc.id.toString();
                                         const isLatest = idx === 0;
                                         return (
-                                            <button key={doc.id} onClick={() => handleParentPanelChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}>
+                                            <button key={doc.id} onClick={() => handleParentPanelChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
-                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>Current IEP</span>
+                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-fg'}`}>Current IEP</span>
                                                     {isLatest && <span className={workspaceBadgeClass("primary", "ml-2 shrink-0 px-1.5 py-0")}>Current</span>}
                                                 </div>
-                                                <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
+                                                <span className="text-xs text-muted truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                             </button>
                                         );
                                     })}
@@ -2359,22 +2359,22 @@ function UnifiedWorkspaceContent() {
 
                         {/* Monthly Reports section */}
                         <div className="px-4 pb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Reports</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Monthly Reports</p>
                             {monthlyDocs.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic px-2">No monthly reports yet.</p>
+                                <p className="text-xs text-faint italic px-2">No monthly reports yet.</p>
                             ) : (
                                 <div className="flex flex-col gap-1">
                                     {monthlyDocs.map((doc, idx) => {
                                         const isActive = parentActivePanel === "monthly" && docIdParam === doc.id.toString();
                                         const isLatest = idx === 0;
                                         return (
-                                            <button key={doc.id} onClick={() => handleParentPanelChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100 hover:border-slate-200'}`}>
+                                            <button key={doc.id} onClick={() => handleParentPanelChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
-                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Monthly Report</span>
+                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>Monthly Report</span>
                                                     {isLatest && <span className={workspaceBadgeClass("success", "ml-2 shrink-0 px-1.5 py-0")}>Latest</span>}
                                                 </div>
-                                                <span className="text-xs text-slate-500 truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
+                                                <span className="text-xs text-muted truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                             </button>
                                         );
                                     })}
@@ -2385,7 +2385,7 @@ function UnifiedWorkspaceContent() {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 bg-white relative overflow-y-auto">
+                <div className="flex-1 bg-card relative overflow-y-auto">
                     {parentActivePanel === "assessment" && renderAssessmentContent()}
                     {parentActivePanel === "tracker" && renderTrackerContent()}
                     {parentActivePanel === "iep" && docIdParam && (
@@ -2396,20 +2396,20 @@ function UnifiedWorkspaceContent() {
                     )}
                     {parentActivePanel === "iep" && !docIdParam && iepDocs.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">No Learning Plans Yet</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">Your child&apos;s individualized learning plan will appear here once it&apos;s been created by the team.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">No Learning Plans Yet</h3>
+                            <p className="text-sm text-muted max-w-sm">Your child&apos;s individualized learning plan will appear here once it&apos;s been created by the team.</p>
                         </div>
                     )}
                     {parentActivePanel === "monthly" && !docIdParam && monthlyDocs.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">No Monthly Reports Yet</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">Monthly progress reports will appear here as they are generated by the team.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">No Monthly Reports Yet</h3>
+                            <p className="text-sm text-muted max-w-sm">Monthly progress reports will appear here as they are generated by the team.</p>
                         </div>
                     )}
                 </div>
@@ -2438,8 +2438,8 @@ function UnifiedWorkspaceContent() {
 
             return (
                 <>
-                    <span className="text-[0.5rem] text-slate-300">●</span>
-                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-slate-500 flex flex-wrap items-center gap-1" title={langs.join(", ")}>
+                    <span className="text-[0.5rem] text-faint">â—</span>
+                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-muted flex flex-wrap items-center gap-1" title={langs.join(", ")}>
                         {visibleLangs.map((lang, idx) => {
                             const isMatch = studentLangs.includes(lang.toUpperCase());
                             return (
@@ -2503,15 +2503,15 @@ function UnifiedWorkspaceContent() {
         return (
             <>
                 <div className="hidden">
-                    <div className="px-5 py-4 border-b border-slate-200">
-                        <h1 className="text-xl font-extrabold text-slate-900 m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
+                    <div className="px-5 py-4 border-b border-line">
+                        <h1 className="text-xl font-extrabold text-fg m-0 leading-tight tracking-tight" title={studentName}>{studentName}</h1>
                         {studentStatus && (
                             <span style={{
                                 display: "inline-block", marginTop: 8,
                                 fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px",
                                 padding: "3px 9px", borderRadius: "999px",
-                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569",
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)",
                             }}>
                                 {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                             </span>
@@ -2521,14 +2521,14 @@ function UnifiedWorkspaceContent() {
                     <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
                         {renderAdminWorkspaceSidebarActions("team")}
                         <div className="px-3">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Clinical Team</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Clinical Team</p>
                             <div className="flex flex-col gap-1">
-                                <button onClick={() => handleTeamMenuChange("SPECIALIST")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isSpecialist ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-slate-700 hover:bg-slate-100'}`}>
+                                <button onClick={() => handleTeamMenuChange("SPECIALIST")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isSpecialist ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-fg hover:bg-subtle-soft'}`}>
                                     {isSpecialist && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                     <svg className="w-5 h-5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                     Specialists
                                 </button>
-                                <button onClick={() => handleTeamMenuChange("TEACHER")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isTeacher ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-slate-700 hover:bg-slate-100'}`}>
+                                <button onClick={() => handleTeamMenuChange("TEACHER")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isTeacher ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-fg hover:bg-subtle-soft'}`}>
                                     {isTeacher && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                     <svg className="w-5 h-5 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                                     Teachers
@@ -2538,13 +2538,13 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
+                <div className="flex-1 bg-card relative overflow-y-auto flex flex-col">
                     {tabBar}
                     <div className="flex-1 overflow-y-auto px-5 md:px-6 pb-5 md:pb-6 relative">
-                        <div className="sticky top-0 z-20 -mx-5 mb-4 border-b border-slate-200 bg-white px-5 py-2.5 shadow-sm md:-mx-6 md:px-6">
+                        <div className="sticky top-0 z-20 -mx-5 mb-4 border-b border-line bg-card px-5 py-2.5 shadow-sm md:-mx-6 md:px-6">
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5">
+                                    <div className="inline-flex rounded-md border border-line bg-app p-0.5">
                                         <button
                                             type="button"
                                             onClick={() => handleTeamMenuChange("SPECIALIST")}
@@ -2588,8 +2588,8 @@ function UnifiedWorkspaceContent() {
                                         )}
                                     </div>
                                 </div>
-                                <div className="min-w-0 border-l border-slate-200 pl-3">
-                                    <h2 className="text-base font-bold text-slate-900 m-0">{isSpecialist ? "Assign Specialists by Discipline" : "Available Teachers"}</h2>
+                                <div className="min-w-0 border-l border-line pl-3">
+                                    <h2 className="text-base font-bold text-fg m-0">{isSpecialist ? "Assign Specialists by Discipline" : "Available Teachers"}</h2>
                                 </div>
                             </div>
                         </div>
@@ -2612,13 +2612,13 @@ function UnifiedWorkspaceContent() {
                             !isLocked && (
                                 <div className="space-y-6">
                                     <div className="max-w-md relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
                                         <input
                                             type="text"
                                             value={specialistSearch}
                                             onChange={(e) => setSpecialistSearch(e.target.value)}
                                             placeholder="Search specialists by name..."
-                                            className="w-full pl-10 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            className="w-full pl-10 pr-3 py-2.5 text-sm border border-line rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         />
                                     </div>
 
@@ -2635,11 +2635,11 @@ function UnifiedWorkspaceContent() {
                                                         <span className="text-xs font-extrabold uppercase tracking-wider">
                                                             {specialtyShortLabel(specialty as any)}
                                                         </span>
-                                                        <span className={workspaceBadgeClass(isCovered ? "success" : "neutral", "bg-white")}>
+                                                        <span className={workspaceBadgeClass(isCovered ? "success" : "neutral", "bg-card")}>
                                                             {isCovered ? "Assigned" : "Open"}
                                                         </span>
                                                     </div>
-                                                    <p className="mt-2 text-sm font-bold text-slate-900 leading-tight">{specialty}</p>
+                                                    <p className="mt-2 text-sm font-bold text-fg leading-tight">{specialty}</p>
                                                     <p className="mt-1 text-xs">
                                                         {isCovered ? getStaffName(assignedForSpecialty) : "No specialist assigned yet"}
                                                     </p>
@@ -2650,17 +2650,17 @@ function UnifiedWorkspaceContent() {
 
                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                         {specialtyGroups.map(({ specialty, assignedForSpecialty, candidates }) => (
-                                            <section key={specialty} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                                                <div className="border-b border-slate-100 px-4 py-4">
+                                            <section key={specialty} className="rounded-2xl border border-line bg-card overflow-hidden">
+                                                <div className="border-b border-line px-4 py-4">
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="min-w-0">
                                                             <div className="flex flex-wrap items-center gap-2">
-                                                                <h3 className="m-0 text-lg font-bold text-slate-900">{specialty}</h3>
+                                                                <h3 className="m-0 text-lg font-bold text-fg">{specialty}</h3>
                                                                 <span className={workspaceBadgeClass(assignedForSpecialty ? "success" : "neutral")}>
                                                                     {assignedForSpecialty ? "Assigned" : "Unassigned"}
                                                                 </span>
                                                             </div>
-                                                            <p className="mt-1 text-sm text-slate-500">
+                                                            <p className="mt-1 text-sm text-muted">
                                                                 {assignedForSpecialty
                                                                     ? `${getStaffName(assignedForSpecialty)} currently covers this discipline.`
                                                                     : "Choose the specialist for this discipline."}
@@ -2671,8 +2671,8 @@ function UnifiedWorkspaceContent() {
 
                                                 <div className="p-4 space-y-3">
                                                     {candidates.length === 0 ? (
-                                                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
-                                                            <p className="text-sm font-medium text-slate-500">No matching specialists for this specialty.</p>
+                                                        <div className="rounded-xl border border-dashed border-line bg-app px-4 py-6 text-center">
+                                                            <p className="text-sm font-medium text-muted">No matching specialists for this specialty.</p>
                                                         </div>
                                                     ) : candidates.map((staff) => {
                                                         const staffName = getStaffName(staff);
@@ -2694,14 +2694,14 @@ function UnifiedWorkspaceContent() {
                                                                     isAssignedForThisSpecialty
                                                                         ? "border-indigo-300 bg-indigo-50"
                                                                         : assignedForSpecialty
-                                                                            ? "border-slate-200 bg-slate-50 opacity-75"
-                                                                            : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
+                                                                            ? "border-line bg-app opacity-75"
+                                                                            : "border-line bg-card hover:border-indigo-200 hover:shadow-sm"
                                                                 }`}
                                                             >
                                                                 <div className="flex items-start justify-between gap-3">
                                                                     <div className="min-w-0 flex-1">
                                                                         <div className="flex flex-wrap items-center gap-2">
-                                                                            <p className={`m-0 truncate text-sm font-bold ${isAssignedForThisSpecialty ? "text-indigo-800" : "text-slate-900"}`}>
+                                                                            <p className={`m-0 truncate text-sm font-bold ${isAssignedForThisSpecialty ? "text-indigo-800" : "text-fg"}`}>
                                                                                 {staffName}
                                                                             </p>
                                                                             {staff.recommended_for?.includes(specialty) && (
@@ -2731,7 +2731,7 @@ function UnifiedWorkspaceContent() {
                                                                                     <span
                                                                                         key={staffSpecialty}
                                                                                         title={staffSpecialty}
-                                                                                        className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[0.65rem] font-bold text-slate-600"
+                                                                                        className="rounded-full border border-line bg-app px-2.5 py-1 text-[0.65rem] font-bold text-muted"
                                                                                     >
                                                                                         {specialtyShortLabel(staffSpecialty as any)}
                                                                                     </span>
@@ -2739,7 +2739,7 @@ function UnifiedWorkspaceContent() {
                                                                         </div>
 
                                                                         <div className="mt-3 flex flex-wrap items-center gap-2">
-                                                                            <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-slate-500">
+                                                                            <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-muted">
                                                                                 {staff.caseload} student{staff.caseload !== 1 ? "s" : ""}
                                                                             </p>
                                                                             {renderStaffLanguages(staff.languages)}
@@ -2769,8 +2769,8 @@ function UnifiedWorkspaceContent() {
                                                                             isAssignedForThisSpecialty
                                                                                 ? "bg-indigo-600 text-white shadow-sm hover:bg-red-600 hover:text-white"
                                                                                 : isDisabled
-                                                                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                                                                    : "bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white"
+                                                                                    ? "bg-subtle-soft text-faint cursor-not-allowed"
+                                                                                    : "bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white"
                                                                         }`}
                                                                     >
                                                                         {isLoading ? (
@@ -2794,7 +2794,7 @@ function UnifiedWorkspaceContent() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {list.length === 0 ? (
-                                    <p className="text-sm text-slate-500 italic col-span-full">No staff members found.</p>
+                                    <p className="text-sm text-muted italic col-span-full">No staff members found.</p>
                                 ) : list.map((staff) => {
                                     const alreadyAssigned = assignedIds.includes(staff.id);
                                     const isLoading = assigning === staff.id;
@@ -2802,11 +2802,11 @@ function UnifiedWorkspaceContent() {
 
                                     return (
                                         <div key={staff.id} className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                                            alreadyAssigned ? semanticToneClass("success") : "border-slate-200 bg-white"
+                                            alreadyAssigned ? semanticToneClass("success") : "border-line bg-card"
                                         }`}>
                                             <div className="min-w-0 pr-4">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <p className="text-md font-bold truncate text-slate-800">
+                                                    <p className="text-md font-bold truncate text-fg">
                                                         {getStaffName(staff)}
                                                     </p>
                                                     {staff.recommended && (
@@ -2819,7 +2819,7 @@ function UnifiedWorkspaceContent() {
                                                     <p className="text-xs text-indigo-600 font-bold mb-1 truncate">{staff.specialty}</p>
                                                 )}
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="m-0 text-[0.7rem] font-medium text-slate-500 uppercase tracking-widest">
+                                                    <p className="m-0 text-[0.7rem] font-medium text-muted uppercase tracking-widest">
                                                         {staff.caseload} student{staff.caseload !== 1 ? "s" : ""}
                                                     </p>
                                                     {renderStaffLanguages(staff.languages)}
@@ -2840,8 +2840,8 @@ function UnifiedWorkspaceContent() {
                                                     alreadyAssigned
                                                         ? "bg-indigo-600 text-white shadow-sm hover:bg-red-600 hover:text-white"
                                                         : isButtonDisabled
-                                                            ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-60"
-                                                            : "bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white"
+                                                            ? "bg-subtle-soft text-faint cursor-not-allowed opacity-60"
+                                                            : "bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white"
                                                 }`}
                                             >
                                                 {isLoading ? (
@@ -2903,13 +2903,13 @@ function UnifiedWorkspaceContent() {
         return aName.localeCompare(bName);
     });
 
-    const workspaceStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: studentStatus };
+    const workspaceStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "var(--bg-neutral-light)", color: "var(--text-secondary)", label: studentStatus };
     const tabBar = user?.role !== "PARENT" ? (
-        <div className="border-b border-slate-200 shrink-0 bg-white relative z-10">
+        <div className="border-b border-line shrink-0 bg-card relative z-10">
             <div className="flex flex-col gap-2 px-4 py-2 md:px-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-4">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2 md:border-r md:border-slate-200 md:pr-4">
-                        <h1 className="m-0 truncate text-lg font-extrabold leading-tight tracking-tight text-slate-900" title={studentName}>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 md:border-r md:border-line md:pr-4">
+                        <h1 className="m-0 truncate text-lg font-extrabold leading-tight tracking-tight text-fg" title={studentName}>
                             {studentName}
                         </h1>
                         {studentStatus && (
@@ -2956,21 +2956,21 @@ function UnifiedWorkspaceContent() {
         <div className="flex h-full w-full overflow-hidden relative">
                 {user?.role === "PARENT" && !hasSeenWorkspaceExplainer && (
                     <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-                        <div className="bg-white rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
+                        <div className="bg-card rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
                             <div className="p-8 text-center relative">
-                                <div className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors p-1" onClick={() => { setHasSeenWorkspaceExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-workspace-explainer", "true"); }}>
+                                <div className="absolute top-4 right-4 text-faint hover:text-muted cursor-pointer transition-colors p-1" onClick={() => { setHasSeenWorkspaceExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-workspace-explainer", "true"); }}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </div>
                                 
                                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-indigo-100">
                                     <Sparkles className="w-6 h-6 text-indigo-600" strokeWidth={2} />
                                 </div>
-                                <h2 className="text-xl font-extrabold text-slate-900 mb-4 tracking-tight">Your Child's Progress Hub</h2>
+                                <h2 className="text-xl font-extrabold text-fg mb-4 tracking-tight">Your Child's Progress Hub</h2>
                                 
-                                <p className="text-slate-600 text-[15px] leading-relaxed mb-8">
+                                <p className="text-muted text-[15px] leading-relaxed mb-8">
                                     This space is your central hub for tracking your child's development. Here you can review specialist assessments, provide your own monthly updates, access active learning plans, and read comprehensive monthly progress reports.
                                     <br/><br/>
-                                    <strong className="text-slate-800 font-bold">We rely on your active participation to ensure your child gets the best support possible.</strong>
+                                    <strong className="text-fg font-bold">We rely on your active participation to ensure your child gets the best support possible.</strong>
                                 </p>
                                 
                                 <button
@@ -2990,26 +2990,26 @@ function UnifiedWorkspaceContent() {
                 )}
                 {showStudentSidebar && (
                     <>
-                        {/* Student List Sidebar — fixed secondary sidebar */}
-                        <div className={`hidden md:flex flex-col bg-white border-r border-slate-200 shrink-0 h-full overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'w-0 border-r-0' : 'w-56'}`}>
-                            <div className="p-4 border-b border-slate-200 shrink-0 w-56">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-2">Students</p>
+                        {/* Student List Sidebar â€” fixed secondary sidebar */}
+                        <div className={`hidden md:flex flex-col bg-card border-r border-line shrink-0 h-full overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'w-0 border-r-0' : 'w-56'}`}>
+                            <div className="p-4 border-b border-line shrink-0 w-56">
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-2">Students</p>
                                 <div className="relative mb-2">
-                                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
                                     <input
                                         type="text"
                                         placeholder="Search..."
                                         value={studentSearch}
                                         onChange={(e) => setStudentSearch(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                        className="w-full bg-app border border-line rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                     />
                                 </div>
-                                <div className="flex gap-1 rounded-md border border-slate-200 bg-slate-50 p-0.5 mb-2">
+                                <div className="flex gap-1 rounded-md border border-line bg-app p-0.5 mb-2">
                                     <button
                                         type="button"
                                         title="Sort by latest activity"
                                         onClick={() => setStudentSort("recent")}
-                                        className={`h-7 flex-1 rounded px-2 text-[0.65rem] font-bold transition-colors ${studentSort === "recent" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                                        className={`h-7 flex-1 rounded px-2 text-[0.65rem] font-bold transition-colors ${studentSort === "recent" ? "bg-card text-indigo-700 shadow-sm" : "text-muted hover:text-fg"}`}
                                     >
                                         Recent
                                     </button>
@@ -3017,7 +3017,7 @@ function UnifiedWorkspaceContent() {
                                         type="button"
                                         title="Sort alphabetically"
                                         onClick={() => setStudentSort("az")}
-                                        className={`h-7 flex-1 rounded px-2 text-[0.65rem] font-bold transition-colors ${studentSort === "az" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                                        className={`h-7 flex-1 rounded px-2 text-[0.65rem] font-bold transition-colors ${studentSort === "az" ? "bg-card text-indigo-700 shadow-sm" : "text-muted hover:text-fg"}`}
                                     >
                                         A-Z
                                     </button>
@@ -3025,7 +3025,7 @@ function UnifiedWorkspaceContent() {
                                 <select
                                     value={studentStatusFilter}
                                     onChange={(e) => setStudentStatusFilter(e.target.value)}
-                                    className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-[0.7rem] font-semibold text-slate-600 outline-none focus:ring-1 focus:ring-indigo-500"
+                                    className="h-8 w-full rounded-md border border-line bg-card px-2 text-[0.7rem] font-semibold text-muted outline-none focus:ring-1 focus:ring-indigo-500"
                                     aria-label="Filter students by status"
                                 >
                                     <option value="ALL">All statuses</option>
@@ -3037,7 +3037,7 @@ function UnifiedWorkspaceContent() {
                             <div className="flex-1 overflow-y-auto custom-scrollbar">
                                 <div className="py-2 px-2">
                                     {filteredStudents.length === 0 ? (
-                                        <p className="text-xs text-slate-400 text-center py-4">No students found.</p>
+                                        <p className="text-xs text-faint text-center py-4">No students found.</p>
                                     ) : (
                                         filteredStudents.map(s => {
                                             const isCurrent = s.id.toString() === studentId;
@@ -3058,19 +3058,19 @@ function UnifiedWorkspaceContent() {
                                                         }
                                                     }}
                                                     className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                                        isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-slate-50'
+                                                        isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-app'
                                                     }`}
                                                     style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                    title={`${s.first_name} ${s.last_name} — ${sidebarStatusLabel}`}
+                                                    title={`${s.first_name} ${s.last_name} â€” ${sidebarStatusLabel}`}
                                                 >
                                                     {isCurrent && (
                                                         <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />
                                                     )}
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500'}`}>
+                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-subtle-soft text-muted'}`}>
                                                         {s.first_name?.[0]}{s.last_name?.[0]}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                                        <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-fg'}`}>
                                                             {s.first_name} {s.last_name}
                                                         </span>
                                                         {showStatusPill && (
@@ -3106,8 +3106,8 @@ function UnifiedWorkspaceContent() {
                                     )}
                                 </div>
                             </div>
-                            <div className="p-3 border-t border-slate-200 bg-slate-50">
-                                <p className="text-[0.6rem] text-slate-400 text-center">{filteredStudents.length} of {allStudents.length} students</p>
+                            <div className="p-3 border-t border-line bg-app">
+                                <p className="text-[0.6rem] text-faint text-center">{filteredStudents.length} of {allStudents.length} students</p>
                             </div>
                         </div>
                     </>
@@ -3117,7 +3117,7 @@ function UnifiedWorkspaceContent() {
                 {showStudentSidebar && (
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className={`hidden md:flex absolute top-[1.35rem] z-[50] items-center justify-center bg-white border border-slate-200 shadow-sm rounded-full w-6 h-6 text-slate-400 hover:text-indigo-600 hover:border-indigo-400 transition-all duration-300 ${isSidebarCollapsed ? 'left-2' : 'left-[calc(14rem-12px)]'}`}
+                        className={`hidden md:flex absolute top-[1.35rem] z-[50] items-center justify-center bg-card border border-line shadow-sm rounded-full w-6 h-6 text-faint hover:text-indigo-600 hover:border-indigo-400 transition-all duration-300 ${isSidebarCollapsed ? 'left-2' : 'left-[calc(14rem-12px)]'}`}
                         aria-label="Toggle Student List"
                     >
                         {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -3125,9 +3125,9 @@ function UnifiedWorkspaceContent() {
                 )}
 
                 {/* Main Workspace Area */}
-                <div className="flex-1 flex flex-col min-w-0 h-full relative z-10 bg-slate-50 md:bg-white overflow-hidden">
+                <div className="flex-1 flex flex-col min-w-0 h-full relative z-10 bg-app md:bg-card overflow-hidden">
                     <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'pl-10 md:pl-14' : ''}`}>
-                        <div className="bg-white flex-1 flex flex-col overflow-hidden min-h-0">
+                        <div className="bg-card flex-1 flex flex-col overflow-hidden min-h-0">
                             
                             {/* Main Body */}
                             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 relative z-0">
@@ -3139,15 +3139,15 @@ function UnifiedWorkspaceContent() {
 
                 {pendingTeamNavigation && (
                     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden">
+                        <div className="w-full max-w-lg rounded-2xl bg-card shadow-xl overflow-hidden">
                             <div className="p-6">
                                 <div className="flex items-start gap-4">
                                     <div className="h-11 w-11 shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
                                         <AlertCircle className="h-5 w-5 text-amber-700" />
                                     </div>
                                     <div>
-                                        <h3 className="m-0 text-lg font-bold text-slate-900">Save team changes?</h3>
-                                        <p className="mt-1 text-sm text-slate-500">
+                                        <h3 className="m-0 text-lg font-bold text-fg">Save team changes?</h3>
+                                        <p className="mt-1 text-sm text-muted">
                                             These changes are not saved yet. Review them before leaving this page.
                                         </p>
                                     </div>
@@ -3159,8 +3159,8 @@ function UnifiedWorkspaceContent() {
                                             {addedTeamUnits.length === 0 ? (
                                                 <p className="m-0 text-sm text-emerald-700/70">No additions.</p>
                                             ) : addedTeamUnits.map((unit) => (
-                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
-                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
+                                                    <span className="text-sm font-bold text-fg">{unit.name}</span>
                                                     <span className="text-xs font-semibold text-emerald-700">{unit.detail}</span>
                                                 </div>
                                             ))}
@@ -3172,22 +3172,22 @@ function UnifiedWorkspaceContent() {
                                             {removedTeamUnits.length === 0 ? (
                                                 <p className="m-0 text-sm text-red-700/70">No removals.</p>
                                             ) : removedTeamUnits.map((unit) => (
-                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
-                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
+                                                    <span className="text-sm font-bold text-fg">{unit.name}</span>
                                                     <span className="text-xs font-semibold text-red-700">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-slate-500">Current Selection</p>
+                                    <div className="rounded-xl border border-line bg-app p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-muted">Current Selection</p>
                                         <div className="mt-3 space-y-2">
                                             {stagedTeamUnits.length === 0 ? (
-                                                <p className="m-0 text-sm text-slate-500">No team members selected.</p>
+                                                <p className="m-0 text-sm text-muted">No team members selected.</p>
                                             ) : stagedTeamUnits.map((unit) => (
-                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
-                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
-                                                    <span className="text-xs font-semibold text-slate-500">{unit.detail}</span>
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
+                                                    <span className="text-sm font-bold text-fg">{unit.name}</span>
+                                                    <span className="text-xs font-semibold text-muted">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -3198,7 +3198,7 @@ function UnifiedWorkspaceContent() {
                                         type="button"
                                         onClick={() => setPendingTeamNavigation(null)}
                                         disabled={confirmingTeam}
-                                        className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-60"
+                                        className="rounded-lg bg-subtle-soft px-4 py-2 text-sm font-bold text-muted transition-colors hover:bg-subtle-soft disabled:opacity-60"
                                     >
                                         Stay
                                     </button>
@@ -3210,7 +3210,7 @@ function UnifiedWorkspaceContent() {
                                             if (target) router.push(target);
                                         }}
                                         disabled={confirmingTeam}
-                                        className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                        className="rounded-lg border border-line bg-card px-4 py-2 text-sm font-bold text-muted transition-colors hover:bg-app disabled:opacity-60"
                                     >
                                         Cancel Changes
                                     </button>
@@ -3232,15 +3232,15 @@ function UnifiedWorkspaceContent() {
                 {/* Unassign Confirmation Modal */}
                 {unassigningStaff && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                                         <AlertCircle className="h-6 w-6 text-red-600" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-900">Remove from selection?</h3>
-                                        <p className="text-sm text-slate-500 mt-1">
+                                        <h3 className="text-lg font-bold text-fg">Remove from selection?</h3>
+                                        <p className="text-sm text-muted mt-1">
                                             Remove <strong>{unassigningStaff.name}</strong> from the team selection. This will be saved when you confirm the team.
                                         </p>
                                     </div>
@@ -3250,7 +3250,7 @@ function UnifiedWorkspaceContent() {
                                     <button
                                         onClick={() => setUnassigningStaff(null)}
                                         disabled={isUnassigning}
-                                        className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+                                        className="px-4 py-2 text-sm font-bold text-muted bg-subtle-soft hover:bg-subtle-soft rounded-lg transition-colors disabled:opacity-50"
                                     >
                                         Cancel
                                     </button>
@@ -3276,12 +3276,12 @@ function UnifiedWorkspaceContent() {
 
                 {showEnrollConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
                             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </div>
-                            <h2 className="mb-2 text-xl font-bold text-slate-900">Enroll {studentName}?</h2>
-                            <p className="mb-6 text-sm leading-6 text-slate-500">
+                            <h2 className="mb-2 text-xl font-bold text-fg">Enroll {studentName}?</h2>
+                            <p className="mb-6 text-sm leading-6 text-muted">
                                 This will mark the student as enrolled and unlock specialist progress trackers and monthly reports. Since this is the therapy phase, no classroom teacher is involved yet. A finalized IEP is required.
                             </p>
                             <div className="flex justify-end gap-3">
@@ -3289,7 +3289,7 @@ function UnifiedWorkspaceContent() {
                                     type="button"
                                     onClick={() => !enrollingStudent && setShowEnrollConfirm(false)}
                                     disabled={enrollingStudent}
-                                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                                    className="rounded-lg border border-line bg-card px-4 py-2 text-sm font-bold text-muted hover:bg-app disabled:opacity-60"
                                 >
                                     Cancel
                                 </button>
@@ -3308,12 +3308,12 @@ function UnifiedWorkspaceContent() {
 
                 {showIntegrateConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
                             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
                                 <GraduationCap size={24} />
                             </div>
-                            <h2 className="mb-2 text-xl font-bold text-slate-900">Integrate {studentName}?</h2>
-                            <p className="mb-6 text-sm leading-6 text-slate-500">
+                            <h2 className="mb-2 text-xl font-bold text-fg">Integrate {studentName}?</h2>
+                            <p className="mb-6 text-sm leading-6 text-muted">
                                 This will transition the student into the mainstream school program, officially involving the classroom teacher. This unlocks SPED teacher assignment and classroom progress trackers.
                             </p>
                             <div className="flex justify-end gap-3">
@@ -3321,7 +3321,7 @@ function UnifiedWorkspaceContent() {
                                     type="button"
                                     onClick={() => !integratingStudent && setShowIntegrateConfirm(false)}
                                     disabled={integratingStudent}
-                                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                                    className="rounded-lg border border-line bg-card px-4 py-2 text-sm font-bold text-muted hover:bg-app disabled:opacity-60"
                                 >
                                     Cancel
                                 </button>
@@ -3347,12 +3347,12 @@ function UnifiedWorkspaceContent() {
                         background: transparent;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb {
-                        background-color: #cbd5e1;
+                        background-color: var(--text-muted);
                         border-radius: 20px;
                     }
                     .secondary-header-scrollbar {
                         scrollbar-width: thin;
-                        scrollbar-color: #cbd5e1 transparent;
+                        scrollbar-color: var(--text-muted) transparent;
                     }
                     .secondary-header-scrollbar::-webkit-scrollbar {
                         height: 3px;
@@ -3361,7 +3361,7 @@ function UnifiedWorkspaceContent() {
                         background: transparent;
                     }
                     .secondary-header-scrollbar::-webkit-scrollbar-thumb {
-                        background-color: #cbd5e1;
+                        background-color: var(--text-muted);
                         border-radius: 999px;
                     }
                 `}} />
@@ -3371,7 +3371,7 @@ function UnifiedWorkspaceContent() {
 
 export default function UnifiedWorkspacePage() {
     return (
-        <Suspense fallback={<div className="p-8 h-full flex items-center justify-center font-medium text-slate-500">Loading master workspace...</div>}>
+        <Suspense fallback={<div className="p-8 h-full flex items-center justify-center font-medium text-muted">Loading master workspace...</div>}>
             <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
                 <UnifiedWorkspaceContent />
             </ProtectedRoute>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Sparkles, TrendingUp, Award } from "lucide-react";
@@ -81,22 +81,22 @@ export default function GoalProgressChart() {
 
   return (
     <section 
-      className="rounded-xl border border-slate-200 shadow-sm p-4 bg-white"
+      className="rounded-xl border border-line shadow-sm p-4 bg-card"
       style={{ fontFamily: "var(--font-sans)", color: "var(--text-primary)" }}
     >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900 m-0 flex items-center gap-2">
+          <h2 className="text-base font-bold text-fg m-0 flex items-center gap-2">
             <Sparkles size={16} className="text-indigo-500" />
             IEP Goals Progress Chart
           </h2>
-          <p className="text-[0.7rem] font-medium text-slate-500 m-0">Comparing baseline performance to current cycle progress</p>
+          <p className="text-[0.7rem] font-medium text-muted m-0">Comparing baseline performance to current cycle progress</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-200 border border-slate-300" /> Baseline
+          <span className="flex items-center gap-1 text-xs font-semibold text-muted">
+            <span className="w-2.5 h-2.5 rounded-full bg-subtle-soft border border-line" /> Baseline
           </span>
-          <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+          <span className="flex items-center gap-1 text-xs font-semibold text-muted">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Current Progress
           </span>
         </div>
@@ -104,7 +104,7 @@ export default function GoalProgressChart() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* SVG Graph rendering */}
-        <div className="md:col-span-2 relative flex items-center justify-center border border-slate-100 rounded-xl bg-slate-50/40 p-2">
+        <div className="md:col-span-2 relative flex items-center justify-center border border-line rounded-xl bg-app/40 p-2">
           <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>
             <defs>
               <linearGradient id="slp-grad" x1="0" y1="0" x2="0" y2="1">
@@ -139,7 +139,7 @@ export default function GoalProgressChart() {
                     y1={y}
                     x2={width - paddingRight}
                     y2={y}
-                    stroke="#e2e8f0"
+                    stroke="var(--border-light)"
                     strokeWidth="1"
                     strokeDasharray="4 4"
                   />
@@ -147,7 +147,7 @@ export default function GoalProgressChart() {
                     x={paddingLeft - 8}
                     y={y + 4}
                     textAnchor="end"
-                    fill="#94a3b8"
+                    fill="var(--text-muted)"
                     fontSize="9px"
                     fontWeight="600"
                   >
@@ -195,7 +195,7 @@ export default function GoalProgressChart() {
                     y={baseY}
                     width={barWidth}
                     height={baseHeight}
-                    fill="#cbd5e1"
+                    fill="var(--text-muted)"
                     rx="3"
                     opacity={isHovered ? 0.7 : 0.4}
                     style={{ transition: "opacity 0.2s ease" }}
@@ -232,7 +232,7 @@ export default function GoalProgressChart() {
                     x={xCenter}
                     y={height - 10}
                     textAnchor="middle"
-                    fill={isHovered ? m.color : "#64748b"}
+                    fill={isHovered ? m.color : "var(--text-secondary)"}
                     fontSize="10px"
                     fontWeight={isHovered ? "800" : "700"}
                     style={{ transition: "fill 0.18s ease" }}
@@ -250,29 +250,29 @@ export default function GoalProgressChart() {
           {hoveredIndex === null ? (
             <div className="flex flex-col items-center justify-center text-center h-full gap-2 py-4">
               <TrendingUp className="text-indigo-400 animate-bounce" size={28} />
-              <p className="text-xs font-bold text-slate-700 m-0">Hover over the chart bars</p>
-              <p className="text-[0.68rem] text-slate-400 m-0">To view IEP goals, growth percentages, and developmental milestones.</p>
+              <p className="text-xs font-bold text-fg m-0">Hover over the chart bars</p>
+              <p className="text-[0.68rem] text-faint m-0">To view IEP goals, growth percentages, and developmental milestones.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3 h-full justify-between">
               <div>
                 <span 
-                  className="text-[0.55rem] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded bg-white border text-indigo-700 w-fit block mb-1.5"
+                  className="text-[0.55rem] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded bg-card border text-indigo-700 w-fit block mb-1.5"
                   style={{ borderColor: metrics[hoveredIndex].color, color: metrics[hoveredIndex].color }}
                 >
                   {metrics[hoveredIndex].shortLabel} FOCUS AREA
                 </span>
-                <h4 className="text-sm font-extrabold text-slate-900 m-0">{metrics[hoveredIndex].name}</h4>
+                <h4 className="text-sm font-extrabold text-fg m-0">{metrics[hoveredIndex].name}</h4>
                 
                 <div className="flex items-center gap-3 my-2.5 pb-2 border-b border-indigo-100/30">
                   <div>
-                    <span className="text-[0.55rem] font-bold text-slate-400 uppercase tracking-wider block">Baseline</span>
-                    <span className="text-sm font-extrabold text-slate-600">{metrics[hoveredIndex].initial}%</span>
+                    <span className="text-[0.55rem] font-bold text-faint uppercase tracking-wider block">Baseline</span>
+                    <span className="text-sm font-extrabold text-muted">{metrics[hoveredIndex].initial}%</span>
                   </div>
-                  <div className="text-xs text-indigo-400 font-bold">➔</div>
+                  <div className="text-xs text-indigo-400 font-bold">âž”</div>
                   <div>
-                    <span className="text-[0.55rem] font-bold text-slate-400 uppercase tracking-wider block">Current</span>
-                    <span className="text-sm font-extrabold text-slate-900" style={{ color: metrics[hoveredIndex].color }}>
+                    <span className="text-[0.55rem] font-bold text-faint uppercase tracking-wider block">Current</span>
+                    <span className="text-sm font-extrabold text-fg" style={{ color: metrics[hoveredIndex].color }}>
                       {metrics[hoveredIndex].current}%
                     </span>
                   </div>
@@ -282,10 +282,10 @@ export default function GoalProgressChart() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <p className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider m-0 flex items-center gap-1">
+                  <p className="text-[0.6rem] font-bold text-faint uppercase tracking-wider m-0 flex items-center gap-1">
                     <Award size={10} /> Goal Milestones Reached
                   </p>
-                  <ul className="m-0 pl-4 text-xs font-semibold text-slate-600 flex flex-col gap-1">
+                  <ul className="m-0 pl-4 text-xs font-semibold text-muted flex flex-col gap-1">
                     {metrics[hoveredIndex].goals.map((g, idx) => (
                       <li key={idx} className="line-clamp-2 leading-relaxed">{g}</li>
                     ))}

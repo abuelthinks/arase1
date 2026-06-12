@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -504,7 +504,7 @@ function UnifiedWorkspaceContent() {
     };
 
     if (loading) {
-        return <div className="p-8 text-center text-slate-500">Loading workspace...</div>;
+        return <div className="p-8 text-center text-muted">Loading workspace...</div>;
     }
     if (!formStatuses) {
         return <div className="p-8 text-center text-red-500">Failed to load student data.</div>;
@@ -555,7 +555,7 @@ function UnifiedWorkspaceContent() {
     const submitterLabel = (submittedBy?: { name?: string; role?: string } | null) => {
         if (!submittedBy) return "Submitted";
         const role = submittedBy.role ? submittedBy.role.toLowerCase() : "user";
-        return `${submittedBy.name || "User"} • ${role}`;
+        return `${submittedBy.name || "User"} â€¢ ${role}`;
     };
 
     const formatActivityEventTitle = (event: any) => {
@@ -630,7 +630,7 @@ function UnifiedWorkspaceContent() {
     const getSpecialtyStatus = (sectionKey: string) => {
         const contrib = sectionContributions.find(c => c.section_key === sectionKey);
         if (!contrib) {
-            return { status: "not_started", label: "Not Started", bg: "bg-slate-50 border-slate-200 text-slate-500", dot: "bg-slate-400" };
+            return { status: "not_started", label: "Not Started", bg: "bg-app border-line text-muted", dot: "bg-slate-400" };
         }
         if (contrib.status === "submitted") {
             return { status: "submitted", label: "Submitted", bg: "bg-emerald-50 border-emerald-200 text-emerald-700", dot: "bg-emerald-500" };
@@ -722,15 +722,15 @@ function UnifiedWorkspaceContent() {
 
         return (
             <>
-                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
-                        <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
+                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-line bg-app flex flex-col shrink-0">
+                    <div className="p-6 border-b border-line flex flex-col gap-1">
+                        <h1 className="text-xl font-bold text-fg m-0 truncate" title={studentName}>{studentName}</h1>
                         {studentStatus && (
                             <span style={{
                                 fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
                                 padding: "2px 8px", borderRadius: "999px", width: "fit-content",
-                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)"
                             }}>
                                 {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                             </span>
@@ -738,41 +738,41 @@ function UnifiedWorkspaceContent() {
                     </div>
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                         <div className="px-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Admin Overview</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Admin Overview</p>
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                    <p className="text-lg font-bold text-slate-900">{actions.length}</p>
-                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Actions</p>
+                                <div className="rounded-lg border border-line bg-card p-3">
+                                    <p className="text-lg font-bold text-fg">{actions.length}</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-faint">Actions</p>
                                 </div>
-                                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                    <p className="text-lg font-bold text-slate-900">{submittedForms}/5</p>
-                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Forms</p>
+                                <div className="rounded-lg border border-line bg-card p-3">
+                                    <p className="text-lg font-bold text-fg">{submittedForms}/5</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-faint">Forms</p>
                                 </div>
-                                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                    <p className="text-lg font-bold text-slate-900">{docs.length}</p>
-                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Docs</p>
+                                <div className="rounded-lg border border-line bg-card p-3">
+                                    <p className="text-lg font-bold text-fg">{docs.length}</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-faint">Docs</p>
                                 </div>
-                                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                    <p className="text-lg font-bold text-slate-900">{assignedStaff.length}</p>
-                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Team</p>
+                                <div className="rounded-lg border border-line bg-card p-3">
+                                    <p className="text-lg font-bold text-fg">{assignedStaff.length}</p>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-faint">Team</p>
                                 </div>
                             </div>
-                            <button onClick={() => navigateWithTeamGuard(`/students/${studentId}`)} className="mt-4 w-full rounded-lg border border-indigo-200 bg-white px-4 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50">
+                            <button onClick={() => navigateWithTeamGuard(`/students/${studentId}`)} className="mt-4 w-full rounded-lg border border-indigo-200 bg-card px-4 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50">
                                 Open Full Profile
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto p-5 md:p-6">
+                <div className="flex-1 bg-card relative overflow-y-auto p-5 md:p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <section className="rounded-xl border border-slate-200 p-4">
+                        <section className="rounded-xl border border-line p-4">
                             <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-base font-bold text-slate-900">Action Queue</h2>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{actions.length} active</span>
+                                <h2 className="text-base font-bold text-fg">Action Queue</h2>
+                                <span className="text-xs font-bold text-faint uppercase tracking-widest">{actions.length} active</span>
                             </div>
                             {actions.length === 0 ? (
-                                <p className="text-sm text-slate-500">No urgent admin follow-ups.</p>
+                                <p className="text-sm text-muted">No urgent admin follow-ups.</p>
                             ) : (
                                 <div className="flex flex-col gap-1.5">
                                     {actions.map(action => {
@@ -788,7 +788,7 @@ function UnifiedWorkspaceContent() {
                                                             </span>
                                                             <div>
                                                                 <p className="text-sm font-extrabold text-slate-950 m-0">{action.title}</p>
-                                                                <p className="text-[0.7rem] font-medium text-slate-500 m-0">Specialist tracking is updated in real-time</p>
+                                                                <p className="text-[0.7rem] font-medium text-muted m-0">Specialist tracking is updated in real-time</p>
                                                             </div>
                                                         </div>
                                                         <button onClick={action.onClick} className="shrink-0 text-xs font-extrabold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow transition-colors flex items-center gap-1.5">
@@ -804,14 +804,14 @@ function UnifiedWorkspaceContent() {
                                                             const specialistName = specialist ? getStaffName(specialist) : "Unassigned";
 
                                                             return (
-                                                                <div key={sec.key} className="flex flex-col justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-slate-350 transition-all shadow-xs relative">
+                                                                <div key={sec.key} className="flex flex-col justify-between p-3 rounded-xl border border-line bg-card hover:border-slate-350 transition-all shadow-xs relative">
                                                                     <div className="mb-2">
-                                                                        <span className="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Section {sec.key}</span>
-                                                                        <h4 className="text-xs font-bold text-slate-900 line-clamp-1 leading-snug" title={sec.label}>
+                                                                        <span className="text-[0.6rem] font-bold text-faint uppercase tracking-wider block mb-0.5">Section {sec.key}</span>
+                                                                        <h4 className="text-xs font-bold text-fg line-clamp-1 leading-snug" title={sec.label}>
                                                                             {sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych"}
                                                                         </h4>
-                                                                        <p className="text-[0.7rem] font-semibold text-slate-500 mt-1 truncate" title={specialistName}>
-                                                                            👤 {specialistName}
+                                                                        <p className="text-[0.7rem] font-semibold text-muted mt-1 truncate" title={specialistName}>
+                                                                            ðŸ‘¤ {specialistName}
                                                                         </p>
                                                                     </div>
                                                                     <div className={`mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[0.65rem] font-bold w-fit ${statusInfo.bg}`}>
@@ -827,8 +827,8 @@ function UnifiedWorkspaceContent() {
                                         }
 
                                         return (
-                                            <div key={action.title} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${action.tone === "warning" ? "border-amber-200 bg-amber-50" : action.tone === "positive" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
-                                                <p className="text-sm font-bold text-slate-800">{action.title}</p>
+                                            <div key={action.title} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${action.tone === "warning" ? "border-amber-200 bg-amber-50" : action.tone === "positive" ? "border-emerald-200 bg-emerald-50" : "border-line bg-app"}`}>
+                                                <p className="text-sm font-bold text-fg">{action.title}</p>
                                                 <button onClick={action.onClick} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
                                                     {action.label}
                                                 </button>
@@ -839,36 +839,36 @@ function UnifiedWorkspaceContent() {
                             )}
                         </section>
 
-                        <section className="rounded-xl border border-slate-200 p-4">
-                            <h2 className="text-base font-bold text-slate-900 mb-3">Student Snapshot</h2>
+                        <section className="rounded-xl border border-line p-4">
+                            <h2 className="text-base font-bold text-fg mb-3">Student Snapshot</h2>
                             <div className="grid grid-cols-1 gap-2">
                                 {profileRows.map(row => (
-                                    <div key={row.label} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5">
-                                        <span className="text-sm font-semibold text-slate-500">{row.label}</span>
-                                        <span className="text-sm font-bold text-slate-800 text-right">{row.value}</span>
+                                    <div key={row.label} className="flex items-center justify-between rounded-lg bg-app px-3 py-2.5">
+                                        <span className="text-sm font-semibold text-muted">{row.label}</span>
+                                        <span className="text-sm font-bold text-fg text-right">{row.value}</span>
                                     </div>
                                 ))}
                             </div>
                         </section>
 
-                        <section className="rounded-xl border border-slate-200 p-4 lg:col-span-2">
+                        <section className="rounded-xl border border-line p-4 lg:col-span-2">
                             <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-base font-bold text-slate-900">Recent Activity</h2>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{recentActivity.length} recorded</span>
+                                <h2 className="text-base font-bold text-fg">Recent Activity</h2>
+                                <span className="text-xs font-bold text-faint uppercase tracking-widest">{recentActivity.length} recorded</span>
                             </div>
                             {recentActivity.length === 0 ? (
-                                <p className="text-sm text-slate-500">No recorded form or document activity yet.</p>
+                                <p className="text-sm text-muted">No recorded form or document activity yet.</p>
                             ) : (
                                 <div className="max-h-72 overflow-y-auto pr-2 custom-scrollbar">
-                                    <div className="divide-y divide-slate-100 rounded-lg border border-slate-100 overflow-hidden">
+                                    <div className="divide-y divide-slate-100 rounded-lg border border-line overflow-hidden">
                                         {recentActivity.map((item: any) => (
-                                            <div key={item.id} className="flex items-center gap-3 bg-white px-3 py-2.5 hover:bg-slate-50">
+                                            <div key={item.id} className="flex items-center gap-3 bg-card px-3 py-2.5 hover:bg-app">
                                                 <span className={`h-2 w-2 shrink-0 rounded-full ${item.tone === "document" ? "bg-indigo-500" : "bg-emerald-500"}`} />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="m-0 truncate text-sm font-bold text-slate-800">{item.title}</p>
-                                                    <p className="m-0 truncate text-xs font-semibold text-slate-500">{item.meta}</p>
+                                                    <p className="m-0 truncate text-sm font-bold text-fg">{item.title}</p>
+                                                    <p className="m-0 truncate text-xs font-semibold text-muted">{item.meta}</p>
                                                 </div>
-                                                <span className="shrink-0 text-xs font-semibold text-slate-400">{formatActivityTime(item.timestamp)}</span>
+                                                <span className="shrink-0 text-xs font-semibold text-faint">{formatActivityTime(item.timestamp)}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -876,36 +876,36 @@ function UnifiedWorkspaceContent() {
                             )}
                         </section>
 
-                        <section className="rounded-xl border border-slate-200 p-4">
-                            <h2 className="text-base font-bold text-slate-900 mb-3">Parent</h2>
+                        <section className="rounded-xl border border-line p-4">
+                            <h2 className="text-base font-bold text-fg mb-3">Parent</h2>
                             <div className="grid grid-cols-1 gap-2">
                                 {parentRows.map(row => (
-                                    <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
-                                        <span className="text-sm font-semibold text-slate-500">{row.label}</span>
+                                    <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg bg-app px-3 py-2.5">
+                                        <span className="text-sm font-semibold text-muted">{row.label}</span>
                                         {row.href ? (
                                             <a href={row.href} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 truncate">{row.value}</a>
                                         ) : (
-                                            <span className="text-sm font-bold text-slate-800 text-right truncate">{row.value}</span>
+                                            <span className="text-sm font-bold text-fg text-right truncate">{row.value}</span>
                                         )}
                                     </div>
                                 ))}
                             </div>
                         </section>
 
-                        <section className="rounded-xl border border-slate-200 p-4">
-                            <h2 className="text-base font-bold text-slate-900 mb-3">Team & Documents</h2>
+                        <section className="rounded-xl border border-line p-4">
+                            <h2 className="text-base font-bold text-fg mb-3">Team & Documents</h2>
                             <div className="grid grid-cols-1 gap-2">
-                                <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
-                                    <span className="text-sm font-semibold text-slate-500">Specialists</span>
-                                    <span className="text-sm font-bold text-slate-800 text-right truncate">{staffNames(specialists)}</span>
+                                <div className="flex items-center justify-between gap-3 rounded-lg bg-app px-3 py-2.5">
+                                    <span className="text-sm font-semibold text-muted">Specialists</span>
+                                    <span className="text-sm font-bold text-fg text-right truncate">{staffNames(specialists)}</span>
                                 </div>
-                                <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
-                                    <span className="text-sm font-semibold text-slate-500">Teachers</span>
-                                    <span className="text-sm font-bold text-slate-800 text-right truncate">{staffNames(teachers)}</span>
+                                <div className="flex items-center justify-between gap-3 rounded-lg bg-app px-3 py-2.5">
+                                    <span className="text-sm font-semibold text-muted">Teachers</span>
+                                    <span className="text-sm font-bold text-fg text-right truncate">{staffNames(teachers)}</span>
                                 </div>
-                                <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
-                                    <span className="text-sm font-semibold text-slate-500">Latest document</span>
-                                    <span className="text-sm font-bold text-slate-800 text-right">{latestDoc ? `${latestDoc.type} ${formatDocumentDateTime(latestDoc.created_at)}` : "None"}</span>
+                                <div className="flex items-center justify-between gap-3 rounded-lg bg-app px-3 py-2.5">
+                                    <span className="text-sm font-semibold text-muted">Latest document</span>
+                                    <span className="text-sm font-bold text-fg text-right">{latestDoc ? `${latestDoc.type} ${formatDocumentDateTime(latestDoc.created_at)}` : "None"}</span>
                                 </div>
                             </div>
                         </section>
@@ -945,18 +945,18 @@ function UnifiedWorkspaceContent() {
 
         return (
             <>
-                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
+                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-line bg-app flex flex-col shrink-0">
+                    <div className="p-6 border-b border-line flex flex-col gap-1">
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
+                            <h1 className="text-xl font-bold text-fg m-0 truncate" title={studentName}>{studentName}</h1>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             {studentStatus && (
                                 <span style={{
                                     fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
                                     padding: "2px 8px", borderRadius: "999px",
-                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)"
                                 }}>
                                     {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                                 </span>
@@ -967,18 +967,18 @@ function UnifiedWorkspaceContent() {
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                         {assessmentTabs.length > 0 && (
                             <div className="px-4 mb-4">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Assessments</p>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Assessments</p>
                                 <div className="flex flex-col gap-1">
                                     {assessmentTabs.map((tab) => {
                                         const isSub = formStatuses[tab.id]?.submitted;
                                         const isActive = activeFormTab === tab.id;
                                         const isLocked = user?.role === "ADMIN" && !isSub;
                                         return (
-                                            <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                            <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after submission" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>{tab.label}</span>
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-indigo-800' : 'text-fg'}`}>{tab.label}</span>
                                                 {isLocked ? (
-                                                    <svg className="w-4 h-4 text-slate-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                    <svg className="w-4 h-4 text-faint shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                                 ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                             </button>
                                         );
@@ -988,18 +988,18 @@ function UnifiedWorkspaceContent() {
                         )}
 
                         <div className="px-4 pb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Progress Trackers</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Progress Trackers</p>
                             <div className="flex flex-col gap-1">
                                 {progressTabs.map((tab) => {
                                     const isSub = formStatuses[tab.id]?.submitted;
                                     const isActive = activeFormTab === tab.id;
                                     const isLocked = (user?.role === "ADMIN" && !isStudentEnrolled) || (["SPECIALIST", "TEACHER"].includes(user?.role || "") && !isStudentEnrolled);
                                     return (
-                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-emerald-800' : 'text-slate-700'}`}>{tab.label}</span>
+                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-emerald-800' : 'text-fg'}`}>{tab.label}</span>
                                             {isLocked ? (
-                                                <svg className="w-4 h-4 text-slate-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                <svg className="w-4 h-4 text-faint shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                             ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                         </button>
                                     );
@@ -1009,30 +1009,30 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto">
+                <div className="flex-1 bg-card relative overflow-y-auto">
                     {isAdminAssessmentLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Assessment Locked</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">This assessment will be available for admin review after it is submitted.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Assessment Locked</h3>
+                            <p className="text-sm text-muted max-w-sm">This assessment will be available for admin review after it is submitted.</p>
                         </div>
                     ) : isAdminProgressLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Progress Locked</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">Progress trackers are available after the student is enrolled.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Progress Locked</h3>
+                            <p className="text-sm text-muted max-w-sm">Progress trackers are available after the student is enrolled.</p>
                         </div>
                     ) : isSpecialistProgressLocked || isTeacherProgressLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Progress Locked</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">{user?.role === "TEACHER" ? "Teacher progress" : "Specialist progress"} can be submitted after the student is enrolled.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Progress Locked</h3>
+                            <p className="text-sm text-muted max-w-sm">{user?.role === "TEACHER" ? "Teacher progress" : "Specialist progress"} can be submitted after the student is enrolled.</p>
                         </div>
                     ) : canCreateCurrentForm ? (
                         <div className="w-full">
@@ -1044,11 +1044,11 @@ function UnifiedWorkspaceContent() {
                         </div>
                     ) : !currentStatus?.submitted ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">Form Not Submitted</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">No completed submission exists yet for {currentTabConf?.label}.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">Form Not Submitted</h3>
+                            <p className="text-sm text-muted max-w-sm">No completed submission exists yet for {currentTabConf?.label}.</p>
                         </div>
                     ) : (
                         <div className="w-full">
@@ -1085,18 +1085,18 @@ function UnifiedWorkspaceContent() {
 
         return (
             <>
-                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
+                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-line bg-app flex flex-col shrink-0">
+                    <div className="p-6 border-b border-line flex flex-col gap-1">
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
+                            <h1 className="text-xl font-bold text-fg m-0 truncate" title={studentName}>{studentName}</h1>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             {studentStatus && (
                                 <span style={{
                                     fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
                                     padding: "2px 8px", borderRadius: "999px",
-                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)"
                                 }}>
                                     {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                                 </span>
@@ -1107,8 +1107,8 @@ function UnifiedWorkspaceContent() {
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                         {user?.role === "ADMIN" && (
                             <div className="px-6 mb-8">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3">Actions</p>
-                                <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'}`}>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3">Actions</p>
+                                <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-card text-fg border-line hover:bg-subtle-soft hover:border-line'}`}>
                                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                     Report Generator
                                 </button>
@@ -1117,7 +1117,7 @@ function UnifiedWorkspaceContent() {
 
                         {user?.role === "ADMIN" && (
                             <div className="px-5 mb-8">
-                                <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Input Forms</p>
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Input Forms</p>
                                 <div className="flex flex-col gap-1">
                                     {TABS.map((tab) => {
                                         const isSub = formStatuses?.[tab.id]?.submitted;
@@ -1133,15 +1133,15 @@ function UnifiedWorkspaceContent() {
                                                 key={tab.id}
                                                 disabled={isLocked}
                                                 onClick={() => handleReportMenuChange(tab.id)}
-                                                className={`w-full flex items-center justify-between text-left px-4 py-2.5 rounded-lg transition-all border ${isLocked ? 'border-transparent text-slate-400 cursor-not-allowed opacity-60' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}
+                                                className={`w-full flex items-center justify-between text-left px-4 py-2.5 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-60' : isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}
                                                 title={isLocked ? "Available after enrollment/integration" : undefined}
                                             >
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
-                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-slate-400' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                                <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-indigo-800' : 'text-fg'}`}>
                                                     {tab.label}
                                                 </span>
                                                 {isLocked ? (
-                                                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                                                    <Lock className="w-3.5 h-3.5 text-faint shrink-0 ml-2" />
                                                 ) : isSub ? (
                                                     <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} />
                                                 ) : (
@@ -1155,23 +1155,23 @@ function UnifiedWorkspaceContent() {
                         )}
 
                         <div className="px-4 mb-8">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">IEP Documents</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">IEP Documents</p>
                             {iepDocs.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic px-2">No IEPs generated yet.</p>
+                                <p className="text-xs text-faint italic px-2">No IEPs generated yet.</p>
                             ) : (() => {
                                 const doc = iepDocs[0];
                                 const isActive = reportView === "iep";
                                 return (
                                     <div className="flex flex-col gap-1">
-                                        <button onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button onClick={() => handleReportMenuChange("iep", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                             <div className="flex justify-between items-center w-full">
-                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>IEP Master</span>
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-fg'}`}>IEP Master</span>
                                                 {iepDocs.length > 1 && (
                                                     <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{iepDocs.length} versions</span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-slate-500 truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
+                                            <span className="text-xs text-muted truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
                                         </button>
                                     </div>
                                 );
@@ -1179,23 +1179,23 @@ function UnifiedWorkspaceContent() {
                         </div>
 
                         <div className="px-4 pb-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Monthly Progress</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Monthly Progress</p>
                             {monthlyDocs.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic px-2">No monthly reports yet.</p>
+                                <p className="text-xs text-faint italic px-2">No monthly reports yet.</p>
                             ) : (() => {
                                 const doc = monthlyDocs[0];
                                 const isActive = reportView === "monthly";
                                 return (
                                     <div className="flex flex-col gap-1">
-                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-slate-100'}`}>
+                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
                                             {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
                                             <div className="flex justify-between items-center w-full">
-                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>Progress Report</span>
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>Progress Report</span>
                                                 {monthlyDocs.length > 1 && (
                                                     <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{monthlyDocs.length} versions</span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-slate-500 truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
+                                            <span className="text-xs text-muted truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
                                         </button>
                                     </div>
                                 );
@@ -1204,7 +1204,7 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto flex flex-col">
+                <div className="flex-1 bg-card relative overflow-y-auto flex flex-col">
                     <div className="flex-1 overflow-y-auto">
                     {isGenerator && (
                         <AdminReportsContent propStudentId={studentId} propHideNavigation={true} propWorkspacePath={`/students/${studentId}/workspace`} />
@@ -1222,11 +1222,11 @@ function UnifiedWorkspaceContent() {
                         if (isLocked) {
                             return (
                                 <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                                    <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                    <div className="w-16 h-16 bg-app border border-slate-105 rounded-full flex items-center justify-center mb-4 text-faint">
                                         <Lock className="w-8 h-8" />
                                     </div>
-                                    <h3 className="text-lg font-bold text-slate-700 mb-1">Form Locked</h3>
-                                    <p className="text-sm text-slate-500 max-w-sm">
+                                    <h3 className="text-lg font-bold text-fg mb-1">Form Locked</h3>
+                                    <p className="text-sm text-muted max-w-sm">
                                         This form is locked for Admin review until the student is {tab.id === "sped_tracker" ? "integrated" : "enrolled"}.
                                     </p>
                                 </div>
@@ -1236,11 +1236,11 @@ function UnifiedWorkspaceContent() {
                         if (!isSub) {
                             return (
                                 <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                                    <div className="w-16 h-16 bg-slate-50 border border-slate-105 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                    <div className="w-16 h-16 bg-app border border-slate-105 rounded-full flex items-center justify-center mb-4 text-faint">
                                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                     </div>
-                                    <h3 className="text-lg font-bold text-slate-700 mb-1">Awaiting Submission</h3>
-                                    <p className="text-sm text-slate-500 max-w-sm">
+                                    <h3 className="text-lg font-bold text-fg mb-1">Awaiting Submission</h3>
+                                    <p className="text-sm text-muted max-w-sm">
                                         This form has not been submitted by the clinical team or parent yet.
                                     </p>
                                 </div>
@@ -1260,15 +1260,15 @@ function UnifiedWorkspaceContent() {
                     {reportView === "iep" && selectedDocId && (
                         <div className="flex-1 overflow-y-auto">
                             {iepDocs.length > 1 && (
-                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                <div className="bg-app border-b border-line px-4 py-1.5 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 text-muted">
                                         <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                        <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                     </div>
                                     <select
                                         value={selectedDocId}
                                         onChange={(e) => handleReportMenuChange("iep", e.target.value)}
-                                        className="text-[0.75rem] font-bold text-slate-700 bg-white border border-slate-200 rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                        className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
                                         style={{
                                             backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
                                             backgroundPosition: "right 0.4rem center",
@@ -1278,7 +1278,7 @@ function UnifiedWorkspaceContent() {
                                     >
                                         {iepDocs.map((doc, idx) => (
                                             <option key={doc.id} value={doc.id.toString()}>
-                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
+                                                {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
                                             </option>
                                         ))}
                                     </select>
@@ -1290,15 +1290,15 @@ function UnifiedWorkspaceContent() {
                     {reportView === "monthly" && selectedDocId && (
                         <div className="flex-1 overflow-y-auto">
                             {monthlyDocs.length > 1 && (
-                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-1.5 flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                <div className="bg-app border-b border-line px-4 py-1.5 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 text-muted">
                                         <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Version History</span>
+                                        <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                     </div>
                                     <select
                                         value={selectedDocId}
                                         onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
-                                        className="text-[0.75rem] font-bold text-slate-700 bg-white border border-slate-200 rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                        className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
                                         style={{
                                             backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
                                             backgroundPosition: "right 0.4rem center",
@@ -1308,7 +1308,7 @@ function UnifiedWorkspaceContent() {
                                     >
                                         {monthlyDocs.map((doc, idx) => (
                                             <option key={doc.id} value={doc.id.toString()}>
-                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
+                                                {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
                                             </option>
                                         ))}
                                     </select>
@@ -1319,11 +1319,11 @@ function UnifiedWorkspaceContent() {
                     )}
                     {isEmptyState && (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                            <div className="w-16 h-16 bg-app border border-line rounded-full flex items-center justify-center mb-4 text-faint">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 mb-1">No Reports Yet</h3>
-                            <p className="text-sm text-slate-500 max-w-sm">There are no reports or documents associated with this student yet.</p>
+                            <h3 className="text-lg font-bold text-fg mb-1">No Reports Yet</h3>
+                            <p className="text-sm text-muted max-w-sm">There are no reports or documents associated with this student yet.</p>
                         </div>
                     )}
                 </div>
@@ -1353,8 +1353,8 @@ function UnifiedWorkspaceContent() {
 
             return (
                 <>
-                    <span className="text-[0.5rem] text-slate-300">●</span>
-                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-slate-500 flex flex-wrap items-center gap-1" title={langs.join(", ")}>
+                    <span className="text-[0.5rem] text-faint">â—</span>
+                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-muted flex flex-wrap items-center gap-1" title={langs.join(", ")}>
                         {visibleLangs.map((lang, idx) => {
                             const isMatch = studentLangs.includes(lang.toUpperCase());
                             return (
@@ -1425,18 +1425,18 @@ function UnifiedWorkspaceContent() {
 
         return (
             <>
-                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 flex flex-col gap-1">
+                <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-line bg-app flex flex-col shrink-0">
+                    <div className="p-6 border-b border-line flex flex-col gap-1">
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900 m-0 truncate" title={studentName}>{studentName}</h1>
+                            <h1 className="text-xl font-bold text-fg m-0 truncate" title={studentName}>{studentName}</h1>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             {studentStatus && (
                                 <span style={{
                                     fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
                                     padding: "2px 8px", borderRadius: "999px",
-                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "#f1f5f9",
-                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "#475569"
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)"
                                 }}>
                                     {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
                                 </span>
@@ -1446,14 +1446,14 @@ function UnifiedWorkspaceContent() {
 
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                         <div className="px-4">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Clinical Team</p>
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-2">Clinical Team</p>
                             <div className="flex flex-col gap-1">
-                                <button onClick={() => handleTeamMenuChange("SPECIALIST")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isSpecialist ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-slate-700 hover:bg-slate-100'}`}>
+                                <button onClick={() => handleTeamMenuChange("SPECIALIST")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isSpecialist ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-fg hover:bg-subtle-soft'}`}>
                                     {isSpecialist && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                     <svg className="w-5 h-5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                     Specialists
                                 </button>
-                                <button onClick={() => handleTeamMenuChange("TEACHER")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isTeacher ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-slate-700 hover:bg-slate-100'}`}>
+                                <button onClick={() => handleTeamMenuChange("TEACHER")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all border ${isTeacher ? 'bg-indigo-50 text-indigo-800 border-indigo-200 shadow-sm relative' : 'border-transparent text-fg hover:bg-subtle-soft'}`}>
                                     {isTeacher && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                     <svg className="w-5 h-5 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                                     Teachers
@@ -1463,10 +1463,10 @@ function UnifiedWorkspaceContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white relative overflow-y-auto p-6 md:p-8">
-                    <div className="mb-6 mb-8 border-b border-slate-200 pb-4">
-                        <h2 className="text-xl font-bold text-slate-900">{isSpecialist ? "Assign Specialists by Discipline" : "Available Teachers"}</h2>
-                        <p className="text-sm text-slate-500 mt-1">
+                <div className="flex-1 bg-card relative overflow-y-auto p-6 md:p-8">
+                    <div className="mb-6 mb-8 border-b border-line pb-4">
+                        <h2 className="text-xl font-bold text-fg">{isSpecialist ? "Assign Specialists by Discipline" : "Available Teachers"}</h2>
+                        <p className="text-sm text-muted mt-1">
                             {isSpecialist
                                 ? "Pick one specialist for each required discipline. Multi-specialty staff appear in every group they can cover."
                                 : "Select staff members to assign to this student's caseload."}
@@ -1480,7 +1480,7 @@ function UnifiedWorkspaceContent() {
                                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors ${
                                     teamConfirmedSuccess
                                         ? "bg-emerald-500 hover:bg-emerald-600"
-                                        : "bg-indigo-600 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                                        : "bg-indigo-600 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-muted"
                                 }`}
                             >
                                 <Check size={16} />
@@ -1492,7 +1492,7 @@ function UnifiedWorkspaceContent() {
                                         type="button"
                                         onClick={discardTeamChanges}
                                         disabled={confirmingTeam}
-                                        className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                        className="rounded-lg border border-line bg-card px-4 py-2 text-sm font-bold text-muted transition-colors hover:bg-app disabled:opacity-60"
                                     >
                                         Cancel Changes
                                     </button>
@@ -1521,13 +1521,13 @@ function UnifiedWorkspaceContent() {
                             <div className="space-y-4">
                                 <div className="max-w-md">
                                     <div className="relative">
-                                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
                                         <input
                                             type="text"
                                             placeholder="Search specialists by name..."
                                             value={specialistSearch}
                                             onChange={(e) => setSpecialistSearch(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                                            className="w-full rounded-xl border border-line bg-card py-2.5 pl-10 pr-3 text-sm text-fg shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                                         />
                                     </div>
                                 </div>
@@ -1542,21 +1542,21 @@ function UnifiedWorkspaceContent() {
                                                 className={`rounded-xl border px-4 py-3 ${
                                                     isCovered
                                                         ? "border-indigo-200 bg-indigo-50"
-                                                        : "border-slate-200 bg-slate-50"
+                                                        : "border-line bg-app"
                                                 }`}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <span className={`text-xs font-extrabold uppercase tracking-wider ${isCovered ? "text-indigo-700" : "text-slate-500"}`}>
+                                                    <span className={`text-xs font-extrabold uppercase tracking-wider ${isCovered ? "text-indigo-700" : "text-muted"}`}>
                                                         {specialtyShortLabel(specialty as any)}
                                                     </span>
                                                     <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
-                                                        isCovered ? "bg-white text-indigo-700" : "bg-white text-slate-500"
+                                                        isCovered ? "bg-card text-indigo-700" : "bg-card text-muted"
                                                     }`}>
                                                         {isCovered ? "Assigned" : "Open"}
                                                     </span>
                                                 </div>
-                                                <p className="mt-2 text-sm font-bold text-slate-900 leading-tight">{specialty}</p>
-                                                <p className={`mt-1 text-xs ${isCovered ? "text-indigo-700" : "text-slate-500"}`}>
+                                                <p className="mt-2 text-sm font-bold text-fg leading-tight">{specialty}</p>
+                                                <p className={`mt-1 text-xs ${isCovered ? "text-indigo-700" : "text-muted"}`}>
                                                     {isCovered ? getStaffName(assignedForSpecialty) : "No specialist assigned yet"}
                                                 </p>
                                             </div>
@@ -1567,21 +1567,21 @@ function UnifiedWorkspaceContent() {
 
                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                 {specialtyGroups.map(({ specialty, assignedForSpecialty, candidates }) => (
-                                    <section key={specialty} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                                        <div className="border-b border-slate-100 px-4 py-4">
+                                    <section key={specialty} className="rounded-2xl border border-line bg-card overflow-hidden">
+                                        <div className="border-b border-line px-4 py-4">
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="m-0 text-lg font-bold text-slate-900">{specialty}</h3>
+                                                        <h3 className="m-0 text-lg font-bold text-fg">{specialty}</h3>
                                                         <span className={`rounded-full px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wider ${
                                                             assignedForSpecialty
                                                                 ? "bg-indigo-100 text-indigo-700"
-                                                                : "bg-slate-100 text-slate-500"
+                                                                : "bg-subtle-soft text-muted"
                                                         }`}>
                                                             {assignedForSpecialty ? "Assigned" : "Unassigned"}
                                                         </span>
                                                     </div>
-                                                    <p className="mt-1 text-sm text-slate-500">
+                                                    <p className="mt-1 text-sm text-muted">
                                                         {assignedForSpecialty
                                                             ? `${getStaffName(assignedForSpecialty)} currently covers this discipline.`
                                                             : "Choose the specialist for this discipline."}
@@ -1592,8 +1592,8 @@ function UnifiedWorkspaceContent() {
 
                                         <div className="p-4 space-y-3">
                                             {candidates.length === 0 ? (
-                                                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
-                                                    <p className="text-sm font-medium text-slate-500">No matching specialists for this specialty.</p>
+                                                <div className="rounded-xl border border-dashed border-line bg-app px-4 py-6 text-center">
+                                                    <p className="text-sm font-medium text-muted">No matching specialists for this specialty.</p>
                                                 </div>
                                             ) : candidates.map((staff) => {
                                                 const staffName = getStaffName(staff);
@@ -1615,14 +1615,14 @@ function UnifiedWorkspaceContent() {
                                                             isAssignedForThisSpecialty
                                                                 ? "border-indigo-300 bg-indigo-50"
                                                                 : assignedForSpecialty
-                                                                    ? "border-slate-200 bg-slate-50 opacity-75"
-                                                                    : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
+                                                                    ? "border-line bg-app opacity-75"
+                                                                    : "border-line bg-card hover:border-indigo-200 hover:shadow-sm"
                                                         }`}
                                                     >
                                                         <div className="flex items-start justify-between gap-3">
                                                             <div className="min-w-0 flex-1">
                                                                 <div className="flex flex-wrap items-center gap-2">
-                                                                    <p className={`m-0 truncate text-sm font-bold ${isAssignedForThisSpecialty ? "text-indigo-800" : "text-slate-900"}`}>
+                                                                    <p className={`m-0 truncate text-sm font-bold ${isAssignedForThisSpecialty ? "text-indigo-800" : "text-fg"}`}>
                                                                         {staffName}
                                                                     </p>
                                                                     {staff.recommended_for?.includes(specialty) && (
@@ -1655,7 +1655,7 @@ function UnifiedWorkspaceContent() {
                                                                             <span
                                                                                 key={staffSpecialty}
                                                                                 title={staffSpecialty}
-                                                                                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[0.65rem] font-bold text-slate-600"
+                                                                                className="rounded-full border border-line bg-app px-2.5 py-1 text-[0.65rem] font-bold text-muted"
                                                                             >
                                                                                 {specialtyShortLabel(staffSpecialty as any)}
                                                                             </span>
@@ -1663,7 +1663,7 @@ function UnifiedWorkspaceContent() {
                                                                 </div>
 
                                                                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                                                                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-slate-500">
+                                                                    <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-muted">
                                                                         {staff.caseload} student{staff.caseload !== 1 ? "s" : ""}
                                                                     </p>
                                                                     {renderStaffLanguages(staff.languages)}
@@ -1693,8 +1693,8 @@ function UnifiedWorkspaceContent() {
                                                                     isAssignedForThisSpecialty
                                                                         ? "bg-indigo-600 text-white shadow-sm hover:bg-red-600 hover:text-white"
                                                                         : isDisabled
-                                                                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                                                            : "bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white"
+                                                                            ? "bg-subtle-soft text-faint cursor-not-allowed"
+                                                                            : "bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white"
                                                                 }`}
                                                             >
                                                                 {isLoading ? (
@@ -1717,7 +1717,7 @@ function UnifiedWorkspaceContent() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {list.length === 0 ? (
-                            <p className="text-sm text-slate-500 italic col-span-full">No staff members found.</p>
+                            <p className="text-sm text-muted italic col-span-full">No staff members found.</p>
                         ) : list.map(s => {
                             const alreadyAssigned = assignedIds.includes(s.id);
                             const isLoading = assigning === s.id;
@@ -1725,14 +1725,14 @@ function UnifiedWorkspaceContent() {
 
                             return (
                                 <div key={s.id} className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                                    alreadyAssigned ? "border-green-500 bg-green-50" : "border-slate-200 bg-white"
+                                    alreadyAssigned ? "border-green-500 bg-green-50" : "border-line bg-card"
                                 }`}>
                                     <div className="min-w-0 pr-4">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <p className={`text-md font-bold truncate ${alreadyAssigned ? "text-green-800" : "text-slate-800"}`}>{getStaffName(s)}</p>
+                                            <p className={`text-md font-bold truncate ${alreadyAssigned ? "text-green-800" : "text-fg"}`}>{getStaffName(s)}</p>
                                             {s.recommended && (
                                                 <span className="text-[0.65rem] font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
-                                                    ⭐ Match
+                                                    â­ Match
                                                 </span>
                                             )}
                                         </div>
@@ -1740,7 +1740,7 @@ function UnifiedWorkspaceContent() {
                                             <p className="text-xs text-indigo-600 font-bold mb-1 truncate">{s.specialty}</p>
                                         )}
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <p className="m-0 text-[0.7rem] font-medium text-slate-500 uppercase tracking-widest">
+                                            <p className="m-0 text-[0.7rem] font-medium text-muted uppercase tracking-widest">
                                                 {s.caseload} student{s.caseload !== 1 ? "s" : ""}
                                             </p>
                                             {renderStaffLanguages(s.languages)}
@@ -1752,7 +1752,7 @@ function UnifiedWorkspaceContent() {
                                         disabled={isButtonDisabled}
                                         className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-full transition-all ${
                                             alreadyAssigned ? 'bg-green-100 text-green-700' : 
-                                            isButtonDisabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60' : 'bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white'
+                                            isButtonDisabled ? 'bg-subtle-soft text-faint cursor-not-allowed opacity-60' : 'bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white'
                                         }`}
                                     >
                                         {isLoading ? (
@@ -1798,24 +1798,24 @@ function UnifiedWorkspaceContent() {
         <ProtectedRoute allowedRoles={["ADMIN", "SPECIALIST", "TEACHER", "PARENT"]}>
             <div className="flex h-full w-full overflow-hidden relative">
                 {showStudentSidebar && (
-                    <div className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 shrink-0 h-full">
-                        <div className="p-4 border-b border-slate-200">
-                            <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-2">Students</p>
+                    <div className="hidden md:flex flex-col w-56 bg-card border-r border-line shrink-0 h-full">
+                        <div className="p-4 border-b border-line">
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-2">Students</p>
                             <div className="relative">
-                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
                                 <input
                                     type="text"
                                     placeholder="Search..."
                                     value={studentSearch}
                                     onChange={(e) => setStudentSearch(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    className="w-full bg-app border border-line rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                 />
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar">
                             <div className="py-2 px-2">
                                 {filteredStudents.length === 0 ? (
-                                    <p className="text-xs text-slate-400 text-center py-4">No students found.</p>
+                                    <p className="text-xs text-faint text-center py-4">No students found.</p>
                                 ) : (
                                     filteredStudents.map(s => {
                                         const isCurrent = s.id.toString() === studentId;
@@ -1834,19 +1834,19 @@ function UnifiedWorkspaceContent() {
                                                     }
                                                 }}
                                                 className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                                    isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-slate-50'
+                                                    isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-app'
                                                 }`}
                                                 style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                title={`${s.first_name} ${s.last_name} — ${s.status?.replace(/_/g, ' ')}`}
+                                                title={`${s.first_name} ${s.last_name} â€” ${s.status?.replace(/_/g, ' ')}`}
                                             >
                                                 {isCurrent && (
                                                     <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />
                                                 )}
-                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-500'}`}>
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-subtle-soft text-muted'}`}>
                                                     {s.first_name?.[0]}{s.last_name?.[0]}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                                    <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-fg'}`}>
                                                         {s.first_name} {s.last_name}
                                                     </span>
                                                     {nextAction && (
@@ -1876,8 +1876,8 @@ function UnifiedWorkspaceContent() {
                                 )}
                             </div>
                         </div>
-                        <div className="p-3 border-t border-slate-200 bg-slate-50">
-                            <p className="text-[0.6rem] text-slate-400 text-center">{allStudents.length} students total</p>
+                        <div className="p-3 border-t border-line bg-app">
+                            <p className="text-[0.6rem] text-faint text-center">{allStudents.length} students total</p>
                         </div>
                     </div>
                 )}
@@ -1886,24 +1886,24 @@ function UnifiedWorkspaceContent() {
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
                     <div className="px-4 md:px-8 pt-2 md:pt-3 flex-1 flex flex-col min-h-0">
                         {/* Master Tab Bar */}
-                        <div className="flex items-end gap-1 mb-2 border-b border-slate-300 px-2 shrink-0">
+                        <div className="flex items-end gap-1 mb-2 border-b border-line px-2 shrink-0">
                             {user?.role === "ADMIN" && (
-                                <button onClick={() => setWorkspace("overview")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                <button onClick={() => setWorkspace("overview")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "overview" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-muted hover:text-fg hover:border-line'}`}>
                                     Overview
                                 </button>
                             )}
                             {user?.role !== "ADMIN" && (
-                                <button onClick={() => setWorkspace("forms")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                <button onClick={() => setWorkspace("forms")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "forms" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-muted hover:text-fg hover:border-line'}`}>
                                     <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                     Forms
                                 </button>
                             )}
-                            <button onClick={() => setWorkspace("reports")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                            <button onClick={() => setWorkspace("reports")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "reports" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-muted hover:text-fg hover:border-line'}`}>
                                 <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                                 Reports
                             </button>
                             {user?.role === "ADMIN" && (
-                                <button onClick={() => setWorkspace("team")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}>
+                                <button onClick={() => setWorkspace("team")} className={`workspace-tab px-6 py-2.5 text-sm font-bold border-b-2 transition-colors ${workspace === "team" ? 'workspace-tab-active border-indigo-600 text-indigo-700' : 'border-transparent text-muted hover:text-fg hover:border-line'}`}>
                                     <svg className="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                     Team
                                 </button>
@@ -1911,7 +1911,7 @@ function UnifiedWorkspaceContent() {
                         </div>
 
                         {/* Unified Card Container */}
-                        <div className="bg-white rounded-xl border border-slate-300 shadow-sm flex-1 mb-2 flex flex-col md:flex-row overflow-hidden min-h-0">
+                        <div className="bg-card rounded-xl border border-line shadow-sm flex-1 mb-2 flex flex-col md:flex-row overflow-hidden min-h-0">
                             {workspace === "overview" && user?.role === "ADMIN" ? renderOverviewWorkspace() : workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}
                         </div>
                     </div>
@@ -1919,12 +1919,12 @@ function UnifiedWorkspaceContent() {
 
                 {showEnrollConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
                             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </div>
-                            <h2 className="mb-2 text-xl font-bold text-slate-900">Enroll {studentName}?</h2>
-                            <p className="mb-6 text-sm leading-6 text-slate-500">
+                            <h2 className="mb-2 text-xl font-bold text-fg">Enroll {studentName}?</h2>
+                            <p className="mb-6 text-sm leading-6 text-muted">
                                 This will mark the student as enrolled and unlock specialist progress trackers and monthly reports. Since this is the therapy phase, no classroom teacher is involved yet. A finalized IEP is required.
                             </p>
                             <div className="flex justify-end gap-3">
@@ -1932,7 +1932,7 @@ function UnifiedWorkspaceContent() {
                                     type="button"
                                     onClick={() => !enrollingStudent && setShowEnrollConfirm(false)}
                                     disabled={enrollingStudent}
-                                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                                    className="rounded-lg border border-line bg-card px-4 py-2 text-sm font-bold text-muted hover:bg-app disabled:opacity-60"
                                 >
                                     Cancel
                                 </button>
@@ -1958,21 +1958,21 @@ function UnifiedWorkspaceContent() {
                         background: transparent;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb {
-                        background-color: #cbd5e1;
+                        background-color: var(--text-muted);
                         border-radius: 20px;
                     }
                 `}} />
                 {pendingTeamNavigation && (
                     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden">
+                        <div className="w-full max-w-lg rounded-2xl bg-card shadow-xl overflow-hidden">
                             <div className="p-6">
                                 <div className="flex items-start gap-4">
                                     <div className="h-11 w-11 shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
                                         <AlertCircle className="h-5 w-5 text-amber-700" />
                                     </div>
                                     <div>
-                                        <h3 className="m-0 text-lg font-bold text-slate-900">Save team changes?</h3>
-                                        <p className="mt-1 text-sm text-slate-500">
+                                        <h3 className="m-0 text-lg font-bold text-fg">Save team changes?</h3>
+                                        <p className="mt-1 text-sm text-muted">
                                             These changes are not saved yet. Review them before leaving this page.
                                         </p>
                                     </div>
@@ -1984,8 +1984,8 @@ function UnifiedWorkspaceContent() {
                                             {addedTeamUnits.length === 0 ? (
                                                 <p className="m-0 text-sm text-emerald-700/70">No additions.</p>
                                             ) : addedTeamUnits.map((unit) => (
-                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
-                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
+                                                    <span className="text-sm font-bold text-fg">{unit.name}</span>
                                                     <span className="text-xs font-semibold text-emerald-700">{unit.detail}</span>
                                                 </div>
                                             ))}
@@ -1997,22 +1997,22 @@ function UnifiedWorkspaceContent() {
                                             {removedTeamUnits.length === 0 ? (
                                                 <p className="m-0 text-sm text-red-700/70">No removals.</p>
                                             ) : removedTeamUnits.map((unit) => (
-                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
-                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
+                                                    <span className="text-sm font-bold text-fg">{unit.name}</span>
                                                     <span className="text-xs font-semibold text-red-700">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-slate-500">Current Selection</p>
+                                    <div className="rounded-xl border border-line bg-app p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-muted">Current Selection</p>
                                         <div className="mt-3 space-y-2">
                                             {stagedTeamUnits.length === 0 ? (
-                                                <p className="m-0 text-sm text-slate-500">No team members selected.</p>
+                                                <p className="m-0 text-sm text-muted">No team members selected.</p>
                                             ) : stagedTeamUnits.map((unit) => (
-                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
-                                                    <span className="text-sm font-bold text-slate-800">{unit.name}</span>
-                                                    <span className="text-xs font-semibold text-slate-500">{unit.detail}</span>
+                                                <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
+                                                    <span className="text-sm font-bold text-fg">{unit.name}</span>
+                                                    <span className="text-xs font-semibold text-muted">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -2023,7 +2023,7 @@ function UnifiedWorkspaceContent() {
                                         type="button"
                                         onClick={() => setPendingTeamNavigation(null)}
                                         disabled={confirmingTeam}
-                                        className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-60"
+                                        className="rounded-lg bg-subtle-soft px-4 py-2 text-sm font-bold text-muted transition-colors hover:bg-subtle-soft disabled:opacity-60"
                                     >
                                         Stay
                                     </button>
@@ -2035,7 +2035,7 @@ function UnifiedWorkspaceContent() {
                                             if (target) router.push(target);
                                         }}
                                         disabled={confirmingTeam}
-                                        className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                        className="rounded-lg border border-line bg-card px-4 py-2 text-sm font-bold text-muted transition-colors hover:bg-app disabled:opacity-60"
                                     >
                                         Cancel Changes
                                     </button>
@@ -2056,15 +2056,15 @@ function UnifiedWorkspaceContent() {
                 {/* Unassign Confirmation Modal */}
                 {unassigningStaff && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                                         <AlertCircle className="h-6 w-6 text-red-600" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-900">Remove from selection?</h3>
-                                        <p className="text-sm text-slate-500 mt-1">
+                                        <h3 className="text-lg font-bold text-fg">Remove from selection?</h3>
+                                        <p className="text-sm text-muted mt-1">
                                             Remove <strong>{unassigningStaff.name}</strong> from the team selection. This will be saved when you confirm the team.
                                         </p>
                                     </div>
@@ -2074,7 +2074,7 @@ function UnifiedWorkspaceContent() {
                                     <button
                                         onClick={() => setUnassigningStaff(null)}
                                         disabled={isUnassigning}
-                                        className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+                                        className="px-4 py-2 text-sm font-bold text-muted bg-subtle-soft hover:bg-subtle-soft rounded-lg transition-colors disabled:opacity-50"
                                     >
                                         Cancel
                                     </button>
@@ -2104,7 +2104,7 @@ function UnifiedWorkspaceContent() {
 
 export default function UnifiedWorkspacePage() {
     return (
-        <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading master workspace...</div>}>
+        <Suspense fallback={<div className="p-8 text-center text-muted">Loading master workspace...</div>}>
             <UnifiedWorkspaceContent />
         </Suspense>
     );

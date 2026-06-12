@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -66,7 +66,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className={`hidden md:flex flex-col bg-white border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[204px] p-4'}`}>
+            <aside className={`hidden md:flex flex-col bg-card border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[204px] p-4'}`}>
                 {/* Logo */}
                 <button
                     type="button"
@@ -83,7 +83,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
 
                 {/* Nav */}
                 <nav className="flex flex-col gap-1 w-full" aria-label="Admin navigation">
-                    <Link href="/workspace" aria-current={activeTab === 'workspace' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Workspace">
+                    <Link href="/workspace" aria-current={activeTab === 'workspace' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'workspace' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Workspace">
                         <LayoutTemplate size={18} className="shrink-0" />
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Workspace</span>}
                     </Link>
@@ -93,13 +93,13 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                             System Data
                         </div>
                     )}
-                    {collapsed && <div className="my-2 h-px bg-slate-200" />}
+                    {collapsed && <div className="my-2 h-px bg-subtle-soft" />}
                     
-                    <Link href="/dashboard?tab=analytics" aria-current={activeTab === 'analytics' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Analytics">
+                    <Link href="/dashboard?tab=analytics" aria-current={activeTab === 'analytics' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'analytics' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Analytics">
                         <BarChart3 size={18} className="shrink-0" />
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Analytics</span>}
                     </Link>
-                    <Link href="/dashboard?tab=students" aria-current={activeTab === 'students' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Students">
+                    <Link href="/dashboard?tab=students" aria-current={activeTab === 'students' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'students' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Students">
                         <GraduationCap size={18} className="shrink-0" />
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Students</span>}
                         {!collapsed && <Badge count={awaitingReviewCount} tone="indigo" />}
@@ -115,13 +115,13 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                             Organization
                         </div>
                     )}
-                    {collapsed && <div className="my-2 h-px bg-slate-200" />}
+                    {collapsed && <div className="my-2 h-px bg-subtle-soft" />}
 
-                    <Link href="/dashboard?tab=users" aria-current={activeTab === 'users' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="System Users">
+                    <Link href="/dashboard?tab=users" aria-current={activeTab === 'users' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'users' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="System Users">
                         <UsersRound size={18} className="shrink-0" />
                         {!collapsed && <span className="min-w-0 flex-1 truncate">System Users</span>}
                     </Link>
-                    <Link href="/dashboard?tab=invitations" aria-current={activeTab === 'invitations' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-slate-50 font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Registration">
+                    <Link href="/dashboard?tab=invitations" aria-current={activeTab === 'invitations' ? 'page' : undefined} className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${activeTab === 'invitations' ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0 relative' : ''}`} title="Registration">
                         <Mail size={18} className="shrink-0" />
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Registration</span>}
                         {!collapsed && <Badge count={pendingInviteCount} tone="amber" />}
@@ -138,7 +138,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                     <button
                         onClick={logout}
                         title="Log Out"
-                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         <LogOut size={18} className="shrink-0" />
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Log Out</span>}
@@ -146,7 +146,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                     <button
                         onClick={onToggle}
                         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-faint hover:text-fg hover:bg-subtle-soft transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         {collapsed ? <PanelLeft size={18} className="shrink-0" /> : <PanelLeftClose size={18} className="shrink-0" />}
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Collapse</span>}
@@ -155,7 +155,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+            <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-card border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
                 <Link href="/dashboard?tab=analytics" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'analytics' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
                     <BarChart3 size={20} className={activeTab === 'analytics' ? "stroke-[2.5px]" : ""} />
                     <span className="text-[0.65rem] font-medium">Analytics</span>

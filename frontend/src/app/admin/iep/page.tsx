@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -8,13 +8,13 @@ import api, { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { semanticToneClass, type SemanticTone } from "@/lib/role-colors";
 
-/* ─── Shared UI helpers ───────────────────────────────────────────────────── */
+/* â”€â”€â”€ Shared UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-5">
-            <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-sm font-bold text-slate-900 m-0">{title}</h2>
+        <div className="bg-card rounded-xl border border-line overflow-hidden mb-5">
+            <div className="px-6 py-3.5 border-b border-line bg-app">
+                <h2 className="text-sm font-bold text-fg m-0">{title}</h2>
             </div>
             <div className="p-6 flex flex-col gap-3">{children}</div>
         </div>
@@ -24,23 +24,23 @@ function SectionCard({ title, children }: { title: string; children: React.React
 function Field({ label, value, edit, onChange }: { label: string; value: string; edit: boolean; onChange?: (v: string) => void }) {
     return (
         <div>
-            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">{label}</p>
+            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1">{label}</p>
             {edit ? (
                 <textarea
                     value={value}
                     onChange={e => onChange?.(e.target.value)}
                     rows={Math.max(2, (value || "").split("\n").length)}
-                    className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-900 resize-y box-border focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-line bg-card p-2.5 text-xs text-fg resize-y box-border focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
             ) : (
-                <p className="text-xs text-slate-850 whitespace-pre-wrap m-0 leading-relaxed">{value || "—"}</p>
+                <p className="text-xs text-slate-850 whitespace-pre-wrap m-0 leading-relaxed">{value || "â€”"}</p>
             )}
         </div>
     );
 }
 
 function PillList({ items }: { items: string[] }) {
-    if (!items || items.length === 0) return <span className="text-xs text-slate-400">—</span>;
+    if (!items || items.length === 0) return <span className="text-xs text-faint">â€”</span>;
     return (
         <div className="flex flex-wrap gap-1.5">
             {items.map(i => <span key={i} className={`rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold ${semanticToneClass("neutral")}`}>{i}</span>)}
@@ -48,7 +48,7 @@ function PillList({ items }: { items: string[] }) {
     );
 }
 
-/* ─── Types ───────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const iepBadgeClass = (tone: SemanticTone, extra = "") =>
     `inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-bold ${semanticToneClass(tone)} ${extra}`.trim();
@@ -86,7 +86,7 @@ const formatDocumentDateTime = (value?: string | null) => {
     });
 };
 
-/* ─── Main Component ──────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export function IEPViewerContent({ propId, propHideNavigation }: { propId?: string; propHideNavigation?: boolean }) {
     const searchParams = useSearchParams();
@@ -146,8 +146,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
         return () => clearTimeout(timeoutId);
     }, [iep, editing, iepId, iepStatus]);
 
-    if (!iepId) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Missing IEP ID.</div>;
-    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading IEP…</div>;
+    if (!iepId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing IEP ID.</div>;
+    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading IEPâ€¦</div>;
     if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
     if (!iep || !meta) return null;
 
@@ -231,8 +231,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     </svg>
                     Back to Student Profile
                 </button>
-                <span className="text-slate-350">›</span>
-                <span className="text-slate-900 text-xs font-bold">
+                <span className="text-slate-350">â€º</span>
+                <span className="text-fg text-xs font-bold">
                     IEP for {meta.student_name}
                 </span>
             </div>
@@ -241,20 +241,20 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Header */}
             <div className="flex justify-between items-start mb-6 flex-wrap gap-3">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 m-0 flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-xl md:text-2xl font-extrabold text-fg m-0 flex items-center gap-2.5 flex-wrap">
                         Comprehensive AI-Generated IEP
                         <span className={iepBadgeClass(iepStatus === "FINAL" ? "success" : "warning", "rounded border")}>
                             {iepStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
                     </h1>
-                    <p className="text-xs text-slate-500 mt-1">
-                        {meta.student_name} · Generated {formatDocumentDateTime(meta.created_at)}
+                    <p className="text-xs text-muted mt-1">
+                        {meta.student_name} Â· Generated {formatDocumentDateTime(meta.created_at)}
                     </p>
                 </div>
                 {user?.role === "ADMIN" && (
                     <div className="flex gap-2 flex-wrap items-center">
-                        <button onClick={fetchAuditHistory} className="btn-slate text-xs py-1.5 px-3">⏱️ Audit History</button>
-                        <button onClick={handleDownload} className="btn-slate text-xs py-1.5 px-3">📥 Download PDF</button>
+                        <button onClick={fetchAuditHistory} className="btn-slate text-xs py-1.5 px-3">â±ï¸ Audit History</button>
+                        <button onClick={handleDownload} className="btn-slate text-xs py-1.5 px-3">ðŸ“¥ Download PDF</button>
                         {editing ? (
                             <div className="flex gap-1.5 items-center">
                                 <button onClick={() => {
@@ -272,21 +272,21 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                                     setEditing(false);
                                 }} className="btn-slate text-xs py-1.5 px-3">Cancel Edit</button>
                                 <button onClick={() => handleSave("FINAL")} disabled={saving} className="btn-green text-xs py-1.5 px-3">
-                                    ✅ Finalize
+                                    âœ… Finalize
                                 </button>
-                                <span className="text-[0.7rem] text-slate-500 italic ml-1">
-                                    {saving ? "Saving…" : "All changes saved"}
+                                <span className="text-[0.7rem] text-muted italic ml-1">
+                                    {saving ? "Savingâ€¦" : "All changes saved"}
                                 </span>
                             </div>
                         ) : (
-                            <button onClick={() => { editSnapshotStr.current = JSON.stringify(iep); setEditing(true); }} className="btn-indigo text-xs py-1.5 px-3">✏️ Edit</button>
+                            <button onClick={() => { editSnapshotStr.current = JSON.stringify(iep); setEditing(true); }} className="btn-indigo text-xs py-1.5 px-3">âœï¸ Edit</button>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Section 1 — Student Info */}
-            <SectionCard title="Section 1 — Student Information">
+            {/* Section 1 â€” Student Info */}
+            <SectionCard title="Section 1 â€” Student Information">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     {[["Student Name", "student_name"], ["Date of Birth", "date_of_birth"], ["Gender", "gender"], ["Grade/Level", "grade_level"], ["IEP Start", "iep_start_date"], ["IEP End", "iep_end_date"]].map(([label, key]) => (
                         <Field key={key} label={label} value={s1[key] || ""} edit={false} />
@@ -294,14 +294,14 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 </div>
                 {s1.team_members?.length > 0 && (
                     <div>
-                        <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">IEP Team Members</p>
+                        <p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1">IEP Team Members</p>
                         <PillList items={s1.team_members.map((m: any) => `${m.name} (${m.role})`)} />
                     </div>
                 )}
             </SectionCard>
 
-            {/* Section 2 — Background */}
-            <SectionCard title="Section 2 — Background & Developmental Summary">
+            {/* Section 2 â€” Background */}
+            <SectionCard title="Section 2 â€” Background & Developmental Summary">
                 <Field label="Developmental History" value={s2.developmental_history || ""} edit={editing}
                     onChange={v => set("section2_background", ["developmental_history"], v)} />
                 <Field label="Classroom Functioning Overview" value={s2.classroom_functioning || ""} edit={editing}
@@ -310,14 +310,14 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     onChange={v => set("section2_background", ["family_input_summary"], v)} />
             </SectionCard>
 
-            {/* Section 3 — Strengths & Interests */}
-            <SectionCard title="Section 3 — Strengths & Interests">
-                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Strengths</p><PillList items={s3.strengths} /></div>
-                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "#64748b", marginBottom: "4px" }}>Interests / Motivators</p><PillList items={s3.interests} /></div>
+            {/* Section 3 â€” Strengths & Interests */}
+            <SectionCard title="Section 3 â€” Strengths & Interests">
+                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: "4px" }}>Strengths</p><PillList items={s3.strengths} /></div>
+                <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: "4px" }}>Interests / Motivators</p><PillList items={s3.interests} /></div>
             </SectionCard>
 
-            {/* Section 4 — PLOP */}
-            <SectionCard title="Section 4 — Present Levels of Performance (PLOP)">
+            {/* Section 4 â€” PLOP */}
+            <SectionCard title="Section 4 â€” Present Levels of Performance (PLOP)">
                 {Object.entries({
                     communication_slp: "Communication (SLP)",
                     fine_motor_ot: "Fine Motor, Sensory & ADLs (OT)",
@@ -328,7 +328,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 }).map(([key, lbl]) => {
                     const domain = s4[key] || {};
                     return (
-                        <div key={key} className="py-3 border-b border-slate-100 last:border-0">
+                        <div key={key} className="py-3 border-b border-line last:border-0">
                             <p className="text-xs font-bold text-blue-600 mb-2">{lbl}</p>
                             <div className="flex flex-col gap-3">
                             {Object.entries(domain).map(([fk, fv]) => (
@@ -341,23 +341,23 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 })}
             </SectionCard>
 
-            {/* Section 5 — Long-Term Goals */}
-            <SectionCard title="Section 5 — Long-Term IEP Goals (1 Year)">
+            {/* Section 5 â€” Long-Term Goals */}
+            <SectionCard title="Section 5 â€” Long-Term IEP Goals (1 Year)">
                 {s5.map((ltg, i) => (
-                    <div key={ltg.id} className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 flex flex-col gap-3 mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-indigo-600 m-0">{ltg.id} — {ltg.domain}</p>
+                    <div key={ltg.id} className="bg-app rounded-xl p-3.5 border border-line flex flex-col gap-3 mb-3 last:mb-0">
+                        <p className="text-xs font-bold text-indigo-600 m-0">{ltg.id} â€” {ltg.domain}</p>
                         <Field label="Goal" value={ltg.goal} edit={editing}
                             onChange={v => { const copy = [...s5]; copy[i] = { ...copy[i], goal: v }; setIep(prev => prev ? { ...prev, section5_ltg: copy } : prev); }} />
-                        <p className="text-[0.7rem] text-slate-400 m-0 italic">Disciplines: {ltg.disciplines}</p>
+                        <p className="text-[0.7rem] text-faint m-0 italic">Disciplines: {ltg.disciplines}</p>
                     </div>
                 ))}
             </SectionCard>
 
-            {/* Section 6 — Short-Term Objectives */}
-            <SectionCard title="Section 6 — Short-Term Objectives (3–4 months)">
+            {/* Section 6 â€” Short-Term Objectives */}
+            <SectionCard title="Section 6 â€” Short-Term Objectives (3â€“4 months)">
                 {s6.map((sto, i) => (
-                    <div key={sto.id} className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 flex flex-col gap-3 mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-emerald-600 m-0">Objective {sto.id} → {sto.ltg_ref}</p>
+                    <div key={sto.id} className="bg-app rounded-xl p-3.5 border border-line flex flex-col gap-3 mb-3 last:mb-0">
+                        <p className="text-xs font-bold text-emerald-600 m-0">Objective {sto.id} â†’ {sto.ltg_ref}</p>
                         <Field label="Objective" value={sto.objective} edit={editing}
                             onChange={v => { const c = [...s6]; c[i] = { ...c[i], objective: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-1">
@@ -370,20 +370,20 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                             <Field label="Frequency" value={sto.frequency} edit={editing}
                                 onChange={v => { const c = [...s6]; c[i] = { ...c[i], frequency: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                         </div>
-                        <p className="text-[0.7rem] text-slate-400 m-0">Responsible: {sto.responsible}</p>
+                        <p className="text-[0.7rem] text-faint m-0">Responsible: {sto.responsible}</p>
                     </div>
                 ))}
             </SectionCard>
 
-            {/* Section 7 — Accommodations */}
-            <SectionCard title="Section 7 — Accommodations & Modifications">
-                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Classroom Accommodations</p><PillList items={s7.classroom} /></div>
-                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
-                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Communication Supports</p><PillList items={s7.communication_supports} /></div>
+            {/* Section 7 â€” Accommodations */}
+            <SectionCard title="Section 7 â€” Accommodations & Modifications">
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1.5">Classroom Accommodations</p><PillList items={s7.classroom} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1.5">Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
+                <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1.5">Communication Supports</p><PillList items={s7.communication_supports} /></div>
             </SectionCard>
 
-            {/* Section 8 — Therapies */}
-            <SectionCard title="Section 8 — Therapies & Intervention Plan">
+            {/* Section 8 â€” Therapies */}
+            <SectionCard title="Section 8 â€” Therapies & Intervention Plan">
                 {Object.entries({
                     speech_therapy: "Speech-Language Pathology",
                     occupational_therapy: "Occupational Therapy",
@@ -396,20 +396,20 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 }).map(([key, lbl]) => {
                     const t = s8[key] || {};
                     return (
-                        <div key={key} className="py-2 border-b border-slate-100 last:border-0">
-                            <p className="text-xs font-bold text-slate-800 m-0 mb-1">{lbl}</p>
+                        <div key={key} className="py-2 border-b border-line last:border-0">
+                            <p className="text-xs font-bold text-fg m-0 mb-1">{lbl}</p>
                             {key === "shadow_teacher" ? (
-                                <span className="text-xs text-slate-500">Hours: {t.hours || "N/A"}</span>
+                                <span className="text-xs text-muted">Hours: {t.hours || "N/A"}</span>
                             ) : (
-                                <span className="text-xs text-slate-500">{t.frequency || "N/A"} — {t.focus_areas || "N/A"}</span>
+                                <span className="text-xs text-muted">{t.frequency || "N/A"} â€” {t.focus_areas || "N/A"}</span>
                             )}
                         </div>
                     );
                 })}
             </SectionCard>
 
-            {/* Section 9 — Home Program */}
-            <SectionCard title="Section 9 — Home Program">
+            {/* Section 9 â€” Home Program */}
+            <SectionCard title="Section 9 â€” Home Program">
                 {Object.entries({
                     speech_tasks: "Speech Tasks",
                     sensory_ot_tasks: "Sensory / OT Tasks",
@@ -418,43 +418,43 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 }).map(([key, lbl]) => (
                     <div key={key} className="mb-3 last:mb-0">
                         <p className="text-xs font-bold text-blue-600 mb-1">{lbl}</p>
-                        <ul className="m-0 pl-5 text-xs text-slate-800 leading-relaxed list-disc">
+                        <ul className="m-0 pl-5 text-xs text-fg leading-relaxed list-disc">
                             {(s9[key] || []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                         </ul>
                     </div>
                 ))}
             </SectionCard>
 
-            {/* Section 10 — Progress Monitoring */}
-            <SectionCard title="Section 10 — Progress Monitoring & GAS Scores">
+            {/* Section 10 â€” Progress Monitoring */}
+            <SectionCard title="Section 10 â€” Progress Monitoring & GAS Scores">
                 {iep.section10_progress && iep.section10_progress.gas_scores?.length > 0 ? (
                     <div className="flex flex-col gap-3">
                         {/* Last updated badge */}
                         {iep.section10_progress.last_updated && (
                             <div className="flex items-center gap-2">
                                 <span className={iepBadgeClass("success")}>
-                                    📅 Last updated: Week of {iep.section10_progress.last_updated}
+                                    ðŸ“… Last updated: Week of {iep.section10_progress.last_updated}
                                 </span>
                                 {iep.section10_progress.report_period && (
-                                    <span className="text-[0.7rem] text-slate-500">({iep.section10_progress.report_period})</span>
+                                    <span className="text-[0.7rem] text-muted">({iep.section10_progress.report_period})</span>
                                 )}
                             </div>
                         )}
 
                         {/* GAS Score Table */}
                         <div>
-                            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">Goal Achievement Scores</p>
+                            <p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-2">Goal Achievement Scores</p>
                             <div className="flex flex-col gap-2.5">
                                 {iep.section10_progress.gas_scores.map((g: any, i: number) => {
                                     const scoreTone = gasScoreTone(Number(g.score) || 0);
                                     return (
-                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
+                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-line bg-app">
                                             <div className={`w-8.5 h-8.5 rounded-lg border ${semanticToneClass(scoreTone)} flex items-center justify-center text-sm font-extrabold shrink-0`}>
                                                 {g.score}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold text-slate-900 m-0 truncate">{g.goal_id} — {g.domain}</p>
-                                                <p className="text-[0.7rem] text-slate-500 m-0 mt-0.5 truncate">{g.note}</p>
+                                                <p className="text-xs font-bold text-fg m-0 truncate">{g.goal_id} â€” {g.domain}</p>
+                                                <p className="text-[0.7rem] text-muted m-0 mt-0.5 truncate">{g.note}</p>
                                             </div>
                                         </div>
                                     );
@@ -479,42 +479,42 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                         )}
                     </div>
                 ) : (
-                    <p className="text-xs text-slate-400 italic m-0">Progress data will be populated automatically after the first monthly report is generated.</p>
+                    <p className="text-xs text-faint italic m-0">Progress data will be populated automatically after the first monthly report is generated.</p>
                 )}
             </SectionCard>
 
-            {/* Section 11 — Review (placeholder) */}
-            <SectionCard title="Section 11 — IEP Review Summary">
-                <p className="text-xs text-slate-400 italic m-0">Quarterly review summary will be generated automatically.</p>
+            {/* Section 11 â€” Review (placeholder) */}
+            <SectionCard title="Section 11 â€” IEP Review Summary">
+                <p className="text-xs text-faint italic m-0">Quarterly review summary will be generated automatically.</p>
             </SectionCard>
 
-            {/* Section 12 — Signatures */}
-            <SectionCard title="Section 12 — Signatures">
-                <p className="text-xs text-slate-400 italic m-0">Signatures will be collected upon IEP approval.</p>
+            {/* Section 12 â€” Signatures */}
+            <SectionCard title="Section 12 â€” Signatures">
+                <p className="text-xs text-faint italic m-0">Signatures will be collected upon IEP approval.</p>
             </SectionCard>
 
             {/* Audit History Modal */}
             {showAuditModal && (
                 <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[1000] p-4" onClick={() => setShowAuditModal(false)}>
-                    <div className="bg-white rounded-2xl p-8 w-full max-w-[500px] relative border border-slate-200 shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 bg-transparent border-none text-xl cursor-pointer text-slate-400 hover:text-slate-600">×</button>
-                        <h2 className="m-0 text-slate-900 text-xl font-extrabold mb-5">Document Audit History</h2>
+                    <div className="bg-card rounded-2xl p-8 w-full max-w-[500px] relative border border-line shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 bg-transparent border-none text-xl cursor-pointer text-faint hover:text-muted">Ã—</button>
+                        <h2 className="m-0 text-fg text-xl font-extrabold mb-5">Document Audit History</h2>
                         <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2">
                             {auditHistory.length === 0 ? (
-                                <p className="text-slate-500 m-0 text-sm">No history found.</p>
+                                <p className="text-muted m-0 text-sm">No history found.</p>
                             ) : (
                                 auditHistory.map((item, idx) => (
                                     <div key={item.id} className="flex gap-4 relative">
-                                        {idx !== auditHistory.length - 1 && <div className="absolute w-0.5 bg-slate-200 top-6 bottom-[-16px] left-[11px]" />}
+                                        {idx !== auditHistory.length - 1 && <div className="absolute w-0.5 bg-subtle-soft top-6 bottom-[-16px] left-[11px]" />}
                                         <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center z-10 shrink-0">
                                             <div className="w-2 h-2 rounded-full bg-indigo-600" />
                                         </div>
                                         <div>
-                                            <p className="m-0 text-sm font-bold text-slate-900">
+                                            <p className="m-0 text-sm font-bold text-fg">
                                                 {item.action === "GENERATED" ? "AI Generated Draft" : item.action === "EDITED_DRAFT" ? "Draft Saved" : "Document Finalized"}
                                             </p>
-                                            <p className="m-0 text-xs text-slate-500">By {item.edited_by}</p>
-                                            <p className="m-0 text-[0.7rem] text-slate-400 mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
+                                            <p className="m-0 text-xs text-muted">By {item.edited_by}</p>
+                                            <p className="m-0 text-[0.7rem] text-faint mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 ))
@@ -546,12 +546,12 @@ function IEPViewerRedirect() {
         }
     }, [searchParams, router]);
 
-    return <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Redirecting to workspace…</div>;
+    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Redirecting to workspaceâ€¦</div>;
 }
 
 export default function IEPViewerPage() {
     return (
-        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Loading…</div>}>
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loadingâ€¦</div>}>
             <IEPViewerRedirect />
         </Suspense>
     );

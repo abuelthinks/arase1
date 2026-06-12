@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -83,9 +83,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             }
             
             {/* Floating Tools (Desktop Only) */}
-            <div className={`hidden md:flex absolute ${widgetPlacement === 'bottom-right' ? 'bottom-4' : 'top-4'} right-6 lg:right-12 z-50 items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200/50 shadow-lg rounded-full px-4 py-1.5 scale-90 lg:scale-100 ${widgetPlacement === 'bottom-right' ? 'origin-bottom-right' : 'origin-top-right'} transition-all duration-300`}>
+            <div className={`hidden md:flex absolute ${widgetPlacement === 'bottom-right' ? 'bottom-4' : 'top-4'} right-6 lg:right-12 z-50 items-center gap-3 bg-white/90 backdrop-blur-md border border-line/50 shadow-lg rounded-full px-4 py-1.5 scale-90 lg:scale-100 ${widgetPlacement === 'bottom-right' ? 'origin-bottom-right' : 'origin-top-right'} transition-all duration-300`}>
                 <AccessibilityToolbar direction={widgetPlacement === 'bottom-right' ? 'up' : 'down'} alignOffset="-right-[69px]" />
-                <div className="w-px h-4 bg-slate-200" /> {/* Divider */}
+                <div className="w-px h-4 bg-subtle-soft" /> {/* Divider */}
                 <NotificationBell direction={widgetPlacement === 'bottom-right' ? 'up' : 'down'} alignOffset="-right-4" />
             </div>
 

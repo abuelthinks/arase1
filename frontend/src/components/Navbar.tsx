@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export default function Navbar() {
     ).toUpperCase();
 
     return (
-        <nav className="bg-white border-b border-slate-200 px-4 md:px-6 py-1 flex justify-between items-center shadow-sm sticky top-0 z-50">
+        <nav className="bg-card border-b border-line px-4 md:px-6 py-1 flex justify-between items-center shadow-sm sticky top-0 z-50">
             <div className="flex items-center gap-4">
                 <Link href="/dashboard" className="font-bold text-lg text-blue-600 hover:text-blue-800 transition">
                     ARASE
@@ -37,22 +37,22 @@ export default function Navbar() {
                 <div className="relative group">
                     <button
                         type="button"
-                        className="flex items-center gap-1.5 rounded-full pl-1 pr-2 py-1 hover:bg-slate-100 transition-colors"
+                        className="flex items-center gap-1.5 rounded-full pl-1 pr-2 py-1 hover:bg-subtle-soft transition-colors"
                         aria-label="Account menu"
                         title={`${user?.first_name || ""} ${user?.last_name || ""}`.trim() || user?.email}
                     >
                         <span className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
                             {initials}
                         </span>
-                        <ChevronDown size={14} className="text-slate-400" />
+                        <ChevronDown size={14} className="text-faint" />
                     </button>
 
-                    {/* Dropdown — visible on hover (desktop) */}
+                    {/* Dropdown â€” visible on hover (desktop) */}
                     <div className="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
-                        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                            <div className="px-4 py-3 border-b border-slate-100">
-                                <p className="text-sm font-bold text-slate-800 m-0">{user?.first_name} {user?.last_name}</p>
-                                <p className="text-xs text-slate-400 m-0 mt-0.5">{user?.email}</p>
+                        <div className="bg-card rounded-xl shadow-lg border border-line overflow-hidden">
+                            <div className="px-4 py-3 border-b border-line">
+                                <p className="text-sm font-bold text-fg m-0">{user?.first_name} {user?.last_name}</p>
+                                <p className="text-xs text-faint m-0 mt-0.5">{user?.email}</p>
                             </div>
                             <button
                                 onClick={logout}

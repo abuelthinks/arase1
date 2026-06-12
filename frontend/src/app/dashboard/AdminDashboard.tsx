@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
@@ -13,7 +13,7 @@ import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 import CustomSelect from "@/components/CustomSelect";
 
-/* ─── Utility: Title Case ────────────────────────────────────────────────── */
+/* â”€â”€â”€ Utility: Title Case â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function toTitleCase(str: string): string {
     return str
@@ -23,7 +23,7 @@ function toTitleCase(str: string): string {
         .join(' ');
 }
 
-/* ─── Types ──────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 interface UserData {
     id: number;
@@ -106,7 +106,7 @@ interface DashboardAction {
     type: "positive" | "info" | "warning";
 }
 
-/* ─── Helpers ────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const getRoleStyle = roleColorHex;
 const getStatusStyle = statusColorHex;
@@ -123,7 +123,7 @@ const getFormPillClass = (isSubmitted?: boolean, isUnlocked?: boolean) => {
             ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300"
             : isSubmitted 
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300" 
-                : "border-slate-300 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-400"
+                : "border-line bg-app text-muted hover:bg-subtle-soft hover:text-fg hover:border-line"
     }`;
 };
 
@@ -151,7 +151,7 @@ const buildStudentActionHref = (student: StudentData) => {
 };
 
 const getCardButtonClass = (tone: string) => {
-    const base = "shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-white shadow-sm transition-colors duration-200 border no-underline ";
+    const base = "shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-card shadow-sm transition-colors duration-200 border no-underline ";
     switch (tone) {
         case "warning":
             return base + "text-amber-700 border-amber-200 hover:bg-amber-400 hover:text-amber-900 hover:border-amber-500";
@@ -162,11 +162,11 @@ const getCardButtonClass = (tone: string) => {
         case "attention":
             return base + "text-pink-700 border-pink-200 hover:bg-pink-600 hover:text-white hover:border-pink-700";
         default:
-            return base + "text-slate-700 border-slate-200 hover:bg-slate-800 hover:text-white hover:border-slate-900";
+            return base + "text-fg border-line hover:bg-slate-800 hover:text-white hover:border-slate-900";
     }
 };
 
-/* ─── Main Component ─────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -174,9 +174,9 @@ export default function AdminDashboard() {
     const { user: authUser } = useAuth();
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
-        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
-        return { text: "Good evening", emoji: "🌙" };
+        if (hour < 12) return { text: "Good morning", emoji: "â˜€ï¸" };
+        if (hour < 17) return { text: "Good afternoon", emoji: "ðŸ‘‹" };
+        return { text: "Good evening", emoji: "ðŸŒ™" };
     };
 
     // Check URL for explicit tab, default to students
@@ -412,7 +412,7 @@ export default function AdminDashboard() {
         }
     }, [searchParams]);
 
-    /* ─── Filtered, Sorted, and Paginated Students ───────────────────────── */
+    /* â”€â”€â”€ Filtered, Sorted, and Paginated Students â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
     const statusPriority: Record<string, number> = {
         "PENDING_ASSESSMENT": 1,
@@ -482,7 +482,7 @@ export default function AdminDashboard() {
     const safeStudentPage = Math.min(Math.max(1, studentPage), totalStudentPages);
     const paginatedStudents = processedStudents.slice((safeStudentPage - 1) * studentItemsPerPage, safeStudentPage * studentItemsPerPage);
 
-    /* ─── Filtered, Sorted, and Paginated Users ──────────────────────────── */
+    /* â”€â”€â”€ Filtered, Sorted, and Paginated Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
     const uniqueUserRoles = Array.from(new Set(users.map(u => u.role)));
 
@@ -526,7 +526,7 @@ export default function AdminDashboard() {
     const safeUserPage = Math.min(Math.max(1, userPage), totalUserPages);
     const paginatedUsers = processedUsers.slice((safeUserPage - 1) * userItemsPerPage, safeUserPage * userItemsPerPage);
 
-    /* ─── Filtered, Sorted, and Paginated Invitations ────────────────────── */
+    /* â”€â”€â”€ Filtered, Sorted, and Paginated Invitations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
     const uniqueInvitationRoles = Array.from(new Set(invitations.map(i => i.role)));
 
@@ -563,7 +563,7 @@ export default function AdminDashboard() {
     const safeInvitationPage = Math.min(Math.max(1, invitationPage), totalInvitationPages);
     const paginatedInvitations = processedInvitations.slice((safeInvitationPage - 1) * invitationItemsPerPage, safeInvitationPage * invitationItemsPerPage);
 
-    /* ─── Handlers ───────────────────────────────────────────────────────── */
+    /* â”€â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
     const handleStudentSort = (key: 'id' | 'name' | 'grade' | 'status') => {
         setStudentSortConfig(current => {
@@ -701,7 +701,7 @@ export default function AdminDashboard() {
         }
     };
 
-    /* ─── Analytics Metrics ──────────────────────────────────────────────── */
+    /* â”€â”€â”€ Analytics Metrics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     const totalStudents = students.filter(s => s.status !== 'ARCHIVED').length;
     const activeStudents = students.filter(s => s.status === 'ENROLLED').length;
     const scheduledStudents = students.filter(s => s.status === 'ASSESSMENT_SCHEDULED').length;
@@ -771,11 +771,11 @@ export default function AdminDashboard() {
         <>
             {/* Desktop heading */}
             <div className="hidden md:block mb-6">
-                <h2 className="m-0 text-3xl font-bold text-slate-800 flex items-center gap-2">
+                <h2 className="m-0 text-3xl font-bold text-fg flex items-center gap-2">
                     <span>{getTimeGreeting().text}, {authUser?.first_name || "Admin"}</span>
                     <span>{getTimeGreeting().emoji}</span>
                 </h2>
-                <p className="mt-2 text-base text-slate-500">
+                <p className="mt-2 text-base text-muted">
                     {activeTab === "analytics" && adminActionSummary}
                     {activeTab === "students" && `Manage all registered students. ${students.length} total records.`}
                     {activeTab === "users" && `Manage active system users. Showing ${processedUsers.length} of ${users.length}.`}
@@ -783,16 +783,16 @@ export default function AdminDashboard() {
                 </p>
             </div>
                 {/* Desktop only: card wrapper. Mobile: px-4 content padding */}
-                <div className={`p-4 sm:p-6 md:p-8 md:glass-panel md:bg-white md:rounded-xl md:border md:border-[var(--border-light)] ${activeTab === "students" ? "" : "md:min-h-[60vh]"}`}>
+                <div className={`p-4 sm:p-6 md:p-8 md:glass-panel md:bg-card md:rounded-xl md:border md:border-line ${activeTab === "students" ? "" : "md:min-h-[60vh]"}`}>
                     {/* Mobile-only title */}
                     <div className="md:hidden mb-5">
-                        <h2 className="m-0 text-xl font-bold text-slate-800">
+                        <h2 className="m-0 text-xl font-bold text-fg">
                             {activeTab === "analytics" && "Analytics Dashboard"}
-                            {activeTab === "students" && <>Student Roster <span className="text-base font-normal text-slate-400">({processedStudents.length})</span></>}
-                            {activeTab === "users" && <>System Users <span className="text-base font-normal text-slate-400">({processedUsers.length})</span></>}
-                            {activeTab === "invitations" && <>Registration <span className="text-base font-normal text-slate-400">({processedInvitations.length})</span></>}
+                            {activeTab === "students" && <>Student Roster <span className="text-base font-normal text-faint">({processedStudents.length})</span></>}
+                            {activeTab === "users" && <>System Users <span className="text-base font-normal text-faint">({processedUsers.length})</span></>}
+                            {activeTab === "invitations" && <>Registration <span className="text-base font-normal text-faint">({processedInvitations.length})</span></>}
                         </h2>
-                        <p className="m-0 mt-1 text-sm text-slate-400">
+                        <p className="m-0 mt-1 text-sm text-faint">
                             {activeTab === "analytics" && "Live pipeline health, actions, staffing coverage, and invitation risk."}
                             {activeTab === "students" && "Manage all registered students in the system."}
                             {activeTab === "users" && "Manage active system users and clinical roles."}
@@ -806,14 +806,14 @@ export default function AdminDashboard() {
                         <div key="analytics-tab" style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
                             
                             {/* Sleek Action Bar */}
-                            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white text-slate-900 rounded-2xl shadow-sm border border-slate-200">
+                            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-card text-fg rounded-2xl shadow-sm border border-line">
                                 <div className="flex items-center gap-3">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                                         <Zap className="h-5 w-5" aria-hidden="true" />
                                     </div>
                                     <div>
-                                        <h3 className="m-0 text-base font-extrabold text-slate-900">Quick Actions</h3>
-                                        <p className="m-0 text-xs text-slate-500">Most-used admin tasks</p>
+                                        <h3 className="m-0 text-base font-extrabold text-fg">Quick Actions</h3>
+                                        <p className="m-0 text-xs text-muted">Most-used admin tasks</p>
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
@@ -832,15 +832,15 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 
                                 {/* Urgent & Pending Tasks (Action Center + Watchlist combined) */}
-                                <div className="lg:col-span-2 flex flex-col bg-white rounded-2xl border border-rose-200 shadow-sm overflow-hidden">
+                                <div className="lg:col-span-2 flex flex-col bg-card rounded-2xl border border-rose-200 shadow-sm overflow-hidden">
                                     <div className="bg-rose-50 border-b border-rose-100 p-4 sm:p-5 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 shadow-inner">
                                                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                             </div>
                                             <div>
-                                                <h3 className="m-0 text-lg font-extrabold text-slate-900">Needs Attention</h3>
-                                                <p className="m-0 text-sm text-slate-500">Urgent actions, pending tasks, and watchlist items.</p>
+                                                <h3 className="m-0 text-lg font-extrabold text-fg">Needs Attention</h3>
+                                                <p className="m-0 text-sm text-muted">Urgent actions, pending tasks, and watchlist items.</p>
                                             </div>
                                         </div>
                                         <div className="hidden sm:flex gap-2">
@@ -848,14 +848,14 @@ export default function AdminDashboard() {
                                             <span className="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full border border-blue-200">{actionCounts.info} queued</span>
                                         </div>
                                     </div>
-                                    <div className="p-4 sm:p-5 flex-1 max-h-[400px] overflow-y-auto bg-slate-50/50">
+                                    <div className="p-4 sm:p-5 flex-1 max-h-[400px] overflow-y-auto bg-app/50">
                                         {dashboardActions.length === 0 && watchlistItems.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center h-full text-center py-8">
                                                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 shadow-sm">
                                                     <Sparkles className="w-8 h-8" />
                                                 </div>
-                                                <p className="font-bold text-slate-900 m-0 text-lg">You're all caught up!</p>
-                                                <p className="text-sm text-slate-500 mt-1 mb-0">No pending actions required right now.</p>
+                                                <p className="font-bold text-fg m-0 text-lg">You're all caught up!</p>
+                                                <p className="text-sm text-muted mt-1 mb-0">No pending actions required right now.</p>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col gap-3">
@@ -874,7 +874,7 @@ export default function AdminDashboard() {
                                                                     {action.action_text}
                                                                 </Link>
                                                             ) : (
-                                                                <span className="shrink-0 text-center text-xs italic text-slate-400 px-4 py-2" title="Action link unavailable">Unavailable</span>
+                                                                <span className="shrink-0 text-center text-xs italic text-faint px-4 py-2" title="Action link unavailable">Unavailable</span>
                                                             )}
                                                         </div>
                                                     );
@@ -895,7 +895,7 @@ export default function AdminDashboard() {
                                                                     {item.cta} &rarr;
                                                                 </Link>
                                                             ) : (
-                                                                <span className="shrink-0 text-center text-xs italic text-slate-400 px-4 py-2">Unavailable</span>
+                                                                <span className="shrink-0 text-center text-xs italic text-faint px-4 py-2">Unavailable</span>
                                                             )}
                                                         </div>
                                                     );
@@ -907,44 +907,44 @@ export default function AdminDashboard() {
 
                                 {/* Condense KPIs */}
                                 <div className="flex flex-col gap-3">
-                                    <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-indigo-300 hover:shadow-md group">
+                                    <div className="rounded-2xl border border-indigo-100 bg-card p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-indigo-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-indigo-500">Active Students</p>
-                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">{totalStudents}</p>
-                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">{activeStudents} enrolled &middot; {archivedStudents} archived</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-fg group-hover:text-indigo-600 transition-colors">{totalStudents}</p>
+                                            <p className="mt-1 text-xs font-medium text-muted mb-0">{activeStudents} enrolled &middot; {archivedStudents} archived</p>
                                         </div>
                                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-200">
                                             <UsersIcon className="h-5 w-5" />
                                         </div>
                                     </div>
                                     
-                                    <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-amber-300 hover:shadow-md group">
+                                    <div className="rounded-2xl border border-amber-100 bg-card p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-amber-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-amber-600">Awaiting Assess</p>
-                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-amber-600 transition-colors">{pendingStudents}</p>
-                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">Intake / Scheduling</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-fg group-hover:text-amber-600 transition-colors">{pendingStudents}</p>
+                                            <p className="mt-1 text-xs font-medium text-muted mb-0">Intake / Scheduling</p>
                                         </div>
                                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-md shadow-amber-200">
                                             <Clock className="h-5 w-5" />
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-sky-300 hover:shadow-md group">
+                                    <div className="rounded-2xl border border-sky-100 bg-card p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-sky-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-sky-600">Awaiting Enroll</p>
-                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors">{reviewStudents}</p>
-                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">Ready for decision</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-fg group-hover:text-sky-600 transition-colors">{reviewStudents}</p>
+                                            <p className="mt-1 text-xs font-medium text-muted mb-0">Ready for decision</p>
                                         </div>
                                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-sky-500 text-white shadow-md shadow-sky-200">
                                             <ClipboardList className="h-5 w-5" />
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-pink-300 hover:shadow-md group">
+                                    <div className="rounded-2xl border border-pink-100 bg-card p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-pink-300 hover:shadow-md group">
                                         <div>
                                             <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-pink-600">Pending Invites</p>
-                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-slate-900 group-hover:text-pink-600 transition-colors">{validPendingInvitations.length}</p>
-                                            <p className="mt-1 text-xs font-medium text-slate-500 mb-0">{expiringSoonInvitations.length} expiring in 24h</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-fg group-hover:text-pink-600 transition-colors">{validPendingInvitations.length}</p>
+                                            <p className="mt-1 text-xs font-medium text-muted mb-0">{expiringSoonInvitations.length} expiring in 24h</p>
                                         </div>
                                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-pink-400 to-pink-500 text-white shadow-md shadow-pink-200">
                                             <Mail className="h-5 w-5" />
@@ -957,22 +957,22 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                                 
                                 {/* Student Workflow Snapshot (Horizontal Funnel) */}
-                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col hover:shadow-md transition-shadow">
+                                <div className="bg-card rounded-2xl border border-line shadow-sm p-6 flex flex-col hover:shadow-md transition-shadow">
                                     <div className="mb-6">
-                                        <h3 className="m-0 text-lg font-extrabold text-slate-900">Student Pipeline</h3>
-                                        <p className="m-0 mt-1 text-sm text-slate-500">Live view of where students sit in the enrollment flow.</p>
+                                        <h3 className="m-0 text-lg font-extrabold text-fg">Student Pipeline</h3>
+                                        <p className="m-0 mt-1 text-sm text-muted">Live view of where students sit in the enrollment flow.</p>
                                     </div>
                                     
                                     <div className="flex flex-col gap-4 mt-auto mb-auto">
                                         {/* Horizontal bar representation */}
                                         <div className="relative pt-6">
-                                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                                            <div className="flex justify-between text-[10px] font-bold text-faint uppercase tracking-wider mb-2 px-2">
                                                 <span>Assess</span>
                                                 <span>Schedule</span>
                                                 <span>Review</span>
                                                 <span>Enrolled</span>
                                             </div>
-                                            <div className="flex h-12 w-full rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
+                                            <div className="flex h-12 w-full rounded-full overflow-hidden border border-line bg-subtle-soft shadow-inner">
                                                 <div style={{ width: `${totalStudents ? (pendingStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-amber-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Pending Assessment">
                                                     {pendingStudents > 0 ? pendingStudents : ""}
                                                 </div>
@@ -989,39 +989,39 @@ export default function AdminDashboard() {
                                         </div>
 
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                            <div className="flex items-center gap-2 bg-app px-3 py-2 rounded-lg border border-line">
                                                 <div className="w-3 h-3 rounded-full bg-amber-400 shrink-0"></div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Pending</span>
-                                                    <span className="text-sm font-extrabold text-slate-700">{pendingStudents}</span>
+                                                    <span className="text-[10px] font-bold text-faint uppercase">Pending</span>
+                                                    <span className="text-sm font-extrabold text-fg">{pendingStudents}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                            <div className="flex items-center gap-2 bg-app px-3 py-2 rounded-lg border border-line">
                                                 <div className="w-3 h-3 rounded-full bg-sky-400 shrink-0"></div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Scheduled</span>
-                                                    <span className="text-sm font-extrabold text-slate-700">{scheduledStudents}</span>
+                                                    <span className="text-[10px] font-bold text-faint uppercase">Scheduled</span>
+                                                    <span className="text-sm font-extrabold text-fg">{scheduledStudents}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                            <div className="flex items-center gap-2 bg-app px-3 py-2 rounded-lg border border-line">
                                                 <div className="w-3 h-3 rounded-full bg-indigo-400 shrink-0"></div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Review</span>
-                                                    <span className="text-sm font-extrabold text-slate-700">{reviewStudents}</span>
+                                                    <span className="text-[10px] font-bold text-faint uppercase">Review</span>
+                                                    <span className="text-sm font-extrabold text-fg">{reviewStudents}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                                            <div className="flex items-center gap-2 bg-app px-3 py-2 rounded-lg border border-line">
                                                 <div className="w-3 h-3 rounded-full bg-emerald-400 shrink-0"></div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Enrolled</span>
-                                                    <span className="text-sm font-extrabold text-slate-700">{activeStudents}</span>
+                                                    <span className="text-[10px] font-bold text-faint uppercase">Enrolled</span>
+                                                    <span className="text-sm font-extrabold text-fg">{activeStudents}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 p-4 rounded-xl">
-                                        <span className="text-sm font-medium text-slate-700">{inProgressStudents} students actively moving through evaluation.</span>
+                                    <div className="mt-6 pt-4 border-t border-line flex justify-between items-center bg-app p-4 rounded-xl">
+                                        <span className="text-sm font-medium text-fg">{inProgressStudents} students actively moving through evaluation.</span>
                                         <Link href="/dashboard?tab=students" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 no-underline whitespace-nowrap">
                                             Open roster &rarr;
                                         </Link>
@@ -1029,11 +1029,11 @@ export default function AdminDashboard() {
                                 </div>
 
                                 {/* Team Capacity Chart */}
-                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col hover:shadow-md transition-shadow">
+                                <div className="bg-card rounded-2xl border border-line shadow-sm p-6 flex flex-col hover:shadow-md transition-shadow">
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
-                                            <h3 className="m-0 text-lg font-extrabold text-slate-900">Team Capacity</h3>
-                                            <p className="m-0 mt-1 text-sm text-slate-500">Average caseload: <span className="font-bold text-slate-800">{averageCaseload.toFixed(1)} students</span></p>
+                                            <h3 className="m-0 text-lg font-extrabold text-fg">Team Capacity</h3>
+                                            <p className="m-0 mt-1 text-sm text-muted">Average caseload: <span className="font-bold text-fg">{averageCaseload.toFixed(1)} students</span></p>
                                         </div>
                                         {unassignedStaff.length > 0 && (
                                             <div className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">
@@ -1045,7 +1045,7 @@ export default function AdminDashboard() {
                                     <div className="flex-1 flex flex-col justify-end">
                                         {/* Visual Bar Chart for Caseloads */}
                                         <div className="space-y-4">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider m-0">Top Caseloads</p>
+                                            <p className="text-[10px] font-bold text-faint uppercase tracking-wider m-0">Top Caseloads</p>
                                             {staffSortedByCaseload.slice(0, 4).map(staff => {
                                                 const maxCaseload = Math.max(1, staffSortedByCaseload[0]?.assigned_students_count || 1);
                                                 const pct = (staff.assigned_students_count / maxCaseload) * 100;
@@ -1055,17 +1055,17 @@ export default function AdminDashboard() {
                                                 return (
                                                     <div key={staff.id} className="flex flex-col gap-1.5">
                                                         <div className="flex justify-between text-sm">
-                                                            <span className="font-bold text-slate-700 truncate w-40">{staff.first_name} {staff.last_name}</span>
-                                                            <span className="font-extrabold text-slate-900">{staff.assigned_students_count}</span>
+                                                            <span className="font-bold text-fg truncate w-40">{staff.first_name} {staff.last_name}</span>
+                                                            <span className="font-extrabold text-fg">{staff.assigned_students_count}</span>
                                                         </div>
-                                                        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                                        <div className="h-2.5 w-full bg-subtle-soft rounded-full overflow-hidden shadow-inner">
                                                             <div className={`${barColor} h-full rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }}></div>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
                                             {staffSortedByCaseload.length === 0 && (
-                                                <p className="text-sm text-slate-500 italic">No instructional staff assigned yet.</p>
+                                                <p className="text-sm text-muted italic">No instructional staff assigned yet.</p>
                                             )}
                                         </div>
                                     </div>
@@ -1091,7 +1091,7 @@ export default function AdminDashboard() {
                             <div className="flex flex-col lg:flex-row justify-between gap-4 mb-4 items-start">
                                 <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full lg:flex-1 min-w-0">
                                     <div className="relative w-full md:flex-1 md:max-w-[420px]">
-                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                                         <input
                                             type="text"
                                             placeholder="Search by name or ID..."
@@ -1101,19 +1101,19 @@ export default function AdminDashboard() {
                                                 width: "100%",
                                                 padding: "8px 12px 8px 36px",
                                                 borderRadius: "6px",
-                                                border: "1px solid #e2e8f0",
+                                                border: "1px solid var(--border-light)",
                                                 fontSize: "0.9rem",
                                                 height: "38px",
                                                 outline: "none",
                                                 boxSizing: "border-box",
-                                                background: "#ffffff",
+                                                background: "var(--bg-secondary)",
                                             }}
                                         />
                                     </div>
                                     {studentSearch && (
                                         <button
                                             onClick={() => setStudentSearch('')}
-                                            className="h-[38px] whitespace-nowrap rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                                            className="h-[38px] whitespace-nowrap rounded-md border border-line bg-card px-3 text-xs font-bold text-muted transition-colors duration-200 hover:border-line hover:bg-app hover:text-fg"
                                             style={{ cursor: 'pointer' }}
                                         >
                                             Clear Search
@@ -1127,8 +1127,8 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            <div className="w-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
+                            <div className="w-full bg-card rounded-xl border border-line shadow-sm overflow-hidden">
+                                <div className="border-b border-line bg-app/70 px-4 py-3">
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                         {statusFilterOptions.length > 0 && (
                                             <div className="flex flex-wrap gap-2">
@@ -1139,12 +1139,12 @@ export default function AdminDashboard() {
                                                             key={option.status}
                                                             onClick={() => { setActiveStatusTab(option.status); setStudentPage(1); }}
                                                             aria-pressed={isActive}
-                                                            className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 text-xs font-bold transition-colors duration-200 ${isActive ? 'shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'}`}
+                                                            className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 text-xs font-bold transition-colors duration-200 ${isActive ? 'shadow-sm' : 'border-line bg-card text-muted hover:border-line hover:bg-app hover:text-fg'}`}
                                                             style={isActive ? { background: option.style.bg, borderColor: option.style.color, color: option.style.color, cursor: 'pointer' } : { cursor: 'pointer' }}
                                                         >
                                                             <span className="h-2.5 w-2.5 rounded-full" style={{ background: option.style.color }} />
                                                             <span className="uppercase">{option.label}</span>
-                                                            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-white/75' : 'bg-slate-100 text-slate-500'}`}>
+                                                            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-white/75' : 'bg-subtle-soft text-muted'}`}>
                                                                 {option.count}
                                                             </span>
                                                         </button>
@@ -1153,12 +1153,12 @@ export default function AdminDashboard() {
                                             </div>
                                         )}
                                         {students.length > 10 && (
-                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 shrink-0">
+                                            <div className="flex items-center gap-2 text-xs font-medium text-muted shrink-0">
                                                 <span>Show</span>
                                                 <select
                                                     value={studentItemsPerPage}
                                                     onChange={(e) => setStudentItemsPerPage(Number(e.target.value))}
-                                                    className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400"
+                                                    className="h-8 rounded-md border border-line bg-card px-2 text-sm text-fg outline-none transition-colors hover:border-line focus:border-indigo-400"
                                                 >
                                                     <option value={10}>10</option>
                                                     <option value={25}>25</option>
@@ -1172,7 +1172,7 @@ export default function AdminDashboard() {
                                 <div className="p-0">
                                     {processedStudents.length === 0 ? (
                                         <div className="p-8">
-                                            <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1", margin: 0 }}>
+                                            <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "var(--bg-primary)", borderRadius: "8px", border: "1px dashed var(--text-muted)", margin: 0 }}>
                                                 {students.length === 0
                                                     ? "No students in the system yet."
                                                     : studentSearch
@@ -1186,34 +1186,34 @@ export default function AdminDashboard() {
                                                 <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ID
                                                             <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
-                                                                {studentSortConfig.key === 'id' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {studentSortConfig.key === 'id' ? (studentSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             STUDENT
                                                             <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
-                                                                {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             GRADE
                                                             <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
-                                                                {studentSortConfig.key === 'grade' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {studentSortConfig.key === 'grade' ? (studentSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>
+                                                    <th style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>
                                                         {["ENROLLED", "INTEGRATED"].includes(effectiveStatusTab.toUpperCase()) ? "FORMS STATUS (PROGRESS)" : "FORMS STATUS (ASSESSMENT)"}
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>ACTION</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>ACTION</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1221,7 +1221,7 @@ export default function AdminDashboard() {
                                                     const nextAction = s.next_action;
                                                     return (
                                                         <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }}>
-                                                            <td style={{ padding: "12px", color: "#94a3b8", fontSize: "0.85rem" }}>#{s.id}</td>
+                                                            <td style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.85rem" }}>#{s.id}</td>
                                                             <td style={{ padding: "12px" }}>
                                                                 <Link href={`/workspace?studentId=${s.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                     {s.first_name} {s.last_name}
@@ -1305,14 +1305,14 @@ export default function AdminDashboard() {
                                                                             style={{ 
                                                                                 fontSize: "0.75rem", 
                                                                                 padding: "6px 12px", 
-                                                                                background: "#f8fafc", 
-                                                                                border: "1px solid #e2e8f0", 
+                                                                                background: "var(--bg-primary)", 
+                                                                                border: "1px solid var(--border-light)", 
                                                                                 borderRadius: "6px", 
-                                                                                color: "#475569", 
+                                                                                color: "var(--text-secondary)", 
                                                                                 textDecoration: "none", 
                                                                                 fontWeight: 600 
                                                                             }} 
-                                                                            className="transition-colors hover:bg-slate-100"
+                                                                            className="transition-colors hover:bg-subtle-soft"
                                                                         >
                                                                             Open Workspace
                                                                         </Link>
@@ -1325,28 +1325,28 @@ export default function AdminDashboard() {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="md:hidden flex flex-col gap-3 p-3 bg-slate-50/50">
+                                    <div className="md:hidden flex flex-col gap-3 p-3 bg-app/50">
                                         {paginatedStudents.map(s => {
                                             const ss = getStatusStyle(s.status);
                                             const nextAction = s.next_action;
                                             return (
-                                                <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
+                                                <div key={s.id} className="bg-card rounded-xl border border-line p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
-                                                            <span className="text-xs font-mono text-slate-400 mb-1">#{s.id}</span>
+                                                            <span className="text-xs font-mono text-faint mb-1">#{s.id}</span>
                                                             <Link href={`/workspace?studentId=${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
-                                                            <span className="text-sm text-slate-500 mt-1">{s.grade || "Grade TBD"}</span>
+                                                            <span className="text-sm text-muted mt-1">{s.grade || "Grade TBD"}</span>
                                                         </div>
                                                         <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: ss.bg, color: ss.color, textAlign: "center", whiteSpace: "nowrap" }}>
                                                             {statusLabel(s.status)}
                                                         </span>
                                                     </div>
 
-                                                    <div className="flex flex-col gap-2 border-t border-slate-100 pt-3">
+                                                    <div className="flex flex-col gap-2 border-t border-line pt-3">
                                                         <div className="flex flex-col gap-2">
-                                                            <span className="text-slate-400 font-semibold text-xs">
+                                                            <span className="text-faint font-semibold text-xs">
                                                                 {["ENROLLED", "INTEGRATED"].includes(s.status.toUpperCase()) ? "Progress Trackers" : "Assessments"}
                                                             </span>
                                                             <div className="flex flex-wrap gap-2">
@@ -1383,7 +1383,7 @@ export default function AdminDashboard() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="border-t border-slate-100 pt-3 flex flex-wrap gap-2 justify-end w-full">
+                                                    <div className="border-t border-line pt-3 flex flex-wrap gap-2 justify-end w-full">
                                                         {nextAction ? (
                                                             nextAction.tone === "waiting" ? (
                                                                 <button 
@@ -1409,7 +1409,7 @@ export default function AdminDashboard() {
                                                         ) : (
                                                             <Link 
                                                                 href={`/workspace?studentId=${s.id}`} 
-                                                                className="text-xs px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-bold no-underline hover:bg-slate-100 transition-colors flex-1 text-center" 
+                                                                className="text-xs px-3 py-1.5 rounded bg-app border border-line text-fg font-bold no-underline hover:bg-subtle-soft transition-colors flex-1 text-center" 
                                                                 title="Open Workspace"
                                                             >
                                                                 Open Workspace
@@ -1431,15 +1431,15 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setStudentPage(p => Math.max(1, p - 1))} 
                                         disabled={safeStudentPage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeStudentPage === 1 ? "#f8fafc" : "white", color: safeStudentPage === 1 ? "#cbd5e1" : "inherit", cursor: safeStudentPage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeStudentPage === 1 ? "var(--bg-primary)" : "white", color: safeStudentPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeStudentPage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
-                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "#64748b" }}>
+                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safeStudentPage} of {totalStudentPages}
                                     </span>
                                     <button 
                                         onClick={() => setStudentPage(p => Math.min(totalStudentPages, p + 1))} 
                                         disabled={safeStudentPage === totalStudentPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeStudentPage === totalStudentPages ? "#f8fafc" : "white", color: safeStudentPage === totalStudentPages ? "#cbd5e1" : "inherit", cursor: safeStudentPage === totalStudentPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeStudentPage === totalStudentPages ? "var(--bg-primary)" : "white", color: safeStudentPage === totalStudentPages ? "var(--text-muted)" : "inherit", cursor: safeStudentPage === totalStudentPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}
@@ -1450,7 +1450,7 @@ export default function AdminDashboard() {
                             <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
                                 <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
                                     <div className="relative w-full md:flex-1 md:max-w-[400px]">
-                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                                         <input
                                             type="text"
                                             placeholder="Search by name or email..."
@@ -1460,12 +1460,12 @@ export default function AdminDashboard() {
                                                 width: "100%",
                                                 padding: "8px 12px 8px 36px",
                                                 borderRadius: "6px",
-                                                border: "1px solid #e2e8f0",
+                                                border: "1px solid var(--border-light)",
                                                 fontSize: "0.9rem",
                                                 height: "38px",
                                                 outline: "none",
                                                 boxSizing: "border-box",
-                                                background: "#f8fafc",
+                                                background: "var(--bg-primary)",
                                             }}
                                         />
                                     </div>
@@ -1479,11 +1479,11 @@ export default function AdminDashboard() {
                                                     style={{
                                                         padding: "6px 14px",
                                                         borderRadius: "20px",
-                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-light)'}`,
                                                         fontSize: "0.8rem",
                                                         fontWeight: isActive ? 600 : 400,
-                                                        background: isActive ? '#eff6ff' : '#f8fafc',
-                                                        color: isActive ? 'var(--accent-primary)' : '#475569',
+                                                        background: isActive ? '#eff6ff' : 'var(--bg-primary)',
+                                                        color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                                                         cursor: "pointer",
                                                         transition: "all 0.2s"
                                                     }}
@@ -1495,7 +1495,7 @@ export default function AdminDashboard() {
                                         {(userSearch || userRoleFilter) && (
                                             <button 
                                                 onClick={() => { setUserSearch(''); setUserRoleFilter(''); }}
-                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
                                             >
                                                 Clear Filters
                                             </button>
@@ -1504,7 +1504,7 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                             
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
                                 <span>Showing {Math.min(processedUsers.length, paginatedUsers.length)} of {processedUsers.length} users</span>
                                 {users.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -1512,7 +1512,7 @@ export default function AdminDashboard() {
                                         <select
                                             value={userItemsPerPage}
                                             onChange={(e) => setUserItemsPerPage(Number(e.target.value))}
-                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-light)", background: "var(--bg-primary)" }}
                                         >
                                             <option value={10}>10</option>
                                             <option value={25}>25</option>
@@ -1524,7 +1524,7 @@ export default function AdminDashboard() {
                             </div>
 
                             {processedUsers.length === 0 ? (
-                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "var(--bg-primary)", borderRadius: "8px", border: "1px dashed var(--text-muted)" }}>
                                     {users.length === 0
                                         ? "No users in the system yet."
                                         : userSearch && userRoleFilter
@@ -1541,31 +1541,31 @@ export default function AdminDashboard() {
                                         <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleUserSort('name')} aria-sort={userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('name')} aria-sort={userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             NAME
                                                             <span style={{ opacity: userSortConfig.key === 'name' ? 1 : 0.3 }}>
-                                                                {userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleUserSort('role')} aria-sort={userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('role')} aria-sort={userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ROLE
                                                             <span style={{ opacity: userSortConfig.key === 'role' ? 1 : 0.3 }}>
-                                                                {userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleUserSort('kids')} aria-sort={userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('kids')} aria-sort={userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ASSIGNED KIDS
                                                             <span style={{ opacity: userSortConfig.key === 'kids' ? 1 : 0.3 }}>
-                                                                {userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)" }}>Action</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1573,7 +1573,7 @@ export default function AdminDashboard() {
                                                     const hasName = u.first_name || u.last_name;
                                                     const displayName = hasName ? `${u.first_name} ${u.last_name}`.trim() : u.email;
                                                     return (
-                                                        <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                        <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-subtle-soft transition-colors duration-150">
                                                             <td style={{ padding: "12px" }}>
                                                                 <div style={{ display: "flex", flexDirection: "column" }}>
                                                                     <Link href={`/users/${u.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
@@ -1589,7 +1589,7 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                                                                 {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
-                                                                    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "#f1f5f9", color: "#475569", fontWeight: "bold", fontSize: "0.8rem", padding: "0 6px" }}>
+                                                                    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "var(--bg-neutral-light)", color: "var(--text-secondary)", fontWeight: "bold", fontSize: "0.8rem", padding: "0 6px" }}>
                                                                         {u.assigned_students_count}
                                                                     </div>
                                                                 ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
@@ -1600,7 +1600,7 @@ export default function AdminDashboard() {
                                                                         {u.assigned_student_names.length} {u.assigned_student_names.length === 1 ? "child" : "children"}
                                                                     </div>
                                                                 ) : (
-                                                                    <span style={{ color: "#cbd5e1" }}>-</span>
+                                                                    <span style={{ color: "var(--text-muted)" }}>-</span>
                                                                 )}
                                                             </td>
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
@@ -1628,19 +1628,19 @@ export default function AdminDashboard() {
                                             const hasName = u.first_name || u.last_name;
                                             const displayName = hasName ? `${u.first_name} ${u.last_name}`.trim() : u.email;
                                             return (
-                                                <div key={u.id} className="bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
+                                                <div key={u.id} className="bg-card rounded-xl border border-line p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
                                                             <Link href={`/users/${u.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
                                                                 {displayName}
                                                             </Link>
-                                                            <span className="text-sm text-slate-500 mt-1 truncate">{u.email}</span>
+                                                            <span className="text-sm text-muted mt-1 truncate">{u.email}</span>
                                                         </div>
                                                         <span data-role-badge style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, textAlign: "center", whiteSpace: "nowrap" }}>
                                                             {u.role}
                                                         </span>
                                                     </div>
-                                                    <div className="text-sm text-slate-600">
+                                                    <div className="text-sm text-muted">
                                                         <span className="font-semibold mr-1">Assigned Kids:</span>
                                                         {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
                                                             <span>{u.assigned_students_count}</span>
@@ -1649,10 +1649,10 @@ export default function AdminDashboard() {
                                                                 {u.assigned_student_names.length} {u.assigned_student_names.length === 1 ? "child" : "children"}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-slate-400">None</span>
+                                                            <span className="text-faint">None</span>
                                                         )}
                                                     </div>
-                                                    <div className="border-t border-slate-100 pt-3 flex justify-end gap-2">
+                                                    <div className="border-t border-line pt-3 flex justify-end gap-2">
                                                         <Link href={`/users/${u.id}`} className="btn-slate text-sm flex-1 text-center py-2" title="View Profile">
                                                             Profile
                                                         </Link>
@@ -1677,15 +1677,15 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setUserPage(p => Math.max(1, p - 1))} 
                                         disabled={safeUserPage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeUserPage === 1 ? "#f8fafc" : "white", color: safeUserPage === 1 ? "#cbd5e1" : "inherit", cursor: safeUserPage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeUserPage === 1 ? "var(--bg-primary)" : "white", color: safeUserPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeUserPage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
-                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "#64748b" }}>
+                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safeUserPage} of {totalUserPages}
                                     </span>
                                     <button 
                                         onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))} 
                                         disabled={safeUserPage === totalUserPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeUserPage === totalUserPages ? "#f8fafc" : "white", color: safeUserPage === totalUserPages ? "#cbd5e1" : "inherit", cursor: safeUserPage === totalUserPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeUserPage === totalUserPages ? "var(--bg-primary)" : "white", color: safeUserPage === totalUserPages ? "var(--text-muted)" : "inherit", cursor: safeUserPage === totalUserPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}
@@ -1693,13 +1693,13 @@ export default function AdminDashboard() {
                     ) : activeTab === "invitations" ? (
                         <div>
                             {/* Bulk Registration Panel */}
-                            <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200 mb-8">
+                            <div className="bg-card p-5 lg:p-6 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-line mb-8">
                                 <div className="mb-5">
-                                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 m-0">
+                                    <h2 className="text-lg font-bold text-fg flex items-center gap-2 m-0">
                                         <Mail className="text-indigo-600" size={20} />
                                         Send Invites
                                     </h2>
-                                    <p className="text-sm text-slate-500 m-0 mt-1">
+                                    <p className="text-sm text-muted m-0 mt-1">
                                         Send individual or bulk invitations. Paste emails or drop a CSV file.
                                     </p>
                                 </div>
@@ -1707,7 +1707,7 @@ export default function AdminDashboard() {
                                     {/* Left Column: Role & Input */}
                                     <div className="lg:col-span-1 flex flex-col gap-4">
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                                            <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide">
                                                 Account Role
                                             </label>
                                             <CustomSelect 
@@ -1723,25 +1723,25 @@ export default function AdminDashboard() {
                                         </div>
 
                                         <div className="flex-1 flex flex-col min-h-[250px]">
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide flex justify-between">
+                                            <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide flex justify-between">
                                                 <span>Add Emails</span>
-                                                <span className="font-normal text-slate-400 normal-case">Paste or drop CSV</span>
+                                                <span className="font-normal text-faint normal-case">Paste or drop CSV</span>
                                             </label>
                                             <div 
-                                                className={`flex-1 relative border-2 border-dashed rounded-xl transition-all duration-200 flex flex-col overflow-hidden ${isDragOver ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'} ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}
+                                                className={`flex-1 relative border-2 border-dashed rounded-xl transition-all duration-200 flex flex-col overflow-hidden ${isDragOver ? 'border-indigo-500 bg-indigo-50/50' : 'border-line bg-app hover:border-line'} ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}
                                                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                                                 onDragLeave={() => setIsDragOver(false)}
                                                 onDrop={handleBulkDrop}
                                             >
                                                 <textarea
-                                                    className="w-full h-full p-4 bg-transparent resize-none outline-none text-sm placeholder:text-slate-400"
+                                                    className="w-full h-full p-4 bg-transparent resize-none outline-none text-sm placeholder:text-faint"
                                                     placeholder="Enter emails separated by commas, spaces, or newlines..."
                                                     value={bulkInputText}
                                                     onChange={(e) => setBulkInputText(e.target.value)}
                                                     disabled={isBulkProcessing}
                                                 />
                                                 <div className="absolute bottom-3 right-3 flex gap-2">
-                                                    <label className="cursor-pointer bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 p-2 rounded-lg shadow-sm transition-all hover:shadow">
+                                                    <label className="cursor-pointer bg-card border border-line text-muted hover:text-indigo-600 hover:border-indigo-300 p-2 rounded-lg shadow-sm transition-all hover:shadow">
                                                         <FileUp size={16} />
                                                         <input type="file" accept=".csv,.txt" className="hidden" onChange={(e) => handleBulkFileUpload(e.target.files?.[0] || null)} disabled={isBulkProcessing} />
                                                     </label>
@@ -1758,12 +1758,12 @@ export default function AdminDashboard() {
                                     </div>
 
                                     {/* Right Column: Review List */}
-                                    <div className="lg:col-span-2 flex flex-col bg-slate-50 rounded-xl border border-slate-200 overflow-hidden min-h-[300px]">
-                                        <div className="px-4 py-3 border-b border-slate-200 bg-white flex justify-between items-center">
-                                            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 m-0">
-                                                <ClipboardList size={16} className="text-slate-400" />
+                                    <div className="lg:col-span-2 flex flex-col bg-app rounded-xl border border-line overflow-hidden min-h-[300px]">
+                                        <div className="px-4 py-3 border-b border-line bg-card flex justify-between items-center">
+                                            <h3 className="text-sm font-bold text-fg flex items-center gap-2 m-0">
+                                                <ClipboardList size={16} className="text-faint" />
                                                 Review List
-                                                <span className="bg-slate-100 text-slate-600 text-xs py-0.5 px-2 rounded-full font-medium border border-slate-200">
+                                                <span className="bg-subtle-soft text-muted text-xs py-0.5 px-2 rounded-full font-medium border border-line">
                                                     {bulkEmails.length}
                                                 </span>
                                             </h3>
@@ -1774,25 +1774,25 @@ export default function AdminDashboard() {
 
                                         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 max-h-[300px]">
                                             {bulkEmails.length === 0 ? (
-                                                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
-                                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-                                                        <Mail size={20} className="text-slate-300" />
+                                                <div className="flex-1 flex flex-col items-center justify-center text-faint gap-3">
+                                                    <div className="w-12 h-12 rounded-full bg-subtle-soft flex items-center justify-center">
+                                                        <Mail size={20} className="text-faint" />
                                                     </div>
                                                     <p className="text-sm font-medium m-0">List is empty</p>
                                                     <p className="text-xs m-0">Add emails to start sending invites.</p>
                                                 </div>
                                             ) : (
                                                 bulkEmails.map((entry, idx) => (
-                                                    <div key={`${entry.email}-${idx}`} className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-all ${entry.status === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : entry.status === 'error' ? 'bg-red-50 border-red-200 text-red-800' : entry.status === 'sending' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-white border-slate-200 text-slate-700'}`}>
+                                                    <div key={`${entry.email}-${idx}`} className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-all ${entry.status === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : entry.status === 'error' ? 'bg-red-50 border-red-200 text-red-800' : entry.status === 'sending' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-card border-line text-fg'}`}>
                                                         <div className="flex items-center gap-3 truncate">
-                                                            {entry.status === 'success' ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : entry.status === 'error' ? <XCircle size={16} className="text-red-500 shrink-0" /> : entry.status === 'sending' ? <Loader2 size={16} className="text-indigo-500 animate-spin shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-slate-200 shrink-0" />}
+                                                            {entry.status === 'success' ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : entry.status === 'error' ? <XCircle size={16} className="text-red-500 shrink-0" /> : entry.status === 'sending' ? <Loader2 size={16} className="text-indigo-500 animate-spin shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-line shrink-0" />}
                                                             <div className="flex flex-col truncate">
                                                                 <span className="font-medium truncate">{entry.email}</span>
                                                                 {entry.errorMessage && <span className="text-xs text-red-600 mt-0.5 truncate">{entry.errorMessage}</span>}
                                                             </div>
                                                         </div>
                                                         {entry.status === 'pending' && !isBulkProcessing && (
-                                                            <button onClick={() => removeBulkEmail(idx)} className="text-slate-400 hover:text-red-500 p-1">
+                                                            <button onClick={() => removeBulkEmail(idx)} className="text-faint hover:text-red-500 p-1">
                                                                 <Trash2 size={14} />
                                                             </button>
                                                         )}
@@ -1801,11 +1801,11 @@ export default function AdminDashboard() {
                                             )}
                                         </div>
 
-                                        <div className="p-4 border-t border-slate-200 bg-white">
+                                        <div className="p-4 border-t border-line bg-card">
                                             <button 
                                                 onClick={handleBulkSendInvites}
                                                 disabled={isBulkProcessing || bulkEmails.filter(e => e.status === 'pending' || e.status === 'error').length === 0}
-                                                className={`w-full py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isBulkProcessing ? 'bg-indigo-400 cursor-not-allowed' : bulkEmails.filter(e => e.status === 'pending' || e.status === 'error').length === 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-[0_4px_12px_-4px_rgba(79,70,229,0.4)] hover:shadow-[0_6px_16px_-4px_rgba(79,70,229,0.5)]'}`}
+                                                className={`w-full py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isBulkProcessing ? 'bg-indigo-400 cursor-not-allowed' : bulkEmails.filter(e => e.status === 'pending' || e.status === 'error').length === 0 ? 'bg-subtle-soft text-faint cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-[0_4px_12px_-4px_rgba(79,70,229,0.4)] hover:shadow-[0_6px_16px_-4px_rgba(79,70,229,0.5)]'}`}
                                             >
                                                 {isBulkProcessing ? <><Loader2 size={18} className="animate-spin" /> Sending Invites...</> : <><Play size={18} className="fill-current" /> Send Invites</>}
                                             </button>
@@ -1814,7 +1814,7 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 m-0 mb-4">
+                            <h2 className="text-lg font-bold text-fg flex items-center gap-2 m-0 mb-4">
                                 Pending Invites
                             </h2>
 
@@ -1822,7 +1822,7 @@ export default function AdminDashboard() {
                             <div className="flex flex-col lg:flex-row justify-between gap-4 mb-5 items-start">
                                 <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full lg:flex-1 min-w-0">
                                     <div className="relative w-full md:flex-1 md:max-w-[400px]">
-                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                                         <input
                                             type="text"
                                             placeholder="Search by email..."
@@ -1832,12 +1832,12 @@ export default function AdminDashboard() {
                                                 width: "100%",
                                                 padding: "8px 12px 8px 36px",
                                                 borderRadius: "6px",
-                                                border: "1px solid #e2e8f0",
+                                                border: "1px solid var(--border-light)",
                                                 fontSize: "0.9rem",
                                                 height: "38px",
                                                 outline: "none",
                                                 boxSizing: "border-box",
-                                                background: "#f8fafc",
+                                                background: "var(--bg-primary)",
                                             }}
                                         />
                                     </div>
@@ -1851,11 +1851,11 @@ export default function AdminDashboard() {
                                                     style={{
                                                         padding: "6px 14px",
                                                         borderRadius: "20px",
-                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                        border: `1px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-light)'}`,
                                                         fontSize: "0.8rem",
                                                         fontWeight: isActive ? 600 : 400,
-                                                        background: isActive ? '#eff6ff' : '#f8fafc',
-                                                        color: isActive ? 'var(--accent-primary)' : '#475569',
+                                                        background: isActive ? '#eff6ff' : 'var(--bg-primary)',
+                                                        color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                                                         cursor: "pointer",
                                                         transition: "all 0.2s"
                                                     }}
@@ -1867,7 +1867,7 @@ export default function AdminDashboard() {
                                         {(invitationSearch || invitationRoleFilters.length > 0) && (
                                             <button 
                                                 onClick={() => { setInvitationSearch(''); setInvitationRoleFilters([]); }}
-                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
                                             >
                                                 Clear Filters
                                             </button>
@@ -1876,7 +1876,7 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                             
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
                                 <span>Showing {Math.min(processedInvitations.length, paginatedInvitations.length)} of {processedInvitations.length} invitations</span>
                                 {pendingInvitations.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -1884,7 +1884,7 @@ export default function AdminDashboard() {
                                         <select
                                             value={invitationItemsPerPage}
                                             onChange={(e) => setInvitationItemsPerPage(Number(e.target.value))}
-                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-light)", background: "var(--bg-primary)" }}
                                         >
                                             <option value={10}>10</option>
                                             <option value={25}>25</option>
@@ -1896,7 +1896,7 @@ export default function AdminDashboard() {
                             </div>
 
                             {processedInvitations.length === 0 ? (
-                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "var(--bg-primary)", borderRadius: "8px", border: "1px dashed var(--text-muted)" }}>
                                     {pendingInvitations.length === 0
                                         ? "No pending invitations in the system."
                                         : invitationSearch && invitationRoleFilters.length > 0
@@ -1913,39 +1913,39 @@ export default function AdminDashboard() {
                                         <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             EMAIL
                                                             <span style={{ opacity: invitationSortConfig.key === 'email' ? 1 : 0.3 }}>
-                                                                {invitationSortConfig.key === 'email' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {invitationSortConfig.key === 'email' ? (invitationSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleInvitationSort('role')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleInvitationSort('role')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ROLE
                                                             <span style={{ opacity: invitationSortConfig.key === 'role' ? 1 : 0.3 }}>
-                                                                {invitationSortConfig.key === 'role' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {invitationSortConfig.key === 'role' ? (invitationSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleInvitationSort('date')} style={{ cursor: "pointer", padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleInvitationSort('date')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             SENT DATE
                                                             <span style={{ opacity: invitationSortConfig.key === 'date' ? 1 : 0.3 }}>
-                                                                {invitationSortConfig.key === 'date' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
+                                                                {invitationSortConfig.key === 'date' ? (invitationSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>EXPIRES</th>
-                                                    <th style={{ padding: "12px", color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "#f8fafc", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>EXPIRES</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {paginatedInvitations.map(inv => {
                                                     const expiry = inv.expires_at ? getExpiryDisplay(inv.expires_at) : null;
                                                     return (
-                                                    <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-slate-100 transition-colors duration-150">
+                                                    <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-subtle-soft transition-colors duration-150">
                                                         <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)", textDecoration: expiry?.isExpired ? 'line-through' : 'none' }}>{inv.email}</td>
                                                         <td style={{ padding: "12px" }}>
                                                             <span data-role-badge style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
@@ -1958,7 +1958,7 @@ export default function AdminDashboard() {
                                                                 <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
                                                                     {expiry.label}
                                                                 </span>
-                                                            ) : <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>—</span>}
+                                                            ) : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>â€”</span>}
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
                                                             <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
@@ -1998,27 +1998,27 @@ export default function AdminDashboard() {
                                         {paginatedInvitations.map(inv => {
                                             const expiry = inv.expires_at ? getExpiryDisplay(inv.expires_at) : null;
                                             return (
-                                                <div key={inv.id} className={`bg-white rounded-xl border border-slate-200 p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3 ${expiry?.isExpired ? 'opacity-65' : ''}`}>
+                                                <div key={inv.id} className={`bg-card rounded-xl border border-line p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3 ${expiry?.isExpired ? 'opacity-65' : ''}`}>
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col flex-1 min-w-0">
                                                             <span className={`font-bold text-[var(--text-primary)] text-[1rem] truncate ${expiry?.isExpired ? 'line-through' : ''}`} title={inv.email}>
                                                                 {inv.email}
                                                             </span>
-                                                            <span className="text-sm text-slate-500 mt-1">Sent: {new Date(inv.created_at).toLocaleDateString()}</span>
+                                                            <span className="text-sm text-muted mt-1">Sent: {new Date(inv.created_at).toLocaleDateString()}</span>
                                                         </div>
                                                         <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, textAlign: "center", whiteSpace: "nowrap", flexShrink: 0 }}>
                                                             {inv.role}
                                                         </span>
                                                     </div>
                                                     <div className="flex flex-wrap items-center gap-2 text-sm">
-                                                        <span className="text-slate-500">Expires:</span>
+                                                        <span className="text-muted">Expires:</span>
                                                         {expiry ? (
                                                             <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "2px 8px", borderRadius: "12px", fontWeight: "bold", whiteSpace: "nowrap" }}>
                                                                 {expiry.label}
                                                             </span>
-                                                        ) : <span className="text-slate-400">—</span>}
+                                                        ) : <span className="text-faint">â€”</span>}
                                                     </div>
-                                                    <div className="border-t border-slate-100 pt-3 flex justify-end gap-2 flex-wrap">
+                                                    <div className="border-t border-line pt-3 flex justify-end gap-2 flex-wrap">
                                                         {!expiry?.isExpired && (
                                                             <button onClick={() => {
                                                                 navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
@@ -2047,15 +2047,15 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setInvitationPage(p => Math.max(1, p - 1))} 
                                         disabled={safeInvitationPage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeInvitationPage === 1 ? "#f8fafc" : "white", color: safeInvitationPage === 1 ? "#cbd5e1" : "inherit", cursor: safeInvitationPage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeInvitationPage === 1 ? "var(--bg-primary)" : "white", color: safeInvitationPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeInvitationPage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
-                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "#64748b" }}>
+                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safeInvitationPage} of {totalInvitationPages}
                                     </span>
                                     <button 
                                         onClick={() => setInvitationPage(p => Math.min(totalInvitationPages, p + 1))} 
                                         disabled={safeInvitationPage === totalInvitationPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safeInvitationPage === totalInvitationPages ? "#f8fafc" : "white", color: safeInvitationPage === totalInvitationPages ? "#cbd5e1" : "inherit", cursor: safeInvitationPage === totalInvitationPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeInvitationPage === totalInvitationPages ? "var(--bg-primary)" : "white", color: safeInvitationPage === totalInvitationPages ? "var(--text-muted)" : "inherit", cursor: safeInvitationPage === totalInvitationPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}
@@ -2067,20 +2067,20 @@ export default function AdminDashboard() {
 
 
 
-            {/* ── Invite User Modal ──────────────────────────────────────── */}
+            {/* â”€â”€ Invite User Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {showInviteModal && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                    <div style={{ background: "white", padding: "2rem", borderRadius: "16px", width: "420px", maxWidth: "90%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}>
+                    <div style={{ background: "var(--bg-secondary)", padding: "2rem", borderRadius: "16px", width: "420px", maxWidth: "90%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1.5rem" }}>
                             <div style={{ background: "#e0e7ff", color: "#4f46e5", padding: "8px", borderRadius: "10px" }}>
                                 <UserPlus size={20} />
                             </div>
-                            <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: "1.25rem", color: "#1e293b", fontWeight: 800 }}>Registration</h2>
+                            <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: "1.25rem", color: "var(--text-primary)", fontWeight: 800 }}>Registration</h2>
                         </div>
                         
                         <form onSubmit={handleInviteUser} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                             <div>
-                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Account Role <span style={{ color: "#ef4444" }}>*</span></label>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Account Role <span style={{ color: "#ef4444" }}>*</span></label>
                                 <CustomSelect 
                                     value={inviteRole}
                                     onChange={setInviteRole}
@@ -2094,21 +2094,21 @@ export default function AdminDashboard() {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
-                                <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: "0.9rem", transition: "all 0.2s" }} />
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
+                                <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", background: "var(--bg-primary)", fontSize: "0.9rem", transition: "all 0.2s" }} />
                             </div>
                             
                             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
                                 <button type="submit" className="btn-primary" style={{ flex: 1, padding: "8px 16px", borderRadius: "8px", fontSize: "0.85rem", opacity: invitingUser ? 0.6 : 1, transition: "all 0.2s" }} disabled={invitingUser}>
                                     {invitingUser ? "Sending..." : "Send Link"}
                                 </button>
-                                <button type="button" onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: "8px 16px", background: "white", color: "#64748b", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }} disabled={invitingUser}>
+                                <button type="button" onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: "8px 16px", background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--text-muted)", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }} disabled={invitingUser}>
                                     Cancel
                                 </button>
                             </div>
 
-                            <div style={{ marginTop: "1rem", textAlign: "center", borderTop: "1px dashed #e2e8f0", paddingTop: "1rem" }}>
-                                <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0 }}>
+                            <div style={{ marginTop: "1rem", textAlign: "center", borderTop: "1px dashed var(--border-light)", paddingTop: "1rem" }}>
+                                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
                                     Need to invite multiple people? <br/>
                                     <Link href="/dashboard?tab=invitations" onClick={() => setShowInviteModal(false)} style={{ color: "#4f46e5", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
                                         Go to Bulk Registration <ArrowRight size={14} />
@@ -2120,10 +2120,10 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* ── Delete User Confirmation Modal ─────────────────────────── */}
+            {/* â”€â”€ Delete User Confirmation Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {userToDelete && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                    <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
+                    <div style={{ background: "var(--bg-secondary)", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
                         <h2 style={{ marginTop: 0, color: "#d32f2f" }}>Delete User</h2>
                         <p style={{ color: "var(--text-secondary)", marginBottom: "1rem", fontSize: "0.95rem" }}>
                             You are about to permanently delete <strong>{userToDelete.first_name} {userToDelete.last_name}</strong>.
@@ -2158,19 +2158,19 @@ export default function AdminDashboard() {
                                 >
                                     Permanently Delete
                                 </button>
-                                <button type="button" onClick={() => { setUserToDelete(null); setDeleteConfirmText(""); setDeleteError(""); }} style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
+                                <button type="button" onClick={() => { setUserToDelete(null); setDeleteConfirmText(""); setDeleteError(""); }} style={{ flex: 1, padding: "10px", background: "var(--bg-neutral-light)", border: "1px solid var(--text-muted)", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ── Revoke Invite Confirmation ──────────────────────────────── */}
+            {/* â”€â”€ Revoke Invite Confirmation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {inviteToRevoke && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                    <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
                         <h2 className="m-0 text-lg font-extrabold text-red-700">Revoke invitation</h2>
-                        <p className="mt-2 text-sm text-slate-600">
+                        <p className="mt-2 text-sm text-muted">
                             Revoking will invalidate the existing invite link for <strong>{inviteToRevoke.email}</strong>. They will not be able to register with the current link.
                         </p>
                         <div className="mt-5 flex gap-2">
@@ -2186,7 +2186,7 @@ export default function AdminDashboard() {
                                 type="button"
                                 onClick={() => setInviteToRevoke(null)}
                                 disabled={inviteActionLoading}
-                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                className="flex-1 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-fg transition-colors hover:bg-app disabled:opacity-60"
                             >
                                 Cancel
                             </button>
@@ -2195,12 +2195,12 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* ── Resend Invite Confirmation ──────────────────────────────── */}
+            {/* â”€â”€ Resend Invite Confirmation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {inviteToResend && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                    <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
                         <h2 className="m-0 text-lg font-extrabold text-emerald-700">Resend invitation</h2>
-                        <p className="mt-2 text-sm text-slate-600">
+                        <p className="mt-2 text-sm text-muted">
                             This will revoke the previous link for <strong>{inviteToResend.email}</strong> and issue a fresh 72-hour invitation. You'll get a new copyable link after the resend.
                         </p>
                         <div className="mt-5 flex gap-2">
@@ -2216,7 +2216,7 @@ export default function AdminDashboard() {
                                 type="button"
                                 onClick={() => setInviteToResend(null)}
                                 disabled={inviteActionLoading}
-                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                                className="flex-1 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-fg transition-colors hover:bg-app disabled:opacity-60"
                             >
                                 Cancel
                             </button>
@@ -2225,16 +2225,16 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* ── Created/Resent Invite Token (copyable) ──────────────────── */}
+            {/* â”€â”€ Created/Resent Invite Token (copyable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {createdInvite && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                        <h2 className="m-0 text-lg font-extrabold text-slate-900">Invite link ready</h2>
-                        <p className="mt-2 text-sm text-slate-600">
+                    <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                        <h2 className="m-0 text-lg font-extrabold text-fg">Invite link ready</h2>
+                        <p className="mt-2 text-sm text-muted">
                             Send this link to <strong>{createdInvite.email}</strong>. It's valid for 72 hours.
                         </p>
-                        <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2">
-                            <code className="flex-1 break-all text-xs font-medium text-slate-700">
+                        <div className="mt-4 flex items-center gap-2 rounded-xl border border-line bg-app/60 p-2">
+                            <code className="flex-1 break-all text-xs font-medium text-fg">
                                 {`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${createdInvite.token}`}
                             </code>
                             <button
@@ -2252,7 +2252,7 @@ export default function AdminDashboard() {
                             <button
                                 type="button"
                                 onClick={() => setCreatedInvite(null)}
-                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                                className="flex-1 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-fg transition-colors hover:bg-app"
                             >
                                 Done
                             </button>

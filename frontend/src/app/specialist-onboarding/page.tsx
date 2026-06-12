@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 const inputCls =
-  'w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 placeholder:font-normal placeholder:text-slate-400 transition-colors hover:bg-white focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/15';
+  'w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg placeholder:font-normal placeholder:text-faint transition-colors hover:bg-card focus:border-indigo-400 focus:bg-card focus:outline-none focus:ring-4 focus:ring-indigo-500/15';
 
 function LanguagePill({
   label,
@@ -43,7 +43,7 @@ function LanguagePill({
       className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${
         checked
           ? 'border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]'
-          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+          : 'border-line bg-card text-muted hover:border-line hover:bg-app'
       }`}
     >
       {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
@@ -129,7 +129,7 @@ export default function SpecialistOnboardingPage() {
 
   return (
     <ProtectedRoute allowedRoles={['SPECIALIST']}>
-      <div className="bg-slate-50 py-8 md:py-12">
+      <div className="bg-app py-8 md:py-12">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 md:px-0">
           {/* Progress indicator */}
           <ol className="flex items-center gap-3 text-sm">
@@ -139,26 +139,26 @@ export default function SpecialistOnboardingPage() {
               </span>
               Profile
             </li>
-            <li className="h-px flex-1 bg-slate-200" aria-hidden="true" />
-            <li className="flex items-center gap-2 font-medium text-slate-400">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-xs">
+            <li className="h-px flex-1 bg-subtle-soft" aria-hidden="true" />
+            <li className="flex items-center gap-2 font-medium text-faint">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-card text-xs">
                 2
               </span>
               Schedule
             </li>
           </ol>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <section className="rounded-2xl border border-line bg-card p-6 shadow-sm md:p-8">
             {/* Header */}
-            <div className="mb-7 flex items-start gap-4 border-b border-slate-200 pb-5">
+            <div className="mb-7 flex items-start gap-4 border-b border-line pb-5">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-sm ${semanticToneClass('primary')}`}>
                 <Sparkles className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <h1 className="m-0 text-2xl font-extrabold leading-tight text-slate-900">
+                <h1 className="m-0 text-2xl font-extrabold leading-tight text-fg">
                   Complete your specialist profile
                 </h1>
-                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                <p className="mt-2 text-sm leading-relaxed text-muted">
                   Add your name and working languages so families can be matched correctly. Your specialty is managed by admin.
                 </p>
               </div>
@@ -167,11 +167,11 @@ export default function SpecialistOnboardingPage() {
             {/* Name fields */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-slate-700" htmlFor="first-name">
+                <label className="block text-sm font-bold text-fg" htmlFor="first-name">
                   First name
                 </label>
                 <div className="relative">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" aria-hidden="true" />
                   <input
                     id="first-name"
                     type="text"
@@ -183,11 +183,11 @@ export default function SpecialistOnboardingPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-slate-700" htmlFor="last-name">
+                <label className="block text-sm font-bold text-fg" htmlFor="last-name">
                   Last name
                 </label>
                 <div className="relative">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" aria-hidden="true" />
                   <input
                     id="last-name"
                     type="text"
@@ -201,13 +201,13 @@ export default function SpecialistOnboardingPage() {
             </div>
 
             {/* Specialty */}
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+            <div className="mt-6 rounded-2xl border border-line bg-app/70 p-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <BadgeCheck className="h-5 w-5 text-indigo-600" aria-hidden="true" />
-                  <p className="m-0 text-sm font-extrabold text-slate-900">Your specialty</p>
+                  <p className="m-0 text-sm font-extrabold text-fg">Your specialty</p>
                 </div>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">
+                <span className="rounded-full border border-line bg-card px-2.5 py-1 text-xs font-semibold text-muted">
                   Assigned by admin
                 </span>
               </div>
@@ -236,9 +236,9 @@ export default function SpecialistOnboardingPage() {
               )}
 
               {hasSpecialty && (
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="m-0 text-sm font-bold text-slate-900">Did we get your specialty right?</p>
-                  <p className="mt-1 text-sm text-slate-500">
+                <div className="mt-4 rounded-xl border border-line bg-card p-4">
+                  <p className="m-0 text-sm font-bold text-fg">Did we get your specialty right?</p>
+                  <p className="mt-1 text-sm text-muted">
                     If this is not your actual specialty, send a change request to admin.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -253,7 +253,7 @@ export default function SpecialistOnboardingPage() {
                       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
                         specialtyConfirmed && !requestingChange
                           ? 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700'
-                          : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                          : 'border border-line text-fg hover:bg-app'
                       }`}
                     >
                       <Check className="h-4 w-4" aria-hidden="true" />
@@ -268,7 +268,7 @@ export default function SpecialistOnboardingPage() {
                       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
                         requestingChange
                           ? 'bg-amber-600 text-white shadow-sm hover:bg-amber-700'
-                          : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                          : 'border border-line text-fg hover:bg-app'
                       }`}
                     >
                       <PencilLine className="h-4 w-4" aria-hidden="true" />
@@ -279,21 +279,21 @@ export default function SpecialistOnboardingPage() {
                   {specialtyConfirmed && !requestingChange && !specialtyRequestSent && (
                     <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
                       <Check className="h-4 w-4" aria-hidden="true" />
-                      Great — your specialty is confirmed.
+                      Great â€” your specialty is confirmed.
                     </p>
                   )}
 
                   {requestingChange && (
                     <div className="mt-4 flex flex-col gap-3">
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700" htmlFor="requested-specialty">
+                        <label className="block text-sm font-bold text-fg" htmlFor="requested-specialty">
                           Requested specialty
                         </label>
                         <select
                           id="requested-specialty"
                           value={requestedSpecialty}
                           onChange={(event) => setRequestedSpecialty(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 transition-colors hover:bg-white focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/15"
+                          className="w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg transition-colors hover:bg-card focus:border-amber-400 focus:bg-card focus:outline-none focus:ring-4 focus:ring-amber-500/15"
                         >
                           <option value="">Select specialty</option>
                           {SPECIALIST_SPECIALTIES.filter((option) => !specialties.includes(option)).map((option) => (
@@ -304,7 +304,7 @@ export default function SpecialistOnboardingPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700" htmlFor="specialty-note">
+                        <label className="block text-sm font-bold text-fg" htmlFor="specialty-note">
                           Note for admin
                         </label>
                         <textarea
@@ -313,7 +313,7 @@ export default function SpecialistOnboardingPage() {
                           onChange={(event) => setSpecialtyRequestNote(event.target.value)}
                           rows={3}
                           placeholder="Briefly explain what should be changed."
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-medium text-slate-800 transition-colors hover:bg-white focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/15"
+                          className="w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg transition-colors hover:bg-card focus:border-amber-400 focus:bg-card focus:outline-none focus:ring-4 focus:ring-amber-500/15"
                         />
                       </div>
                       <div>
@@ -366,14 +366,14 @@ export default function SpecialistOnboardingPage() {
             {/* Languages */}
             <div className="mt-6">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="m-0 text-sm font-bold text-slate-700">Session languages</p>
+                <p className="m-0 text-sm font-bold text-fg">Session languages</p>
                 {languages.length > 0 && (
                   <span className="text-xs font-semibold text-indigo-600">
                     {languages.length} selected
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-muted">
                 Select the languages you can comfortably use with parents and children.
               </p>
 
@@ -415,7 +415,7 @@ export default function SpecialistOnboardingPage() {
                   type="button"
                   onClick={addCustomLanguage}
                   disabled={!languageOther.trim()}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-card px-4 py-2 text-sm font-bold text-fg transition-colors hover:bg-app disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Plus className="h-4 w-4" aria-hidden="true" />
                   Add
@@ -427,14 +427,14 @@ export default function SpecialistOnboardingPage() {
                   {customLanguages.map((language) => (
                     <span
                       key={language}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1 text-xs font-semibold text-slate-700"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-app py-1 pl-3 pr-1 text-xs font-semibold text-fg"
                     >
                       {language}
                       <button
                         type="button"
                         onClick={() => setLanguages((prev) => prev.filter((item) => item !== language))}
                         aria-label={`Remove ${language}`}
-                        className="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-faint transition-colors hover:bg-subtle-soft hover:text-fg"
                       >
                         <X className="h-3 w-3" aria-hidden="true" />
                       </button>
@@ -453,7 +453,7 @@ export default function SpecialistOnboardingPage() {
             )}
 
             {/* Footer actions */}
-            <div className="mt-8 flex flex-col gap-2 border-t border-slate-100 pt-6">
+            <div className="mt-8 flex flex-col gap-2 border-t border-line pt-6">
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
@@ -474,12 +474,12 @@ export default function SpecialistOnboardingPage() {
                   )}
                 </button>
                 {!hasSpecialty && (
-                  <p className="m-0 text-xs text-slate-500">
+                  <p className="m-0 text-xs text-muted">
                     Waiting for admin to assign your specialty.
                   </p>
                 )}
                 {hasSpecialty && languages.length === 0 && (
-                  <p className="m-0 text-xs text-slate-500">
+                  <p className="m-0 text-xs text-muted">
                     Select at least one working language to continue.
                   </p>
                 )}

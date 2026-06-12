@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { specialtyShortLabel, userSpecialtyList } from "@/lib/sectionOwners";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import Badge from "@/components/ui/Badge";
 
 interface FormStatus {
     submitted: boolean;
@@ -78,14 +79,6 @@ interface ProfileData {
         report_id: number;
     } | null;
 }
-
-const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
-    "Pending Assessment":   { label: "Pending Assessment",   bg: "#fce7f3", color: "#9d174d" },
-    "Assessment Scheduled": { label: "Pending Assessment", bg: "#fef3c7", color: "#92400e" },
-    "Assessed":             { label: "Assessed",             bg: "#dbeafe", color: "#1e40af" },
-    "Enrolled":             { label: "Enrolled",             bg: "#dcfce7", color: "#14532d" },
-    "Archived":             { label: "Archived",             bg: "#f1f5f9", color: "#64748b" },
-};
 
 const STATUS_STEPS = [
     { key: "Pending Assessment", label: "Awaiting evaluation", shortLabel: "Pending" },
@@ -163,12 +156,11 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-slate-500">Loading profile...</div>;
+    if (loading) return <div className="p-8 text-center text-muted">Loading profile...</div>;
     if (error)   return <div className="p-8 text-center text-red-500">{error}</div>;
     if (!data)   return null;
 
     const { student, form_statuses, generated_documents, assigned_staff, cycle_status, previous_recommendations } = data;
-    const statusBadge = statusConfig[student.status] ?? { label: student.status, bg: "#f1f5f9", color: "#475569" };
 
     // Calculate stats
     const formsSubmittedCount = Object.values(form_statuses).filter(f => f.submitted).length;
@@ -195,7 +187,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             if (student.status === "Enrolled") {
                 return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <span className="text-sm text-slate-500 italic" style={{ display: "block", background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                        <span className="text-sm text-muted italic" style={{ display: "block", background: "var(--bg-primary)", padding: "10px", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
                             {student.first_name} is enrolled! Share how things are going at home to help the team prepare the monthly report.
                         </span>
                         <Link
@@ -213,7 +205,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     return (
                         <div>
                             <p style={{ fontSize: "0.85rem", color: "#92400e", marginBottom: "8px" }}>
-                                Tell us about {student.first_name} — their strengths, daily routine, and any concerns you'd like the team to know.
+                                Tell us about {student.first_name} â€” their strengths, daily routine, and any concerns you'd like the team to know.
                             </p>
                             <Link
                                 href={`/parent-onboarding?studentId=${student.id}`}
@@ -227,7 +219,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 }
                 return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <span className="text-sm text-slate-500 italic" style={{ display: "block", background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                        <span className="text-sm text-muted italic" style={{ display: "block", background: "var(--bg-primary)", padding: "10px", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
                             Thank you! We've received your input and the team is reviewing it now.
                         </span>
                         <Link
@@ -242,7 +234,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             }
             if (student.status === "Assessment Scheduled") {
                 return (
-                    <span className="text-sm text-slate-500 italic">Our specialist team is working on {student.first_name}'s evaluation — we'll let you know when there's an update.</span>
+                    <span className="text-sm text-muted italic">Our specialist team is working on {student.first_name}'s evaluation â€” we'll let you know when there's an update.</span>
                 );
             }
         }
@@ -253,7 +245,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                         onClick={() => handleAction("enroll")}
                         className="btn-primary px-5 py-2 text-sm"
                     >
-                        Enroll Student → Set Active
+                        Enroll Student â†’ Set Active
                     </button>
                 );
             }
@@ -279,15 +271,15 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
         <>
             <div style={{ maxWidth: "1024px", margin: "0 auto", padding: propEmbedded ? "1.5rem" : propHideNavigation ? "1.5rem" : "2rem 1rem 4rem" }}>
             
-            {/* ═══════════════════════════════════════════════════════ */}
-            {/* PROFILE HEADER — Avatar + Name + Status + Stepper     */}
-            {/* ═══════════════════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* PROFILE HEADER â€” Avatar + Name + Status + Stepper     */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             <div style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #dbeafe 100%)", borderRadius: "16px", padding: "0", marginBottom: "1.5rem", position: "relative", overflow: "hidden" }}>
                 {/* Subtle decorative circles */}
                 <div style={{ position: "absolute", top: "-40px", right: "-40px", width: "120px", height: "120px", borderRadius: "50%", background: "rgba(99,102,241,0.08)" }}></div>
                 <div style={{ position: "absolute", bottom: "-30px", left: "-20px", width: "80px", height: "80px", borderRadius: "50%", background: "rgba(59,130,246,0.06)" }}></div>
 
-                {/* Subtle back button — top-right, hidden when embedded */}
+                {/* Subtle back button â€” top-right, hidden when embedded */}
                 {!propHideNavigation && (
                     <button type="button" onClick={() => router.back()} className="hidden md:flex"
                         title="Go back"
@@ -314,7 +306,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     {/* Avatar */}
                     <div style={{
                         width: "72px", height: "72px", borderRadius: "50%",
-                        background: "white", color: "#4f46e5",
+                        background: "var(--bg-secondary)", color: "#4f46e5",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: "1.6rem", fontWeight: 800,
                         boxShadow: "0 4px 12px rgba(79,70,229,0.15)", border: "3px solid white",
@@ -329,20 +321,13 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                             {student.first_name} {student.last_name}
                         </h1>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                            <span style={{
-                                display: "inline-block",
-                                fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase",
-                                letterSpacing: "0.5px", padding: "3px 10px", borderRadius: "999px",
-                                background: statusBadge.bg, color: statusBadge.color,
-                            }}>
-                                {statusBadge.label}
-                            </span>
+                            <Badge status={student.status} className="uppercase tracking-wide text-[0.68rem]" />
                             {student.grade && (
-                                <span style={{ fontSize: "0.8rem", color: "#475569", fontWeight: 600 }}>
+                                <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600 }}>
                                     Grade: {student.grade}
                                 </span>
                             )}
-                            <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                            <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                                 {calcAge()} years old
                             </span>
                         </div>
@@ -369,7 +354,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                                             display: "flex", alignItems: "center", justifyContent: "center",
                                             fontSize: "0.62rem", fontWeight: 700,
                                             background: isCompleted || isFinalCompleted ? "rgba(79,70,229,0.88)" : isCurrent ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.22)",
-                                            color: isCompleted || isFinalCompleted ? "white" : isCurrent ? "#4f46e5" : "#94a3b8",
+                                            color: isCompleted || isFinalCompleted ? "white" : isCurrent ? "#4f46e5" : "var(--text-muted)",
                                             border: isCurrent && !isFinalCompleted ? "1.5px solid rgba(79,70,229,0.75)" : isCompleted || isFinalCompleted ? "1.5px solid rgba(79,70,229,0.65)" : "1.5px solid rgba(148,163,184,0.35)",
                                             boxShadow: isCurrent && !isFinalCompleted ? "0 0 0 2px rgba(79,70,229,0.08)" : "none",
                                             transition: "all 0.3s ease",
@@ -382,7 +367,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                                         </div>
                                         <span style={{
                                             fontSize: "0.62rem", fontWeight: isCurrent ? 700 : 600,
-                                            color: isCurrent || isFinalCompleted ? "#3730a3" : isCompleted ? "#4f46e5" : "#64748b",
+                                            color: isCurrent || isFinalCompleted ? "#3730a3" : isCompleted ? "#4f46e5" : "var(--text-secondary)",
                                             marginTop: "6px", textAlign: "center", lineHeight: 1.1,
                                         }}>
                                             {step.shortLabel}
@@ -404,87 +389,87 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 )}
             </div>
 
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {/* SUMMARY STAT CARDS                         */}
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(140px, 1fr))`, gap: "12px", marginBottom: "1.5rem" }}>
-                {/* Documents — always visible */}
-                <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                {/* Documents â€” always visible */}
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                         <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#10b981" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                         </div>
-                        <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Documents</span>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.3px" }}>Documents</span>
                     </div>
                     <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{docsCount}</div>
-                    <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>generated</div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)", marginTop: "2px" }}>generated</div>
                 </div>
 
-                {/* Cycle Status — visible for parents if enrolled */}
+                {/* Cycle Status â€” visible for parents if enrolled */}
                 {isParent && cycle_status && (
-                    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                    <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                             <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#f0f9ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#0ea5e9" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             </div>
-                            <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Cycle</span>
+                            <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.3px" }}>Cycle</span>
                         </div>
                         <div style={{ fontSize: "1.5rem", fontWeight: 800, color: cycle_status.days_remaining <= 5 ? "#dc2626" : "#1e1b4b" }}>{cycle_status.days_remaining}d</div>
-                        <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>remaining</div>
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)", marginTop: "2px" }}>remaining</div>
                     </div>
                 )}
 
                 {!isParent && (
                     <>
-                        {/* Forms — admin/staff only */}
-                        <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                        {/* Forms â€” admin/staff only */}
+                        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                 <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6366f1" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 </div>
-                                <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Forms</span>
+                                <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.3px" }}>Forms</span>
                             </div>
-                            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{formsSubmittedCount}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#94a3b8" }}>/{totalForms}</span></div>
-                            <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>submitted</div>
+                            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{formsSubmittedCount}<span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)" }}>/{totalForms}</span></div>
+                            <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)", marginTop: "2px" }}>submitted</div>
                         </div>
 
                         {/* Team */}
-                        <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                 <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                 </div>
-                                <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Team</span>
+                                <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.3px" }}>Team</span>
                             </div>
                             <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e1b4b" }}>{teamCount}</div>
-                            <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>assigned</div>
+                            <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)", marginTop: "2px" }}>assigned</div>
                         </div>
 
                         {/* Cycle Status (only if enrolled) */}
                         {cycle_status && (
-                            <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem 1.25rem" }}>
+                            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                     <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#f0f9ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#0ea5e9" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                     </div>
-                                    <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>Cycle</span>
+                                    <span style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.3px" }}>Cycle</span>
                                 </div>
                                 <div style={{ fontSize: "1.5rem", fontWeight: 800, color: cycle_status.days_remaining <= 5 ? "#dc2626" : "#1e1b4b" }}>{cycle_status.days_remaining}d</div>
-                                <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>remaining</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)", marginTop: "2px" }}>remaining</div>
                             </div>
                         )}
                     </>
                 )}
             </div>
 
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {/* MAIN CONTENT GRID                          */}
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }} className="profile-grid">
 
                 {/* Student Details */}
-                <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
-                    <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "14px", overflow: "hidden" }}>
+                    <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--bg-neutral-light)", display: "flex", alignItems: "center", gap: "8px" }}>
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6366f1" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>{isParent ? "About Your Child" : "Student Details"}</h3>
                     </div>
@@ -498,20 +483,20 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                             <div key={item.label} style={{
                                 display: "flex", justifyContent: "space-between", alignItems: "center",
                                 padding: "12px 1.25rem",
-                                borderBottom: idx < arr.length - 1 ? "1px solid #f8fafc" : "none",
+                                borderBottom: idx < arr.length - 1 ? "1px solid var(--bg-primary)" : "none",
                                 fontSize: "0.85rem"
                             }}>
-                                <span style={{ color: "#64748b", fontWeight: 500 }}>{item.label}</span>
+                                <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{item.label}</span>
                                 <span style={{ color: "#1e1b4b", fontWeight: 600, textAlign: "right" }}>{item.value}</span>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Parent / Guardian Contact — admin only; staff sees redacted contact info to enforce in-system communication */}
+                {/* Parent / Guardian Contact â€” admin only; staff sees redacted contact info to enforce in-system communication */}
                 {!isParent && user?.role === "ADMIN" && (
-                    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
-                        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "14px", overflow: "hidden" }}>
+                        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--bg-neutral-light)", display: "flex", alignItems: "center", gap: "8px" }}>
                             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#10b981" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                             <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Parent / Guardian</h3>
                         </div>
@@ -524,16 +509,16 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                                 <div key={item.label} style={{
                                     display: "flex", justifyContent: "space-between", alignItems: "center",
                                     padding: "12px 1.25rem",
-                                    borderBottom: idx < arr.length - 1 ? "1px solid #f8fafc" : "none",
+                                    borderBottom: idx < arr.length - 1 ? "1px solid var(--bg-primary)" : "none",
                                     fontSize: "0.85rem"
                                 }}>
-                                    <span style={{ color: "#64748b", fontWeight: 500 }}>{item.label}</span>
+                                    <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{item.label}</span>
                                     {item.isLink ? (
                                         <a href={item.href} style={{ color: "#4f46e5", fontWeight: 600, textDecoration: "none", textAlign: "right" }}>
                                             {item.value}
                                         </a>
                                     ) : (
-                                        <span style={{ color: item.value === "Not provided" ? "#cbd5e1" : "#1e1b4b", fontWeight: 600, fontStyle: item.value === "Not provided" ? "italic" : "normal", textAlign: "right" }}>{item.value}</span>
+                                        <span style={{ color: item.value === "Not provided" ? "var(--text-muted)" : "#1e1b4b", fontWeight: 600, fontStyle: item.value === "Not provided" ? "italic" : "normal", textAlign: "right" }}>{item.value}</span>
                                     )}
                                 </div>
                             ))}
@@ -541,8 +526,8 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     </div>
                 )}
                 {!isParent && (user?.role === "SPECIALIST" || user?.role === "TEACHER") && (
-                    <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
-                        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "14px", overflow: "hidden" }}>
+                        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--bg-neutral-light)", display: "flex", alignItems: "center", gap: "8px" }}>
                             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6366f1" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                             <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Parent / Guardian</h3>
                         </div>
@@ -550,7 +535,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                             <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#1e1b4b" }}>
                                 {student.parent_guardian_name || "Parent on file"}
                             </p>
-                            <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
+                            <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
                                 Direct contact info is private. All parent communication is coordinated through admin or scheduled sessions.
                             </p>
                         </div>
@@ -558,18 +543,18 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 )}
             </div>
 
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {/* ASSIGNED TEAM (if any)                      */}
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {!isParent && (
-                <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden", marginBottom: "1.5rem" }}>
-                    <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "14px", overflow: "hidden", marginBottom: "1.5rem" }}>
+                    <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--bg-neutral-light)", display: "flex", alignItems: "center", gap: "8px" }}>
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0 }}>Assigned Team</h3>
                     </div>
                     {assigned_staff.length === 0 ? (
                         <div style={{ padding: "1.5rem", textAlign: "center" }}>
-                            <p style={{ fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic", margin: 0 }}>No team members assigned yet.</p>
+                            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic", margin: 0 }}>No team members assigned yet.</p>
                         </div>
                     ) : (
                         <div>
@@ -589,7 +574,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                                         gap: "12px",
                                         flexWrap: "wrap",
                                         padding: "14px 1.25rem",
-                                        borderBottom: index === assigned_staff.length - 1 ? "none" : "1px solid #f8fafc",
+                                        borderBottom: index === assigned_staff.length - 1 ? "none" : "1px solid var(--bg-primary)",
                                     }}>
                                         <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: "1 1 240px", minWidth: 0 }}>
                                             <div style={{
@@ -648,11 +633,11 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 </div>
             )}
 
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {/* MONTHLY CYCLE STATUS (Enrolled only)       */}
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {!isParent && student.status === "Enrolled" && cycle_status && (
-                <div style={{ background: "white", borderRadius: "14px", padding: "1.25rem", border: "1px solid #e2e8f0", marginBottom: "1.5rem" }}>
+                <div style={{ background: "var(--bg-secondary)", borderRadius: "14px", padding: "1.25rem", border: "1px solid var(--border-light)", marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                         <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
                             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#0ea5e9" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -661,37 +646,37 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                         <span style={{ 
                             fontSize: "0.62rem", fontWeight: 800, textTransform: "uppercase", 
                             padding: "3px 8px", borderRadius: "6px", 
-                            background: cycle_status.status === "OPEN" ? "#dcfce7" : cycle_status.status === "GRACE" ? "#fee2e2" : "#f1f5f9",
-                            color: cycle_status.status === "OPEN" ? "#166534" : cycle_status.status === "GRACE" ? "#991b1b" : "#475569"
+                            background: cycle_status.status === "OPEN" ? "#dcfce7" : cycle_status.status === "GRACE" ? "#fee2e2" : "var(--bg-neutral-light)",
+                            color: cycle_status.status === "OPEN" ? "#166534" : cycle_status.status === "GRACE" ? "#991b1b" : "var(--text-secondary)"
                         }}>
                             {cycle_status.status}
                         </span>
                     </div>
 
                     <div style={{ marginBottom: "1rem" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#64748b", marginBottom: "6px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "var(--text-secondary)", marginBottom: "6px" }}>
                             <span>Progress ({cycle_status.trackers.submitted_count}/{cycle_status.trackers.total} trackers)</span>
                             <span>{Math.round((cycle_status.trackers.submitted_count/cycle_status.trackers.total)*100)}%</span>
                         </div>
-                        <div style={{ height: "6px", background: "#e2e8f0", borderRadius: "3px", overflow: "hidden" }}>
+                        <div style={{ height: "6px", background: "var(--border-light)", borderRadius: "3px", overflow: "hidden" }}>
                             <div style={{ width: `${(cycle_status.trackers.submitted_count/cycle_status.trackers.total)*100}%`, height: "100%", background: "#0ea5e9", transition: "width 0.5s ease" }}></div>
                         </div>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem" }}>
-                        <span style={{ color: "#64748b" }}>Deadline:</span>
+                        <span style={{ color: "var(--text-secondary)" }}>Deadline:</span>
                         <span style={{ fontWeight: 600, color: cycle_status.days_remaining <= 5 ? "#dc2626" : "#1e1b4b" }}>
                             {cycle_status.days_remaining} days left
                         </span>
                     </div>
                     {cycle_status.status === "GRACE" && (
                         <div style={{ fontSize: "0.75rem", color: "#dc2626", background: "#fee2e2", padding: "6px 10px", borderRadius: "6px", fontWeight: 500, marginTop: "8px" }}>
-                            ⚠️ Grace period ends: {new Date(cycle_status.grace_deadline).toLocaleDateString()}
+                            âš ï¸ Grace period ends: {new Date(cycle_status.grace_deadline).toLocaleDateString()}
                         </div>
                     )}
 
                     {user?.role === "ADMIN" && (
-                        <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e2e8f0" }}>
+                        <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border-light)" }}>
                             <button 
                                 onClick={() => handleAction("cycles/send-reminders")}
                                 className="btn-indigo text-xs w-full py-2"
@@ -725,7 +710,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
 
             {/* Lifecycle action */}
             {lifecycleContent && (
-                <div style={{ background: "white", borderRadius: "14px", padding: "1.25rem", border: "1px solid #e2e8f0", marginBottom: "1.5rem" }}>
+                <div style={{ background: "var(--bg-secondary)", borderRadius: "14px", padding: "1.25rem", border: "1px solid var(--border-light)", marginBottom: "1.5rem" }}>
                     <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b", margin: "0 0 1rem", display: "flex", alignItems: "center", gap: "8px" }}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                         {isParent ? "What You Can Do" : "Next Action"}
@@ -734,9 +719,9 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 </div>
             )}
 
-            {/* ═══════════════════════════════════════════ */}
-            {/* DANGER ZONE — Accordion (Admin only)       */}
-            {/* ═══════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* DANGER ZONE â€” Accordion (Admin only)       */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             {user?.role === "ADMIN" && (
                 <div style={{ borderRadius: "14px", border: "1px solid #fca5a5", background: "#fff5f5", overflow: "hidden" }}>
                     <button
@@ -776,14 +761,14 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
         {/* Delete Student Confirmation Modal */}
         {showDeleteModal && data && (
             <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
+                <div style={{ background: "var(--bg-secondary)", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
                     <h2 style={{ marginTop: 0, color: "#d32f2f" }}>Delete Student</h2>
-                    <p style={{ color: "#4b5563", marginBottom: "1rem", fontSize: "0.95rem" }}>
+                    <p style={{ color: "var(--text-secondary)", marginBottom: "1rem", fontSize: "0.95rem" }}>
                         You are about to permanently delete <strong>{data.student.first_name} {data.student.last_name}</strong> and all associated records.
                     </p>
-                    <p style={{ color: "#111827", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: "bold" }}>
+                    <p style={{ color: "var(--text-primary)", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: "bold" }}>
                         To confirm, type the student's full name:<br />
-                        <span style={{ color: "#6b7280", fontStyle: "italic", userSelect: "none" }}>
+                        <span style={{ color: "var(--text-secondary)", fontStyle: "italic", userSelect: "none" }}>
                             {data.student.first_name} {data.student.last_name}
                         </span>
                     </p>
@@ -814,7 +799,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                             </button>
                             <button
                                 onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); setDeleteError(""); }}
-                                style={{ flex: 1, padding: "10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "8px", cursor: "pointer" }}
+                                style={{ flex: 1, padding: "10px", background: "var(--bg-neutral-light)", border: "1px solid var(--text-muted)", borderRadius: "8px", cursor: "pointer" }}
                             >
                                 Cancel
                             </button>
@@ -851,7 +836,7 @@ function StudentProfileRouter({ id }: { id: string }) {
     }, [id, router]);
 
     return (
-        <div className="flex items-center justify-center p-12 text-sm text-slate-500">
+        <div className="flex items-center justify-center p-12 text-sm text-muted">
             Redirecting to workspace...
         </div>
     );

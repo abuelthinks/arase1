@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -71,30 +71,30 @@ export default function UserActivityPage() {
             <div className="max-w-3xl mx-auto pb-16 px-4">
                 
                 {/* Site Header / Breadcrumbs */}
-                <div className="hidden md:flex" style={{ marginBottom: "2rem", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                <div className="hidden md:flex" style={{ marginBottom: "2rem", justifyContent: "space-between", alignItems: "center", background: "var(--bg-secondary)", padding: "12px 20px", borderRadius: "12px", border: "1px solid var(--border-light)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <button type="button" onClick={() => router.back()}
-                            style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "#475569", fontWeight: 600, fontSize: "0.85rem", transition: "all 0.2s" }}
-                            className="hover:bg-slate-200"
+                            style={{ background: "var(--bg-primary)", border: "1px solid var(--border-light)", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontWeight: 600, fontSize: "0.85rem", transition: "all 0.2s" }}
+                            className="hover:bg-subtle-soft"
                         >
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
                             Back
                         </button>
-                        <span style={{ color: "#cbd5e1" }}>/</span>
+                        <span style={{ color: "var(--text-muted)" }}>/</span>
                         <Link href={`/users/${id}`} style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textDecoration: "none" }} className="hover:text-blue-600 hover:underline">
                             {displayName}
                         </Link>
-                        <span style={{ color: "#cbd5e1" }}>/</span>
+                        <span style={{ color: "var(--text-muted)" }}>/</span>
                         <span style={{ color: "var(--text-primary)", fontWeight: 700, fontSize: "0.95rem" }}>Activity Log</span>
                     </div>
                 </div>
 
-                <div className="glass-panel" style={{ background: "white", borderRadius: "14px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
-                    <div style={{ padding: "1.5rem 1.75rem", borderBottom: "1px solid var(--border-light)", background: "#f8fafc" }}>
+                <div className="glass-panel" style={{ background: "var(--bg-secondary)", borderRadius: "14px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
+                    <div style={{ padding: "1.5rem 1.75rem", borderBottom: "1px solid var(--border-light)", background: "var(--bg-primary)" }}>
                         <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#64748b" }}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-secondary)" }}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                             Full Activity History
                         </h2>
                         <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "var(--text-secondary)" }}>Complete log of actions performed by {displayName}</p>
@@ -108,8 +108,8 @@ export default function UserActivityPage() {
                             const isLogin = act.type === "login";
                             const isSystem = act.type === "system";
                             
-                            const bg = isReport ? "#dcfce7" : isNote ? "#fef3c7" : isIEP ? "#f3e8ff" : isSystem ? "#e0f2fe" : "#f1f5f9";
-                            const color = isReport ? "#16a34a" : isNote ? "#d97706" : isIEP ? "#9333ea" : isSystem ? "#0284c7" : "#475569";
+                            const bg = isReport ? "#dcfce7" : isNote ? "#fef3c7" : isIEP ? "#f3e8ff" : isSystem ? "#e0f2fe" : "var(--bg-neutral-light)";
+                            const color = isReport ? "#16a34a" : isNote ? "#d97706" : isIEP ? "#9333ea" : isSystem ? "#0284c7" : "var(--text-secondary)";
                             
                             return (
                                 <div key={idx} style={{ display: "flex", gap: "16px", alignItems: "flex-start", position: "relative", borderBottom: idx !== mockFullActivities.length - 1 ? "1px solid var(--border-light)" : "none", paddingBottom: idx !== mockFullActivities.length - 1 ? "1.5rem" : "0" }}>
@@ -134,12 +134,12 @@ export default function UserActivityPage() {
                                             <p style={{ margin: "0 0 6px", fontSize: "0.95rem", color: "var(--text-primary)" }}>
                                                 <strong style={{ fontWeight: 600 }}>{displayName.split(" ")[0]}</strong> {act.action} {act.target && <strong style={{ fontWeight: 600 }}>{act.target}</strong>}
                                             </p>
-                                            <span style={{ fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600, whiteSpace: "nowrap" }}>{act.time}</span>
+                                            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>{act.time}</span>
                                         </div>
                                         {act.details && (
-                                            <div style={{ padding: "12px 16px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "8px", position: "relative" }}>
+                                            <div style={{ padding: "12px 16px", background: "var(--bg-primary)", borderRadius: "8px", border: "1px solid var(--border-light)", fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "8px", position: "relative" }}>
                                                 {act.details}
-                                                <div style={{ position: "absolute", top: "-5px", left: "16px", width: "8px", height: "8px", background: "#f8fafc", borderLeft: "1px solid #e2e8f0", borderTop: "1px solid #e2e8f0", transform: "rotate(45deg)" }}></div>
+                                                <div style={{ position: "absolute", top: "-5px", left: "16px", width: "8px", height: "8px", background: "var(--bg-primary)", borderLeft: "1px solid var(--border-light)", borderTop: "1px solid var(--border-light)", transform: "rotate(45deg)" }}></div>
                                             </div>
                                         )}
                                     </div>

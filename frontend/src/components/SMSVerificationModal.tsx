@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import api from "@/lib/api";
@@ -58,7 +58,7 @@ export default function SMSVerificationModal({ onClose, onVerified }: Props) {
             zIndex: 9999
         }}>
             <div style={{
-                background: "white", padding: "2rem", borderRadius: "12px", width: "400px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+                background: "var(--bg-secondary)", padding: "2rem", borderRadius: "12px", width: "400px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
             }}>
                 {step === "request" ? (
                     <div style={{ textAlign: "center" }}>
@@ -92,7 +92,7 @@ export default function SMSVerificationModal({ onClose, onVerified }: Props) {
                             style={{ 
                                 display: "block", width: "100%", padding: "12px",
                                 fontSize: "1.2rem", textAlign: "center", letterSpacing: "5px",
-                                borderRadius: "8px", border: "1px solid #cbd5e1", marginBottom: "1rem",
+                                borderRadius: "8px", border: "1px solid var(--text-muted)", marginBottom: "1rem",
                                 boxSizing: "border-box"
                             }}
                             placeholder="000000"

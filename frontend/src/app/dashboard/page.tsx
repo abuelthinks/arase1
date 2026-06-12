@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useMemo } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -10,6 +10,7 @@ import { semanticToneClass, statusColorClass, statusColorHex, statusLabel } from
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
+import PageHeader from "@/components/ui/PageHeader";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 
 interface Student {
@@ -124,7 +125,7 @@ export default function DashboardPage() {
                 if (pending > 0) parts.push(`${pending} awaiting assessment`);
                 if (enrolled > 0) parts.push(`${enrolled} enrolled`);
                 if (parts.length === 0) {
-                    return "No active students yet — your caseload will appear here.";
+                    return "No active students yet â€” your caseload will appear here.";
                 }
                 return `You have ${parts.join(" and ")}.`;
             }
@@ -141,7 +142,7 @@ export default function DashboardPage() {
                     if (needsTracker > 0) parts.push(`${needsTracker} monthly update${needsTracker > 1 ? 's' : ''} due`);
                     return `You have ${parts.join(' and ')}.`;
                 }
-                return "All caught up! Nothing needed right now ✨";
+                return "All caught up! Nothing needed right now âœ¨";
             }
             default: return "";
         }
@@ -149,9 +150,9 @@ export default function DashboardPage() {
 
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
-        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
-        return { text: "Good evening", emoji: "🌙" };
+        if (hour < 12) return { text: "Good morning", emoji: "â˜€ï¸" };
+        if (hour < 17) return { text: "Good afternoon", emoji: "ðŸ‘‹" };
+        return { text: "Good evening", emoji: "ðŸŒ™" };
     };
 
     const getStudentWorkspaceHref = (studentId: number, tab?: string) => {
@@ -178,11 +179,11 @@ export default function DashboardPage() {
     return (
         <ProtectedRoute>
             <div className="px-4 md:px-0">
-                {/* SMS Verification Banner — Parent only */}
+                {/* SMS Verification Banner â€” Parent only */}
                 {user?.role === "PARENT" && isPhoneVerified === false && (
                     <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:px-5 sm:py-3 ${semanticToneClass("warning")}`}>
                         <div className="flex items-start gap-3">
-                            <span className="text-xl leading-none mt-0.5">📱</span>
+                            <span className="text-xl leading-none mt-0.5">ðŸ“±</span>
                             <p className="m-0 text-sm md:text-[0.9rem] text-amber-900 font-medium">
                                 {user?.phone_number
                                     ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
@@ -230,37 +231,25 @@ export default function DashboardPage() {
                 )}
 
                 {/* Page header */}
-                <div className="mb-5 md:mb-8">
-                    {user?.role === "PARENT" ? (
-                        <>
-                            <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
-                                <span>{getTimeGreeting().text}, {user?.first_name || 'there'}</span>
-                                <span>{getTimeGreeting().emoji}</span>
-                            </h2>
-                            <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
-                        </>
-                    ) : (
-                        <>
-                            <h2 className="m-0 text-xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
-                                <span>{getTimeGreeting().text}, {user?.first_name || 'there'}</span>
-                                <span>{getTimeGreeting().emoji}</span>
-                            </h2>
-                            <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">{getSubtitle()}</p>
-                            {students.length > 0 && (
-                                <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500">
-                                    <UsersIcon className="h-3.5 w-3.5 text-indigo-500" aria-hidden="true" />
-                                    {processedStudents.length} of {students.length} student{students.length !== 1 ? "s" : ""}
-                                </p>
-                            )}
-                        </>
-                    )}
-                </div>
+                <PageHeader
+                    title={<>
+                        <span>{getTimeGreeting().text}, {user?.first_name || 'there'}</span>
+                        <span>{getTimeGreeting().emoji}</span>
+                    </>}
+                    subtitle={getSubtitle()}
+                    meta={user?.role !== "PARENT" && students.length > 0 ? (
+                        <span className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1 text-xs font-bold text-muted">
+                            <UsersIcon className="h-3.5 w-3.5 text-indigo-500" aria-hidden="true" />
+                            {processedStudents.length} of {students.length} student{students.length !== 1 ? "s" : ""}
+                        </span>
+                    ) : undefined}
+                />
 
                 {/* Content panel */}
-                <div className={user?.role === "PARENT" ? "" : "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"}>
+                <div className={user?.role === "PARENT" ? "" : "rounded-2xl border border-line bg-card p-4 shadow-sm sm:p-6"}>
                     {loading ? (
-                        <div className="flex items-center gap-2 p-8 text-sm text-slate-500">
-                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-500" aria-hidden="true" />
+                        <div className="flex items-center gap-2 p-8 text-sm text-muted">
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-line border-t-indigo-500" aria-hidden="true" />
                             Loading...
                         </div>
                     ) : students.length === 0 ? (
@@ -268,26 +257,26 @@ export default function DashboardPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
                                 <Link
                                     href="/parent-onboarding"
-                                    className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center no-underline transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
+                                    className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-app/50 p-8 text-center no-underline transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
                                     style={{ minHeight: "260px" }}
                                 >
-                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-subtle-soft text-faint transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
                                         <Plus className="h-6 w-6" strokeWidth={2.5} />
                                     </div>
-                                    <h3 className="m-0 text-lg font-bold text-slate-700 transition-colors group-hover:text-indigo-700">
+                                    <h3 className="m-0 text-lg font-bold text-fg transition-colors group-hover:text-indigo-700">
                                         Register a New Child
                                     </h3>
-                                    <p className="mt-2 text-sm text-slate-500 max-w-[200px]">
+                                    <p className="mt-2 text-sm text-muted max-w-[200px]">
                                         Start an onboarding assessment for a new student.
                                     </p>
                                 </Link>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-12 text-center">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line bg-app/40 p-12 text-center">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-card text-faint shadow-sm">
                                     <UsersIcon className="h-6 w-6" aria-hidden="true" />
                                 </div>
-                                <p className="m-0 text-sm font-medium text-slate-500">
+                                <p className="m-0 text-sm font-medium text-muted">
                                     No students assigned at this time.
                                 </p>
                             </div>
@@ -300,7 +289,7 @@ export default function DashboardPage() {
                                     <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
                                         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto" }}>
                                             <div style={{ position: "relative", flex: "1 1 280px", maxWidth: "400px" }}>
-                                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                                                 <input
                                                     type="text"
                                                     placeholder="Search by name or ID..."
@@ -310,12 +299,12 @@ export default function DashboardPage() {
                                                         width: "100%",
                                                         padding: "8px 12px 8px 36px",
                                                         borderRadius: "6px",
-                                                        border: "1px solid #e2e8f0",
+                                                        border: "1px solid var(--border-light)",
                                                         fontSize: "0.9rem",
                                                         height: "38px",
                                                         outline: "none",
                                                         boxSizing: "border-box",
-                                                        background: "#f8fafc",
+                                                        background: "var(--bg-primary)",
                                                     }}
                                                 />
                                             </div>
@@ -329,11 +318,11 @@ export default function DashboardPage() {
                                                             style={{
                                                                 padding: "6px 14px",
                                                                 borderRadius: "20px",
-                                                                border: `1px solid ${isActive ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                                border: `1px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-light)'}`,
                                                                 fontSize: "0.8rem",
                                                                 fontWeight: isActive ? 600 : 400,
-                                                                background: isActive ? '#eff6ff' : '#f8fafc',
-                                                                color: isActive ? 'var(--accent-primary)' : '#475569',
+                                                                background: isActive ? '#eff6ff' : 'var(--bg-primary)',
+                                                                color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                                                                 cursor: "pointer",
                                                                 transition: "all 0.2s"
                                                             }}
@@ -345,24 +334,24 @@ export default function DashboardPage() {
                                                 {(searchQuery || statusFilters.length > 0) && (
                                                     <button 
                                                         onClick={() => { setSearchQuery(''); setStatusFilters([]); }}
-                                                        style={{ padding: "6px 12px", background: "none", border: "none", color: "#64748b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                                        style={{ padding: "6px 12px", background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
                                                     >
                                                         Clear Filters
                                                     </button>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 shrink-0 ml-auto">
+                                        <div className="flex items-center gap-1 rounded-lg border border-line bg-app p-1 shrink-0 ml-auto">
                                             <button 
                                                 onClick={() => handleViewModeChange("grid")} 
-                                                className={`rounded-md p-1.5 transition-colors ${viewMode === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+                                                className={`rounded-md p-1.5 transition-colors ${viewMode === "grid" ? "bg-card shadow-sm text-indigo-600" : "text-faint hover:text-muted"}`}
                                                 aria-label="Grid View"
                                             >
                                                 <LayoutGrid className="h-4 w-4" />
                                             </button>
                                             <button 
                                                 onClick={() => handleViewModeChange("list")} 
-                                                className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+                                                className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-card shadow-sm text-indigo-600" : "text-faint hover:text-muted"}`}
                                                 aria-label="List View"
                                             >
                                                 <List className="h-4 w-4" />
@@ -371,14 +360,14 @@ export default function DashboardPage() {
                                     </div>
 
                                     {students.length > 10 && (
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#64748b", marginBottom: "1rem" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
                                             <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} entries</span>
                                             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                                 <span>Show:</span>
                                                 <select
                                                     value={itemsPerPage}
                                                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                                                    style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", background: "#f8fafc" }}
+                                                    style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-light)", background: "var(--bg-primary)" }}
                                                 >
                                                     <option value={10}>10</option>
                                                     <option value={25}>25</option>
@@ -392,7 +381,7 @@ export default function DashboardPage() {
                             )}
 
                             {processedStudents.length === 0 ? (
-                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+                                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "3rem 1rem", background: "var(--bg-primary)", borderRadius: "8px", border: "1px dashed var(--text-muted)" }}>
                                     No records found matching your filters.
                                 </p>
                             ) : user?.role === "PARENT" ? (
@@ -400,11 +389,11 @@ export default function DashboardPage() {
                                     {paginatedStudents.map(s => {
                                         const statusMap: Record<string, { text: string; Icon: any }> = {
                                             PENDING_ASSESSMENT: {
-                                                text: s.has_parent_assessment ? "Assessment submitted — awaiting review" : "Waiting for your assessment",
+                                                text: s.has_parent_assessment ? "Assessment submitted â€” awaiting review" : "Waiting for your assessment",
                                                 Icon: s.has_parent_assessment ? Clock : ClipboardList,
                                             },
                                             ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", Icon: Clock },
-                                            ASSESSED: { text: "Assessment complete — enrollment pending", Icon: CheckCircle2 },
+                                            ASSESSED: { text: "Assessment complete â€” enrollment pending", Icon: CheckCircle2 },
                                             ENROLLED: {
                                                 text: s.parent_current_tracker_submitted ? "Enrolled & up to date" : "Monthly progress update needed",
                                                 Icon: s.parent_current_tracker_submitted ? Sparkles : FileText,
@@ -430,7 +419,7 @@ export default function DashboardPage() {
                                         return (
                                             <div
                                                 key={s.id}
-                                                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                                                className="flex flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-sm"
                                             >
                                                 {/* Child header */}
                                                 <div className="flex items-center gap-4 border-b border-indigo-100/60 p-5">
@@ -439,11 +428,11 @@ export default function DashboardPage() {
                                                         {s.last_name?.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <h3 className="m-0 truncate text-xl font-extrabold leading-tight text-slate-900">
+                                                        <h3 className="m-0 truncate text-xl font-extrabold leading-tight text-fg">
                                                             {s.first_name} {s.last_name}
                                                         </h3>
                                                         {s.grade && s.grade !== "TBD" && (
-                                                            <p className="m-0 mt-0.5 text-sm font-medium text-slate-500">Grade {s.grade}</p>
+                                                            <p className="m-0 mt-0.5 text-sm font-medium text-muted">Grade {s.grade}</p>
                                                         )}
                                                     </div>
                                                 </div>
@@ -472,7 +461,7 @@ export default function DashboardPage() {
                                                     {s.status !== "ARCHIVED" && (
                                                         <Link
                                                             href={`/specialists?studentId=${s.id}`}
-                                                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
+                                                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-fg no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
                                                         >
                                                             <UsersIcon className="h-4 w-4" aria-hidden="true" />
                                                             Specialist Preferences
@@ -487,43 +476,43 @@ export default function DashboardPage() {
                                     {students.every(s => s.has_parent_assessment) && (
                                         <Link
                                             href="/parent-onboarding"
-                                            className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center no-underline transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
+                                            className="group flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-app/50 p-8 text-center no-underline transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
                                             style={{ minHeight: "260px" }}
                                         >
-                                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-subtle-soft text-faint transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
                                                 <Plus className="h-6 w-6" strokeWidth={2.5} />
                                             </div>
-                                            <h3 className="m-0 text-lg font-bold text-slate-700 transition-colors group-hover:text-indigo-700">
+                                            <h3 className="m-0 text-lg font-bold text-fg transition-colors group-hover:text-indigo-700">
                                                 Add Another Child
                                             </h3>
-                                            <p className="mt-2 text-sm text-slate-500 max-w-[200px]">
+                                            <p className="mt-2 text-sm text-muted max-w-[200px]">
                                                 Start an onboarding assessment for a new student.
                                             </p>
                                         </Link>
                                     )}
                                 </div>
                             ) : viewMode === "list" ? (
-                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "1px solid var(--border-light, #e2e8f0)" }}>
-                                    <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse", textAlign: "left", background: "white" }}>
+                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "1px solid var(--border-light, var(--border-light))" }}>
+                                    <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse", textAlign: "left", background: "var(--bg-secondary)" }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc" }}>Student</th>
-                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc" }}>Grade</th>
-                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc" }}>Status</th>
-                                                <th style={{ padding: "12px 16px", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, #e2e8f0)", backgroundColor: "#f8fafc", textAlign: "right" }}>Action</th>
+                                                <th style={{ padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, var(--border-light))", backgroundColor: "var(--bg-primary)" }}>Student</th>
+                                                <th style={{ padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, var(--border-light))", backgroundColor: "var(--bg-primary)" }}>Grade</th>
+                                                <th style={{ padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, var(--border-light))", backgroundColor: "var(--bg-primary)" }}>Status</th>
+                                                <th style={{ padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border-light, var(--border-light))", backgroundColor: "var(--bg-primary)", textAlign: "right" }}>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {paginatedStudents.map(s => {
                                                 const ss = statusColorHex(s.status || "PENDING_ASSESSMENT");
                                                 return (
-                                                    <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid var(--border-light, #e2e8f0)", verticalAlign: "middle" }}>
+                                                    <tr key={s.id} className="hover:bg-app transition-colors" style={{ borderBottom: "1px solid var(--border-light, var(--border-light))", verticalAlign: "middle" }}>
                                                         <td style={{ padding: "12px 16px" }}>
-                                                            <Link href={getStudentWorkspaceHref(s.id)} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "#0f172a", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                            <Link href={getStudentWorkspaceHref(s.id)} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                         </td>
-                                                        <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "#64748b" }}>{s.grade && s.grade !== "TBD" ? `Grade ${s.grade}` : "Unassigned"}</td>
+                                                        <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{s.grade && s.grade !== "TBD" ? `Grade ${s.grade}` : "Unassigned"}</td>
                                                         <td style={{ padding: "12px 16px" }}>
                                                             <span style={{
                                                                 fontSize: "0.72rem",
@@ -569,7 +558,7 @@ export default function DashboardPage() {
                                         return (
                                             <div
                                                 key={s.id}
-                                                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                                                className="flex flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-sm"
                                             >
                                                 <div className="flex items-center gap-3 border-b border-indigo-100/60 p-4">
                                                     <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm font-extrabold shadow-sm ${semanticToneClass("primary")}`}>
@@ -578,11 +567,11 @@ export default function DashboardPage() {
                                                     <div className="min-w-0 flex-1">
                                                         <Link
                                                             href={getStudentWorkspaceHref(s.id)}
-                                                            className="m-0 block truncate text-base font-extrabold text-slate-900 no-underline transition-colors hover:text-indigo-700"
+                                                            className="m-0 block truncate text-base font-extrabold text-fg no-underline transition-colors hover:text-indigo-700"
                                                         >
                                                             {s.first_name} {s.last_name}
                                                         </Link>
-                                                        <p className="m-0 mt-0.5 text-xs font-medium text-slate-500">
+                                                        <p className="m-0 mt-0.5 text-xs font-medium text-muted">
                                                             {s.grade && s.grade !== "TBD" ? `Grade ${s.grade}` : "Grade unassigned"}
                                                         </p>
                                                         {user?.role === "SPECIALIST" && Array.isArray((user as any)?.specialties) && (user as any).specialties.length > 0 && (
@@ -635,15 +624,15 @@ export default function DashboardPage() {
                                     <button 
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
                                         disabled={safePage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safePage === 1 ? "#f8fafc" : "white", color: safePage === 1 ? "#cbd5e1" : "inherit", cursor: safePage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === 1 ? "var(--bg-primary)" : "white", color: safePage === 1 ? "var(--text-muted)" : "inherit", cursor: safePage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
-                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "#64748b" }}>
+                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safePage} of {totalPages}
                                     </span>
                                     <button 
                                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
                                         disabled={safePage === totalPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", background: safePage === totalPages ? "#f8fafc" : "white", color: safePage === totalPages ? "#cbd5e1" : "inherit", cursor: safePage === totalPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === totalPages ? "var(--bg-primary)" : "white", color: safePage === totalPages ? "var(--text-muted)" : "inherit", cursor: safePage === totalPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}

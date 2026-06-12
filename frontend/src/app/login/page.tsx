@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Button from "@/components/ui/Button";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -54,7 +55,7 @@ export default function LoginPage() {
                 </p>
 
                 {error && (
-                    <div style={{ backgroundColor: "#fef2f2", color: "var(--danger)", padding: "12px", borderRadius: "8px", marginBottom: "1.5rem", fontSize: "0.95rem", border: "1px solid #fca5a5" }}>
+                    <div className="bg-danger-soft text-danger border border-danger-line" style={{ padding: "12px", borderRadius: "8px", marginBottom: "1.5rem", fontSize: "0.95rem" }}>
                         {error}
                     </div>
                 )}
@@ -88,9 +89,9 @@ export default function LoginPage() {
                         />
                     </div>
 
-                    <button type="submit" className="btn-primary" style={{ width: "100%", padding: "12px" }} disabled={loading}>
+                    <Button type="submit" style={{ width: "100%", padding: "12px" }} disabled={loading}>
                         {loading ? "Signing In..." : "Sign In"}
-                    </button>
+                    </Button>
                 </form>
             </div>
         </div>
