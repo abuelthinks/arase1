@@ -174,18 +174,16 @@ def _section_has_content(form_type: str, instance, section_key: str) -> bool:
 
 def _get_or_create_form(form_type: str, user, student_id, report_cycle_id):
     Model = FORM_MODELS[form_type]
-    instance = Model.objects.filter(
-        student_id=student_id, report_cycle_id=report_cycle_id
-    ).first()
-    if instance:
-        return instance, False
-    instance = Model.objects.create(
+    # get_or_create is atomic against the (student, report_cycle) unique
+    # constraint, so concurrent form opens (every specialist's collab `ensure`
+    # call) can't create duplicate rows that scatter contributions and break
+    # finalization.
+    instance, created = Model.objects.get_or_create(
         student_id=student_id,
         report_cycle_id=report_cycle_id,
-        submitted_by=user,
-        form_data={},
+        defaults={"submitted_by": user, "form_data": {}},
     )
-    return instance, True
+    return instance, created
 
 
 def ensure_form(*, form_type: str, user, student_id: int, report_cycle_id: int):

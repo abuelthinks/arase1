@@ -216,6 +216,14 @@ class MultidisciplinaryAssessment(models.Model):
     )
     unlock_requested = models.BooleanField(default=False)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student', 'report_cycle'],
+                name='unique_assessment_per_student_cycle',
+            ),
+        ]
+
 class SpedAssessment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     report_cycle = models.ForeignKey(ReportCycle, on_delete=models.CASCADE)
@@ -262,6 +270,14 @@ class MultidisciplinaryProgressTracker(models.Model):
         related_name='finalized_multidisciplinary_trackers',
     )
     unlock_requested = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student', 'report_cycle'],
+                name='unique_tracker_per_student_cycle',
+            ),
+        ]
 
 class SpedProgressTracker(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)

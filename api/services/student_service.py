@@ -4,6 +4,7 @@ Student-related business logic extracted from views.py.
 
 from datetime import date
 from dateutil.relativedelta import relativedelta
+from django.db.models import F
 from api.models import (
     Student, StudentAccess, ReportCycle,
     ParentAssessment, MultidisciplinaryAssessment, User, Invitation,
@@ -185,7 +186,17 @@ def get_student_profile_data(student, user=None):
             if user and user.role == 'PARENT' and key != 'parent_assessment':
                 form_statuses[key] = {"submitted": False, "id": None}
                 continue
-            if key in ['parent_assessment', 'multi_assessment']:
+            if key == 'multi_assessment':
+                # Prefer a finalized row so a stray duplicate (or an older
+                # cycle's empty row) can never hide a completed assessment.
+                # nulls_last keeps the behavior identical on SQLite & Postgres.
+                obj = (
+                    model.objects.select_related('submitted_by')
+                    .filter(student=student)
+                    .order_by(F('finalized_at').desc(nulls_last=True), '-created_at')
+                    .first()
+                )
+            elif key == 'parent_assessment':
                 obj = model.objects.select_related('submitted_by').filter(student=student).order_by('-created_at').first()
             else:
                 obj = model.objects.select_related('submitted_by').filter(student=student, report_cycle=cycle).first()
