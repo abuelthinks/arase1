@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useMemo } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -125,7 +125,7 @@ export default function DashboardPage() {
                 if (pending > 0) parts.push(`${pending} awaiting assessment`);
                 if (enrolled > 0) parts.push(`${enrolled} enrolled`);
                 if (parts.length === 0) {
-                    return "No active students yet â€” your caseload will appear here.";
+                    return "No active students yet — your caseload will appear here.";
                 }
                 return `You have ${parts.join(" and ")}.`;
             }
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                     if (needsTracker > 0) parts.push(`${needsTracker} monthly update${needsTracker > 1 ? 's' : ''} due`);
                     return `You have ${parts.join(' and ')}.`;
                 }
-                return "All caught up! Nothing needed right now âœ¨";
+                return "All caught up! Nothing needed right now ✨";
             }
             default: return "";
         }
@@ -150,9 +150,9 @@ export default function DashboardPage() {
 
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return { text: "Good morning", emoji: "â˜€ï¸" };
-        if (hour < 17) return { text: "Good afternoon", emoji: "ðŸ‘‹" };
-        return { text: "Good evening", emoji: "ðŸŒ™" };
+        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
+        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
+        return { text: "Good evening", emoji: "🌙" };
     };
 
     const getStudentWorkspaceHref = (studentId: number, tab?: string) => {
@@ -179,11 +179,11 @@ export default function DashboardPage() {
     return (
         <ProtectedRoute>
             <div className="px-4 md:px-0">
-                {/* SMS Verification Banner â€” Parent only */}
+                {/* SMS Verification Banner — Parent only */}
                 {user?.role === "PARENT" && isPhoneVerified === false && (
                     <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:px-5 sm:py-3 ${semanticToneClass("warning")}`}>
                         <div className="flex items-start gap-3">
-                            <span className="text-xl leading-none mt-0.5">ðŸ“±</span>
+                            <span className="text-xl leading-none mt-0.5">📱</span>
                             <p className="m-0 text-sm md:text-[0.9rem] text-amber-900 font-medium">
                                 {user?.phone_number
                                     ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
@@ -389,11 +389,11 @@ export default function DashboardPage() {
                                     {paginatedStudents.map(s => {
                                         const statusMap: Record<string, { text: string; Icon: any }> = {
                                             PENDING_ASSESSMENT: {
-                                                text: s.has_parent_assessment ? "Assessment submitted â€” awaiting review" : "Waiting for your assessment",
+                                                text: s.has_parent_assessment ? "Assessment submitted — awaiting review" : "Waiting for your assessment",
                                                 Icon: s.has_parent_assessment ? Clock : ClipboardList,
                                             },
                                             ASSESSMENT_SCHEDULED: { text: "Specialist evaluation in progress", Icon: Clock },
-                                            ASSESSED: { text: "Assessment complete â€” enrollment pending", Icon: CheckCircle2 },
+                                            ASSESSED: { text: "Assessment complete — enrollment pending", Icon: CheckCircle2 },
                                             ENROLLED: {
                                                 text: s.parent_current_tracker_submitted ? "Enrolled & up to date" : "Monthly progress update needed",
                                                 Icon: s.parent_current_tracker_submitted ? Sparkles : FileText,

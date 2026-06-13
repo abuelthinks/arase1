@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -195,7 +195,7 @@ export default function AcceptInvitePage() {
                             required
                             type="password"
                             autoComplete="new-password"
-                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                            placeholder="••••••••"
                             style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
                             onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
                             onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
@@ -210,7 +210,7 @@ export default function AcceptInvitePage() {
                             required
                             type="password"
                             autoComplete="new-password"
-                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                            placeholder="••••••••"
                             style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
                             onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
                             onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}

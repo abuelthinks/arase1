@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -34,7 +34,7 @@ import parent_tracker from "@/config/forms/parentProgressTrackerSchema.json";
 import multidisciplinary_tracker from "@/config/forms/multidisciplinaryProgressTrackerSchema.json";
 import sped_tracker from "@/config/forms/spedProgressTrackerSchema.json";
 
-// â”€â”€â”€ Section / field ownership maps for the multi-disciplinary forms â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Section / field ownership maps for the multi-disciplinary forms ──────────
 //
 // These map the schema's section_id (and sometimes field_id) to the
 // specialty that owns that area. SHARED means anyone may edit; null means
@@ -134,13 +134,13 @@ function transformSchema(formType: string, schema: any): any {
             const f2Fields = (sec.fields || []).filter((f: any) => !ASSESSMENT_F1_FIELDS.has(f.id));
             next.sections.push({
                 id: "section_f1",
-                title: "SECTION F1 â€” APPLIED BEHAVIOR ANALYSIS (ABA) ASSESSMENT",
+                title: "SECTION F1 — APPLIED BEHAVIOR ANALYSIS (ABA) ASSESSMENT",
                 fields: f1Fields,
                 __dataSection: "section_f",
             });
             next.sections.push({
                 id: "section_f2",
-                title: "SECTION F2 â€” DEVELOPMENTAL PSYCHOLOGY ASSESSMENT",
+                title: "SECTION F2 — DEVELOPMENTAL PSYCHOLOGY ASSESSMENT",
                 fields: f2Fields,
                 __dataSection: "section_f",
             });
@@ -162,31 +162,31 @@ function transformSchema(formType: string, schema: any): any {
 
             next.sections.push({
                 id: "section_c_slp",
-                title: "SECTION C1 â€” SPEECH-LANGUAGE PATHOLOGY (SLP) PROGRESS",
+                title: "SECTION C1 — SPEECH-LANGUAGE PATHOLOGY (SLP) PROGRESS",
                 fields: slpFields,
                 __dataSection: "section_c",
             });
             next.sections.push({
                 id: "section_c_ot",
-                title: "SECTION C2 â€” OCCUPATIONAL THERAPY (OT) PROGRESS",
+                title: "SECTION C2 — OCCUPATIONAL THERAPY (OT) PROGRESS",
                 fields: otFields,
                 __dataSection: "section_c",
             });
             next.sections.push({
                 id: "section_c_pt",
-                title: "SECTION C3 â€” PHYSICAL THERAPY (PT) PROGRESS",
+                title: "SECTION C3 — PHYSICAL THERAPY (PT) PROGRESS",
                 fields: ptFields,
                 __dataSection: "section_c",
             });
             next.sections.push({
                 id: "section_c_aba",
-                title: "SECTION C4 â€” APPLIED BEHAVIOR ANALYSIS (ABA) PROGRESS",
+                title: "SECTION C4 — APPLIED BEHAVIOR ANALYSIS (ABA) PROGRESS",
                 fields: abaFields,
                 __dataSection: "section_c",
             });
             next.sections.push({
                 id: "section_c_developmental_psychology",
-                title: "SECTION C5 â€” DEVELOPMENTAL PSYCHOLOGY PROGRESS",
+                title: "SECTION C5 — DEVELOPMENTAL PSYCHOLOGY PROGRESS",
                 fields: devPsychFields,
                 __dataSection: "section_c",
             });
@@ -301,7 +301,7 @@ function mergeSavedFormData(baseData: any, schema: any, rawSavedData: any) {
     return next;
 }
 
-/* â”€â”€â”€ Shared UI Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Shared UI Components ─────────────────────────────────────────────────── */
 
 function SectionCard({ title, children, isMySection, isInvalid }: { title: string; children: React.ReactNode; isMySection?: boolean; isInvalid?: boolean }) {
     return (
@@ -433,7 +433,7 @@ function RadioGroup({ options, value, onChange, readOnly }: { options: string[];
     );
 }
 
-/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Main Component ───────────────────────────────────────────────────────── */
 
 const normalizeList = (value: any): string[] => {
     if (Array.isArray(value)) return value.filter(Boolean).map(String);
@@ -795,7 +795,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     const isFieldEditable = (sectionId: string, fieldId: string): boolean => {
         if (specialistOnboardingLocked) return false;
         // For the assessment form, callers may pass the underlying data
-        // section_id (section_f) â€” translate into the virtual ABA/Dev-Psych
+        // section_id (section_f) — translate into the virtual ABA/Dev-Psych
         // section so ownership resolves correctly.
         let resolvedSectionId = sectionId;
         if (formType === "multidisciplinary-assessment" && sectionId === "section_f") {
@@ -838,7 +838,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         setAttemptedSectionSubmit(false);
     }, [studentId, reportCycleId, formType]);
 
-    // â”€â”€â”€ Real-time collaboration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Real-time collaboration ────────────────────────────────────────────
     const collabFormType: "assessment" | "tracker" | null =
         formType === "multidisciplinary-assessment"
             ? "assessment"
@@ -847,7 +847,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 : null;
     const collabInstanceId = !isViewMode && collabFormType ? (teamSubmission?.id ?? null) : null;
 
-    // Full refetch â€” pulls latest form_data into local state. Used when the
+    // Full refetch — pulls latest form_data into local state. Used when the
     // user *explicitly* asks to update (e.g. clicks Update on a peer's draft).
     const refetchTeamSubmission = useCallback(async () => {
         const instanceId = teamSubmission?.id ?? collabInstanceId;
@@ -863,7 +863,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }
     }, [collabFormType, collabInstanceId, formType, schema, teamSubmission?.id]);
 
-    // Selective merge â€” pulls peer changes for fields the local user hasn't
+    // Selective merge — pulls peer changes for fields the local user hasn't
     // touched since the last sync. Local dirty fields are preserved.
     const mergePeerChangesIfClean = useCallback(async (eventFormData?: any, isOwnEcho = false) => {
         console.debug('[Collab merge] called, collabInstanceId=', collabInstanceId, 'collabFormType=', collabFormType, 'isOwnEcho=', isOwnEcho);
@@ -940,7 +940,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         
                         // Field is dirty (locally edited since last sync) if
                         // local diverges from the snapshot. Skip merge in
-                        // that case â€” never overwrite in-progress typing.
+                        // that case — never overwrite in-progress typing.
                         if (!isDirty) {
                             mergedSection[fieldId] = incomingVal;
                             mergedCount++;
@@ -1102,8 +1102,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         }];
                         
                         // Modify section title to indicate these are IEP goals, preserving "SECTION X"
-                        const prefixMatch = sec.title?.match(/^(SECTION [A-Z])\s*â€”/i);
-                        const prefix = prefixMatch ? `${prefixMatch[1]} â€” ` : "";
+                        const prefixMatch = sec.title?.match(/^(SECTION [A-Z])\s*—/i);
+                        const prefix = prefixMatch ? `${prefixMatch[1]} — ` : "";
                         sec.title = `${prefix}GOAL ACHIEVEMENT (from IEP)`;
                         sec.fields = dynamicFields;
                     }
@@ -1441,7 +1441,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             sectionPayload[field.id] = currentSectionData[field.id];
         });
 
-        const displayLabel = formType === "multidisciplinary-assessment" ? `Section ${apiKey}` : (section.title?.split("â€”")?.[0]?.trim() || `Section ${apiKey}`);
+        const displayLabel = formType === "multidisciplinary-assessment" ? `Section ${apiKey}` : (section.title?.split("—")?.[0]?.trim() || `Section ${apiKey}`);
 
         try {
             const saveRes = await api.patch(`/api/inputs/${formType}/sections/${apiKey}/`, {
@@ -1562,7 +1562,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     }, [sectionContributions, user?.user_id]);
 
     // The submit button should be active whenever the user has something to
-    // submit â€” either an editable assigned section (filled or not) or a
+    // submit — either an editable assigned section (filled or not) or a
     // draft contribution on any section (including shared sections they've
     // touched after submitting their assigned work).
     const hasSomethingToSubmit = submittableOwnedSections.length > 0 || myDraftContributionCount > 0;
@@ -1617,7 +1617,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         if (emptyAssignedSections.length > 0) {
             setAttemptedSectionSubmit(true);
             const labels = emptyAssignedSections.map((sec: any) => {
-                return sec.title?.split("â€”")?.[0]?.trim() || sec.id;
+                return sec.title?.split("—")?.[0]?.trim() || sec.id;
             });
             const message = `You must complete your assigned sections before submitting: ${labels.join(", ")}`;
             setErrorMsg(message);
@@ -1634,7 +1634,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         }
 
         if (!hasSomethingToSubmit) {
-            setSuccessMsg("Nothing to submit â€” no draft sections.");
+            setSuccessMsg("Nothing to submit — no draft sections.");
             return;
         }
         
@@ -1676,7 +1676,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     const message = finalized
                         ? `${schema.title || "Form"} finalized successfully.`
                         : submitted.length === 0
-                            ? "Nothing to submit â€” no draft sections."
+                            ? "Nothing to submit — no draft sections."
                             : `Submitted ${submitted.length} section${submitted.length === 1 ? "" : "s"}.`;
                     setSuccessMsg(message);
                     toast.success(message);
@@ -1862,7 +1862,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     };
 
     if (!studentId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing student context. Return to dashboard.</div>;
-    if (!schema) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading formâ€¦</div>;
+    if (!schema) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading form…</div>;
     if (propHideNavigation && formInitializing) {
         return (
             <div className="flex min-h-[360px] items-center justify-center px-6 py-12 text-center">
@@ -1989,11 +1989,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: collab.connected ? "#dcfce7" : "var(--bg-neutral-light)", color: collab.connected ? "#166534" : "var(--text-secondary)", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
                                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: collab.connected ? "#22c55e" : "var(--text-muted)", display: "inline-block" }} />
-                                    {collab.connected ? "Live" : "Reconnectingâ€¦"}
+                                    {collab.connected ? "Live" : "Reconnecting…"}
                                 </span>
                                 {collab.locks.filter(l => l.user_id !== user?.user_id).map(l => (
                                     <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px" }}>
-                                        {l.user_name}{l.section_key && l.section_key !== "*" ? ` Â· Â§${l.section_key}` : ""}
+                                        {l.user_name}{l.section_key && l.section_key !== "*" ? ` · §${l.section_key}` : ""}
                                     </span>
                                 ))}
                             </div>
@@ -2013,7 +2013,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 onClick={() => setIsTranslated(true)}
                                 className={`px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${isTranslated ? "font-bold text-indigo-600 bg-card shadow-sm" : "font-medium text-muted hover:text-fg hover:bg-subtle-soft"}`}
                             >
-                                English (AI) âœ¨
+                                English (AI) ✨
                             </button>
                         </div>
                     )}
@@ -2048,7 +2048,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         {editableSpecialties.length > 0 ? (
                             <>You can edit shared sections and your assigned discipline area{editableSpecialties.length > 1 ? "s" : ""}: <strong>{editableSpecialties.map(s => specialtyShortLabel(s as SectionOwner)).join(", ")}</strong>. Other sections are read-only.</>
                         ) : (
-                            <>No assigned discipline found for this student â€” you can only edit shared sections.</>
+                            <>No assigned discipline found for this student — you can only edit shared sections.</>
                         )}
                     </div>
                 )}
@@ -2113,7 +2113,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                         </span>
                                         {!sectionFullyEditable && sectionOwner !== "MIXED" && (
                                             <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                                                Read-only â€” owned by another discipline
+                                                Read-only — owned by another discipline
                                             </span>
                                         )}
                                     </div>
@@ -2329,7 +2329,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             </button>
                             <button type="submit" disabled={loading || specialistOnboardingLocked}
                                 style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
-                                {loading ? "Submittingâ€¦" : "Submit Form"}
+                                {loading ? "Submitting…" : "Submit Form"}
                             </button>
                         </div>
                     )}
@@ -2378,7 +2378,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
 export default function FormEntryPage() {
     return (
-        <Suspense fallback={<div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>Loading formâ€¦</div>}>
+        <Suspense fallback={<div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>Loading form…</div>}>
             <FormEntryContent />
         </Suspense>
     );

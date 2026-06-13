@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -279,7 +279,7 @@ export default function SpecialistOnboardingPage() {
                   {specialtyConfirmed && !requestingChange && !specialtyRequestSent && (
                     <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
                       <Check className="h-4 w-4" aria-hidden="true" />
-                      Great â€” your specialty is confirmed.
+                      Great — your specialty is confirmed.
                     </p>
                   )}
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -71,7 +71,7 @@ function PreviewReportContent() {
 
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <button onClick={() => router.back()} className="hidden md:block text-sm text-muted hover:text-fg mb-2 font-medium">â† Back to Generator</button>
+                            <button onClick={() => router.back()} className="hidden md:block text-sm text-muted hover:text-fg mb-2 font-medium">← Back to Generator</button>
                             <h1 className="text-3xl font-bold text-fg">Preview & Edit Document</h1>
                             <p className="text-muted mt-1">Review the AI-generated and extracted text before finalizing the PDF.</p>
                         </div>
@@ -162,7 +162,7 @@ function PreviewReportContent() {
                                                                     <td className="px-4 py-3 font-medium text-fg border-r bg-app">{row[0]}</td>
                                                                     {row.slice(1).map((cell: string, cellIdx: number) => (
                                                                         <td key={cellIdx} className="px-4 py-3 text-center">
-                                                                            {cell === "X" ? <span className="inline-flex w-5 h-5 bg-blue-100 text-blue-600 rounded-full items-center justify-center font-bold text-xs">âœ“</span> : ""}
+                                                                            {cell === "X" ? <span className="inline-flex w-5 h-5 bg-blue-100 text-blue-600 rounded-full items-center justify-center font-bold text-xs">✓</span> : ""}
                                                                         </td>
                                                                     ))}
                                                                 </tr>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Bell, Check, CheckCheck, ClipboardList, FileText, UserPlus, Calendar, X, AlertCircle, Sparkles } from "lucide-react";

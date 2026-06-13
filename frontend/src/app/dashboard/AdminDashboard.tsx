@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
@@ -13,7 +13,7 @@ import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 import CustomSelect from "@/components/CustomSelect";
 
-/* â”€â”€â”€ Utility: Title Case â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
 function toTitleCase(str: string): string {
     return str
@@ -23,7 +23,7 @@ function toTitleCase(str: string): string {
         .join(' ');
 }
 
-/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Types ──────────────────────────────────────────────────────────────── */
 
 interface UserData {
     id: number;
@@ -106,7 +106,7 @@ interface DashboardAction {
     type: "positive" | "info" | "warning";
 }
 
-/* â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
 
 const getRoleStyle = roleColorHex;
 const getStatusStyle = statusColorHex;
@@ -166,7 +166,7 @@ const getCardButtonClass = (tone: string) => {
     }
 };
 
-/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -174,9 +174,9 @@ export default function AdminDashboard() {
     const { user: authUser } = useAuth();
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return { text: "Good morning", emoji: "â˜€ï¸" };
-        if (hour < 17) return { text: "Good afternoon", emoji: "ðŸ‘‹" };
-        return { text: "Good evening", emoji: "ðŸŒ™" };
+        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
+        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
+        return { text: "Good evening", emoji: "🌙" };
     };
 
     // Check URL for explicit tab, default to students
@@ -412,7 +412,7 @@ export default function AdminDashboard() {
         }
     }, [searchParams]);
 
-    /* â”€â”€â”€ Filtered, Sorted, and Paginated Students â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ─── Filtered, Sorted, and Paginated Students ───────────────────────── */
 
     const statusPriority: Record<string, number> = {
         "PENDING_ASSESSMENT": 1,
@@ -482,7 +482,7 @@ export default function AdminDashboard() {
     const safeStudentPage = Math.min(Math.max(1, studentPage), totalStudentPages);
     const paginatedStudents = processedStudents.slice((safeStudentPage - 1) * studentItemsPerPage, safeStudentPage * studentItemsPerPage);
 
-    /* â”€â”€â”€ Filtered, Sorted, and Paginated Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ─── Filtered, Sorted, and Paginated Users ──────────────────────────── */
 
     const uniqueUserRoles = Array.from(new Set(users.map(u => u.role)));
 
@@ -526,7 +526,7 @@ export default function AdminDashboard() {
     const safeUserPage = Math.min(Math.max(1, userPage), totalUserPages);
     const paginatedUsers = processedUsers.slice((safeUserPage - 1) * userItemsPerPage, safeUserPage * userItemsPerPage);
 
-    /* â”€â”€â”€ Filtered, Sorted, and Paginated Invitations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ─── Filtered, Sorted, and Paginated Invitations ────────────────────── */
 
     const uniqueInvitationRoles = Array.from(new Set(invitations.map(i => i.role)));
 
@@ -563,7 +563,7 @@ export default function AdminDashboard() {
     const safeInvitationPage = Math.min(Math.max(1, invitationPage), totalInvitationPages);
     const paginatedInvitations = processedInvitations.slice((safeInvitationPage - 1) * invitationItemsPerPage, safeInvitationPage * invitationItemsPerPage);
 
-    /* â”€â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ─── Handlers ───────────────────────────────────────────────────────── */
 
     const handleStudentSort = (key: 'id' | 'name' | 'grade' | 'status') => {
         setStudentSortConfig(current => {
@@ -701,7 +701,7 @@ export default function AdminDashboard() {
         }
     };
 
-    /* â”€â”€â”€ Analytics Metrics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ─── Analytics Metrics ──────────────────────────────────────────────── */
     const totalStudents = students.filter(s => s.status !== 'ARCHIVED').length;
     const activeStudents = students.filter(s => s.status === 'ENROLLED').length;
     const scheduledStudents = students.filter(s => s.status === 'ASSESSMENT_SCHEDULED').length;
@@ -1190,7 +1190,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ID
                                                             <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
-                                                                {studentSortConfig.key === 'id' ? (studentSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {studentSortConfig.key === 'id' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1198,7 +1198,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             STUDENT
                                                             <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
-                                                                {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {studentSortConfig.key === 'name' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1206,7 +1206,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             GRADE
                                                             <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
-                                                                {studentSortConfig.key === 'grade' ? (studentSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {studentSortConfig.key === 'grade' ? (studentSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1545,7 +1545,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             NAME
                                                             <span style={{ opacity: userSortConfig.key === 'name' ? 1 : 0.3 }}>
-                                                                {userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1553,7 +1553,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ROLE
                                                             <span style={{ opacity: userSortConfig.key === 'role' ? 1 : 0.3 }}>
-                                                                {userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1561,7 +1561,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ASSIGNED KIDS
                                                             <span style={{ opacity: userSortConfig.key === 'kids' ? 1 : 0.3 }}>
-                                                                {userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1917,7 +1917,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             EMAIL
                                                             <span style={{ opacity: invitationSortConfig.key === 'email' ? 1 : 0.3 }}>
-                                                                {invitationSortConfig.key === 'email' ? (invitationSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {invitationSortConfig.key === 'email' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1925,7 +1925,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ROLE
                                                             <span style={{ opacity: invitationSortConfig.key === 'role' ? 1 : 0.3 }}>
-                                                                {invitationSortConfig.key === 'role' ? (invitationSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {invitationSortConfig.key === 'role' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1933,7 +1933,7 @@ export default function AdminDashboard() {
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             SENT DATE
                                                             <span style={{ opacity: invitationSortConfig.key === 'date' ? 1 : 0.3 }}>
-                                                                {invitationSortConfig.key === 'date' ? (invitationSortConfig.direction === 'desc' ? 'â†“' : 'â†‘') : 'â†‘'}
+                                                                {invitationSortConfig.key === 'date' ? (invitationSortConfig.direction === 'desc' ? '↓' : '↑') : '↑'}
                                                             </span>
                                                         </div>
                                                     </th>
@@ -1958,7 +1958,7 @@ export default function AdminDashboard() {
                                                                 <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
                                                                     {expiry.label}
                                                                 </span>
-                                                            ) : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>â€”</span>}
+                                                            ) : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>}
                                                         </td>
                                                         <td style={{ padding: "12px", textAlign: "right" }}>
                                                             <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
@@ -2016,7 +2016,7 @@ export default function AdminDashboard() {
                                                             <span style={{ fontSize: "0.72rem", background: expiry.bg, color: expiry.color, padding: "2px 8px", borderRadius: "12px", fontWeight: "bold", whiteSpace: "nowrap" }}>
                                                                 {expiry.label}
                                                             </span>
-                                                        ) : <span className="text-faint">â€”</span>}
+                                                        ) : <span className="text-faint">—</span>}
                                                     </div>
                                                     <div className="border-t border-line pt-3 flex justify-end gap-2 flex-wrap">
                                                         {!expiry?.isExpired && (
@@ -2067,7 +2067,7 @@ export default function AdminDashboard() {
 
 
 
-            {/* â”€â”€ Invite User Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Invite User Modal ──────────────────────────────────────── */}
             {showInviteModal && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
                     <div style={{ background: "var(--bg-secondary)", padding: "2rem", borderRadius: "16px", width: "420px", maxWidth: "90%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}>
@@ -2120,7 +2120,7 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* â”€â”€ Delete User Confirmation Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Delete User Confirmation Modal ─────────────────────────── */}
             {userToDelete && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
                     <div style={{ background: "var(--bg-secondary)", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
@@ -2165,7 +2165,7 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* â”€â”€ Revoke Invite Confirmation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Revoke Invite Confirmation ──────────────────────────────── */}
             {inviteToRevoke && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
@@ -2195,7 +2195,7 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* â”€â”€ Resend Invite Confirmation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Resend Invite Confirmation ──────────────────────────────── */}
             {inviteToResend && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
@@ -2225,7 +2225,7 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* â”€â”€ Created/Resent Invite Token (copyable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Created/Resent Invite Token (copyable) ──────────────────── */}
             {createdInvite && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">

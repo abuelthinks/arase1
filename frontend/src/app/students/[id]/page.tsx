@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -205,7 +205,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     return (
                         <div>
                             <p style={{ fontSize: "0.85rem", color: "#92400e", marginBottom: "8px" }}>
-                                Tell us about {student.first_name} â€” their strengths, daily routine, and any concerns you'd like the team to know.
+                                Tell us about {student.first_name} — their strengths, daily routine, and any concerns you'd like the team to know.
                             </p>
                             <Link
                                 href={`/parent-onboarding?studentId=${student.id}`}
@@ -234,7 +234,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             }
             if (student.status === "Assessment Scheduled") {
                 return (
-                    <span className="text-sm text-muted italic">Our specialist team is working on {student.first_name}'s evaluation â€” we'll let you know when there's an update.</span>
+                    <span className="text-sm text-muted italic">Our specialist team is working on {student.first_name}'s evaluation — we'll let you know when there's an update.</span>
                 );
             }
         }
@@ -245,7 +245,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                         onClick={() => handleAction("enroll")}
                         className="btn-primary px-5 py-2 text-sm"
                     >
-                        Enroll Student â†’ Set Active
+                        Enroll Student → Set Active
                     </button>
                 );
             }
@@ -271,15 +271,15 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
         <>
             <div style={{ maxWidth: "1024px", margin: "0 auto", padding: propEmbedded ? "1.5rem" : propHideNavigation ? "1.5rem" : "2rem 1rem 4rem" }}>
             
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-            {/* PROFILE HEADER â€” Avatar + Name + Status + Stepper     */}
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {/* PROFILE HEADER — Avatar + Name + Status + Stepper     */}
+            {/* ═══════════════════════════════════════════════════════ */}
             <div style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #dbeafe 100%)", borderRadius: "16px", padding: "0", marginBottom: "1.5rem", position: "relative", overflow: "hidden" }}>
                 {/* Subtle decorative circles */}
                 <div style={{ position: "absolute", top: "-40px", right: "-40px", width: "120px", height: "120px", borderRadius: "50%", background: "rgba(99,102,241,0.08)" }}></div>
                 <div style={{ position: "absolute", bottom: "-30px", left: "-20px", width: "80px", height: "80px", borderRadius: "50%", background: "rgba(59,130,246,0.06)" }}></div>
 
-                {/* Subtle back button â€” top-right, hidden when embedded */}
+                {/* Subtle back button — top-right, hidden when embedded */}
                 {!propHideNavigation && (
                     <button type="button" onClick={() => router.back()} className="hidden md:flex"
                         title="Go back"
@@ -389,11 +389,11 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 )}
             </div>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             {/* SUMMARY STAT CARDS                         */}
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(140px, 1fr))`, gap: "12px", marginBottom: "1.5rem" }}>
-                {/* Documents â€” always visible */}
+                {/* Documents — always visible */}
                 <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                         <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -405,7 +405,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)", marginTop: "2px" }}>generated</div>
                 </div>
 
-                {/* Cycle Status â€” visible for parents if enrolled */}
+                {/* Cycle Status — visible for parents if enrolled */}
                 {isParent && cycle_status && (
                     <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
@@ -421,7 +421,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
 
                 {!isParent && (
                     <>
-                        {/* Forms â€” admin/staff only */}
+                        {/* Forms — admin/staff only */}
                         <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "12px", padding: "1rem 1.25rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                 <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -462,9 +462,9 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 )}
             </div>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             {/* MAIN CONTENT GRID                          */}
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }} className="profile-grid">
 
                 {/* Student Details */}
@@ -493,7 +493,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     </div>
                 </div>
 
-                {/* Parent / Guardian Contact â€” admin only; staff sees redacted contact info to enforce in-system communication */}
+                {/* Parent / Guardian Contact — admin only; staff sees redacted contact info to enforce in-system communication */}
                 {!isParent && user?.role === "ADMIN" && (
                     <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "14px", overflow: "hidden" }}>
                         <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--bg-neutral-light)", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -543,9 +543,9 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 )}
             </div>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             {/* ASSIGNED TEAM (if any)                      */}
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             {!isParent && (
                 <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "14px", overflow: "hidden", marginBottom: "1.5rem" }}>
                     <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--bg-neutral-light)", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -633,9 +633,9 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 </div>
             )}
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             {/* MONTHLY CYCLE STATUS (Enrolled only)       */}
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
             {!isParent && student.status === "Enrolled" && cycle_status && (
                 <div style={{ background: "var(--bg-secondary)", borderRadius: "14px", padding: "1.25rem", border: "1px solid var(--border-light)", marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -671,7 +671,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                     </div>
                     {cycle_status.status === "GRACE" && (
                         <div style={{ fontSize: "0.75rem", color: "#dc2626", background: "#fee2e2", padding: "6px 10px", borderRadius: "6px", fontWeight: 500, marginTop: "8px" }}>
-                            âš ï¸ Grace period ends: {new Date(cycle_status.grace_deadline).toLocaleDateString()}
+                            ⚠️ Grace period ends: {new Date(cycle_status.grace_deadline).toLocaleDateString()}
                         </div>
                     )}
 
@@ -719,9 +719,9 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
                 </div>
             )}
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-            {/* DANGER ZONE â€” Accordion (Admin only)       */}
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════ */}
+            {/* DANGER ZONE — Accordion (Admin only)       */}
+            {/* ═══════════════════════════════════════════ */}
             {user?.role === "ADMIN" && (
                 <div style={{ borderRadius: "14px", border: "1px solid #fca5a5", background: "#fff5f5", overflow: "hidden" }}>
                     <button

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
@@ -47,7 +47,7 @@ export default function Navbar() {
                         <ChevronDown size={14} className="text-faint" />
                     </button>
 
-                    {/* Dropdown â€” visible on hover (desktop) */}
+                    {/* Dropdown — visible on hover (desktop) */}
                     <div className="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
                         <div className="bg-card rounded-xl shadow-lg border border-line overflow-hidden">
                             <div className="px-4 py-3 border-b border-line">

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState, Suspense } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';

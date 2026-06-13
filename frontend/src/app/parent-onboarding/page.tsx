@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { semanticToneClass, type SemanticTone } from "@/lib/role-colors";
 
-// â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 const Cb = ({
     label,
@@ -131,7 +131,7 @@ const cleanDraftStudentFields = <T extends StudentPrefill>(draft: T): T => {
     };
 };
 
-// â”€â”€ initial state factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── initial state factory ─────────────────────────────────────────────────────
 
 const initState = () => ({
     // Section A
@@ -142,19 +142,19 @@ const initState = () => ({
     medical_alerts: "", medical_alerts_detail: "",
     known_conditions: [] as string[], known_conditions_other: "",
 
-    // Section B â€“ milestones
+    // Section B – milestones
     milestone_sitting: "", milestone_crawling: "", milestone_walking: "",
     milestone_first_words: "", milestone_phrases: "",
     previous_services: [] as string[],
     had_iep_before: "", iep_details: "",
     areas_of_concern: [] as string[], areas_of_concern_other: "",
 
-    // Section C â€“ parent input
+    // Section C – parent input
     primary_concerns: [] as string[],
     goals_for_child: [] as string[], goals_other: "",
     strategies_home: [] as string[], strategies_other: "",
 
-    // Section D â€“ behaviour
+    // Section D – behaviour
     difficulties: [] as string[],
     triggers: [] as string[],
     calming_strategies: [] as string[],
@@ -162,30 +162,30 @@ const initState = () => ({
     social_interaction: [] as string[],
     comfort_setting: [] as string[],
 
-    // Section E â€“ sensory & physical
+    // Section E – sensory & physical
     sensitivities: [] as string[],
     motor_needs: [] as string[],
     physical_accommodations: "", physical_accommodations_detail: "",
 
-    // Section F â€“ goals
+    // Section F – goals
     goals_this_year: [] as string[], goals_this_year_other: "",
     goals_3_5_years: [] as string[], goals_3_5_years_other: "",
 
-    // Section G â€“ home environment
+    // Section G – home environment
     home_strategies: [] as string[],
     support_needed: [] as string[], support_needed_other: "",
 
-    // Section H â€“ strengths
+    // Section H – strengths
     strengths: [] as string[], strengths_other: "",
 
-    // Section I â€“ daily living
+    // Section I – daily living
     eating: "", dressing: "", toilet: "", sleep: "",
     other_notes: "",
 });
 
 type FormState = ReturnType<typeof initState>;
 
-// â”€â”€ main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── main component ────────────────────────────────────────────────────────────
 
 export function ParentFormContent({
     propStudentId,
@@ -310,7 +310,7 @@ export function ParentFormContent({
         && fullSubmission
         && (user?.role === "ADMIN" || (user?.role === "PARENT" && !specialistSubmitted));
 
-    // â”€â”€ setters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── setters ──────────────────────────────────────────────────────────────
 
     const set = (key: keyof FormState) => (val: any) =>
         setForm(prev => ({ ...prev, [key]: val }));
@@ -321,7 +321,7 @@ export function ParentFormContent({
     const checked = (key: keyof FormState, val: string) =>
         ((form[key] as string[]) ?? []).includes(val);
 
-    // â”€â”€ lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── lifecycle ─────────────────────────────────────────────────────────────
 
     useEffect(() => {
         if (submissionId) {
@@ -334,7 +334,7 @@ export function ParentFormContent({
                     if (fd.v2) {
                         setForm(fd.v2);
                     } else {
-                        // Legacy format â€” map old fields into new state shape as best we can
+                        // Legacy format — map old fields into new state shape as best we can
                         setForm(prev => ({
                             ...prev,
                             first_name: fd.background?.first_name || "",
@@ -577,7 +577,7 @@ export function ParentFormContent({
 
     const dis = isViewMode;
 
-    // â”€â”€ render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── render ────────────────────────────────────────────────────────────────
 
     return (
         <ProtectedRoute allowedRoles={isViewMode ? undefined : ["PARENT"]}>
@@ -591,7 +591,7 @@ export function ParentFormContent({
                             Parent Assessment Form
                         </h1>
                         <p className="text-sm text-muted mt-0.5">
-                            {isViewMode ? "Past submission â€” read only." : "Help us understand your child's unique needs, strengths, and background."}
+                            {isViewMode ? "Past submission — read only." : "Help us understand your child's unique needs, strengths, and background."}
                         </p>
                     </div>
                     {isViewMode && hasTranslation && (
@@ -628,7 +628,7 @@ export function ParentFormContent({
                                     transition: "all 0.2s"
                                 }}
                             >
-                                English (AI) âœ¨
+                                English (AI) ✨
                             </button>
                         </div>
                     )}
@@ -710,11 +710,11 @@ export function ParentFormContent({
                                 </div>
                             </div>
                         </div>
-                    )}                    {/* â”€â”€ STEP 1 (Section A) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    )}                    {/* ── STEP 1 (Section A) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 0) && !hideBackgroundSection && (
                     <div className="space-y-10 animate-fadeIn">
                         <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                            <SectionHeader title={isViewMode ? "Section A â€” Let's start with the basics" : "Let's start with the basics"} description="Help us understand your child's basic background details so we can set up their profile." />
+                            <SectionHeader title={isViewMode ? "Section A — Let's start with the basics" : "Let's start with the basics"} description="Help us understand your child's basic background details so we can set up their profile." />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <Field label="Child's First Name" required isInvalid={isFieldInvalid("first_name", 0)}>
@@ -764,7 +764,7 @@ export function ParentFormContent({
                                 ))}
                                 <Cb label="Other:" checked={checked("primary_language", "Other")} onChange={() => setArr("primary_language")("Other")} disabled={dis} />
                                 {checked("primary_language", "Other") && (
-                                    <input className={`${inputCls} w-40`} placeholder="Specifyâ€¦" value={form.primary_language_other} onChange={e => set("primary_language_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-40`} placeholder="Specify…" value={form.primary_language_other} onChange={e => set("primary_language_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
@@ -776,18 +776,18 @@ export function ParentFormContent({
                                 ))}
                             </div>
                             {form.medical_alerts === "Yes" && (
-                                <input className={inputCls} placeholder="Medication/alert detailsâ€¦" value={form.medical_alerts_detail} onChange={e => set("medical_alerts_detail")(e.target.value)} disabled={dis} />
+                                <input className={inputCls} placeholder="Medication/alert details…" value={form.medical_alerts_detail} onChange={e => set("medical_alerts_detail")(e.target.value)} disabled={dis} />
                             )}
                         </Field>
 
-                        <Field label="Optional â€” Known Conditions">
+                        <Field label="Optional — Known Conditions">
                             <div className="flex flex-wrap gap-3">
                                 {["Autism", "Speech Delay", "ADHD", "Learning Difficulty", "Developmental Delay", "Sensory Difficulty", "Not sure"].map(c => (
                                     <Cb key={c} label={c} checked={checked("known_conditions", c)} onChange={() => setArr("known_conditions")(c)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("known_conditions", "Other")} onChange={() => setArr("known_conditions")("Other")} disabled={dis} />
                                 {checked("known_conditions", "Other") && (
-                                    <input className={`${inputCls} w-48`} placeholder="Specifyâ€¦" value={form.known_conditions_other} onChange={e => set("known_conditions_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.known_conditions_other} onChange={e => set("known_conditions_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
@@ -795,11 +795,11 @@ export function ParentFormContent({
                     </div>
                     )}
 
-                    {/* â”€â”€ STEP 2 (Section B) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── STEP 2 (Section B) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 1) && (
                     <div className="space-y-10 animate-fadeIn">
                         <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                            <SectionHeader title={isViewMode ? "Section B â€” Your child's milestones & history" : "Your child's milestones & history"} description="Share a snapshot of your child's developmental milestones and past services." />
+                            <SectionHeader title={isViewMode ? "Section B — Your child's milestones & history" : "Your child's milestones & history"} description="Share a snapshot of your child's developmental milestones and past services." />
 
                         <div className="space-y-4">
                             <p className="text-sm font-semibold text-fg">Developmental Milestones</p>
@@ -847,18 +847,18 @@ export function ParentFormContent({
                                 ))}
                             </div>
                             {checked("areas_of_concern", "Other") && (
-                                <input className={`${inputCls} mt-2 w-full`} placeholder="Other concernâ€¦" value={form.areas_of_concern_other} onChange={e => set("areas_of_concern_other")(e.target.value)} disabled={dis} />
+                                <input className={`${inputCls} mt-2 w-full`} placeholder="Other concern…" value={form.areas_of_concern_other} onChange={e => set("areas_of_concern_other")(e.target.value)} disabled={dis} />
                             )}
                         </Field>
                         </section>
                     </div>
                     )}
 
-                    {/* â”€â”€ STEP 5 (Section C, F, H) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── STEP 5 (Section C, F, H) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                        <SectionHeader title={isViewMode ? "Section C â€” Your Goals & Concerns" : "Your Goals & Concerns"} description="Tell us what you want to focus on and your main worries." />
+                        <SectionHeader title={isViewMode ? "Section C — Your Goals & Concerns" : "Your Goals & Concerns"} description="Tell us what you want to focus on and your main worries." />
 
                         <Field label="Primary Concerns" required isInvalid={isFieldInvalid("primary_concerns", 4)}>
                             <div className="flex flex-wrap gap-3">
@@ -875,7 +875,7 @@ export function ParentFormContent({
                                 ))}
                                 <Cb label="Other:" checked={checked("goals_for_child", "Other")} onChange={() => setArr("goals_for_child")("Other")} disabled={dis} />
                                 {checked("goals_for_child", "Other") && (
-                                    <input className={`${inputCls} w-48`} placeholder="Specifyâ€¦" value={form.goals_other} onChange={e => set("goals_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.goals_other} onChange={e => set("goals_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
@@ -887,7 +887,7 @@ export function ParentFormContent({
                                 ))}
                                 <Cb label="Other:" checked={checked("strategies_home", "Other")} onChange={() => setArr("strategies_home")("Other")} disabled={dis} />
                                 {checked("strategies_home", "Other") && (
-                                    <input className={`${inputCls} w-48`} placeholder="Specifyâ€¦" value={form.strategies_other} onChange={e => set("strategies_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.strategies_other} onChange={e => set("strategies_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
@@ -895,11 +895,11 @@ export function ParentFormContent({
                     </div>
                     )}
 
-                    {/* â”€â”€ STEP 3 (Sections D & E) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── STEP 3 (Sections D & E) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 2) && (
                     <div className="space-y-10 animate-fadeIn">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                        <SectionHeader title={isViewMode ? "Section D â€” How does your child interact with the world?" : "How does your child interact with the world?"} description="Help us understand what triggers them and how they relate to others." />
+                        <SectionHeader title={isViewMode ? "Section D — How does your child interact with the world?" : "How does your child interact with the world?"} description="Help us understand what triggers them and how they relate to others." />
 
                         <Field label="Difficulties" required isInvalid={isFieldInvalid("difficulties", 2)}>
                             <div className="flex flex-wrap gap-3">
@@ -951,7 +951,7 @@ export function ParentFormContent({
                     </section>
 
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                        <SectionHeader title={isViewMode ? "Section E â€” Sensory & Physical Needs" : "Sensory & Physical Needs"} description="Let us know their physical needs and any sensory sensitivities we should accommodate." />
+                        <SectionHeader title={isViewMode ? "Section E — Sensory & Physical Needs" : "Sensory & Physical Needs"} description="Let us know their physical needs and any sensory sensitivities we should accommodate." />
 
                         <Field label="Sensory Sensitivities" required isInvalid={isFieldInvalid("sensitivities", 2)}>
                             <div className="flex flex-wrap gap-3">
@@ -976,18 +976,18 @@ export function ParentFormContent({
                                 <Cb label="Not sure" checked={form.physical_accommodations === "Not sure"} onChange={() => set("physical_accommodations")(form.physical_accommodations === "Not sure" ? "" : "Not sure")} disabled={dis} />
                             </div>
                             {form.physical_accommodations === "Yes" && (
-                                <input className={inputCls} placeholder="Describe accommodationâ€¦" value={form.physical_accommodations_detail} onChange={e => set("physical_accommodations_detail")(e.target.value)} disabled={dis} />
+                                <input className={inputCls} placeholder="Describe accommodation…" value={form.physical_accommodations_detail} onChange={e => set("physical_accommodations_detail")(e.target.value)} disabled={dis} />
                             )}
                         </Field>
                     </section>
                     </div>
                     )}
 
-                    {/* â”€â”€ SECTION F â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── SECTION F ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                        <SectionHeader title={isViewMode ? "Section F â€” Goals & Expectations" : "Goals & Expectations"} description="What are your short-term and long-term hopes for your child?" />
+                        <SectionHeader title={isViewMode ? "Section F — Goals & Expectations" : "Goals & Expectations"} description="What are your short-term and long-term hopes for your child?" />
 
                         <Field label="Goals for This Year" required isInvalid={isFieldInvalid("goals_this_year", 4)}>
                             <div className="flex flex-wrap gap-3">
@@ -996,19 +996,19 @@ export function ParentFormContent({
                                 ))}
                                 <Cb label="Other:" checked={checked("goals_this_year", "Other")} onChange={() => setArr("goals_this_year")("Other")} disabled={dis} />
                                 {checked("goals_this_year", "Other") && (
-                                    <input className={`${inputCls} w-48`} placeholder="Specifyâ€¦" value={form.goals_this_year_other} onChange={e => set("goals_this_year_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.goals_this_year_other} onChange={e => set("goals_this_year_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
 
-                        <Field label="Goals for Next 3â€“5 Years" required isInvalid={isFieldInvalid("goals_3_5_years", 4)}>
+                        <Field label="Goals for Next 3–5 Years" required isInvalid={isFieldInvalid("goals_3_5_years", 4)}>
                             <div className="flex flex-wrap gap-3">
                                 {["Independence", "Communication", "Behavior", "School readiness", "Friendships", "Learning", "None", "Not sure"].map(g => (
                                     <Cb key={g} label={g} checked={checked("goals_3_5_years", g)} onChange={() => setArr("goals_3_5_years")(g)} disabled={dis} />
                                 ))}
                                 <Cb label="Other:" checked={checked("goals_3_5_years", "Other")} onChange={() => setArr("goals_3_5_years")("Other")} disabled={dis} />
                                 {checked("goals_3_5_years", "Other") && (
-                                    <input className={`${inputCls} w-48`} placeholder="Specifyâ€¦" value={form.goals_3_5_years_other} onChange={e => set("goals_3_5_years_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.goals_3_5_years_other} onChange={e => set("goals_3_5_years_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
@@ -1016,11 +1016,11 @@ export function ParentFormContent({
                     </div>
                     )}
 
-                    {/* â”€â”€ SECTION G â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── SECTION G ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 3) && (
                     <div className="space-y-10 animate-fadeIn">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                        <SectionHeader title={isViewMode ? "Section G â€” Routines & Support" : "Routines & Support"} description="Tell us about the structure, routines, and strategies that work for them at home." />
+                        <SectionHeader title={isViewMode ? "Section G — Routines & Support" : "Routines & Support"} description="Tell us about the structure, routines, and strategies that work for them at home." />
 
                         <Field label="Home Strategies" required isInvalid={isFieldInvalid("home_strategies", 3)}>
                             <div className="flex flex-wrap gap-3">
@@ -1037,7 +1037,7 @@ export function ParentFormContent({
                                 ))}
                                 <Cb label="Other:" checked={checked("support_needed", "Other")} onChange={() => setArr("support_needed")("Other")} disabled={dis} />
                                 {checked("support_needed", "Other") && (
-                                    <input className={`${inputCls} w-48`} placeholder="Specifyâ€¦" value={form.support_needed_other} onChange={e => set("support_needed_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.support_needed_other} onChange={e => set("support_needed_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
@@ -1045,11 +1045,11 @@ export function ParentFormContent({
                     </div>
                     )}
 
-                    {/* â”€â”€ SECTION H â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── SECTION H ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                        <SectionHeader title={isViewMode ? "Section H â€” What makes your child shine?" : "What makes your child shine?"} description="Every child has superpowers! Tell us what your child excels at." />
+                        <SectionHeader title={isViewMode ? "Section H — What makes your child shine?" : "What makes your child shine?"} description="Every child has superpowers! Tell us what your child excels at." />
 
                         <Field label="My Child's Strengths" required isInvalid={isFieldInvalid("strengths", 4)}>
                             <div className="flex flex-wrap gap-3">
@@ -1058,7 +1058,7 @@ export function ParentFormContent({
                                 ))}
                                 <Cb label="Other:" checked={checked("strengths", "Other")} onChange={() => setArr("strengths")("Other")} disabled={dis} />
                                 {checked("strengths", "Other") && (
-                                    <input className={`${inputCls} w-48`} placeholder="Specifyâ€¦" value={form.strengths_other} onChange={e => set("strengths_other")(e.target.value)} disabled={dis} />
+                                    <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.strengths_other} onChange={e => set("strengths_other")(e.target.value)} disabled={dis} />
                                 )}
                             </div>
                         </Field>
@@ -1066,7 +1066,7 @@ export function ParentFormContent({
                     </div>
                     )}
 
-                    {/* â”€â”€ ADDITIONAL NOTES (Step 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── ADDITIONAL NOTES (Step 5) ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn mt-10">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-5 relative overflow-hidden">
@@ -1083,7 +1083,7 @@ export function ParentFormContent({
                     </div>
                     )}
 
-                    {/* â”€â”€ DIAGNOSTIC REPORT UPLOAD (Step 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── DIAGNOSTIC REPORT UPLOAD (Step 5) ────────────────────────────── */}
                     {(!isWizardMode || currentStep === 4) && (
                     <div className="space-y-10 animate-fadeIn">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-5 relative overflow-hidden">
@@ -1160,7 +1160,7 @@ export function ParentFormContent({
                                         </div>
                                         <div className="text-center">
                                             <p className="text-sm font-bold text-fg">{isDragging ? "Drop your file here" : "Click or drag & drop to upload diagnostic report"}</p>
-                                            <p className="text-xs text-faint mt-1">PDF, DOC, or DOCX â€¢ Max 20 MB</p>
+                                            <p className="text-xs text-faint mt-1">PDF, DOC, or DOCX • Max 20 MB</p>
                                         </div>
                                     </div>
                                 )}
@@ -1170,11 +1170,11 @@ export function ParentFormContent({
                     </div>
                     )}
 
-                    {/* â”€â”€ SECTION I â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    {/* ── SECTION I ─────────────────────────────────────────── */}
                     {(!isWizardMode || currentStep === 3) && (
                     <div className="space-y-10 animate-fadeIn">
                     <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
-                        <SectionHeader title={isViewMode ? "Section I â€” Daily Living Skills" : "Daily Living Skills"} description="Help us understand how independent they are with daily self-care tasks." />
+                        <SectionHeader title={isViewMode ? "Section I — Daily Living Skills" : "Daily Living Skills"} description="Help us understand how independent they are with daily self-care tasks." />
 
                         {[
                             { label: "Eating",   key: "eating" as keyof FormState,   opts: ["Eats independently", "Needs some help", "Needs full help"] },
@@ -1196,7 +1196,7 @@ export function ParentFormContent({
 
                 </fieldset>
 
-                {/* â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* ── Footer ──────────────────────────────────────────────── */}
                 {!isViewMode && (
                     <div className="flex justify-between items-center mt-8 pb-8 pt-4">
                         {isWizardMode && currentStep > 0 ? (
@@ -1204,7 +1204,7 @@ export function ParentFormContent({
                                 onClick={handleBackStep}
                                 className="text-sm font-bold text-muted hover:text-blue-600 flex items-center gap-2 transition px-4 py-2 rounded-lg bg-app border border-line hover:bg-card hover:border-blue-300"
                             >
-                                â† Back
+                                ← Back
                             </button>
                         ) : (
                             <button
@@ -1222,7 +1222,7 @@ export function ParentFormContent({
                                     className="btn-primary"
                                     style={{ padding: "12px 32px", fontSize: "0.95rem", borderRadius: "99px" }}
                                 >
-                                    Next Step â†’
+                                    Next Step →
                                 </button>
                             ) : (
                                 <button
@@ -1231,7 +1231,7 @@ export function ParentFormContent({
                                     className="btn-primary"
                                     style={{ padding: "12px 32px", fontSize: "0.95rem", borderRadius: "99px", background: loading ? "var(--text-muted)" : "#10b981", borderColor: "transparent", color: "white" }}
                                 >
-                                    {loading ? "Submittingâ€¦" : "Review & Submit"}
+                                    {loading ? "Submitting…" : "Review & Submit"}
                                 </button>
                             )}
                         </div>
@@ -1244,7 +1244,7 @@ export function ParentFormContent({
 
 export default function ParentOnboardingWizard() {
     return (
-        <Suspense fallback={<div className="p-8 text-center text-muted">Loading formâ€¦</div>}>
+        <Suspense fallback={<div className="p-8 text-center text-muted">Loading form…</div>}>
             <ParentFormContent />
         </Suspense>
     );

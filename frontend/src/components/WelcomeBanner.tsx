@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -63,7 +63,7 @@ const toneStyles = {
 };
 
 function getWorkspaceHref(studentId: number, tab: string) {
-    // Parents use a unified workspace â€” no workspace/tab params needed
+    // Parents use a unified workspace — no workspace/tab params needed
     if (tab === "parent_tracker") {
         return `/workspace?studentId=${studentId}`;
     }
@@ -86,10 +86,10 @@ function getBannerContent(student: Student): BannerContent | null {
             tone: "action",
             label: "Your input is needed",
             title: `Tell us about ${firstName}`,
-            body: "Share your insights about your child â€” their strengths, daily routines, and any concerns. This helps our team understand how to best support them.",
+            body: "Share your insights about your child — their strengths, daily routines, and any concerns. This helps our team understand how to best support them.",
             href: `/parent-onboarding?studentId=${student.id}`,
             cta: isDraft ? "Continue Assessment" : "Get Started",
-            note: "Usually takes about 10â€“15 minutes.",
+            note: "Usually takes about 10–15 minutes.",
         };
     }
 
@@ -101,7 +101,7 @@ function getBannerContent(student: Student): BannerContent | null {
             tone: "action",
             label: "Monthly update due",
             title: `How is ${firstName} doing at home?`,
-            body: `Share your observations for ${cycleLabel} â€” what's going well, any changes, and milestones you've noticed. This helps the team prepare the monthly progress report.`,
+            body: `Share your observations for ${cycleLabel} — what's going well, any changes, and milestones you've noticed. This helps the team prepare the monthly progress report.`,
             href: getWorkspaceHref(student.id, "parent_tracker"),
             cta: "Share Update",
             note: "One update per month keeps the team in sync.",
@@ -128,7 +128,7 @@ function getBannerContent(student: Student): BannerContent | null {
             tone: "waiting",
             label: "Evaluation in progress",
             title: `${firstName}'s evaluation is underway`,
-            body: "Our specialist team is working on the assessment. No action is needed from you right now â€” we'll let you know when there's an update.",
+            body: "Our specialist team is working on the assessment. No action is needed from you right now — we'll let you know when there's an update.",
             href: `/students/${student.id}`,
             cta: "View Details",
         };
@@ -156,7 +156,7 @@ function getBannerContent(student: Student): BannerContent | null {
             title: `${firstName} is on track`,
             body: student.latest_final_monthly_report_id
                 ? "Your monthly update is submitted. You can review finalized reports, goals, and progress from the profile."
-                : "Your monthly update is submitted. The team is preparing the progress report â€” check back soon!",
+                : "Your monthly update is submitted. The team is preparing the progress report — check back soon!",
             href: `/students/${student.id}`,
             cta: "View Progress",
         };

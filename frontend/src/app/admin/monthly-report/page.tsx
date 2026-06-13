@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -7,7 +7,7 @@ import api, { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { semanticToneHex, type SemanticTone } from "@/lib/role-colors";
 
-/* â”€â”€â”€ UI Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── UI Helpers ─────────────────────────────────────────────────────────── */
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -67,7 +67,7 @@ function ProgressSection({ title, data }: { title: string; data: any }) {
     );
 }
 
-/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Types ───────────────────────────────────────────────────────────────── */
 
 interface MonthlyReportData {
     student_info: Record<string, string>;
@@ -96,7 +96,7 @@ const formatDocumentDateTime = (value?: string | null) => {
     });
 };
 
-/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Main Component ──────────────────────────────────────────────────────── */
 
 export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: string; propHideNavigation?: boolean }) {
     const searchParams = useSearchParams();
@@ -128,7 +128,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
     }, [reportId]);
 
     if (!reportId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing Report ID.</div>;
-    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading Monthly Reportâ€¦</div>;
+    if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading Monthly Report…</div>;
     if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
     if (!report || !meta) return null;
 
@@ -193,7 +193,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     </svg>
                     Back to Student Profile
                 </button>
-                <span style={{ color: "var(--text-muted)" }}>â€º</span>
+                <span style={{ color: "var(--text-muted)" }}>›</span>
                 <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>
                     Monthly Report for {meta.student_name}
                 </span>
@@ -204,35 +204,35 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
                 <div>
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                        ðŸ“Š Monthly Progress Report
+                        📊 Monthly Progress Report
                         <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatusStyle.bg, color: reportStatusStyle.color, border: `1px solid ${reportStatusStyle.border}` }}>
                             {reportStatus === "FINAL" ? "FINAL" : "DRAFT"}
                         </span>
                     </h1>
                     <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
-                        {meta.student_name} Â· {report.report_period || "Progress Report"} Â· Generated {formatDocumentDateTime(meta.created_at)}
+                        {meta.student_name} · {report.report_period || "Progress Report"} · Generated {formatDocumentDateTime(meta.created_at)}
                     </p>
                 </div>
                 {user?.role === "ADMIN" && (
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                         <button onClick={fetchAuditHistory}
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-secondary)", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)" }}>
-                            â±ï¸ Audit History
+                            ⏱️ Audit History
                         </button>
                         <button onClick={handleDownload}
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-secondary)", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)" }}>
-                            ðŸ“¥ Download PDF
+                            📥 Download PDF
                         </button>
                         <span className="hidden md:block" style={{ width: "1px", height: "24px", background: "var(--text-muted)", margin: "0 4px" }}></span>
                         {reportStatus !== "FINAL" ? (
                             <button onClick={() => handleSaveStatus("FINAL")} disabled={saving}
                                 style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: semanticToneHex("success").color, color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                {saving ? "Savingâ€¦" : "âœ… Finalize"}
+                                {saving ? "Saving…" : "✅ Finalize"}
                             </button>
                         ) : (
                             <button onClick={() => handleSaveStatus("DRAFT")} disabled={saving}
                                 style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-primary)", color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                {saving ? "Savingâ€¦" : "Revert to Draft"}
+                                {saving ? "Saving…" : "Revert to Draft"}
                             </button>
                         )}
                     </div>
@@ -245,7 +245,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                     {[["Student Name", si.student_name], ["Date of Birth", si.date_of_birth], ["Grade/Level", si.grade_level], ["Report Period", report.report_period]].map(([label, val]) => (
                         <div key={label}>
                             <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--text-secondary)", marginBottom: "3px" }}>{label}</p>
-                            <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}>{val || "â€”"}</p>
+                            <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}>{val || "—"}</p>
                         </div>
                     ))}
                 </div>
@@ -275,7 +275,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                                         {g.score}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{g.goal_id} â€” {g.domain}</p>
+                                        <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{g.goal_id} — {g.domain}</p>
                                         <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", margin: 0 }}>{g.note}</p>
                                     </div>
                                 </div>
@@ -292,7 +292,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                         {[["Discipline", tss.discipline], ["Sessions Completed", tss.sessions_completed], ["Attendance", tss.attendance]].map(([label, val]) => (
                             <div key={label as string}>
                                 <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--text-secondary)", marginBottom: "3px" }}>{label}</p>
-                                <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}>{String(val) || "â€”"}</p>
+                                <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}>{String(val) || "—"}</p>
                             </div>
                         ))}
                     </div>
@@ -368,7 +368,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
             {showAuditModal && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => setShowAuditModal(false)}>
                     <div style={{ background: "var(--bg-secondary)", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "500px", position: "relative", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowAuditModal(false)} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--text-secondary)" }}>Ã—</button>
+                        <button onClick={() => setShowAuditModal(false)} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--text-secondary)" }}>×</button>
                         <h2 style={{ margin: "0 0 1.5rem 0", fontSize: "1.25rem", color: "var(--text-primary)", fontWeight: 800 }}>Document Audit History</h2>
                         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxHeight: "60vh", overflowY: "auto", paddingRight: "0.5rem" }}>
                             {auditHistory.length === 0 ? (
@@ -417,12 +417,12 @@ function MonthlyReportRedirect() {
         }
     }, [searchParams, router]);
 
-    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Redirecting to workspaceâ€¦</div>;
+    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Redirecting to workspace…</div>;
 }
 
 export default function MonthlyReportPage() {
     return (
-        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loadingâ€¦</div>}>
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading…</div>}>
             <MonthlyReportRedirect />
         </Suspense>
     );

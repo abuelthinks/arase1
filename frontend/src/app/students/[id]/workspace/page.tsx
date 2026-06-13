@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -555,7 +555,7 @@ function UnifiedWorkspaceContent() {
     const submitterLabel = (submittedBy?: { name?: string; role?: string } | null) => {
         if (!submittedBy) return "Submitted";
         const role = submittedBy.role ? submittedBy.role.toLowerCase() : "user";
-        return `${submittedBy.name || "User"} â€¢ ${role}`;
+        return `${submittedBy.name || "User"} • ${role}`;
     };
 
     const formatActivityEventTitle = (event: any) => {
@@ -811,7 +811,7 @@ function UnifiedWorkspaceContent() {
                                                                             {sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych"}
                                                                         </h4>
                                                                         <p className="text-[0.7rem] font-semibold text-muted mt-1 truncate" title={specialistName}>
-                                                                            ðŸ‘¤ {specialistName}
+                                                                            👤 {specialistName}
                                                                         </p>
                                                                     </div>
                                                                     <div className={`mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[0.65rem] font-bold w-fit ${statusInfo.bg}`}>
@@ -1278,7 +1278,7 @@ function UnifiedWorkspaceContent() {
                                     >
                                         {iepDocs.map((doc, idx) => (
                                             <option key={doc.id} value={doc.id.toString()}>
-                                                {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
+                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
                                             </option>
                                         ))}
                                     </select>
@@ -1308,7 +1308,7 @@ function UnifiedWorkspaceContent() {
                                     >
                                         {monthlyDocs.map((doc, idx) => (
                                             <option key={doc.id} value={doc.id.toString()}>
-                                                {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
+                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
                                             </option>
                                         ))}
                                     </select>
@@ -1353,7 +1353,7 @@ function UnifiedWorkspaceContent() {
 
             return (
                 <>
-                    <span className="text-[0.5rem] text-faint">â—</span>
+                    <span className="text-[0.5rem] text-faint">●</span>
                     <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-muted flex flex-wrap items-center gap-1" title={langs.join(", ")}>
                         {visibleLangs.map((lang, idx) => {
                             const isMatch = studentLangs.includes(lang.toUpperCase());
@@ -1732,7 +1732,7 @@ function UnifiedWorkspaceContent() {
                                             <p className={`text-md font-bold truncate ${alreadyAssigned ? "text-green-800" : "text-fg"}`}>{getStaffName(s)}</p>
                                             {s.recommended && (
                                                 <span className="text-[0.65rem] font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
-                                                    â­ Match
+                                                    ⭐ Match
                                                 </span>
                                             )}
                                         </div>
@@ -1837,7 +1837,7 @@ function UnifiedWorkspaceContent() {
                                                     isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-app'
                                                 }`}
                                                 style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                title={`${s.first_name} ${s.last_name} â€” ${s.status?.replace(/_/g, ' ')}`}
+                                                title={`${s.first_name} ${s.last_name} — ${s.status?.replace(/_/g, ' ')}`}
                                             >
                                                 {isCurrent && (
                                                     <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />

@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 
-// â”€â”€â”€ Shared UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Shared UI ───────────────────────────────────────────────────────────────
 
 function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; checked: boolean; onChange: () => void; readOnly?: boolean }) {
     return (
@@ -76,7 +76,7 @@ function TextInput({ value, onChange, placeholder, readOnly, type = "text" }: { 
     );
 }
 
-// â”€â”€â”€ Form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Form state ──────────────────────────────────────────────────────────────
 
 function defaultForm() {
     return {
@@ -141,7 +141,7 @@ function toggle(arr: string[], val: string): string[] {
     return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
 }
 
-// â”€â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main ────────────────────────────────────────────────────────────────────
 
 function TeacherFormContent() {
     const searchParams = useSearchParams();
@@ -224,17 +224,17 @@ function TeacherFormContent() {
         b1: ["Attended all sessions", "Partial attendance", "Absent", "Required shadow teacher support", "Independent participation"],
         b2: ["Fully engaged", "Engaged with minimal cues", "Needed moderate prompting", "Required full support", "Distracted easily", "Refused tasks"],
         c1: ["Letter recognition", "Letter sounds", "Sight words", "Blending CVC words", "Reading simple sentences", "Writing name", "Writing letters", "Difficulty retaining concepts", "Regression observed", "Improvement observed"],
-        c2: ["Number recognition (1â€“10)", "Number recognition (11â€“20)", "Counting", "Matching number to quantity", "Basic addition", "Basic subtraction", "Sequencing numbers", "Difficulty understanding number concepts", "Improvement observed"],
+        c2: ["Number recognition (1–10)", "Number recognition (11–20)", "Counting", "Matching number to quantity", "Basic addition", "Basic subtraction", "Sequencing numbers", "Difficulty understanding number concepts", "Improvement observed"],
         c3: ["Coloring", "Tracing", "Matching", "Sorting", "Patterning", "Puzzle completion", "Needs support with fine motor tasks", "Notable improvement", "Regression observed"],
-        d1: ["Attentive", "Easily distracted", "Requires constant redirection", "Leaves seat often", "Sustains attention 2â€“5 minutes", "Sustains attention 5â€“10 minutes", "Focus improved"],
+        d1: ["Attentive", "Easily distracted", "Requires constant redirection", "Leaves seat often", "Sustains attention 2–5 minutes", "Sustains attention 5–10 minutes", "Focus improved"],
         d2: ["Independent", "Minimal prompts", "Moderate prompts", "Full assistance needed", "Incomplete tasks", "Refusal to work", "Significant improvement"],
         e1: ["Plays cooperatively", "Parallel play", "Initiates play", "Responds when approached", "Avoids peers", "Conflict with peers", "Aggressive behavior", "Improvement in social play"],
         e2: ["Takes turns", "Shares materials", "Engages in group activities", "Follows social rules", "Difficulty waiting", "Improved social awareness"],
         f1: ["Cooperative", "Easily frustrated", "Tantrums", "Emotional outbursts", "Non-compliant", "Sensory-seeking behaviors (running, tapping, etc.)", "Sensory-avoidance behaviors (covering ears, avoiding textures)"],
         f2: ["Calms independently", "Needs verbal cues to calm", "Needs sensory break", "Needs physical assistance", "Quickly overstimulated", "Improved regulation"],
-        g1: ["Follows classroom schedule", "Transitions smoothly", "Needs visual schedule", "Needs Firstâ€“Then board", "Needs constant prompting", "Uses coping strategies", "Improvement noted"],
+        g1: ["Follows classroom schedule", "Transitions smoothly", "Needs visual schedule", "Needs First–Then board", "Needs constant prompting", "Uses coping strategies", "Improvement noted"],
         g2: ["Toilets independently", "Needs assistance toileting", "Uses utensils during snack", "Cleans up after activities", "Manages belongings", "Improvement noted"],
-        gas: ["1 â€“ No progress", "2 â€“ Minimal progress", "3 â€“ Expected progress", "4 â€“ More than expected", "5 â€“ Goal achieved"],
+        gas: ["1 – No progress", "2 – Minimal progress", "3 – Expected progress", "4 – More than expected", "5 – Goal achieved"],
         i1: ["Continue same strategies", "Modify instructional materials", "Increase hands-on activities", "Provide additional visual aids", "Provide sensory supports", "Increase shadow teacher hours", "Recommend behavior plan", "Recommend literacy support", "Recommend numeracy support"],
         i2: ["Reading practice", "Math drills", "Sensory activities", "Fine motor practice", "Behavior strategies", "Social play activities", "Routine training"]
     };
@@ -301,10 +301,10 @@ function TeacherFormContent() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                 <div>
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-                        SPED Progress Tracking Form (Teacher Version){ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)", marginLeft: "8px" }}>â€” Read Only</span>}
+                        SPED Progress Tracking Form (Teacher Version){ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)", marginLeft: "8px" }}>— Read Only</span>}
                     </h1>
                     <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
-                        {ro ? "Past submission â€” read only." : "Standalone for SPED classroom monitoring & IEP updates."}
+                        {ro ? "Past submission — read only." : "Standalone for SPED classroom monitoring & IEP updates."}
                     </p>
                 </div>
                 {ro && hasTranslation && (
@@ -327,7 +327,7 @@ function TeacherFormContent() {
                                 boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
                             }}
                         >
-                            English (AI) âœ¨
+                            English (AI) ✨
                         </button>
                     </div>
                 )}
@@ -335,7 +335,7 @@ function TeacherFormContent() {
 
             {successMsg && (
                 <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#d1fae5", color: "#065f46", border: "1px solid #a7f3d0", marginBottom: "1rem", fontWeight: 600 }}>
-                    âœ“ {successMsg}
+                    ✓ {successMsg}
                 </div>
             )}
             {errorMsg && (
@@ -345,7 +345,7 @@ function TeacherFormContent() {
             )}
 
             {/* SECTION A */}
-            <SectionCard title="Section A â€” General Information">
+            <SectionCard title="Section A — General Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     <FieldGroup label="Student Name">
                         <TextInput value={form.student_name} readOnly={true} />
@@ -369,7 +369,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION B */}
-            <SectionCard title="Section B â€” Classroom Participation">
+            <SectionCard title="Section B — Classroom Participation">
                 <FieldGroup label="B1. Attendance & Participation">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.b1.map(opt => (
@@ -394,7 +394,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION C */}
-            <SectionCard title="Section C â€” Academic Progress">
+            <SectionCard title="Section C — Academic Progress">
                 <FieldGroup label="C1. Literacy">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.c1.map(opt => (
@@ -428,7 +428,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION D */}
-            <SectionCard title="Section D â€” Learning Behaviors">
+            <SectionCard title="Section D — Learning Behaviors">
                 <FieldGroup label="D1. Focus & Attention">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.d1.map(opt => (
@@ -453,7 +453,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION E */}
-            <SectionCard title="Section E â€” Social Skills & Peer Interaction">
+            <SectionCard title="Section E — Social Skills & Peer Interaction">
                 <FieldGroup label="E1. Peer Interaction">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.e1.map(opt => (
@@ -478,7 +478,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION F */}
-            <SectionCard title="Section F â€” Behavior & Emotional Regulation">
+            <SectionCard title="Section F — Behavior & Emotional Regulation">
                 <FieldGroup label="F1. Behavior Throughout the Week">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.f1.map(opt => (
@@ -503,7 +503,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION G */}
-            <SectionCard title="Section G â€” Independence & Adaptive Skills">
+            <SectionCard title="Section G — Independence & Adaptive Skills">
                 <FieldGroup label="G1. Independence in School Routines">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.g1.map(opt => (
@@ -528,7 +528,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION H */}
-            <SectionCard title="Section H â€” Goal Achievement (for IEP & AI)">
+            <SectionCard title="Section H — Goal Achievement (for IEP & AI)">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}>
                     {['1', '2', '3', '4'].map(g => (
                         <div key={g} style={{ padding: "12px", background: "var(--bg-primary)", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
@@ -552,7 +552,7 @@ function TeacherFormContent() {
             </SectionCard>
 
             {/* SECTION I */}
-            <SectionCard title="Section I â€” SPED Teacher Recommendations">
+            <SectionCard title="Section I — SPED Teacher Recommendations">
                 <FieldGroup label="I1. Classroom Recommendations">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                         {OPTIONS.i1.map(opt => (
@@ -585,7 +585,7 @@ function TeacherFormContent() {
                 {!ro && (
                     <button onClick={handleSubmit} disabled={loading}
                         style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
-                        {loading ? "Submittingâ€¦" : "Submit Assessment"}
+                        {loading ? "Submitting…" : "Submit Assessment"}
                     </button>
                 )}
             </div>

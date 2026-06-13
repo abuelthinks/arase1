@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { type ReactNode, useCallback, useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -266,7 +266,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
                         <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-                            <span style={{ marginRight: "8px" }}>ðŸ“‹</span>Comprehensive AI-Generated IEP
+                            <span style={{ marginRight: "8px" }}>📋</span>Comprehensive AI-Generated IEP
                         </h3>
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px", marginBottom: "14px" }}>
                             Compiles all assessment data and uses AI to generate goals, objectives, and recommendations.
@@ -327,7 +327,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                 transition: "background 0.2s ease",
                             }}
                         >
-                            {(existingIepId && existingIepStatus === "FINAL") ? "ðŸ“„ View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "ðŸ¤– Generate IEP" : "Requires Review"}
+                            {(existingIepId && existingIepStatus === "FINAL") ? "📄 View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "🤖 Generate IEP" : "Requires Review"}
                         </button>
                     )}
                 </div>
@@ -338,7 +338,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
                         <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-                            <span style={{ marginRight: "8px" }}>ðŸ“Š</span>Monthly Progress Report
+                            <span style={{ marginRight: "8px" }}>📊</span>Monthly Progress Report
                         </h3>
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px", marginBottom: "14px" }}>
                             Generates the AI monthly tracking document from all required progress tracker forms. Also updates IEP Section 10.
@@ -414,11 +414,11 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             transition: "background 0.2s ease",
                         }}
                     >
-                        {monthlyLoading ? "â³ Generatingâ€¦"
-                            : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? "ðŸ“„ View Report"
+                        {monthlyLoading ? "⏳ Generating…"
+                            : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? "📄 View Report"
                             : !isEnrolled ? "Requires Active"
                             : !allTrackersSubmitted ? "Forms Pending"
-                            : "ðŸ¤– Generate"}
+                            : "🤖 Generate"}
                     </button>
                 </div>
             </div>
@@ -441,12 +441,12 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                 </svg>
                                 Back to Student Profile
                             </button>
-                            <span style={{ color: "var(--border-light)" }}>â€º</span>
+                            <span style={{ color: "var(--border-light)" }}>›</span>
                             <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>Report Generator</span>
                         </div>
                     )}
 
-                    {/* Embedded mode â€” seamless, no card wrapper */}
+                    {/* Embedded mode — seamless, no card wrapper */}
                     {propHideNavigation ? (
                         <>
                             <div style={{ borderBottom: "1px solid var(--border-light)", paddingBottom: "1.25rem", marginBottom: "1.5rem" }}>
@@ -466,7 +466,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             ) : renderContent()}
                         </>
                     ) : (
-                        /* Standalone mode â€” wrapped in card */
+                        /* Standalone mode — wrapped in card */
                         <div style={{ background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
                             <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid var(--border-light)" }}>
                                 <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Report Generator</h1>
@@ -500,12 +500,12 @@ function AdminReportsRedirect() {
         const studentId = searchParams.get("studentId");
         router.replace(studentId ? `/workspace?studentId=${studentId}&workspace=reports&view=generator` : "/workspace");
     }, [searchParams, router]);
-    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Redirecting to workspaceâ€¦</div>;
+    return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Redirecting to workspace…</div>;
 }
 
 export default function AdminReportsPage() {
     return (
-        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loadingâ€¦</div>}>
+        <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading…</div>}>
             <AdminReportsRedirect />
         </Suspense>
     );

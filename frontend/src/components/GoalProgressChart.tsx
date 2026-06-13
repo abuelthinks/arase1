@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Sparkles, TrendingUp, Award } from "lucide-react";

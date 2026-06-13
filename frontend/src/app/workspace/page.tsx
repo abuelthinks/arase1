@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -770,7 +770,7 @@ function UnifiedWorkspaceContent() {
         try {
             await toastPromise(api.post(`/api/students/${studentId}/parent-assessment-reminder/`), {
                 id: `parent-reminder-${studentId}`,
-                loading: 'Sending reminderâ€¦',
+                loading: 'Sending reminder…',
                 success: (res: any) => res.data.message || 'Reminder sent.',
                 error: (err: any) => extractApiError(err, 'Failed to send reminder.'),
             });
@@ -792,7 +792,7 @@ function UnifiedWorkspaceContent() {
         try {
             await toastPromise(api.post(`/api/students/${studentId}/enroll/`), {
                 id: `enroll-${studentId}`,
-                loading: 'Enrolling studentâ€¦',
+                loading: 'Enrolling student…',
                 success: (res: any) => res.data.message || 'Student enrolled.',
                 error: (err: any) => extractApiError(err, 'Failed to enroll student.'),
             });
@@ -819,7 +819,7 @@ function UnifiedWorkspaceContent() {
         try {
             await toastPromise(api.post(`/api/students/${studentId}/integrate/`), {
                 id: `integrate-${studentId}`,
-                loading: 'Processing integrationâ€¦',
+                loading: 'Processing integration…',
                 success: (res: any) => res.data.message || 'Student integrated into mainstream school.',
                 error: (err: any) => extractApiError(err, 'Failed to integrate student.'),
             });
@@ -938,7 +938,7 @@ function UnifiedWorkspaceContent() {
     const submitterLabel = (submittedBy?: { name?: string; role?: string } | null) => {
         if (!submittedBy) return "Submitted";
         const role = submittedBy.role ? submittedBy.role.toLowerCase() : "user";
-        return `${submittedBy.name || "User"} â€¢ ${role}`;
+        return `${submittedBy.name || "User"} • ${role}`;
     };
 
     const formatActivityEventTitle = (event: any) => {
@@ -1184,7 +1184,7 @@ function UnifiedWorkspaceContent() {
                             {actions.length === 0 ? (
                                 <div className="flex items-center gap-2 text-sm text-muted py-4 px-3 rounded-lg bg-emerald-50 border border-emerald-100">
                                     <CheckCircle2 size={16} className="text-emerald-600" />
-                                    All caught up â€” no urgent admin follow-ups.
+                                    All caught up — no urgent admin follow-ups.
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-2">
@@ -1228,7 +1228,7 @@ function UnifiedWorkspaceContent() {
                                                                             {sec.key === "C" ? "SLP" : sec.key === "D" ? "OT" : sec.key === "E" ? "PT" : sec.key === "F1" ? "ABA" : "Psych"}
                                                                         </h4>
                                                                         <p className="text-[0.7rem] font-semibold text-muted mt-1 truncate" title={specialistName}>
-                                                                            ðŸ‘¤ {specialistName}
+                                                                            👤 {specialistName}
                                                                         </p>
                                                                     </div>
                                                                     <div className={`mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[0.65rem] font-bold w-fit ${statusInfo.bg}`}>
@@ -1300,7 +1300,7 @@ function UnifiedWorkspaceContent() {
                             <div className="flex items-center justify-between mb-3">
                                 <h2 className="text-base font-bold text-fg m-0">Recent Activity</h2>
                                 <button onClick={() => setIsActivityDrawerOpen(true)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 rounded-lg p-1 -m-1">
-                                    View all â†’
+                                    View all →
                                 </button>
                             </div>
                             {recentActivity.length === 0 ? (
@@ -1552,7 +1552,7 @@ function UnifiedWorkspaceContent() {
                                     </div>
                                     {event.actor_email && (
                                       <p className="text-[0.65rem] text-faint m-0 font-medium">
-                                        ðŸ‘¤ Performed by: {event.actor_email}
+                                        👤 Performed by: {event.actor_email}
                                       </p>
                                     )}
                                     <span className="text-[0.65rem] text-faint font-mono" title={formatActivityTime(event.created_at || event.timestamp)}>
@@ -2092,7 +2092,7 @@ function UnifiedWorkspaceContent() {
                                         >
                                             {iepDocs.map((doc, idx) => (
                                                 <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
+                                                    {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
                                                 </option>
                                             ))}
                                         </select>
@@ -2122,7 +2122,7 @@ function UnifiedWorkspaceContent() {
                                         >
                                             {monthlyDocs.map((doc, idx) => (
                                                 <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version" : "Previous Version"} â€” {formatDocumentDateTime(doc.created_at)}
+                                                    {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
                                                 </option>
                                             ))}
                                         </select>
@@ -2438,7 +2438,7 @@ function UnifiedWorkspaceContent() {
 
             return (
                 <>
-                    <span className="text-[0.5rem] text-faint">â—</span>
+                    <span className="text-[0.5rem] text-faint">●</span>
                     <p className="m-0 text-[0.7rem] font-medium uppercase tracking-widest text-muted flex flex-wrap items-center gap-1" title={langs.join(", ")}>
                         {visibleLangs.map((lang, idx) => {
                             const isMatch = studentLangs.includes(lang.toUpperCase());
@@ -2990,7 +2990,7 @@ function UnifiedWorkspaceContent() {
                 )}
                 {showStudentSidebar && (
                     <>
-                        {/* Student List Sidebar â€” fixed secondary sidebar */}
+                        {/* Student List Sidebar — fixed secondary sidebar */}
                         <div className={`hidden md:flex flex-col bg-card border-r border-line shrink-0 h-full overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'w-0 border-r-0' : 'w-56'}`}>
                             <div className="p-4 border-b border-line shrink-0 w-56">
                                 <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-2">Students</p>
@@ -3061,7 +3061,7 @@ function UnifiedWorkspaceContent() {
                                                         isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-app'
                                                     }`}
                                                     style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                    title={`${s.first_name} ${s.last_name} â€” ${sidebarStatusLabel}`}
+                                                    title={`${s.first_name} ${s.last_name} — ${sidebarStatusLabel}`}
                                                 >
                                                     {isCurrent && (
                                                         <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />
