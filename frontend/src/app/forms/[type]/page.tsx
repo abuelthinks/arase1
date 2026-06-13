@@ -866,29 +866,20 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     // Selective merge — pulls peer changes for fields the local user hasn't
     // touched since the last sync. Local dirty fields are preserved.
     const mergePeerChangesIfClean = useCallback(async (eventFormData?: any, isOwnEcho = false) => {
-        console.debug('[Collab merge] called, collabInstanceId=', collabInstanceId, 'collabFormType=', collabFormType, 'isOwnEcho=', isOwnEcho);
-        if (!collabInstanceId || !collabFormType) {
-            console.debug('[Collab merge] bailing: no instanceId or formType');
-            return;
-        }
+        if (!collabInstanceId || !collabFormType) return;
         try {
             let serverData = eventFormData;
             if (!serverData) {
-                console.debug('[Collab merge] no event form_data, fetching from API');
                 const res = await api.get(`/api/inputs/${formType}/${collabInstanceId}/`, { params: { _t: Date.now() } });
                 setTeamSubmission(res.data);
                 serverData = res.data?.form_data;
             }
-            if (!serverData || !schema) {
-                console.debug('[Collab merge] bailing: no serverData or schema', { serverData: !!serverData, schema: !!schema });
-                return;
-            }
-            
+            if (!serverData || !schema) return;
+
             // Normalize server payload into section_k -> { fieldId: value } shape
             // (especially needed for assessments which store a flat dict under "v2")
             const normalizedServerData = mergeSavedFormData(buildInitialFormData(schema), schema, serverData);
-            console.debug('[Collab merge] normalizedServerData keys:', Object.keys(normalizedServerData));
-            
+
             // Capture a frozen snapshot BEFORE we mutate the ref, so the React 
             // updater is a pure function (fixing Strict Mode double-invocation bugs).
             const frozenSnapshot = JSON.parse(JSON.stringify(serverSnapshot.current));
@@ -906,14 +897,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             if (isOwnEcho) {
                 // If it's our own echo, we just update the snapshot so our local
                 // edits become "clean" again. We don't overwrite formData.
-                console.debug('[Collab merge] own echo: snapshot updated, skipping setFormData');
                 return;
             }
-            
+
             setFormData((prev: any) => {
                 const next: any = { ...prev };
-                let mergedCount = 0;
-                let skippedCount = 0;
                 for (const section of schema.sections || []) {
                     const dataKey = section.__dataSection || section.id;
                     const incoming = normalizedServerData[dataKey];
@@ -943,15 +931,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         // that case — never overwrite in-progress typing.
                         if (!isDirty) {
                             mergedSection[fieldId] = incomingVal;
-                            mergedCount++;
-                        } else {
-                            skippedCount++;
-                            console.debug(`[Collab merge] skipping dirty field ${fieldId}:`, { localVal, snapshotVal, incomingVal });
                         }
                     }
                     next[dataKey] = mergedSection;
                 }
-                console.debug(`[Collab merge] result: ${mergedCount} fields merged, ${skippedCount} skipped (dirty)`);
                 return next;
             });
         } catch (err) {
@@ -964,9 +947,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         instanceId: collabFormType ? collabInstanceId : null,
         currentUserId: user?.user_id,
         onSectionSaved: (event) => {
-            console.debug('[Collab] onSectionSaved fired:', { eventUserId: event.by.user_id, myUserId: user?.user_id, sectionKey: event.section_key, hasFormData: !!event.form_data });
             const isOwnEcho = event.by.user_id === user?.user_id;
-            console.debug(`[Collab] calling mergePeerChangesIfClean with form_data:`, event.form_data);
             mergePeerChangesIfClean(event.form_data, isOwnEcho);
             if (isSectionScopedForm && reportCycleId && !isOwnEcho) {
                 refreshSectionContributions(reportCycleId);
@@ -1468,9 +1449,23 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
         const dataKey = dataKeyFor(section);
         const currentSectionData = formData[dataKey] || {};
+        const snapshotSection = serverSnapshot.current[dataKey] || {};
+        // Send only fields the local user actually changed since the last sync.
+        // On shared sections this stops one specialist's save from overwriting a
+        // peer's field with a stale copy — the server merges what we send, so an
+        // unchanged field we omit keeps the peer's value. (Array compare ignores
+        // checkbox ordering, matching the peer-merge dirty check.)
+        const isDirty = (a: any, b: any): boolean => {
+            if (Array.isArray(a) && Array.isArray(b)) {
+                return JSON.stringify([...a].sort()) !== JSON.stringify([...b].sort());
+            }
+            return JSON.stringify(a) !== JSON.stringify(b);
+        };
         const sectionPayload: Record<string, any> = {};
         section.fields?.forEach((field: any) => {
-            sectionPayload[field.id] = currentSectionData[field.id];
+            if (isDirty(currentSectionData[field.id], snapshotSection[field.id])) {
+                sectionPayload[field.id] = currentSectionData[field.id];
+            }
         });
 
         const displayLabel = formType === "multidisciplinary-assessment" ? `Section ${apiKey}` : (section.title?.split("—")?.[0]?.trim() || `Section ${apiKey}`);
