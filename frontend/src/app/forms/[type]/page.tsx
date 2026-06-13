@@ -981,6 +981,37 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         },
     });
 
+    // ─── Section presence locks ─────────────────────────────────────────────
+    // Map a (virtual) section id to the backend lock key. Assessment sections
+    // use the API key (A/B/…); tracker section ids already are the lock keys.
+    const lockKeyForSection = useCallback((sectionId: string): string | null => {
+        if (!collabFormType) return null;
+        if (formType === "multidisciplinary-assessment") {
+            return ASSESSMENT_SECTION_API_KEYS[sectionId] ?? null;
+        }
+        return sectionId;
+    }, [collabFormType, formType]);
+
+    // The hook returns a fresh object each render, but these methods are stable
+    // useCallbacks — destructure them so our helpers don't churn every render.
+    const { acquireLock: collabAcquire, releaseLock: collabRelease, releaseAll: collabReleaseAll, isLockedByMe: collabIsLockedByMe } = collab;
+
+    // Acquire the soft lock when the user starts working a section. Deduped via
+    // the server-truth `isLockedByMe` so repeated focus/edits don't spam the WS.
+    const ensureSectionLock = useCallback((sectionId: string) => {
+        if (isViewMode) return;
+        const key = lockKeyForSection(sectionId);
+        if (!key) return;
+        if (collabIsLockedByMe(key)) return;
+        collabAcquire(key);
+    }, [collabAcquire, collabIsLockedByMe, isViewMode, lockKeyForSection]);
+
+    const releaseSectionLock = useCallback((sectionId: string) => {
+        const key = lockKeyForSection(sectionId);
+        if (!key) return;
+        collabRelease(key);
+    }, [collabRelease, lockKeyForSection]);
+
     // Materialize the parent record on first open so the collab WebSocket has
     // an instance to connect to even before any section has been saved.
     useEffect(() => {
@@ -1300,6 +1331,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
     const queueAssessmentSectionAutosave = (sectionId: string) => {
         if (!isSectionScopedForm) return;
+        ensureSectionLock(sectionId);
         setPendingSectionSaves(prev => ({
             ...prev,
             [sectionId]: Date.now() + Math.random(),
@@ -1461,6 +1493,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     report_cycle: parseInt(reportCycleId),
                 });
                 setTeamSubmission(submitRes.data);
+                // Submitted section is now read-only — drop our presence lock so
+                // peers aren't shown as blocked on a section we're done with.
+                releaseSectionLock(section.id);
                 await refreshSectionContributions(reportCycleId);
 
                 if (submitRes.data?.finalized_at) {
@@ -1506,6 +1541,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         propHideNavigation,
         propOnSubmitted,
         refreshSectionContributions,
+        releaseSectionLock,
         reportCycleId,
         router,
         schema,
@@ -1671,6 +1707,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     if (data.form) {
                         setTeamSubmission(data.form);
                     }
+                    // Everything we owned is submitted/read-only now — drop our locks.
+                    collabReleaseAll();
                     await refreshSectionContributions(reportCycleId);
         
                     const message = finalized
@@ -1696,6 +1734,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             }
         });
     }, [
+        collabReleaseAll,
         flushPendingAssessmentAutosaves,
         formType,
         hasSomethingToSubmit,
@@ -1987,11 +2026,16 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: collab.connected ? "#22c55e" : "var(--text-muted)", display: "inline-block" }} />
                                     {collab.connected ? "Live" : "Reconnecting…"}
                                 </span>
-                                {collab.locks.filter(l => l.user_id !== user?.user_id).map(l => (
-                                    <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "var(--accent-primary)", borderRadius: "999px" }}>
-                                        {l.user_name}{l.section_key && l.section_key !== "*" ? ` · §${l.section_key}` : ""}
-                                    </span>
-                                ))}
+                                {collab.locks.filter(l => l.user_id !== user?.user_id).map(l => {
+                                    const sectionLabel = l.section_key && l.section_key !== "*"
+                                        ? l.section_key.replace(/^section_/, "").replace(/_/g, " ").toUpperCase()
+                                        : "";
+                                    return (
+                                        <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "var(--accent-primary)", borderRadius: "999px" }}>
+                                            {l.user_name}{sectionLabel ? ` · §${sectionLabel}` : ""}
+                                        </span>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -2100,8 +2144,27 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 });
                             };
                             const isInvalidSection = attemptedSectionSubmit && isMySection && isSectionEmpty(section);
+                            // Presence locks: who (if anyone) is currently editing this section.
+                            const sectionLockKey = !isViewMode ? lockKeyForSection(section.id) : null;
+                            const peerLock = sectionLockKey ? collab.isLockedByOther(sectionLockKey) : null;
+                            const lockTrackable = Boolean(!isViewMode && collabFormType && sectionFullyEditable && sectionLockKey);
                             return (
                             <SectionCard key={section.id} title={section.title} isMySection={isMySection} isInvalid={isInvalidSection}>
+                              <div
+                                className="flex flex-col gap-4"
+                                onFocus={lockTrackable ? () => { if (!peerLock) ensureSectionLock(section.id); } : undefined}
+                                onBlur={lockTrackable ? (e: React.FocusEvent<HTMLDivElement>) => {
+                                    if (!e.currentTarget.contains(e.relatedTarget as Node)) releaseSectionLock(section.id);
+                                } : undefined}
+                              >
+                                {peerLock && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "10px", background: "var(--bg-warning-light)", border: "1px solid var(--border-warning)" }}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-warning)" }}>
+                                            {peerLock.user_name} is editing this section — read-only until they’re done.
+                                        </span>
+                                    </div>
+                                )}
                                 {ownerLabel && !isViewMode && (
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "-4px", marginBottom: "4px" }}>
                                         <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#eef2ff", color: "var(--accent-primary)", borderRadius: "999px", textTransform: "uppercase", letterSpacing: "0.4px" }}>
@@ -2119,6 +2182,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     const currentSectionData = formData[dataKey] || {};
                                     const fieldReadOnly = field.type === "readonly_parent_summary"
                                         || !!sectionState?.isLocked
+                                        || Boolean(peerLock)
                                         || (!isViewMode && !isFieldEditable(section.id, field.id));
 
                                     const isRequired = isFieldRequired(formType, field);
@@ -2288,6 +2352,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                         ) : null}
                                     </div>
                                 )}
+                              </div>
                             </SectionCard>
                             );
                         })}

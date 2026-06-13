@@ -39,6 +39,7 @@ interface UseFormCollaborationReturn {
     connected: boolean;
     acquireLock: (sectionKey: string) => void;
     releaseLock: (sectionKey: string) => void;
+    releaseAll: () => void;
     refreshLock: (sectionKey: string) => void;
     isLockedByOther: (sectionKey: string) => PresenceLock | null;
     isLockedByMe: (sectionKey: string) => boolean;
@@ -88,6 +89,13 @@ export function useFormCollaboration({
     const releaseLock = useCallback((sectionKey: string) => {
         heldSections.current.delete(sectionKey);
         send({ type: "lock.release", section_key: sectionKey });
+    }, [send]);
+
+    const releaseAll = useCallback(() => {
+        for (const key of heldSections.current) {
+            send({ type: "lock.release", section_key: key });
+        }
+        heldSections.current.clear();
     }, [send]);
 
     const refreshLock = useCallback((sectionKey: string) => {
@@ -207,6 +215,7 @@ export function useFormCollaboration({
         connected,
         acquireLock,
         releaseLock,
+        releaseAll,
         refreshLock,
         isLockedByOther,
         isLockedByMe,
