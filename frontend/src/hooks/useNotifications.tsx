@@ -1,4 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+"use client";
+
+import {
+    createContext,
+    useContext,
+    useState,
+    useEffect,
+    useCallback,
+    useRef,
+    type ReactNode,
+} from 'react';
 import api, { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import { extractApiError } from '@/lib/toast-utils';
@@ -12,6 +22,16 @@ export interface Notification {
     actor_name: string;
     is_read: boolean;
     created_at: string;
+}
+
+interface NotificationContextValue {
+    notifications: Notification[];
+    unreadCount: number;
+    loading: boolean;
+    markAsRead: (id: number) => Promise<void>;
+    markAllAsRead: () => Promise<void>;
+    deleteNotification: (id: number) => Promise<void>;
+    refresh: () => Promise<void>;
 }
 
 function getInitials(name: string): string {
@@ -39,7 +59,15 @@ function getWsUrl(): string {
     return `${wsProtocol}://${host}/ws/notifications/`;
 }
 
-export function useNotifications() {
+const NotificationContext = createContext<NotificationContextValue | null>(null);
+
+/**
+ * Owns the single notification WebSocket, polling fallback, toast firing, and
+ * shared state. Mounted ONCE at the app root so the toast side-effect fires
+ * exactly once per notification — no matter how many <NotificationBell>s are on
+ * screen (the responsive layout renders one in the navbar and one in the shell).
+ */
+export function NotificationProvider({ children }: { children: ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -59,27 +87,27 @@ export function useNotifications() {
         }
     }, []);
 
-    const markAsRead = async (id: number) => {
+    const markAsRead = useCallback(async (id: number) => {
         try {
             await api.post(`/api/notifications/${id}/read/`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (err) {
-            toast.error(extractApiError(err, "Failed to mark notification as read."));
+            toast.error(extractApiError(err, "Couldn't mark as read."));
         }
-    };
+    }, []);
 
-    const markAllAsRead = async () => {
+    const markAllAsRead = useCallback(async () => {
         try {
             await api.post('/api/notifications/read-all/');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
         } catch (err) {
-            toast.error(extractApiError(err, "Failed to mark all as read."));
+            toast.error(extractApiError(err, "Couldn't mark all as read."));
         }
-    };
+    }, []);
 
-    const deleteNotification = async (id: number) => {
+    const deleteNotification = useCallback(async (id: number) => {
         try {
             await api.delete(`/api/notifications/${id}/delete/`);
             setNotifications(prev => {
@@ -90,79 +118,71 @@ export function useNotifications() {
                 return prev.filter(n => n.id !== id);
             });
         } catch (err) {
-            toast.error(extractApiError(err, "Failed to delete notification."));
+            toast.error(extractApiError(err, "Couldn't delete notification."));
         }
-    };
+    }, []);
 
-    // ─── WebSocket for real-time push ────────────────────────────────────
+    // ─── Single WebSocket for real-time push ─────────────────────────────────
     const connectWs = useCallback(() => {
         if (typeof window === 'undefined') return;
-
         try {
-            const url = getWsUrl();
-            const ws = new WebSocket(url);
-
-            ws.onopen = () => {
-                console.debug('[WS] Notification channel connected');
-            };
+            const ws = new WebSocket(getWsUrl());
 
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'notification' && data.notification) {
-                        const incoming: Notification = data.notification;
+                    if (data.type !== 'notification' || !data.notification) return;
+                    const incoming: Notification = data.notification;
 
-                        // Fire toast BEFORE the state updater (side-effect stays outside)
-                        if (!incoming.is_read && !toastedIds.current.has(incoming.id)) {
-                            toastedIds.current.add(incoming.id);
-                            if (toastedIds.current.size > 250) {
-                                toastedIds.current = new Set(Array.from(toastedIds.current).slice(-150));
-                            }
-                            toast(incoming.title || 'New notification', {
-                                description: incoming.message || undefined,
-                                icon: incoming.actor_name
-                                    ? <ActorAvatar name={incoming.actor_name} />
-                                    : undefined,
-                                action: incoming.link
-                                    ? { label: 'View', onClick: () => window.location.assign(incoming.link) }
-                                    : undefined,
-                            });
+                    // Fire the toast before the state updater (side-effect stays
+                    // outside React's render). Deduped by id within this single
+                    // provider instance.
+                    if (!incoming.is_read && !toastedIds.current.has(incoming.id)) {
+                        toastedIds.current.add(incoming.id);
+                        if (toastedIds.current.size > 250) {
+                            toastedIds.current = new Set(Array.from(toastedIds.current).slice(-150));
                         }
-
-                        setNotifications(prev => {
-                            if (prev.some(n => n.id === incoming.id)) return prev;
-                            if (!incoming.is_read) {
-                                setUnreadCount(c => c + 1);
-                            }
-                            return [incoming, ...prev].slice(0, 50);
+                        toast(incoming.title || 'New notification', {
+                            id: `notif-${incoming.id}`,
+                            description: incoming.message || undefined,
+                            icon: incoming.actor_name
+                                ? <ActorAvatar name={incoming.actor_name} />
+                                : undefined,
+                            action: incoming.link
+                                ? { label: 'View', onClick: () => window.location.assign(incoming.link) }
+                                : undefined,
                         });
                     }
+
+                    setNotifications(prev => {
+                        if (prev.some(n => n.id === incoming.id)) return prev;
+                        if (!incoming.is_read) {
+                            setUnreadCount(c => c + 1);
+                        }
+                        return [incoming, ...prev].slice(0, 50);
+                    });
                 } catch (e) {
                     console.error('[WS] Failed to parse message:', e);
                 }
             };
 
             ws.onclose = () => {
-                console.debug('[WS] Notification channel closed, reconnecting in 5s...');
                 reconnectTimeout.current = setTimeout(connectWs, 5000);
             };
 
-            ws.onerror = (err) => {
-                console.debug('[WS] Notification channel error:', err);
-                ws.close();
+            ws.onerror = () => {
+                try { ws.close(); } catch { /* noop */ }
             };
 
             wsRef.current = ws;
-        } catch (e) {
-            console.debug('[WS] Failed to create WebSocket:', e);
-        }
+        } catch { /* retry handled by onclose */ }
     }, []);
 
     useEffect(() => {
         fetchNotifications();
         connectWs();
 
-        // Fallback polling (slower, for when WS is unavailable)
+        // Fallback polling (slower, for when WS is unavailable).
         const interval = setInterval(fetchNotifications, 60000);
 
         return () => {
@@ -175,13 +195,34 @@ export function useNotifications() {
         };
     }, [fetchNotifications, connectWs]);
 
-    return {
-        notifications,
-        unreadCount,
-        loading,
-        markAsRead,
-        markAllAsRead,
-        deleteNotification,
-        refresh: fetchNotifications,
-    };
+    return (
+        <NotificationContext.Provider
+            value={{
+                notifications,
+                unreadCount,
+                loading,
+                markAsRead,
+                markAllAsRead,
+                deleteNotification,
+                refresh: fetchNotifications,
+            }}
+        >
+            {children}
+        </NotificationContext.Provider>
+    );
+}
+
+const EMPTY_NOTIFICATIONS: NotificationContextValue = {
+    notifications: [],
+    unreadCount: 0,
+    loading: true,
+    markAsRead: async () => {},
+    markAllAsRead: async () => {},
+    deleteNotification: async () => {},
+    refresh: async () => {},
+};
+
+/** Read shared notification state. Returns safe defaults outside a provider. */
+export function useNotifications(): NotificationContextValue {
+    return useContext(NotificationContext) ?? EMPTY_NOTIFICATIONS;
 }

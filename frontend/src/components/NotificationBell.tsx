@@ -32,7 +32,7 @@ function normalizeNotificationLink(notif: Notification) {
     return notif.link;
 }
 
-/* â”€â”€â”€ Type-based styling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Type-based styling ─────────────────────────────────────────────────── */
 
 interface TypeStyle {
     icon: React.ReactNode;

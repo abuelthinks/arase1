@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/hooks/useNotifications";
 import Navbar from "@/components/Navbar";
 import AppShell from "@/components/AppShell";
 import AppToaster from "@/components/AppToaster";
@@ -24,19 +25,21 @@ export default function RootLayout({
         <AuthProvider>
           <AppToaster />
           <AccessibilityLoader />
-          <RealtimeProvider>
-            <SkipToContent />
-            <div className="flex flex-col h-screen overflow-hidden w-full">
-              <div className="shrink-0 md:hidden">
-                <Navbar />
+          <NotificationProvider>
+            <RealtimeProvider>
+              <SkipToContent />
+              <div className="flex flex-col h-screen overflow-hidden w-full">
+                <div className="shrink-0 md:hidden">
+                  <Navbar />
+                </div>
+                <div className="flex-1 min-h-0 overflow-hidden w-full">
+                  <AppShell>
+                    {children}
+                  </AppShell>
+                </div>
               </div>
-              <div className="flex-1 min-h-0 overflow-hidden w-full">
-                <AppShell>
-                  {children}
-                </AppShell>
-              </div>
-            </div>
-          </RealtimeProvider>
+            </RealtimeProvider>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>
