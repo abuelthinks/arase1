@@ -22,13 +22,21 @@ ALLOWED_HOSTS = [
 # ─── Database — PostgreSQL required in production ────────────────────────────
 import dj_database_url
 
+# NOTE: When DATABASE_URL points at Supabase's transaction pooler (port 6543),
+# connections must be short-lived — persistent connections tie up the pooler's
+# client slots and exhaust the 200-connection limit. Default conn_max_age to 0;
+# override via DB_CONN_MAX_AGE only when using a direct/session connection (5432).
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
+        conn_max_age=int(os.environ.get('DB_CONN_MAX_AGE', '0')),
         conn_health_checks=True,
     )
 }
+
+# Transaction-mode poolers don't support server-side cursors — disable them so
+# querysets using .iterator() don't fail with "cursor does not exist".
+DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 # ─── CORS — configured from production frontend origins ───────────────────────
 CORS_ALLOWED_ORIGINS = parse_csv_env('CORS_ALLOWED_ORIGINS')
