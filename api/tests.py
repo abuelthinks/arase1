@@ -394,6 +394,56 @@ class SecurityHardeningTests(APITestCase):
         self.student.refresh_from_db()
         self.assertEqual(self.student.status, 'ASSESSMENT_SCHEDULED')
 
+    def test_specialist_assessment_unlock_notifies_specialist(self):
+        MultidisciplinaryAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.specialist,
+            form_data={'notes': 'submitted'},
+            finalized_at=timezone.now(),
+            finalized_by=self.specialist,
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        unlock_response = self.client.post('/api/inputs/multidisciplinary-assessment/unlock/', {
+            'student_id': self.student.id,
+            'report_cycle_id': self.active_cycle.id,
+        }, format='json')
+
+        self.assertEqual(unlock_response.status_code, status.HTTP_200_OK)
+
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.specialist,
+            notification_type='SYSTEM',
+            title__icontains='Specialist Assessment unlocked',
+            message__icontains='has been unlocked'
+        ).exists())
+
+    def test_specialist_tracker_unlock_notifies_specialist(self):
+        MultidisciplinaryProgressTracker.objects.create(
+            student=self.student,
+            report_cycle=self.active_cycle,
+            submitted_by=self.specialist,
+            form_data={'notes': 'submitted'},
+            finalized_at=timezone.now(),
+            finalized_by=self.specialist,
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        unlock_response = self.client.post('/api/inputs/multidisciplinary-tracker/unlock/', {
+            'student_id': self.student.id,
+            'report_cycle_id': self.active_cycle.id,
+        }, format='json')
+
+        self.assertEqual(unlock_response.status_code, status.HTTP_200_OK)
+
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.specialist,
+            notification_type='SYSTEM',
+            title__icontains='Specialist Progress Tracker unlocked',
+            message__icontains='has been unlocked'
+        ).exists())
+
     def test_specialist_tracker_unlock_flow_notifies_admin(self):
         MultidisciplinaryProgressTracker.objects.create(
             student=self.student,

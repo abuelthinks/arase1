@@ -220,6 +220,44 @@ def notify_parent_assessment_unlocked(parent_user, student, unlocked_by=None):
     )
 
 
+def notify_specialist_form_unlocked(student, form_label, unlocked_by=None):
+    """Notify assigned specialists that an admin unlocked the multidisciplinary assessment/tracker."""
+    from api.models import StudentAccess
+
+    student_name = f"{student.first_name} {student.last_name}".strip()
+    actor = _user_display_name(unlocked_by) if unlocked_by else 'Admin'
+
+    form_tab_map = {
+        'Specialist Assessment': 'multi_assessment',
+        'Specialist Progress Tracker': 'multi_tracker',
+    }
+    form_tab = form_tab_map.get(form_label, '')
+    link = f"/workspace?studentId={student.id}&workspace=forms"
+    if form_tab:
+        link += f"&tab={form_tab}"
+
+    assigned_specialists = (
+        StudentAccess.objects
+        .filter(student=student, user__role='SPECIALIST')
+        .select_related('user')
+    )
+
+    notifications = []
+    for sa in assigned_specialists:
+        n = notify_user_in_app(
+            user=sa.user,
+            notification_type='SYSTEM',
+            title=f"{form_label} unlocked",
+            message=f"The {form_label.lower()} for {student_name} has been unlocked by {actor}.",
+            link=link,
+            actor_name=actor,
+        )
+        if n:
+            notifications.append(n)
+
+    return notifications
+
+
 def notify_form_submitted(user, student, form_label, link='', dedupe_key='', is_resubmission=False):
     """
     Notify admins when any user submits a form.

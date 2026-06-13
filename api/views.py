@@ -985,6 +985,9 @@ class AssessmentUnlockView(APIView):
         
         from .services.collaboration_service import broadcast_lock_changed
         broadcast_lock_changed("assessment", assessment.id)
+
+        from .services.notification_service import notify_specialist_form_unlocked
+        notify_specialist_form_unlocked(assessment.student, "Specialist Assessment", unlocked_by=request.user)
         
         return Response({"status": "Assessment unlocked successfully."})
 
@@ -1061,6 +1064,9 @@ class TrackerUnlockView(APIView):
         
         from .services.collaboration_service import broadcast_lock_changed
         broadcast_lock_changed("tracker", tracker.id)
+
+        from .services.notification_service import notify_specialist_form_unlocked
+        notify_specialist_form_unlocked(tracker.student, "Specialist Progress Tracker", unlocked_by=request.user)
         
         return Response({"status": "Tracker unlocked successfully."})
 

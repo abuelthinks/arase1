@@ -1945,23 +1945,19 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         {isSectionScopedForm && teamSubmission?.finalized_at && (
                             <div className="mt-3">
                                 {isAdmin ? (
-                                    <div className={formBannerClass("warning")}>
-                                        <div className="text-sm">
-                                            {teamSubmission?.unlock_requested ? (
+                                    teamSubmission?.unlock_requested && (
+                                        <div className={formBannerClass("warning")}>
+                                            <div className="text-sm">
                                                 <strong>Unlock requested by specialist.</strong>
-                                            ) : (
-                                                <span>This form is finalized and locked.</span>
-                                            )}
-                                        </div>
-                                        {teamSubmission?.unlock_requested && (
+                                            </div>
                                             <button
                                                 onClick={adminUnlockForm}
                                                 className="shrink-0 rounded-md border border-amber-200 bg-card px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100"
                                             >
                                                 Unlock Form
                                             </button>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )
                                 ) : (
                                     user?.role === "SPECIALIST" && !studentProfile?.generated_documents?.some((doc: any) => doc.document_type === "IEP") && (
                                         <div className={formBannerClass("neutral")}>
