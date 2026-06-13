@@ -23,6 +23,30 @@
   --warning: #f59e0b;
   --danger: #ef4444;
 
+  /* Solid (filled) tone backgrounds — paired with white text. Used for role
+     badges so a role reads as a filled chip, visually distinct from the soft,
+     outlined status badges. Kept theme-independent: these are saturated enough
+     to read on a dark card yet dark enough that white text clears WCAG AA. */
+  --solid-primary: #4338ca;
+  --solid-info: #1d4ed8;
+  --solid-success: #15803d;
+  --solid-warning: #b45309;
+  --solid-danger: #b91c1c;
+  --solid-attention: #be185d;
+  --solid-neutral: #475569;
+
+  /* Student lifecycle ramp — ordered cool→green so "further along" reads at a
+     glance: slate (queued) → sky → blue → teal → green (fully served), with a
+     faint gray for archived. Deliberately uses NO alert hues — amber/pink/red
+     stay reserved for genuine problems. Consumed via STAGE_CLASS in
+     lib/role-colors.ts. */
+  --stage-intake-bg: #f1f5f9;     --stage-intake-text: #475569;     --stage-intake-border: #e2e8f0;
+  --stage-scheduled-bg: #e0f2fe;  --stage-scheduled-text: #075985;  --stage-scheduled-border: #bae6fd;
+  --stage-assessed-bg: #dbeafe;   --stage-assessed-text: #1e40af;   --stage-assessed-border: #bfdbfe;
+  --stage-enrolled-bg: #ccfbf1;   --stage-enrolled-text: #115e59;   --stage-enrolled-border: #99f6e4;
+  --stage-integrated-bg: #d1fae5; --stage-integrated-text: #065f46; --stage-integrated-border: #a7f3d0;
+  --stage-closed-bg: #f8fafc;     --stage-closed-text: #94a3b8;     --stage-closed-border: #e2e8f0;
+
   /* Borders & Shadows */
   --border-light: #e2e8f0;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -101,6 +125,14 @@
   --bg-neutral-light: #334155;
   --text-neutral: #cbd5e1;
   --border-neutral: #475569;
+
+  /* Lifecycle ramp — same cool→green order, tuned for dark surfaces. */
+  --stage-intake-bg: #334155;     --stage-intake-text: #cbd5e1;     --stage-intake-border: #475569;
+  --stage-scheduled-bg: #075985;  --stage-scheduled-text: #bae6fd;  --stage-scheduled-border: #0369a1;
+  --stage-assessed-bg: #1e3a8a;   --stage-assessed-text: #93c5fd;   --stage-assessed-border: #1d4ed8;
+  --stage-enrolled-bg: #134e4a;   --stage-enrolled-text: #5eead4;   --stage-enrolled-border: #0f766e;
+  --stage-integrated-bg: #064e3b; --stage-integrated-text: #6ee7b7; --stage-integrated-border: #047857;
+  --stage-closed-bg: #1e293b;     --stage-closed-text: #64748b;     --stage-closed-border: #334155;
 }
 
 /* Global Overrides for Dark Theme to override hardcoded white/slate classes */

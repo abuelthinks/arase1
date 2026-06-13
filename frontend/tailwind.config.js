@@ -25,35 +25,43 @@ module.exports = {
           soft: 'var(--accent-soft)',
           border: 'var(--accent-border)',
           text: 'var(--accent-text)',
+          strong: 'var(--solid-primary)',
         },
         // Status tones — each has a soft background, readable text, and border.
+        // `solid` is the bright tone (dots, icons); `strong` is the dark filled
+        // background used for solid badges (paired with white text).
         success: {
           DEFAULT: 'var(--text-success)',
           soft: 'var(--bg-success-light)',
           line: 'var(--border-success)',
           solid: 'var(--success)',
+          strong: 'var(--solid-success)',
         },
         warning: {
           DEFAULT: 'var(--text-warning)',
           soft: 'var(--bg-warning-light)',
           line: 'var(--border-warning)',
           solid: 'var(--warning)',
+          strong: 'var(--solid-warning)',
         },
         danger: {
           DEFAULT: 'var(--text-danger)',
           soft: 'var(--bg-danger-light)',
           line: 'var(--border-danger)',
           solid: 'var(--danger)',
+          strong: 'var(--solid-danger)',
         },
         info: {
           DEFAULT: 'var(--text-info)',
           soft: 'var(--bg-info-light)',
           line: 'var(--border-info)',
+          strong: 'var(--solid-info)',
         },
         attention: {
           DEFAULT: 'var(--text-attention)',
           soft: 'var(--bg-attention-light)',
           line: 'var(--border-attention)',
+          strong: 'var(--solid-attention)',
         },
         // Neutral tone — named `subtle` to avoid clobbering Tailwind's built-in
         // `neutral` palette, which existing markup still relies on.
@@ -61,6 +69,7 @@ module.exports = {
           DEFAULT: 'var(--text-neutral)',
           soft: 'var(--bg-neutral-light)',
           line: 'var(--border-neutral)',
+          strong: 'var(--solid-neutral)',
         },
       },
     },
