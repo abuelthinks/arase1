@@ -296,11 +296,6 @@
   color: #c7d2fe !important;
 }
 
-.dark-theme .bg-amber-100 {
-  background-color: #78350f !important;
-  color: #fde68a !important;
-}
-
 .dark-theme .shadow-lg,
 .dark-theme .shadow-2xl {
   background-color: var(--bg-secondary) !important;
@@ -328,37 +323,6 @@
   color: #c7d2fe !important;
 }
 
-.dark-theme [class*="bg-orange-50"],
-.dark-theme [class*="bg-amber-50"],
-.dark-theme [class*="bg-amber-100"] {
-  background-color: #2a1b0c !important;
-}
-
-.dark-theme [class*="border-orange-200"],
-.dark-theme [class*="border-orange-300"],
-.dark-theme [class*="border-amber-200"] {
-  border-color: #7c2d12 !important;
-}
-
-.dark-theme [class*="text-orange-900"],
-.dark-theme [class*="text-orange-800"],
-.dark-theme [class*="text-amber-900"],
-.dark-theme [class*="text-amber-800"],
-.dark-theme [class*="text-amber-700"] {
-  color: #fdba74 !important;
-}
-
-.dark-theme [class*="bg-emerald-50"] {
-  background-color: #064e3b !important;
-}
-
-.dark-theme [class*="border-emerald-200"] {
-  border-color: #047857 !important;
-}
-
-.dark-theme [class*="text-emerald-700"] {
-  color: #6ee7b7 !important;
-}
 
 /* ─── Notification Dropdown Overrides in Dark Mode ─── */
 .dark-theme .bg-blue-50\/40 {
@@ -373,15 +337,6 @@
 }
 
 /* Specific badge overrides for notification icon containers */
-.dark-theme .bg-emerald-100,
-.dark-theme [class*="bg-emerald-100"] {
-  background-color: #064e3b !important;
-  color: #6ee7b7 !important;
-}
-.dark-theme [class*="text-emerald-600"] {
-  color: #6ee7b7 !important;
-}
-
 .dark-theme .bg-blue-100,
 .dark-theme [class*="bg-blue-100"] {
   background-color: #1e3a8a !important;
@@ -404,10 +359,6 @@
   color: #c7d2fe !important;
 }
 
-.dark-theme [class*="text-amber-600"] {
-  color: #fde68a !important;
-}
-
 /* ─── Premium Dashboard KPI Card Uniformity in Dark Mode ─── */
 .dark-theme [class*="bg-amber-50/50"],
 .dark-theme [class*="bg-blue-50/50"],
@@ -426,11 +377,6 @@
 }
 
 /* Coordinated text accent colors to match their icons */
-.dark-theme [class*="text-amber-700"],
-.dark-theme [class*="text-amber-900"] {
-  color: #fdba74 !important; /* Gold */
-}
-
 .dark-theme [class*="text-blue-700"],
 .dark-theme [class*="text-blue-900"] {
   color: #93c5fd !important; /* Soft blue */
