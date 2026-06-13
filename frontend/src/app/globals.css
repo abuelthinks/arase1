@@ -1391,36 +1391,34 @@ body {
 
 /* ── Sonner Toast Overrides ──────────────────────────────────────────────── */
 /*
- * Sonner's built-in styles.css uses [data-sonner-toast][data-styled='true']
- * (2 attribute selectors) — we must match that specificity on all overrides.
- * We also override the CSS custom properties on the theme selector where
- * sonner defines --normal-bg, --normal-border, --normal-text.
+ * Driven entirely by the design tokens above, so toasts swap automatically in
+ * light/dark mode with the rest of the UI. Sonner injects its own stylesheet at
+ * runtime on [data-sonner-toaster][data-sonner-theme='…'] (specificity 0,2,0),
+ * so we map its colour variables on the same selector with !important to win
+ * the cascade. The token values change under .dark-theme, so one mapping covers
+ * both themes — no per-theme hex.
  */
+[data-sonner-toaster][data-sonner-theme='light'],
+[data-sonner-toaster][data-sonner-theme='dark'] {
+  --normal-bg: var(--bg-card) !important;
+  --normal-border: var(--border-light) !important;
+  --normal-text: var(--text-primary) !important;
 
-/* Override sonner's light theme CSS variables.
- * !important is required because sonner injects its own stylesheet at runtime
- * with the same selector — without !important, sonner's defaults win the
- * cascade and the custom palette never applies to typed toasts. */
-[data-sonner-toaster][data-sonner-theme='light'] {
-  --normal-bg: #ffffff !important;
-  --normal-border: #e2e8f0 !important;
-  --normal-text: #0f172a !important;
+  --success-bg: var(--bg-success-light) !important;
+  --success-border: var(--border-success) !important;
+  --success-text: var(--text-success) !important;
 
-  --success-bg: #f0fdf4 !important;
-  --success-border: #bbf7d0 !important;
-  --success-text: #14532d !important;
+  --error-bg: var(--bg-danger-light) !important;
+  --error-border: var(--border-danger) !important;
+  --error-text: var(--text-danger) !important;
 
-  --error-bg: #fef2f2 !important;
-  --error-border: #fca5a5 !important;
-  --error-text: #7f1d1d !important;
+  --info-bg: var(--bg-info-light) !important;
+  --info-border: var(--border-info) !important;
+  --info-text: var(--text-info) !important;
 
-  --info-bg: #eff6ff !important;
-  --info-border: #bfdbfe !important;
-  --info-text: #1e3a5f !important;
-
-  --warning-bg: #fffbeb !important;
-  --warning-border: #fde68a !important;
-  --warning-text: #78350f !important;
+  --warning-bg: var(--bg-warning-light) !important;
+  --warning-border: var(--border-warning) !important;
+  --warning-text: var(--text-warning) !important;
 }
 
 /* Container-level */
@@ -1429,39 +1427,44 @@ body {
   font-family: var(--font-sans) !important;
 }
 
-/* Base toast card — solid, clean, simple layout */
+/* Base toast card — a left accent bar carries the type; the body stays calm.
+   Untyped toasts fall back to a soft neutral tint (never stark white) so they
+   sit in the same family as the typed ones. */
 [data-sonner-toast][data-styled='true'] {
   border-radius: 12px !important;
-  border: 1px solid var(--border-light) !important;
+  border: 1px solid var(--toast-border, var(--border-neutral)) !important;
+  border-left: 4px solid var(--toast-accent, var(--text-neutral)) !important;
+  background: var(--toast-bg, var(--bg-neutral-light)) !important;
+  color: var(--toast-text, var(--text-primary)) !important;
   box-shadow: var(--shadow-md) !important;
   padding: 12px 14px 12px 16px !important;
   gap: 10px !important;
 }
 
-/* Toast title — neutral dark across all types for consistent legibility */
+/* Toast title — uses the type's text colour for legible at-a-glance meaning. */
 [data-sonner-toast][data-styled='true'] [data-title] {
   font-weight: 700 !important;
   font-size: 0.875rem !important;
   line-height: 1.25 !important;
   letter-spacing: -0.01em;
-  color: #0f172a !important;
+  color: var(--toast-text, var(--text-primary)) !important;
 }
 
-/* Toast description — neutral muted, no opacity dimming */
+/* Toast description — muted, never opacity-dimmed. */
 [data-sonner-toast][data-styled='true'] [data-description] {
   font-weight: 500 !important;
   font-size: 0.78rem !important;
   line-height: 1.35 !important;
-  color: #475569 !important;
+  color: var(--text-secondary) !important;
   opacity: 1 !important;
 }
 
-/* Close button — pinned inside the top-right corner of the toast */
+/* Close button — pinned inside the top-right corner of the toast. */
 [data-sonner-toast][data-styled='true'] [data-close-button] {
   border-radius: 8px !important;
-  border: 1px solid rgba(226, 232, 240, 0.6) !important;
-  background: rgba(248, 250, 252, 0.85) !important;
-  color: #64748b !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
   transition: all 0.15s ease !important;
   width: 22px !important;
   height: 22px !important;
@@ -1472,15 +1475,15 @@ body {
 }
 
 [data-sonner-toast][data-styled='true'] [data-close-button]:hover {
-  background: #f1f5f9 !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-medium, var(--border-light)) !important;
 }
 
-/* Action button (e.g. "View" on WebSocket notifications) */
+/* Action button (e.g. "View" on notification toasts) — app accent. */
 [data-sonner-toast][data-styled='true'] [data-button] {
-  background: #3b82f6 !important;
-  color: white !important;
+  background: var(--accent-primary) !important;
+  color: #ffffff !important;
   border: none !important;
   border-radius: 8px !important;
   padding: 6px 12px !important;
@@ -1491,45 +1494,51 @@ body {
 }
 
 [data-sonner-toast][data-styled='true'] [data-button]:hover {
-  background: #2563eb !important;
+  background: var(--accent-hover) !important;
 }
 
-[data-sonner-toast][data-styled='true'] [data-button]:active {
-  background: #1d4ed8 !important;
-}
+/* ── Type variants ───────────────────────────────────────────────────────── */
+/* Each sets the shared --toast-* vars the base card reads, so the accent bar,
+   border, background tint and title colour all stay in sync per type. */
 
-/* ── Type-specific color variants ────────────────────────────────────────── */
-
-/* Success */
 [data-sonner-toast][data-styled='true'][data-type="success"] {
-  border-left-color: #16a34a !important;
+  --toast-accent: var(--success);
+  --toast-border: var(--border-success);
+  --toast-bg: var(--bg-success-light);
+  --toast-text: var(--text-success);
 }
 [data-sonner-toast][data-styled='true'][data-type="success"] [data-icon] svg {
-  color: #16a34a !important;
+  color: var(--success) !important;
 }
 
-/* Error */
 [data-sonner-toast][data-styled='true'][data-type="error"] {
-  border-left-color: #dc2626 !important;
+  --toast-accent: var(--danger);
+  --toast-border: var(--border-danger);
+  --toast-bg: var(--bg-danger-light);
+  --toast-text: var(--text-danger);
 }
 [data-sonner-toast][data-styled='true'][data-type="error"] [data-icon] svg {
-  color: #dc2626 !important;
+  color: var(--danger) !important;
 }
 
-/* Info */
 [data-sonner-toast][data-styled='true'][data-type="info"] {
-  border-left-color: #2563eb !important;
+  --toast-accent: var(--text-info);
+  --toast-border: var(--border-info);
+  --toast-bg: var(--bg-info-light);
+  --toast-text: var(--text-info);
 }
 [data-sonner-toast][data-styled='true'][data-type="info"] [data-icon] svg {
-  color: #2563eb !important;
+  color: var(--text-info) !important;
 }
 
-/* Warning */
 [data-sonner-toast][data-styled='true'][data-type="warning"] {
-  border-left-color: #d97706 !important;
+  --toast-accent: var(--warning);
+  --toast-border: var(--border-warning);
+  --toast-bg: var(--bg-warning-light);
+  --toast-text: var(--text-warning);
 }
 [data-sonner-toast][data-styled='true'][data-type="warning"] [data-icon] svg {
-  color: #d97706 !important;
+  color: var(--warning) !important;
 }
 
 /* ── Mobile adjustments ──────────────────────────────────────────────────── */
