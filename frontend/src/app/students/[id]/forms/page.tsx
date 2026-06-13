@@ -67,7 +67,7 @@ function UnifiedFormsViewerInner() {
     }
 
     if (!formStatuses) {
-        return <div className="p-8 text-center text-red-500">Failed to load student data.</div>;
+        return <div className="p-8 text-center text-danger">Failed to load student data.</div>;
     }
 
     const resolvedActiveTab = visibleTabs.some(tab => tab.id === activeTab)
@@ -137,7 +137,7 @@ function UnifiedFormsViewerInner() {
                                             >
                                                 {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                                 <span className={`text-sm font-bold truncate ${isActive ? 'text-indigo-800' : 'text-fg'}`}>{tab.label}</span>
-                                                {isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                                {isSub && <svg className="w-4 h-4 text-success shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                             </button>
                                         );
                                     })}
@@ -154,11 +154,11 @@ function UnifiedFormsViewerInner() {
                                             <button 
                                                 key={tab.id}
                                                 onClick={() => handleTabChange(tab.id)}
-                                                className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}
+                                                className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}
                                             >
-                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>{tab.label}</span>
-                                                {isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-success' : 'text-fg'}`}>{tab.label}</span>
+                                                {isSub && <svg className="w-4 h-4 text-success shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                             </button>
                                         );
                                     })}

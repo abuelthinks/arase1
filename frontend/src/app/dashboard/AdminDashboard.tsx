@@ -120,9 +120,9 @@ const getActionTypeStyle = (type: DashboardAction["type"]) => {
 const getFormPillClass = (isSubmitted?: boolean, isUnlocked?: boolean) => {
     return `cursor-pointer text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-colors duration-200 ${
         isUnlocked
-            ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900 hover:border-amber-300"
+            ? "border-warning-line bg-warning-soft text-warning hover:bg-warning-soft hover:text-warning hover:border-warning-line"
             : isSubmitted 
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300" 
+                ? "border-success-line bg-success-soft text-success hover:bg-success-soft hover:text-success hover:border-success-line" 
                 : "border-line bg-app text-muted hover:bg-subtle-soft hover:text-fg hover:border-line"
     }`;
 };
@@ -154,11 +154,11 @@ const getCardButtonClass = (tone: string) => {
     const base = "shrink-0 text-center text-xs font-bold px-4 py-2 rounded-lg bg-card shadow-sm transition-colors duration-200 border no-underline ";
     switch (tone) {
         case "warning":
-            return base + "text-amber-700 border-amber-200 hover:bg-amber-400 hover:text-amber-900 hover:border-amber-500";
+            return base + "text-warning border-warning-line hover:bg-warning-solid hover:text-warning hover:border-warning-line";
         case "info":
             return base + "text-blue-700 border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-700";
         case "success":
-            return base + "text-emerald-700 border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-700";
+            return base + "text-success border-success-line hover:bg-success-solid hover:text-white hover:border-success-line";
         case "attention":
             return base + "text-pink-700 border-pink-200 hover:bg-pink-600 hover:text-white hover:border-pink-700";
         default:
@@ -832,10 +832,10 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 
                                 {/* Urgent & Pending Tasks (Action Center + Watchlist combined) */}
-                                <div className="lg:col-span-2 flex flex-col bg-card rounded-2xl border border-rose-200 shadow-sm overflow-hidden">
-                                    <div className="bg-rose-50 border-b border-rose-100 p-4 sm:p-5 flex items-center justify-between">
+                                <div className="lg:col-span-2 flex flex-col bg-card rounded-2xl border border-danger-line shadow-sm overflow-hidden">
+                                    <div className="bg-danger-soft border-b border-danger-line p-4 sm:p-5 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 shadow-inner">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-danger-soft text-danger shadow-inner">
                                                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                             </div>
                                             <div>
@@ -844,14 +844,14 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
                                         <div className="hidden sm:flex gap-2">
-                                            <span className="text-xs font-bold text-rose-700 bg-rose-100 px-3 py-1 rounded-full border border-rose-200">{actionCounts.warning} urgent</span>
+                                            <span className="text-xs font-bold text-danger bg-danger-soft px-3 py-1 rounded-full border border-danger-line">{actionCounts.warning} urgent</span>
                                             <span className="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full border border-blue-200">{actionCounts.info} queued</span>
                                         </div>
                                     </div>
                                     <div className="p-4 sm:p-5 flex-1 max-h-[400px] overflow-y-auto bg-app/50">
                                         {dashboardActions.length === 0 && watchlistItems.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                                                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                                                <div className="w-16 h-16 bg-success-soft text-success rounded-full flex items-center justify-center mb-3 shadow-sm">
                                                     <Sparkles className="w-8 h-8" />
                                                 </div>
                                                 <p className="font-bold text-fg m-0 text-lg">You're all caught up!</p>
@@ -918,10 +918,10 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                     
-                                    <div className="rounded-2xl border border-amber-100 bg-card p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-amber-300 hover:shadow-md group">
+                                    <div className="rounded-2xl border border-warning-line bg-card p-4 shadow-sm flex items-center justify-between transition-[border-color,box-shadow] duration-200 hover:border-warning-line hover:shadow-md group">
                                         <div>
-                                            <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-amber-600">Awaiting Assess</p>
-                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-fg group-hover:text-amber-600 transition-colors">{pendingStudents}</p>
+                                            <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-warning">Awaiting Assess</p>
+                                            <p className="mt-1 mb-0 text-2xl font-extrabold text-fg group-hover:text-warning transition-colors">{pendingStudents}</p>
                                             <p className="mt-1 text-xs font-medium text-muted mb-0">Intake / Scheduling</p>
                                         </div>
                                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-md shadow-amber-200">
@@ -973,7 +973,7 @@ export default function AdminDashboard() {
                                                 <span>Enrolled</span>
                                             </div>
                                             <div className="flex h-12 w-full rounded-full overflow-hidden border border-line bg-subtle-soft shadow-inner">
-                                                <div style={{ width: `${totalStudents ? (pendingStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-amber-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Pending Assessment">
+                                                <div style={{ width: `${totalStudents ? (pendingStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-warning-solid h-full flex items-center justify-center text-xs font-bold text-white" title="Pending Assessment">
                                                     {pendingStudents > 0 ? pendingStudents : ""}
                                                 </div>
                                                 <div style={{ width: `${totalStudents ? (scheduledStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-sky-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Pending Assessment">
@@ -982,7 +982,7 @@ export default function AdminDashboard() {
                                                 <div style={{ width: `${totalStudents ? (reviewStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-indigo-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Awaiting Review">
                                                     {reviewStudents > 0 ? reviewStudents : ""}
                                                 </div>
-                                                <div style={{ width: `${totalStudents ? (activeStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-emerald-400 h-full flex items-center justify-center text-xs font-bold text-white" title="Enrolled">
+                                                <div style={{ width: `${totalStudents ? (activeStudents / totalStudents) * 100 : 0}%`, transition: "width 1s ease-out" }} className="bg-success-solid h-full flex items-center justify-center text-xs font-bold text-white" title="Enrolled">
                                                     {activeStudents > 0 ? activeStudents : ""}
                                                 </div>
                                             </div>
@@ -990,7 +990,7 @@ export default function AdminDashboard() {
 
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                                             <div className="flex items-center gap-2 bg-app px-3 py-2 rounded-lg border border-line">
-                                                <div className="w-3 h-3 rounded-full bg-amber-400 shrink-0"></div>
+                                                <div className="w-3 h-3 rounded-full bg-warning-solid shrink-0"></div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-faint uppercase">Pending</span>
                                                     <span className="text-sm font-extrabold text-fg">{pendingStudents}</span>
@@ -1011,7 +1011,7 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 bg-app px-3 py-2 rounded-lg border border-line">
-                                                <div className="w-3 h-3 rounded-full bg-emerald-400 shrink-0"></div>
+                                                <div className="w-3 h-3 rounded-full bg-success-solid shrink-0"></div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-faint uppercase">Enrolled</span>
                                                     <span className="text-sm font-extrabold text-fg">{activeStudents}</span>
@@ -1036,7 +1036,7 @@ export default function AdminDashboard() {
                                             <p className="m-0 mt-1 text-sm text-muted">Average caseload: <span className="font-bold text-fg">{averageCaseload.toFixed(1)} students</span></p>
                                         </div>
                                         {unassignedStaff.length > 0 && (
-                                            <div className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">
+                                            <div className="px-3 py-1 rounded-full bg-success-soft text-success text-xs font-bold border border-success-line">
                                                 {unassignedStaff.length} staff available
                                             </div>
                                         )}
@@ -1050,7 +1050,7 @@ export default function AdminDashboard() {
                                                 const maxCaseload = Math.max(1, staffSortedByCaseload[0]?.assigned_students_count || 1);
                                                 const pct = (staff.assigned_students_count / maxCaseload) * 100;
                                                 // Color changes depending on load
-                                                const barColor = pct > 80 ? "bg-rose-500" : pct > 50 ? "bg-amber-400" : "bg-emerald-400";
+                                                const barColor = pct > 80 ? "bg-danger-solid" : pct > 50 ? "bg-warning-solid" : "bg-success-solid";
                                                 
                                                 return (
                                                     <div key={staff.id} className="flex flex-col gap-1.5">
@@ -1612,7 +1612,7 @@ export default function AdminDashboard() {
                                                                         setUserToDelete(u);
                                                                         setDeleteConfirmText("");
                                                                         setDeleteError("");
-                                                                    }} aria-label={`Delete user ${displayName}`} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
+                                                                    }} aria-label={`Delete user ${displayName}`} className="hover:bg-danger-soft transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                                     </button>
                                                                 </div>
@@ -1768,7 +1768,7 @@ export default function AdminDashboard() {
                                                 </span>
                                             </h3>
                                             {bulkEmails.length > 0 && !isBulkProcessing && (
-                                                <button onClick={clearAllBulkEmails} className="text-xs font-bold text-red-500 hover:text-red-700">Clear All</button>
+                                                <button onClick={clearAllBulkEmails} className="text-xs font-bold text-danger hover:text-danger">Clear All</button>
                                             )}
                                         </div>
 
@@ -1783,16 +1783,16 @@ export default function AdminDashboard() {
                                                 </div>
                                             ) : (
                                                 bulkEmails.map((entry, idx) => (
-                                                    <div key={`${entry.email}-${idx}`} className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-all ${entry.status === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : entry.status === 'error' ? 'bg-red-50 border-red-200 text-red-800' : entry.status === 'sending' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-card border-line text-fg'}`}>
+                                                    <div key={`${entry.email}-${idx}`} className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-all ${entry.status === 'success' ? 'bg-success-soft border-success-line text-success' : entry.status === 'error' ? 'bg-danger-soft border-danger-line text-danger' : entry.status === 'sending' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-card border-line text-fg'}`}>
                                                         <div className="flex items-center gap-3 truncate">
-                                                            {entry.status === 'success' ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : entry.status === 'error' ? <XCircle size={16} className="text-red-500 shrink-0" /> : entry.status === 'sending' ? <Loader2 size={16} className="text-indigo-500 animate-spin shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-line shrink-0" />}
+                                                            {entry.status === 'success' ? <CheckCircle2 size={16} className="text-success shrink-0" /> : entry.status === 'error' ? <XCircle size={16} className="text-danger shrink-0" /> : entry.status === 'sending' ? <Loader2 size={16} className="text-indigo-500 animate-spin shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-line shrink-0" />}
                                                             <div className="flex flex-col truncate">
                                                                 <span className="font-medium truncate">{entry.email}</span>
-                                                                {entry.errorMessage && <span className="text-xs text-red-600 mt-0.5 truncate">{entry.errorMessage}</span>}
+                                                                {entry.errorMessage && <span className="text-xs text-danger mt-0.5 truncate">{entry.errorMessage}</span>}
                                                             </div>
                                                         </div>
                                                         {entry.status === 'pending' && !isBulkProcessing && (
-                                                            <button onClick={() => removeBulkEmail(idx)} className="text-faint hover:text-red-500 p-1">
+                                                            <button onClick={() => removeBulkEmail(idx)} className="text-faint hover:text-danger p-1">
                                                                 <Trash2 size={14} />
                                                             </button>
                                                         )}
@@ -1977,13 +1977,13 @@ export default function AdminDashboard() {
                                                                 )}
                                                                 <button
                                                                     onClick={() => setInviteToResend(inv)}
-                                                                    className="hover:bg-emerald-50 transition-colors duration-200"
+                                                                    className="hover:bg-success-soft transition-colors duration-200"
                                                                     style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#16a34a", cursor: "pointer", padding: 0 }}
                                                                     title="Resend Invitation"
                                                                 >
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.49 2.74l1.51 1.51"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.49-2.74L3.5 16.75"/><polyline points="20 4 20 9 15 9"/><polyline points="4 20 4 15 9 15"/></svg>
                                                                 </button>
-                                                                <button onClick={() => setInviteToRevoke(inv)} className="hover:bg-red-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
+                                                                <button onClick={() => setInviteToRevoke(inv)} className="hover:bg-danger-soft transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                                 </button>
                                                             </div>
@@ -2169,7 +2169,7 @@ export default function AdminDashboard() {
             {inviteToRevoke && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
-                        <h2 className="m-0 text-lg font-extrabold text-red-700">Revoke invitation</h2>
+                        <h2 className="m-0 text-lg font-extrabold text-danger">Revoke invitation</h2>
                         <p className="mt-2 text-sm text-muted">
                             Revoking will invalidate the existing invite link for <strong>{inviteToRevoke.email}</strong>. They will not be able to register with the current link.
                         </p>
@@ -2178,7 +2178,7 @@ export default function AdminDashboard() {
                                 type="button"
                                 onClick={handleConfirmRevokeInvite}
                                 disabled={inviteActionLoading}
-                                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60"
+                                className="flex-1 rounded-xl bg-danger-solid px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-danger-solid disabled:opacity-60"
                             >
                                 {inviteActionLoading ? "Revoking..." : "Revoke"}
                             </button>
@@ -2199,7 +2199,7 @@ export default function AdminDashboard() {
             {inviteToResend && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
-                        <h2 className="m-0 text-lg font-extrabold text-emerald-700">Resend invitation</h2>
+                        <h2 className="m-0 text-lg font-extrabold text-success">Resend invitation</h2>
                         <p className="mt-2 text-sm text-muted">
                             This will revoke the previous link for <strong>{inviteToResend.email}</strong> and issue a fresh 72-hour invitation. You'll get a new copyable link after the resend.
                         </p>
@@ -2208,7 +2208,7 @@ export default function AdminDashboard() {
                                 type="button"
                                 onClick={handleConfirmResendInvite}
                                 disabled={inviteActionLoading}
-                                className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-60"
+                                className="flex-1 rounded-xl bg-success-solid px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-success-solid disabled:opacity-60"
                             >
                                 {inviteActionLoading ? "Sending..." : "Resend"}
                             </button>

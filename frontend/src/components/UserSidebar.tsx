@@ -172,7 +172,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                     <button
                         onClick={logout}
                         title="Log Out"
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-danger hover:bg-danger-soft transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         <LogOut size={18} />
                         {!collapsed && <span className="truncate">Log Out</span>}

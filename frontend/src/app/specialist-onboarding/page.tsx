@@ -252,7 +252,7 @@ export default function SpecialistOnboardingPage() {
                       }}
                       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
                         specialtyConfirmed && !requestingChange
-                          ? 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700'
+                          ? 'bg-success-solid text-white shadow-sm hover:bg-success-solid'
                           : 'border border-line text-fg hover:bg-app'
                       }`}
                     >
@@ -267,7 +267,7 @@ export default function SpecialistOnboardingPage() {
                       }}
                       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
                         requestingChange
-                          ? 'bg-amber-600 text-white shadow-sm hover:bg-amber-700'
+                          ? 'bg-warning-solid text-white shadow-sm hover:bg-warning-solid'
                           : 'border border-line text-fg hover:bg-app'
                       }`}
                     >
@@ -277,7 +277,7 @@ export default function SpecialistOnboardingPage() {
                   </div>
 
                   {specialtyConfirmed && !requestingChange && !specialtyRequestSent && (
-                    <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
+                    <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-success">
                       <Check className="h-4 w-4" aria-hidden="true" />
                       Great — your specialty is confirmed.
                     </p>
@@ -293,7 +293,7 @@ export default function SpecialistOnboardingPage() {
                           id="requested-specialty"
                           value={requestedSpecialty}
                           onChange={(event) => setRequestedSpecialty(event.target.value)}
-                          className="w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg transition-colors hover:bg-card focus:border-amber-400 focus:bg-card focus:outline-none focus:ring-4 focus:ring-amber-500/15"
+                          className="w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg transition-colors hover:bg-card focus:border-warning-line focus:bg-card focus:outline-none focus:ring-4 focus:ring-warning/15"
                         >
                           <option value="">Select specialty</option>
                           {SPECIALIST_SPECIALTIES.filter((option) => !specialties.includes(option)).map((option) => (
@@ -313,7 +313,7 @@ export default function SpecialistOnboardingPage() {
                           onChange={(event) => setSpecialtyRequestNote(event.target.value)}
                           rows={3}
                           placeholder="Briefly explain what should be changed."
-                          className="w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg transition-colors hover:bg-card focus:border-amber-400 focus:bg-card focus:outline-none focus:ring-4 focus:ring-amber-500/15"
+                          className="w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg transition-colors hover:bg-card focus:border-warning-line focus:bg-card focus:outline-none focus:ring-4 focus:ring-warning/15"
                         />
                       </div>
                       <div>
@@ -338,7 +338,7 @@ export default function SpecialistOnboardingPage() {
                               setSpecialtyRequestLoading(false);
                             }
                           }}
-                          className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex items-center gap-2 rounded-lg bg-warning-solid px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-warning-solid disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {specialtyRequestLoading ? (
                             <>
@@ -354,7 +354,7 @@ export default function SpecialistOnboardingPage() {
                   )}
 
                   {specialtyRequestSent && (
-                    <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
+                    <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-success">
                       <Check className="h-4 w-4" aria-hidden="true" />
                       Your specialty change request was sent to admin.
                     </p>

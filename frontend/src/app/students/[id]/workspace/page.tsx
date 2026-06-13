@@ -507,7 +507,7 @@ function UnifiedWorkspaceContent() {
         return <div className="p-8 text-center text-muted">Loading workspace...</div>;
     }
     if (!formStatuses) {
-        return <div className="p-8 text-center text-red-500">Failed to load student data.</div>;
+        return <div className="p-8 text-center text-danger">Failed to load student data.</div>;
     }
 
     // -- Sub-renderers for clean structure --
@@ -633,12 +633,12 @@ function UnifiedWorkspaceContent() {
             return { status: "not_started", label: "Not Started", bg: "bg-app border-line text-muted", dot: "bg-slate-400" };
         }
         if (contrib.status === "submitted") {
-            return { status: "submitted", label: "Submitted", bg: "bg-emerald-50 border-emerald-200 text-emerald-700", dot: "bg-emerald-500" };
+            return { status: "submitted", label: "Submitted", bg: "bg-success-soft border-success-line text-success", dot: "bg-success-solid" };
         }
         if (isSectionReopened(sectionKey)) {
-            return { status: "reopened", label: "Reopened", bg: "bg-rose-50 border-rose-200 text-rose-700 animate-pulse", dot: "bg-rose-500" };
+            return { status: "reopened", label: "Reopened", bg: "bg-danger-soft border-danger-line text-danger animate-pulse", dot: "bg-danger-solid" };
         }
-        return { status: "draft", label: "Draft", bg: "bg-amber-50 border-amber-200 text-amber-700", dot: "bg-amber-500" };
+        return { status: "draft", label: "Draft", bg: "bg-warning-soft border-warning-line text-warning", dot: "bg-warning-solid" };
     };
 
     const getAssignedSpecialist = (specialtyLabel: string) => {
@@ -827,7 +827,7 @@ function UnifiedWorkspaceContent() {
                                         }
 
                                         return (
-                                            <div key={action.title} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${action.tone === "warning" ? "border-amber-200 bg-amber-50" : action.tone === "positive" ? "border-emerald-200 bg-emerald-50" : "border-line bg-app"}`}>
+                                            <div key={action.title} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${action.tone === "warning" ? "border-warning-line bg-warning-soft" : action.tone === "positive" ? "border-success-line bg-success-soft" : "border-line bg-app"}`}>
                                                 <p className="text-sm font-bold text-fg">{action.title}</p>
                                                 <button onClick={action.onClick} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
                                                     {action.label}
@@ -863,7 +863,7 @@ function UnifiedWorkspaceContent() {
                                     <div className="divide-y divide-slate-100 rounded-lg border border-line overflow-hidden">
                                         {recentActivity.map((item: any) => (
                                             <div key={item.id} className="flex items-center gap-3 bg-card px-3 py-2.5 hover:bg-app">
-                                                <span className={`h-2 w-2 shrink-0 rounded-full ${item.tone === "document" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                                                <span className={`h-2 w-2 shrink-0 rounded-full ${item.tone === "document" ? "bg-indigo-500" : "bg-success-solid"}`} />
                                                 <div className="min-w-0 flex-1">
                                                     <p className="m-0 truncate text-sm font-bold text-fg">{item.title}</p>
                                                     <p className="m-0 truncate text-xs font-semibold text-muted">{item.meta}</p>
@@ -979,7 +979,7 @@ function UnifiedWorkspaceContent() {
                                                 <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-indigo-800' : 'text-fg'}`}>{tab.label}</span>
                                                 {isLocked ? (
                                                     <svg className="w-4 h-4 text-faint shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                                ) : isSub && <svg className="w-4 h-4 text-success shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                             </button>
                                         );
                                     })}
@@ -995,12 +995,12 @@ function UnifiedWorkspaceContent() {
                                     const isActive = activeFormTab === tab.id;
                                     const isLocked = (user?.role === "ADMIN" && !isStudentEnrolled) || (["SPECIALIST", "TEACHER"].includes(user?.role || "") && !isStudentEnrolled);
                                     return (
-                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
-                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-emerald-800' : 'text-fg'}`}>{tab.label}</span>
+                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
+                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
+                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-success' : 'text-fg'}`}>{tab.label}</span>
                                             {isLocked ? (
                                                 <svg className="w-4 h-4 text-faint shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                            ) : isSub && <svg className="w-4 h-4 text-emerald-500 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                            ) : isSub && <svg className="w-4 h-4 text-success shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                         </button>
                                     );
                                 })}
@@ -1143,7 +1143,7 @@ function UnifiedWorkspaceContent() {
                                                 {isLocked ? (
                                                     <Lock className="w-3.5 h-3.5 text-faint shrink-0 ml-2" />
                                                 ) : isSub ? (
-                                                    <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} />
+                                                    <Check className="w-4 h-4 text-success shrink-0 ml-2" strokeWidth={3} />
                                                 ) : (
                                                     <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0 ml-2 animate-pulse" />
                                                 )}
@@ -1187,12 +1187,12 @@ function UnifiedWorkspaceContent() {
                                 const isActive = reportView === "monthly";
                                 return (
                                     <div className="flex flex-col gap-1">
-                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
-                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
+                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
                                             <div className="flex justify-between items-center w-full">
-                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>Progress Report</span>
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-success' : 'text-fg'}`}>Progress Report</span>
                                                 {monthlyDocs.length > 1 && (
-                                                    <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{monthlyDocs.length} versions</span>
+                                                    <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-success-soft text-success px-1.5 py-0.5 rounded ml-2 shrink-0">{monthlyDocs.length} versions</span>
                                                 )}
                                             </div>
                                             <span className="text-xs text-muted truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
@@ -1292,13 +1292,13 @@ function UnifiedWorkspaceContent() {
                             {monthlyDocs.length > 1 && (
                                 <div className="bg-app border-b border-line px-4 py-1.5 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5 text-muted">
-                                        <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg className="w-3.5 h-3.5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                     </div>
                                     <select
                                         value={selectedDocId}
                                         onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
-                                        className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                        className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-success focus:border-success-line transition-all cursor-pointer shadow-sm appearance-none relative"
                                         style={{
                                             backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
                                             backgroundPosition: "right 0.4rem center",
@@ -1359,7 +1359,7 @@ function UnifiedWorkspaceContent() {
                             const isMatch = studentLangs.includes(lang.toUpperCase());
                             return (
                                 <span key={idx} className="flex items-center">
-                                    <span className={isMatch ? "bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold" : ""}>
+                                    <span className={isMatch ? "bg-success-soft text-success px-1.5 py-0.5 rounded font-bold" : ""}>
                                         {lang}
                                     </span>
                                     {idx < visibleLangs.length - 1 && <span>,</span>}
@@ -1479,7 +1479,7 @@ function UnifiedWorkspaceContent() {
                                 disabled={(!teamHasChanges && !teamConfirmedSuccess) || confirmingTeam}
                                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors ${
                                     teamConfirmedSuccess
-                                        ? "bg-emerald-500 hover:bg-emerald-600"
+                                        ? "bg-success-solid hover:bg-success-solid"
                                         : "bg-indigo-600 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-muted"
                                 }`}
                             >
@@ -1496,17 +1496,17 @@ function UnifiedWorkspaceContent() {
                                     >
                                         Cancel Changes
                                     </button>
-                                    <span className="text-xs font-semibold text-amber-700">Changes not saved yet</span>
+                                    <span className="text-xs font-semibold text-warning">Changes not saved yet</span>
                                 </>
                             )}
                         </div>
                         
                         {isLocked && (
-                            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 shadow-sm">
-                                <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            <div className="mt-4 p-4 bg-danger-soft border border-danger-line rounded-xl flex items-start gap-3 shadow-sm">
+                                <svg className="w-5 h-5 text-danger mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                 <div>
-                                    <p className="text-sm font-bold text-red-800">Assignment Locked</p>
-                                    <p className="text-xs text-red-700 mt-0.5">
+                                    <p className="text-sm font-bold text-danger">Assignment Locked</p>
+                                    <p className="text-xs text-danger mt-0.5">
                                         {isSpecialist
                                             ? `${lockReason}. Specialty assignments unlock after the Parent Assessment is submitted.`
                                             : `${lockReason}. Staff cannot be assigned until prerequisite conditions are met.`}
@@ -1626,7 +1626,7 @@ function UnifiedWorkspaceContent() {
                                                                         {staffName}
                                                                     </p>
                                                                     {staff.recommended_for?.includes(specialty) && (
-                                                                        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-amber-800">
+                                                                        <span className="rounded-full bg-warning-soft px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-warning">
                                                                             Match
                                                                         </span>
                                                                     )}
@@ -1636,7 +1636,7 @@ function UnifiedWorkspaceContent() {
                                                                         </span>
                                                                     )}
                                                                     {alreadyAssigned && !isAssignedForThisSpecialty && (
-                                                                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-emerald-800">
+                                                                        <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-success">
                                                                             On Team
                                                                         </span>
                                                                     )}
@@ -1691,7 +1691,7 @@ function UnifiedWorkspaceContent() {
                                                                 }
                                                                 className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all ${
                                                                     isAssignedForThisSpecialty
-                                                                        ? "bg-indigo-600 text-white shadow-sm hover:bg-red-600 hover:text-white"
+                                                                        ? "bg-indigo-600 text-white shadow-sm hover:bg-danger-solid hover:text-white"
                                                                         : isDisabled
                                                                             ? "bg-subtle-soft text-faint cursor-not-allowed"
                                                                             : "bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white"
@@ -1725,13 +1725,13 @@ function UnifiedWorkspaceContent() {
 
                             return (
                                 <div key={s.id} className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                                    alreadyAssigned ? "border-green-500 bg-green-50" : "border-line bg-card"
+                                    alreadyAssigned ? "border-success-line bg-success-soft" : "border-line bg-card"
                                 }`}>
                                     <div className="min-w-0 pr-4">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <p className={`text-md font-bold truncate ${alreadyAssigned ? "text-green-800" : "text-fg"}`}>{getStaffName(s)}</p>
+                                            <p className={`text-md font-bold truncate ${alreadyAssigned ? "text-success" : "text-fg"}`}>{getStaffName(s)}</p>
                                             {s.recommended && (
-                                                <span className="text-[0.65rem] font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
+                                                <span className="text-[0.65rem] font-bold bg-warning-soft text-warning px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
                                                     ⭐ Match
                                                 </span>
                                             )}
@@ -1751,7 +1751,7 @@ function UnifiedWorkspaceContent() {
                                         onClick={() => !alreadyAssigned && !isLoading && !isLocked && handleAssign("teacher", s.id)}
                                         disabled={isButtonDisabled}
                                         className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-full transition-all ${
-                                            alreadyAssigned ? 'bg-green-100 text-green-700' : 
+                                            alreadyAssigned ? 'bg-success-soft text-success' : 
                                             isButtonDisabled ? 'bg-subtle-soft text-faint cursor-not-allowed opacity-60' : 'bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white'
                                         }`}
                                     >
@@ -1920,7 +1920,7 @@ function UnifiedWorkspaceContent() {
                 {showEnrollConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
                         <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
-                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </div>
                             <h2 className="mb-2 text-xl font-bold text-fg">Enroll {studentName}?</h2>
@@ -1940,7 +1940,7 @@ function UnifiedWorkspaceContent() {
                                     type="button"
                                     onClick={handleEnrollStudent}
                                     disabled={enrollingStudent}
-                                    className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                    className="rounded-lg border border-success-line bg-success-solid px-4 py-2 text-sm font-bold text-white hover:bg-success-solid disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     {enrollingStudent ? "Enrolling..." : "Confirm Enrollment"}
                                 </button>
@@ -1967,8 +1967,8 @@ function UnifiedWorkspaceContent() {
                         <div className="w-full max-w-lg rounded-2xl bg-card shadow-xl overflow-hidden">
                             <div className="p-6">
                                 <div className="flex items-start gap-4">
-                                    <div className="h-11 w-11 shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
-                                        <AlertCircle className="h-5 w-5 text-amber-700" />
+                                    <div className="h-11 w-11 shrink-0 rounded-full bg-warning-soft flex items-center justify-center">
+                                        <AlertCircle className="h-5 w-5 text-warning" />
                                     </div>
                                     <div>
                                         <h3 className="m-0 text-lg font-bold text-fg">Save team changes?</h3>
@@ -1978,28 +1978,28 @@ function UnifiedWorkspaceContent() {
                                     </div>
                                 </div>
                                 <div className="mt-5 max-h-[55vh] overflow-y-auto space-y-4 pr-1">
-                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-emerald-700">Added</p>
+                                    <div className="rounded-xl border border-success-line bg-success-soft p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-success">Added</p>
                                         <div className="mt-3 space-y-2">
                                             {addedTeamUnits.length === 0 ? (
-                                                <p className="m-0 text-sm text-emerald-700/70">No additions.</p>
+                                                <p className="m-0 text-sm text-success/70">No additions.</p>
                                             ) : addedTeamUnits.map((unit) => (
                                                 <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
                                                     <span className="text-sm font-bold text-fg">{unit.name}</span>
-                                                    <span className="text-xs font-semibold text-emerald-700">{unit.detail}</span>
+                                                    <span className="text-xs font-semibold text-success">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-red-700">Removed</p>
+                                    <div className="rounded-xl border border-danger-line bg-danger-soft p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-danger">Removed</p>
                                         <div className="mt-3 space-y-2">
                                             {removedTeamUnits.length === 0 ? (
-                                                <p className="m-0 text-sm text-red-700/70">No removals.</p>
+                                                <p className="m-0 text-sm text-danger/70">No removals.</p>
                                             ) : removedTeamUnits.map((unit) => (
                                                 <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
                                                     <span className="text-sm font-bold text-fg">{unit.name}</span>
-                                                    <span className="text-xs font-semibold text-red-700">{unit.detail}</span>
+                                                    <span className="text-xs font-semibold text-danger">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -2059,8 +2059,8 @@ function UnifiedWorkspaceContent() {
                         <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                                        <AlertCircle className="h-6 w-6 text-red-600" />
+                                    <div className="h-12 w-12 rounded-full bg-danger-soft flex items-center justify-center shrink-0">
+                                        <AlertCircle className="h-6 w-6 text-danger" />
                                     </div>
                                     <div>
                                         <h3 className="text-lg font-bold text-fg">Remove from selection?</h3>
@@ -2081,7 +2081,7 @@ function UnifiedWorkspaceContent() {
                                     <button
                                         onClick={confirmUnassign}
                                         disabled={isUnassigning}
-                                        className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                                        className="px-4 py-2 text-sm font-bold text-white bg-danger-solid hover:bg-danger-solid rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                                     >
                                         {isUnassigning ? (
                                             <>

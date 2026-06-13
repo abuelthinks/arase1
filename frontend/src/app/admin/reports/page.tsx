@@ -334,7 +334,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             </div>
 
             {/* Monthly Progress Card */}
-            <div className={`border rounded-xl p-5 bg-card ${monthlyEnabled ? "border-green-200" : "border-line"}`}>
+            <div className={`border rounded-xl p-5 bg-card ${monthlyEnabled ? "border-success-line" : "border-line"}`}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
                         <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>

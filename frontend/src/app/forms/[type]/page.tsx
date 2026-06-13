@@ -321,7 +321,7 @@ function SectionCard({ title, children, isMySection, isInvalid }: { title: strin
                         ? "0 0 0 2px rgba(238, 242, 255, 0.5)" 
                         : "none",
                 transition: "all 0.2s"
-            }} className={isInvalid ? "bg-red-50/10" : isMySection ? "" : "bg-card rounded-xl"}>
+            }} className={isInvalid ? "bg-danger-soft/10" : isMySection ? "" : "bg-card rounded-xl"}>
             <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-light)", background: isInvalid ? "#fee2e2" : isMySection ? "#eef2ff" : "var(--bg-primary)" }}>
                 <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }} className="font-bold text-fg m-0">{title}</h2>
             </div>
@@ -1952,7 +1952,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                             </div>
                                             <button
                                                 onClick={adminUnlockForm}
-                                                className="shrink-0 rounded-md border border-amber-200 bg-card px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100"
+                                                className="shrink-0 rounded-md border border-warning-line bg-card px-3 py-1.5 text-sm font-semibold text-warning transition-colors hover:border-warning-line hover:bg-warning-soft"
                                             >
                                                 Unlock Form
                                             </button>
@@ -2356,8 +2356,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     setConfirmModal(null);
                                 }}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors ${
-                                    confirmModal.actionVariant === "danger" ? "bg-red-600 hover:bg-red-700" :
-                                    confirmModal.actionVariant === "warning" ? "bg-amber-600 hover:bg-amber-700" :
+                                    confirmModal.actionVariant === "danger" ? "bg-danger-solid hover:bg-danger-solid" :
+                                    confirmModal.actionVariant === "warning" ? "bg-warning-solid hover:bg-warning-solid" :
                                     "bg-indigo-600 hover:bg-indigo-700"
                                 }`}
                             >

@@ -193,7 +193,7 @@ export default function UserProfile() {
     }
 
     if (error) {
-        return <div className="p-12 text-center text-sm text-red-600">{error}</div>;
+        return <div className="p-12 text-center text-sm text-danger">{error}</div>;
     }
 
     if (!user) {
@@ -387,7 +387,7 @@ export default function UserProfile() {
                     </div>
                     <Link
                         href="/specialist-onboarding"
-                        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white no-underline shadow-sm hover:bg-amber-700"
+                        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-warning-solid px-4 py-2 text-sm font-bold text-white no-underline shadow-sm hover:bg-warning-solid"
                     >
                         Finish setup
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -586,7 +586,7 @@ export default function UserProfile() {
                                     )}
 
                                     {languageError && (
-                                        <p className="m-0 text-xs font-medium text-red-600">{languageError}</p>
+                                        <p className="m-0 text-xs font-medium text-danger">{languageError}</p>
                                     )}
 
                                     <div className="flex gap-2">
@@ -695,7 +695,7 @@ export default function UserProfile() {
                                         })}
                                     </div>
                                     {specialtyError && (
-                                        <p className="m-0 text-xs font-medium text-red-600">{specialtyError}</p>
+                                        <p className="m-0 text-xs font-medium text-danger">{specialtyError}</p>
                                     )}
                                     <div className="flex gap-2">
                                         <button
@@ -900,7 +900,7 @@ export default function UserProfile() {
                                 </p>
                                 <Link
                                     href={`/users/${user.id}/activity`}
-                                    className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-300 bg-card px-4 py-2 text-sm font-bold text-amber-800 no-underline transition-colors hover:border-amber-400 hover:bg-amber-100"
+                                    className="inline-flex w-fit items-center gap-2 rounded-xl border border-warning-line bg-card px-4 py-2 text-sm font-bold text-warning no-underline transition-colors hover:border-warning-line hover:bg-warning-soft"
                                 >
                                     Open Audit Trail
                                     <ArrowRight className="h-4 w-4" aria-hidden="true" />

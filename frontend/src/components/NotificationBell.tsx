@@ -116,7 +116,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
             >
                 <Bell size={18} strokeWidth={1.6} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-[1px] -right-[1px] flex h-[16px] min-w-[16px] px-1 shrink-0 items-center justify-center rounded-full bg-red-600 text-[9px] font-medium text-white shadow ring-2 ring-white leading-none">
+                    <span className="absolute -top-[1px] -right-[1px] flex h-[16px] min-w-[16px] px-1 shrink-0 items-center justify-center rounded-full bg-danger-solid text-[9px] font-medium text-white shadow ring-2 ring-white leading-none">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
@@ -251,7 +251,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
                                                             e.stopPropagation();
                                                             deleteNotification(notif.id);
                                                         }}
-                                                        className="w-6 h-6 rounded-full flex items-center justify-center text-faint hover:text-red-600 hover:bg-red-50 transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
+                                                        className="w-6 h-6 rounded-full flex items-center justify-center text-faint hover:text-danger hover:bg-danger-soft transition-colors border-none bg-transparent cursor-pointer p-0 focus:outline-none"
                                                         title="Delete"
                                                     >
                                                         <X size={13} strokeWidth={2.5} />

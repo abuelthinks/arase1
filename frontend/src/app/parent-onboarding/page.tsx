@@ -64,13 +64,13 @@ const SectionHeader = ({ title, description }: { title: string, description?: st
 );
 
 const Field = ({ label, children, required, isInvalid }: { label: string; children: React.ReactNode; required?: boolean; isInvalid?: boolean }) => (
-    <div className={`space-y-2 p-3 -m-3 rounded-2xl border transition-colors duration-200 ${isInvalid ? 'bg-red-50/70 border-red-200 shadow-[0_2px_10px_rgba(239,68,68,0.04)]' : 'border-transparent'}`} data-invalid={isInvalid ? "true" : "false"}>
+    <div className={`space-y-2 p-3 -m-3 rounded-2xl border transition-colors duration-200 ${isInvalid ? 'bg-danger-soft/70 border-danger-line shadow-[0_2px_10px_rgba(239,68,68,0.04)]' : 'border-transparent'}`} data-invalid={isInvalid ? "true" : "false"}>
         <label className="block text-fg font-semibold" style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)" }}>
             {label}{required && <span className="text-pink-500 ml-1 opacity-80">*</span>}
         </label>
         {children}
         {isInvalid && (
-            <p className="text-xs font-semibold text-red-500 mt-1">
+            <p className="text-xs font-semibold text-danger mt-1">
                 * This field is required
             </p>
         )}
@@ -661,7 +661,7 @@ export function ParentFormContent({
                                             type="button"
                                             onClick={adminUnlockParentAssessment}
                                             disabled={unlockLoading}
-                                            className="shrink-0 rounded-md border border-amber-200 bg-card px-3 py-1.5 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                            className="shrink-0 rounded-md border border-warning-line bg-card px-3 py-1.5 text-sm font-semibold text-warning transition-colors hover:border-warning-line hover:bg-warning-soft disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             {unlockLoading ? "Unlocking..." : "Unlock Form"}
                                         </button>
@@ -1091,9 +1091,9 @@ export function ParentFormContent({
 
                         {isViewMode ? (
                             existingDiagnostic ? (
-                                <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                                    <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    <span className="text-sm font-semibold text-emerald-800">{existingDiagnostic.original_filename}</span>
+                                <div className="flex items-center gap-3 px-4 py-3 bg-success-soft border border-success-line rounded-xl">
+                                    <svg className="w-5 h-5 text-success shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    <span className="text-sm font-semibold text-success">{existingDiagnostic.original_filename}</span>
                                 </div>
                             ) : (
                                 <p className="text-sm text-faint italic">No diagnostic report uploaded.</p>
@@ -1120,17 +1120,17 @@ export function ParentFormContent({
                                         <button
                                             type="button"
                                             onClick={() => { setDiagnosticFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                                            className="text-xs font-bold text-red-500 hover:text-red-700 transition shrink-0"
+                                            className="text-xs font-bold text-danger hover:text-danger transition shrink-0"
                                         >
                                             Remove
                                         </button>
                                     </div>
                                 ) : existingDiagnostic ? (
                                     <div className="space-y-3">
-                                        <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                                            <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                            <span className="text-sm font-semibold text-emerald-800">{existingDiagnostic.original_filename}</span>
-                                            <span className="text-xs text-emerald-600">(uploaded)</span>
+                                        <div className="flex items-center gap-3 px-4 py-3 bg-success-soft border border-success-line rounded-xl">
+                                            <svg className="w-5 h-5 text-success shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            <span className="text-sm font-semibold text-success">{existingDiagnostic.original_filename}</span>
+                                            <span className="text-xs text-success">(uploaded)</span>
                                         </div>
                                         <button
                                             type="button"

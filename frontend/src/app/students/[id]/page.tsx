@@ -157,7 +157,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
     };
 
     if (loading) return <div className="p-8 text-center text-muted">Loading profile...</div>;
-    if (error)   return <div className="p-8 text-center text-red-500">{error}</div>;
+    if (error)   return <div className="p-8 text-center text-danger">{error}</div>;
     if (!data)   return null;
 
     const { student, form_statuses, generated_documents, assigned_staff, cycle_status, previous_recommendations } = data;

@@ -276,7 +276,7 @@ export default function GoalProgressChart() {
                       {metrics[hoveredIndex].current}%
                     </span>
                   </div>
-                  <div className="ml-auto bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md px-1.5 py-0.5 text-[0.68rem] font-extrabold flex items-center gap-0.5">
+                  <div className="ml-auto bg-success-soft text-success border border-success-line rounded-md px-1.5 py-0.5 text-[0.68rem] font-extrabold flex items-center gap-0.5">
                     +{metrics[hoveredIndex].current - metrics[hoveredIndex].initial}% Growth
                   </div>
                 </div>

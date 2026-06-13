@@ -269,7 +269,7 @@ function SpecialistsContent() {
   }
 
   if (!student) {
-    return <div className='p-8 text-center text-red-500'>Student not found.</div>;
+    return <div className='p-8 text-center text-danger'>Student not found.</div>;
   }
 
   const parentAssessmentSubmitted = formStatuses?.parent_assessment?.submitted;
@@ -354,7 +354,7 @@ function SpecialistsContent() {
                     )}
                   </div>
                   <div className='shrink-0'>
-                    <CheckCircle2 className='h-5 w-5 text-emerald-500' />
+                    <CheckCircle2 className='h-5 w-5 text-success' />
                   </div>
                 </div>
               ))
@@ -569,7 +569,7 @@ function SpecialistsContent() {
                                   We&apos;ll coordinate timing after the team is finalized.
                                 </span>
                                 {languageMatchesRequest(pickedSpecialist) && (
-                                  <span className='inline-flex items-center gap-1 font-semibold text-emerald-700'>
+                                  <span className='inline-flex items-center gap-1 font-semibold text-success'>
                                     <Check className='h-3 w-3' aria-hidden='true' />
                                     Language match
                                   </span>
@@ -617,7 +617,7 @@ function SpecialistsContent() {
                                 )}
                               </div>
                               <span className='inline-flex items-center gap-1.5 text-sm text-fg'>
-                                <Languages className={`h-4 w-4 ${requestedLanguages.length > 0 && languageMatchCount > 0 ? 'text-emerald-600' : 'text-faint'}`} aria-hidden='true' />
+                                <Languages className={`h-4 w-4 ${requestedLanguages.length > 0 && languageMatchCount > 0 ? 'text-success' : 'text-faint'}`} aria-hidden='true' />
                                 <span className='font-bold'>
                                   {requestedLanguages.length > 0
                                     ? languageMatchCount > 0
@@ -677,10 +677,10 @@ function SpecialistsContent() {
                         type='button'
                         onClick={() => clearPickForSpecialty(specialty)}
                         aria-pressed={!hasPick}
-                        className={`mb-3 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-4 focus:ring-emerald-500/20 ${
+                        className={`mb-3 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-4 focus:ring-success/20 ${
                           !hasPick
-                            ? 'border-emerald-300 bg-emerald-50/70'
-                            : 'border-line bg-card hover:border-emerald-200 hover:bg-emerald-50/30'
+                            ? 'border-success-line bg-success-soft/70'
+                            : 'border-line bg-card hover:border-success-line hover:bg-success-soft/30'
                         }`}
                       >
                         <div className='flex items-center gap-3'>
@@ -690,15 +690,15 @@ function SpecialistsContent() {
                             <Sparkles className='h-4 w-4' aria-hidden='true' />
                           </div>
                           <div>
-                            <p className={`m-0 text-sm font-extrabold ${!hasPick ? 'text-emerald-950' : 'text-fg'}`}>
+                            <p className={`m-0 text-sm font-extrabold ${!hasPick ? 'text-success' : 'text-fg'}`}>
                               Let our team match
                             </p>
-                            <p className={`m-0 text-xs ${!hasPick ? 'text-emerald-800' : 'text-muted'}`}>
+                            <p className={`m-0 text-xs ${!hasPick ? 'text-success' : 'text-muted'}`}>
                               Best-fit specialist based on language needs and clinical fit
                             </p>
                           </div>
                         </div>
-                        {!hasPick && <CheckCircle2 className='h-5 w-5 shrink-0 text-emerald-600' aria-hidden='true' />}
+                        {!hasPick && <CheckCircle2 className='h-5 w-5 shrink-0 text-success' aria-hidden='true' />}
                       </button>
 
                       <SpecialistList
@@ -889,7 +889,7 @@ function SpecialistCard({
           )}
           {languageMatch && (
             <div
-              className='absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 ring-2 ring-white'
+              className='absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-success-solid ring-2 ring-white'
               title='Speaks your language'
               aria-label='Language match'
             >
@@ -912,7 +912,7 @@ function SpecialistCard({
                 {languageMatch ? (
                   <>
                     <span className='text-faint' aria-hidden='true'>Â·</span>
-                    <span className='font-semibold text-emerald-700'>Language match</span>
+                    <span className='font-semibold text-success'>Language match</span>
                   </>
                 ) : requestedLanguages.length > 0 ? (
                   <>
@@ -932,7 +932,7 @@ function SpecialistCard({
                         title={language}
                         className={`inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded px-1 text-[0.6rem] font-extrabold ${
                           match
-                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                            ? 'border border-success-line bg-success-soft text-success'
                             : 'bg-subtle-soft text-muted'
                         }`}
                       >

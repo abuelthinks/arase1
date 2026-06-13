@@ -10,7 +10,7 @@ import { BarChart3, GraduationCap, UsersRound, Mail, LayoutTemplate, LogOut, Pan
 function Badge({ count, tone }: { count: number; tone: "indigo" | "amber" }) {
     if (count <= 0) return null;
     const cls = tone === "amber"
-        ? "bg-amber-100 text-amber-800"
+        ? "bg-warning-soft text-warning"
         : "bg-indigo-100 text-indigo-800";
     return (
         <span className={`ml-auto inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[0.65rem] font-extrabold ${cls}`}>
@@ -126,7 +126,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Registration</span>}
                         {!collapsed && <Badge count={pendingInviteCount} tone="amber" />}
                         {collapsed && pendingInviteCount > 0 && (
-                            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white leading-none">
+                            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-warning-solid text-[9px] font-bold text-white leading-none">
                                 {pendingInviteCount}
                             </span>
                         )}
@@ -138,7 +138,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                     <button
                         onClick={logout}
                         title="Log Out"
-                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-red-600 hover:bg-red-50 transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+                        className={`flex min-w-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-danger hover:bg-danger-soft transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
                     >
                         <LogOut size={18} className="shrink-0" />
                         {!collapsed && <span className="min-w-0 flex-1 truncate">Log Out</span>}
@@ -175,7 +175,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
                     <Mail size={20} className={activeTab === 'invitations' ? "stroke-[2.5px]" : ""} />
                     <span className="text-[0.65rem] font-medium">Registration</span>
                     {pendingInviteCount > 0 && (
-                        <span className="absolute top-1.5 right-[calc(50%-22px)] inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.55rem] font-extrabold text-white">{pendingInviteCount}</span>
+                        <span className="absolute top-1.5 right-[calc(50%-22px)] inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-warning-solid px-1 text-[0.55rem] font-extrabold text-white">{pendingInviteCount}</span>
                     )}
                 </Link>
             </nav>

@@ -71,7 +71,7 @@ const workspaceSecondaryTabClass = ({
 }) => {
     const base = "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors";
     if (disabled) return `${base} cursor-not-allowed border-transparent text-faint opacity-70`;
-    if (attention) return `${base} ${semanticToneClass("warning")} shadow-sm hover:bg-amber-100 hover:border-amber-300`;
+    if (attention) return `${base} ${semanticToneClass("warning")} shadow-sm hover:bg-warning-soft hover:border-warning-line`;
     if (active) return `${base} ${semanticToneClass(tone)} bg-card shadow-sm`;
     return `${base} border-transparent text-muted hover:border-line hover:bg-card hover:text-fg`;
 };
@@ -92,9 +92,9 @@ const workspaceSecondaryButtonClass =
 const toneDotClass: Record<SemanticTone, string> = {
     primary: "bg-indigo-500",
     info: "bg-blue-500",
-    success: "bg-emerald-500",
-    warning: "bg-amber-500",
-    danger: "bg-red-500",
+    success: "bg-success-solid",
+    warning: "bg-warning-solid",
+    danger: "bg-danger-solid",
     attention: "bg-pink-500",
     neutral: "bg-slate-400",
 };
@@ -853,7 +853,7 @@ function UnifiedWorkspaceContent() {
         return (
             <div className="flex w-full h-full items-center justify-center bg-[var(--bg-lighter)]">
                 <div className="flex max-w-md flex-col items-center bg-card p-12 rounded-xl shadow-sm border border-line">
-                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger-soft text-danger">
                         <span className="text-2xl font-bold">!</span>
                     </div>
                     <h2 className="text-xl font-bold text-fg mb-2">Workspace Unavailable</h2>
@@ -879,7 +879,7 @@ function UnifiedWorkspaceContent() {
     }
 
     if (!formStatuses) {
-        return <div className="p-8 text-center text-red-500">Failed to load student data.</div>;
+        return <div className="p-8 text-center text-danger">Failed to load student data.</div>;
     }
 
     // -- Sub-renderers for clean structure --
@@ -1102,16 +1102,16 @@ function UnifiedWorkspaceContent() {
                     const isWarning = action.tone === "warning";
                     
                     const btnClass = isPositive
-                        ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300"
+                        ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-success-soft text-success border-success-line hover:bg-success-soft hover:border-success-line"
                         : isWarning
-                            ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300"
+                            ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-warning-soft text-warning border-warning-line hover:bg-warning-soft hover:border-warning-line"
                             : "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm border bg-indigo-50/50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300";
 
 
 
                     return (
                         <button key={idx} onClick={action.onClick} className={btnClass}>
-                            <Icon size={14} className={`shrink-0 ${isPositive ? 'animate-pulse text-emerald-600' : ''}`} />
+                            <Icon size={14} className={`shrink-0 ${isPositive ? 'animate-pulse text-success' : ''}`} />
                             <span className="flex-1 text-left truncate" title={action.title}>{action.title}</span>
                             <span className="text-[0.55rem] font-bold uppercase tracking-wider opacity-85 shrink-0 bg-white/60 px-1 rounded border border-current/10">{action.label}</span>
                         </button>
@@ -1182,8 +1182,8 @@ function UnifiedWorkspaceContent() {
                                 )}
                             </div>
                             {actions.length === 0 ? (
-                                <div className="flex items-center gap-2 text-sm text-muted py-4 px-3 rounded-lg bg-emerald-50 border border-emerald-100">
-                                    <CheckCircle2 size={16} className="text-emerald-600" />
+                                <div className="flex items-center gap-2 text-sm text-muted py-4 px-3 rounded-lg bg-success-soft border border-success-line">
+                                    <CheckCircle2 size={16} className="text-success" />
                                     All caught up — no urgent admin follow-ups.
                                 </div>
                             ) : (
@@ -1191,8 +1191,8 @@ function UnifiedWorkspaceContent() {
                                     {actions.map(action => {
                                         const Icon = action.Icon || ClipboardList;
                                         const accent =
-                                            action.tone === "warning" ? { border: "border-amber-200", bg: "bg-amber-50", stripe: "bg-amber-400", iconBg: "bg-amber-100", iconColor: "text-amber-700", btn: "bg-amber-600 hover:bg-amber-700 text-white" } :
-                                            action.tone === "positive" ? { border: "border-emerald-200", bg: "bg-emerald-50", stripe: "bg-emerald-500", iconBg: "bg-emerald-100", iconColor: "text-emerald-700", btn: "bg-emerald-600 hover:bg-emerald-700 text-white" } :
+                                            action.tone === "warning" ? { border: "border-warning-line", bg: "bg-warning-soft", stripe: "bg-warning-solid", iconBg: "bg-warning-soft", iconColor: "text-warning", btn: "bg-warning-solid hover:bg-warning-solid text-white" } :
+                                            action.tone === "positive" ? { border: "border-success-line", bg: "bg-success-soft", stripe: "bg-success-solid", iconBg: "bg-success-soft", iconColor: "text-success", btn: "bg-success-solid hover:bg-success-solid text-white" } :
                                                                           { border: "border-indigo-200", bg: "bg-indigo-50/40", stripe: "bg-indigo-500", iconBg: "bg-indigo-100", iconColor: "text-indigo-700", btn: "bg-indigo-600 hover:bg-indigo-700 text-white" };
                                         if (action.id === "specialist_assessment") {
                                             return (
@@ -1311,7 +1311,7 @@ function UnifiedWorkspaceContent() {
                                     <div className="flex flex-col">
                                         {recentActivity.map((item: any) => (
                                             <div key={item.id} className="relative flex items-start gap-3 pl-1 py-2.5 group">
-                                                <span className={`relative z-10 mt-1.5 h-3 w-3 shrink-0 rounded-full ring-2 ring-white ${item.tone === "document" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                                                <span className={`relative z-10 mt-1.5 h-3 w-3 shrink-0 rounded-full ring-2 ring-white ${item.tone === "document" ? "bg-indigo-500" : "bg-success-solid"}`} />
                                                 <div className="min-w-0 flex-1">
                                                     <p className="m-0 truncate text-sm font-bold text-fg">{item.title}</p>
                                                     <p className="m-0 truncate text-xs font-semibold text-muted">{item.meta}</p>
@@ -1406,9 +1406,9 @@ function UnifiedWorkspaceContent() {
                                                 const initials = `${t.first_name?.[0] || ""}${t.last_name?.[0] || ""}`.toUpperCase() || (t.email?.[0] || "?").toUpperCase();
                                                 const fullName = `${t.first_name || ""} ${t.last_name || ""}`.trim() || t.email;
                                                 return (
-                                                    <span key={t.id} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 pl-1 pr-2.5 py-0.5">
-                                                        <span className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 text-[0.6rem] font-bold flex items-center justify-center">{initials}</span>
-                                                        <span className="text-[0.7rem] font-bold text-emerald-800 truncate max-w-[8rem]">{fullName}</span>
+                                                    <span key={t.id} className="inline-flex items-center gap-1.5 rounded-full border border-success-line bg-success-soft pl-1 pr-2.5 py-0.5">
+                                                        <span className="w-5 h-5 rounded-full bg-success-soft text-success text-[0.6rem] font-bold flex items-center justify-center">{initials}</span>
+                                                        <span className="text-[0.7rem] font-bold text-success truncate max-w-[8rem]">{fullName}</span>
                                                     </span>
                                                 );
                                             })}
@@ -1647,7 +1647,7 @@ function UnifiedWorkspaceContent() {
                                                 <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-indigo-800' : 'text-fg'}`}>{user?.role === "PARENT" && tab.id === "parent_assessment" ? "About Your Child" : tab.label}</span>
                                                 {isLocked ? (
                                                     <Lock className="w-4 h-4 text-faint shrink-0 ml-2" aria-hidden="true" />
-                                                ) : isSub && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} aria-hidden="true" />}
+                                                ) : isSub && <Check className="w-4 h-4 text-success shrink-0 ml-2" strokeWidth={3} aria-hidden="true" />}
                                             </button>
                                         );
                                     })}
@@ -1663,12 +1663,12 @@ function UnifiedWorkspaceContent() {
                                     const isActive = activeFormTab === tab.id;
                                     const isLocked = !isStudentEnrolled || (tab.id === "sped_tracker" && studentStatus?.toUpperCase() !== "INTEGRATED");
                                     return (
-                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment/integration" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
-                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-emerald-800' : 'text-fg'}`}>{user?.role === "PARENT" && tab.id === "parent_tracker" ? "Home Update" : tab.label}</span>
+                                        <button key={tab.id} onClick={() => !isLocked && handleFormTabChange(tab.id)} disabled={isLocked} title={isLocked ? "Available after enrollment/integration" : undefined} className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${isLocked ? 'border-transparent text-faint cursor-not-allowed opacity-70' : isActive ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
+                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
+                                            <span className={`text-sm font-bold truncate ${isLocked ? 'text-faint' : isActive ? 'text-success' : 'text-fg'}`}>{user?.role === "PARENT" && tab.id === "parent_tracker" ? "Home Update" : tab.label}</span>
                                             {isLocked ? (
                                                 <Lock className="w-4 h-4 text-faint shrink-0 ml-2" aria-hidden="true" />
-                                            ) : isSub && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} aria-hidden="true" />}
+                                            ) : isSub && <Check className="w-4 h-4 text-success shrink-0 ml-2" strokeWidth={3} aria-hidden="true" />}
                                         </button>
                                     );
                                 })}
@@ -1690,7 +1690,7 @@ function UnifiedWorkspaceContent() {
                                 <button
                                     type="button"
                                     onClick={() => router.push("/specialist-onboarding")}
-                                    className="rounded-lg border border-amber-600 bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:border-amber-700 hover:bg-amber-700"
+                                    className="rounded-lg border border-warning-line bg-warning-solid px-4 py-2 text-sm font-bold text-white transition-colors hover:border-warning-line hover:bg-warning-solid"
                                 >
                                     Finish setup
                                 </button>
@@ -1707,7 +1707,7 @@ function UnifiedWorkspaceContent() {
                         </div>
                     ) : isSpecialistOnboardingLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
-                            <div className="w-16 h-16 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center mb-4 text-amber-500">
+                            <div className="w-16 h-16 bg-warning-soft border border-warning-line rounded-full flex items-center justify-center mb-4 text-warning">
                                 <Calendar className="w-8 h-8" />
                             </div>
                             <h3 className="text-lg font-bold text-fg mb-1">Finish profile setup first</h3>
@@ -1715,7 +1715,7 @@ function UnifiedWorkspaceContent() {
                             <button
                                 type="button"
                                 onClick={() => router.push("/specialist-onboarding")}
-                                className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
+                                className="mt-4 rounded-lg bg-warning-solid px-4 py-2 text-sm font-bold text-white hover:bg-warning-solid"
                             >
                                 Open setup
                             </button>
@@ -1825,7 +1825,7 @@ function UnifiedWorkspaceContent() {
                             <Sparkles className="h-3.5 w-3.5" />
                             Report Generator
                             {isIepReadyToGenerate && (
-                                <span className={workspaceBadgeClass("warning", "bg-amber-200 px-1.5 py-0")}>
+                                <span className={workspaceBadgeClass("warning", "bg-warning-soft px-1.5 py-0")}>
                                     IEP ready
                                 </span>
                             )}
@@ -1856,7 +1856,7 @@ function UnifiedWorkspaceContent() {
                                         {isLocked ? (
                                             <Lock className="h-3.5 w-3.5 shrink-0" />
                                         ) : isSub ? (
-                                            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" strokeWidth={3} />
+                                            <Check className="h-3.5 w-3.5 shrink-0 text-success" strokeWidth={3} />
                                         ) : (
                                             <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
                                         )}
@@ -1955,7 +1955,7 @@ function UnifiedWorkspaceContent() {
                                                 {isLocked ? (
                                                     <Lock className="w-3.5 h-3.5 text-faint shrink-0 ml-2" />
                                                 ) : isSub ? (
-                                                    <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" strokeWidth={3} />
+                                                    <Check className="w-4 h-4 text-success shrink-0 ml-2" strokeWidth={3} />
                                                 ) : (
                                                     <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0 ml-2 animate-pulse" />
                                                 )}
@@ -1999,12 +1999,12 @@ function UnifiedWorkspaceContent() {
                                 const isActive = reportView === "monthly";
                                 return (
                                     <div className="flex flex-col gap-1">
-                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
-                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                        <button onClick={() => handleReportMenuChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}>
+                                            {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
                                             <div className="flex justify-between items-center w-full">
-                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>{user?.role === "PARENT" ? "Monthly Report" : "Progress Reports"}</span>
+                                                <span className={`text-sm font-bold truncate ${isActive ? 'text-success' : 'text-fg'}`}>{user?.role === "PARENT" ? "Monthly Report" : "Progress Reports"}</span>
                                                 {monthlyDocs.length > 1 && (
-                                                    <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">{monthlyDocs.length} versions</span>
+                                                    <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-success-soft text-success px-1.5 py-0.5 rounded ml-2 shrink-0">{monthlyDocs.length} versions</span>
                                                 )}
                                             </div>
                                             <span className="text-xs text-muted truncate mt-0.5">Updated {formatDocumentDateTime(doc.created_at)}</span>
@@ -2106,13 +2106,13 @@ function UnifiedWorkspaceContent() {
                                 {monthlyDocs.length > 1 && (
                                     <div className="bg-app border-b border-line px-4 py-1.5 flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1.5 text-muted">
-                                            <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <svg className="w-3.5 h-3.5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                         </div>
                                         <select
                                             value={selectedDocId}
                                             onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
-                                            className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all cursor-pointer shadow-sm appearance-none relative"
+                                            className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-success focus:border-success-line transition-all cursor-pointer shadow-sm appearance-none relative"
                                             style={{
                                                 backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
                                                 backgroundPosition: "right 0.4rem center",
@@ -2292,7 +2292,7 @@ function UnifiedWorkspaceContent() {
                                     >
                                         {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                         <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-fg'}`}>About Your Child</span>
-                                        {assessmentStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
+                                        {assessmentStatus?.submitted && <Check className="w-4 h-4 text-success shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
                                     </button>
                                 </div>
                             </div>
@@ -2305,11 +2305,11 @@ function UnifiedWorkspaceContent() {
                                 <div className="flex flex-col gap-1">
                                     <button
                                         onClick={() => handleParentPanelChange("tracker")}
-                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "tracker" ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}
+                                        className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-lg transition-all border ${parentActivePanel === "tracker" ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}
                                     >
-                                        {parentActivePanel === "tracker" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
-                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "tracker" ? 'text-emerald-800' : 'text-fg'}`}>Home Update</span>
-                                        {trackerStatus?.submitted && <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
+                                        {parentActivePanel === "tracker" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
+                                        <span className={`text-sm font-bold truncate ${parentActivePanel === "tracker" ? 'text-success' : 'text-fg'}`}>Home Update</span>
+                                        {trackerStatus?.submitted && <Check className="w-4 h-4 text-success shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />}
                                     </button>
                                 </div>
                             </div>
@@ -2326,7 +2326,7 @@ function UnifiedWorkspaceContent() {
                                     >
                                         {parentActivePanel === "assessment" && <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r"></div>}
                                         <span className={`text-sm font-bold truncate ${parentActivePanel === "assessment" ? 'text-indigo-800' : 'text-fg'}`}>About Your Child</span>
-                                        <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />
+                                        <Check className="w-4 h-4 text-success shrink-0 ml-2" aria-hidden="true" strokeWidth={3} />
                                     </button>
                                 </div>
                             </div>
@@ -2368,10 +2368,10 @@ function UnifiedWorkspaceContent() {
                                         const isActive = parentActivePanel === "monthly" && docIdParam === doc.id.toString();
                                         const isLatest = idx === 0;
                                         return (
-                                            <button key={doc.id} onClick={() => handleParentPanelChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}>
-                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                            <button key={doc.id} onClick={() => handleParentPanelChange("monthly", doc.id.toString())} className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft hover:border-line'}`}>
+                                                {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
                                                 <div className="flex justify-between items-center w-full">
-                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>Monthly Report</span>
+                                                    <span className={`text-sm font-bold truncate ${isActive ? 'text-success' : 'text-fg'}`}>Monthly Report</span>
                                                     {isLatest && <span className={workspaceBadgeClass("success", "ml-2 shrink-0 px-1.5 py-0")}>Latest</span>}
                                                 </div>
                                                 <span className="text-xs text-muted truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
@@ -2444,7 +2444,7 @@ function UnifiedWorkspaceContent() {
                             const isMatch = studentLangs.includes(lang.toUpperCase());
                             return (
                                 <span key={idx} className="flex items-center">
-                                    <span className={isMatch ? "bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold" : ""}>
+                                    <span className={isMatch ? "bg-success-soft text-success px-1.5 py-0.5 rounded font-bold" : ""}>
                                         {lang}
                                     </span>
                                     {idx < visibleLangs.length - 1 && <span>,</span>}
@@ -2583,7 +2583,7 @@ function UnifiedWorkspaceContent() {
                                                 >
                                                     Cancel Changes
                                                 </button>
-                                                <span className="text-xs font-semibold text-amber-700">Changes not saved yet</span>
+                                                <span className="text-xs font-semibold text-warning">Changes not saved yet</span>
                                             </>
                                         )}
                                     </div>
@@ -2767,7 +2767,7 @@ function UnifiedWorkspaceContent() {
                                                                         }
                                                                         className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all ${
                                                                             isAssignedForThisSpecialty
-                                                                                ? "bg-indigo-600 text-white shadow-sm hover:bg-red-600 hover:text-white"
+                                                                                ? "bg-indigo-600 text-white shadow-sm hover:bg-danger-solid hover:text-white"
                                                                                 : isDisabled
                                                                                     ? "bg-subtle-soft text-faint cursor-not-allowed"
                                                                                     : "bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white"
@@ -2838,7 +2838,7 @@ function UnifiedWorkspaceContent() {
                                                 title={alreadyAssigned ? `Remove ${getStaffName(staff)}` : `Assign ${getStaffName(staff)}`}
                                                 className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-full transition-all ${
                                                     alreadyAssigned
-                                                        ? "bg-indigo-600 text-white shadow-sm hover:bg-red-600 hover:text-white"
+                                                        ? "bg-indigo-600 text-white shadow-sm hover:bg-danger-solid hover:text-white"
                                                         : isButtonDisabled
                                                             ? "bg-subtle-soft text-faint cursor-not-allowed opacity-60"
                                                             : "bg-subtle-soft text-muted hover:bg-indigo-600 hover:text-white"
@@ -3142,8 +3142,8 @@ function UnifiedWorkspaceContent() {
                         <div className="w-full max-w-lg rounded-2xl bg-card shadow-xl overflow-hidden">
                             <div className="p-6">
                                 <div className="flex items-start gap-4">
-                                    <div className="h-11 w-11 shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
-                                        <AlertCircle className="h-5 w-5 text-amber-700" />
+                                    <div className="h-11 w-11 shrink-0 rounded-full bg-warning-soft flex items-center justify-center">
+                                        <AlertCircle className="h-5 w-5 text-warning" />
                                     </div>
                                     <div>
                                         <h3 className="m-0 text-lg font-bold text-fg">Save team changes?</h3>
@@ -3153,28 +3153,28 @@ function UnifiedWorkspaceContent() {
                                     </div>
                                 </div>
                                 <div className="mt-5 max-h-[55vh] overflow-y-auto space-y-4 pr-1">
-                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-emerald-700">Added</p>
+                                    <div className="rounded-xl border border-success-line bg-success-soft p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-success">Added</p>
                                         <div className="mt-3 space-y-2">
                                             {addedTeamUnits.length === 0 ? (
-                                                <p className="m-0 text-sm text-emerald-700/70">No additions.</p>
+                                                <p className="m-0 text-sm text-success/70">No additions.</p>
                                             ) : addedTeamUnits.map((unit) => (
                                                 <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
                                                     <span className="text-sm font-bold text-fg">{unit.name}</span>
-                                                    <span className="text-xs font-semibold text-emerald-700">{unit.detail}</span>
+                                                    <span className="text-xs font-semibold text-success">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-red-700">Removed</p>
+                                    <div className="rounded-xl border border-danger-line bg-danger-soft p-4">
+                                        <p className="m-0 text-xs font-bold uppercase tracking-widest text-danger">Removed</p>
                                         <div className="mt-3 space-y-2">
                                             {removedTeamUnits.length === 0 ? (
-                                                <p className="m-0 text-sm text-red-700/70">No removals.</p>
+                                                <p className="m-0 text-sm text-danger/70">No removals.</p>
                                             ) : removedTeamUnits.map((unit) => (
                                                 <div key={unit.key} className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2">
                                                     <span className="text-sm font-bold text-fg">{unit.name}</span>
-                                                    <span className="text-xs font-semibold text-red-700">{unit.detail}</span>
+                                                    <span className="text-xs font-semibold text-danger">{unit.detail}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -3235,8 +3235,8 @@ function UnifiedWorkspaceContent() {
                         <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                                        <AlertCircle className="h-6 w-6 text-red-600" />
+                                    <div className="h-12 w-12 rounded-full bg-danger-soft flex items-center justify-center shrink-0">
+                                        <AlertCircle className="h-6 w-6 text-danger" />
                                     </div>
                                     <div>
                                         <h3 className="text-lg font-bold text-fg">Remove from selection?</h3>
@@ -3257,7 +3257,7 @@ function UnifiedWorkspaceContent() {
                                     <button
                                         onClick={confirmUnassign}
                                         disabled={isUnassigning}
-                                        className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                                        className="px-4 py-2 text-sm font-bold text-white bg-danger-solid hover:bg-danger-solid rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                                     >
                                         {isUnassigning ? (
                                             <>
@@ -3277,7 +3277,7 @@ function UnifiedWorkspaceContent() {
                 {showEnrollConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
                         <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
-                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </div>
                             <h2 className="mb-2 text-xl font-bold text-fg">Enroll {studentName}?</h2>
@@ -3297,7 +3297,7 @@ function UnifiedWorkspaceContent() {
                                     type="button"
                                     onClick={handleEnrollStudent}
                                     disabled={enrollingStudent}
-                                    className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                    className="rounded-lg border border-success-line bg-success-solid px-4 py-2 text-sm font-bold text-white hover:bg-success-solid disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     {enrollingStudent ? "Enrolling..." : "Confirm Enrollment"}
                                 </button>

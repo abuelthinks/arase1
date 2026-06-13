@@ -44,14 +44,14 @@ const toneStyles = {
         border: "#fde68a",
         labelBg: "#fef3c7",
         labelText: "#92400e",
-        buttonClass: "bg-amber-600 hover:bg-amber-700 text-white",
+        buttonClass: "bg-warning-solid hover:bg-warning-solid text-white",
     },
     ready: {
         bg: "linear-gradient(135deg, #f0fdf4 0%, var(--bg-primary) 100%)",
         border: "#bbf7d0",
         labelBg: "#dcfce7",
         labelText: "#166534",
-        buttonClass: "bg-emerald-600 hover:bg-emerald-700 text-white",
+        buttonClass: "bg-success-solid hover:bg-success-solid text-white",
     },
     neutral: {
         bg: "linear-gradient(135deg, var(--bg-primary) 0%, #eef2ff 100%)",

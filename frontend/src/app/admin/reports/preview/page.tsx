@@ -85,7 +85,7 @@ function PreviewReportContent() {
                         </button>
                     </div>
 
-                    {errorMsg && <div className="mb-6 p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{errorMsg}</div>}
+                    {errorMsg && <div className="mb-6 p-4 bg-danger-soft text-danger border border-danger-line rounded-lg">{errorMsg}</div>}
 
                     {loading ? (
                         <div className="p-12 text-center text-muted bg-card rounded-2xl shadow-sm border">

@@ -184,7 +184,7 @@ export default function DashboardPage() {
                     <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:px-5 sm:py-3 ${semanticToneClass("warning")}`}>
                         <div className="flex items-start gap-3">
                             <span className="text-xl leading-none mt-0.5">📱</span>
-                            <p className="m-0 text-sm md:text-[0.9rem] text-amber-900 font-medium">
+                            <p className="m-0 text-sm md:text-[0.9rem] text-warning font-medium">
                                 {user?.phone_number
                                     ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
                                     : <>Your phone number has not been verified yet. Verify it to enable SMS alerts and notifications.</>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
                         </div>
                         <button
                             onClick={() => setShowSMSModal(true)}
-                            className="bg-amber-500 hover:bg-amber-600 text-white border-none rounded-md px-4 py-2 font-bold cursor-pointer text-sm whitespace-nowrap transition-colors w-full sm:w-auto mt-2 sm:mt-0"
+                            className="bg-warning-solid hover:bg-warning-solid text-white border-none rounded-md px-4 py-2 font-bold cursor-pointer text-sm whitespace-nowrap transition-colors w-full sm:w-auto mt-2 sm:mt-0"
                         >
                             Verify Now
                         </button>
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                                 <p className="m-0 text-sm">{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</p>
                             </div>
                         </div>
-                        <Link href="/specialist-onboarding" className="rounded-lg bg-amber-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-amber-700">
+                        <Link href="/specialist-onboarding" className="rounded-lg bg-warning-solid px-4 py-2 text-center text-sm font-bold text-white hover:bg-warning-solid">
                             Finish setup
                         </Link>
                     </div>

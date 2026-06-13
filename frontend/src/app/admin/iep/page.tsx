@@ -357,7 +357,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             <SectionCard title="Section 6 — Short-Term Objectives (3–4 months)">
                 {s6.map((sto, i) => (
                     <div key={sto.id} className="bg-app rounded-xl p-3.5 border border-line flex flex-col gap-3 mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-emerald-600 m-0">Objective {sto.id} → {sto.ltg_ref}</p>
+                        <p className="text-xs font-bold text-success m-0">Objective {sto.id} → {sto.ltg_ref}</p>
                         <Field label="Objective" value={sto.objective} edit={editing}
                             onChange={v => { const c = [...s6]; c[i] = { ...c[i], objective: v }; setIep(p => p ? { ...p, section6_sto: c } : p); }} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-1">

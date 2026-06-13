@@ -56,7 +56,7 @@ export default function Navbar() {
                             </div>
                             <button
                                 onClick={logout}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-danger hover:bg-danger-soft transition-colors"
                             >
                                 <LogOut size={16} />
                                 Log Out

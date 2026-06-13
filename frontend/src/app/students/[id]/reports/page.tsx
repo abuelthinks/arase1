@@ -169,12 +169,12 @@ function UnifiedReportsViewer() {
                                                 <button 
                                                     key={doc.id}
                                                     onClick={() => handleMenuClick("monthly", doc.id.toString())}
-                                                    className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-emerald-50 border-emerald-200 shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}
+                                                    className={`w-full flex flex-col text-left px-4 py-3 rounded-lg transition-all border ${isActive ? 'bg-success-soft border-success-line shadow-sm relative' : 'border-transparent hover:bg-subtle-soft'}`}
                                                 >
-                                                    {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 rounded-r"></div>}
+                                                    {isActive && <div className="absolute left-0 top-2 bottom-2 w-1 bg-success-solid rounded-r"></div>}
                                                     <div className="flex justify-between items-center w-full">
-                                                        <span className={`text-sm font-bold truncate ${isActive ? 'text-emerald-800' : 'text-fg'}`}>Progress Report</span>
-                                                        {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
+                                                        <span className={`text-sm font-bold truncate ${isActive ? 'text-success' : 'text-fg'}`}>Progress Report</span>
+                                                        {isLatest && <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-success-soft text-success px-1.5 py-0.5 rounded ml-2 shrink-0">Latest</span>}
                                                     </div>
                                                     <span className="text-xs text-muted truncate mt-0.5">{formatDocumentDateTime(doc.created_at)}</span>
                                                 </button>
