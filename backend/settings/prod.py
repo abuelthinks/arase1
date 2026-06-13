@@ -15,6 +15,8 @@ ALLOWED_HOSTS = [
     'arase1.vercel.app',
     # Allow overriding via env var for future domain changes
     *parse_csv_env('ALLOWED_HOSTS'),
+    # Render injects this automatically — covers *.onrender.com deployments
+    *([os.environ['RENDER_EXTERNAL_HOSTNAME']] if os.environ.get('RENDER_EXTERNAL_HOSTNAME') else []),
 ]
 
 # ─── Database — PostgreSQL required in production ────────────────────────────
