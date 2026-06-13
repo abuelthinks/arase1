@@ -1,0 +1,53 @@
+/* Styles for the rendered lesson markdown in /learn. Colors come from the same
+   CSS-variable tokens as the rest of the app (defined in globals.css), so they
+   adapt to dark / high-contrast themes automatically. */
+.learn-md {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+.learn-md > *:first-child { margin-top: 0; }
+.learn-md h1 { font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem; }
+.learn-md h2 {
+  font-size: 1.25rem; font-weight: 700; color: var(--text-primary);
+  margin: 2rem 0 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-light);
+}
+.learn-md h3 { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 1.5rem 0 0.5rem; }
+.learn-md p { margin: 0.75rem 0; }
+.learn-md ul, .learn-md ol { margin: 0.75rem 0; padding-left: 1.5rem; }
+.learn-md li { margin: 0.35rem 0; }
+.learn-md li::marker { color: var(--text-muted); }
+.learn-md strong { color: var(--text-primary); font-weight: 700; }
+.learn-md blockquote {
+  margin: 1rem 0; padding: 0.5rem 1rem; border-left: 3px solid var(--accent-border);
+  background: var(--bg-info-light); border-radius: 0 8px 8px 0;
+}
+.learn-md blockquote p { margin: 0.25rem 0; }
+.learn-md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em;
+  background: var(--bg-neutral-light); color: var(--text-primary);
+  padding: 0.1rem 0.35rem; border-radius: 4px;
+}
+.learn-md pre {
+  background: var(--bg-secondary); border: 1px solid var(--border-light);
+  border-radius: 8px; padding: 0.9rem 1rem; overflow-x: auto; margin: 1rem 0;
+}
+.learn-md pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; }
+.learn-md table {
+  width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem;
+  display: block; overflow-x: auto;
+}
+.learn-md th, .learn-md td { border: 1px solid var(--border-light); padding: 0.5rem 0.7rem; text-align: left; vertical-align: top; }
+.learn-md th { background: var(--bg-neutral-light); color: var(--text-primary); font-weight: 700; }
+.learn-md hr { border: none; border-top: 1px solid var(--border-light); margin: 1.5rem 0; }
+.learn-md a,
+.learn-md .learn-md-link {
+  color: var(--accent-primary); background: none; border: none; padding: 0;
+  font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.learn-md .learn-md-link:hover { color: var(--accent-hover); }
+.learn-md .learn-md-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em;
+  background: var(--bg-neutral-light); color: var(--text-secondary);
+  padding: 0.1rem 0.35rem; border-radius: 4px;
+}

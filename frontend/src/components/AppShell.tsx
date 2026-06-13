@@ -9,8 +9,9 @@ import React from "react";
 import NotificationBell from "@/components/NotificationBell";
 import AccessibilityToolbar from "@/components/AccessibilityToolbar";
 
-// Pages that should NOT show the sidebar (full-width pages)
-const NO_SIDEBAR_PATHS = ["/login", "/invite"];
+// Pages that should NOT show the sidebar or floating tools (full-width pages).
+// /learn is a distraction-free, admin-only developer guide.
+const NO_SIDEBAR_PATHS = ["/login", "/invite", "/learn"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
