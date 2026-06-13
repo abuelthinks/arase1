@@ -239,7 +239,7 @@ function SpecialistsContent() {
       const results = await Promise.all(postPromises);
       setPreferences(results.map(res => res.data));
 
-      toast.success('Preferences saved successfully.');
+      toast.success("Preferences saved.");
       router.push('/dashboard');
     } catch (error) {
       console.error(error);

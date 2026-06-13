@@ -346,7 +346,7 @@ export default function AdminDashboard() {
 
         setIsBulkProcessing(false);
         if (successCount > 0) {
-            toast.success(`Successfully sent ${successCount} invitations!`);
+            toast.success(`Sent ${successCount} invitation${successCount === 1 ? "" : "s"}.`);
             fetchData(); // Refresh the pending invites table
         }
         
@@ -628,7 +628,7 @@ export default function AdminDashboard() {
             const issuedEmail = inviteEmail;
             if (inviteRole === 'PARENT') {
                 await api.post("/api/students/", { parent_email: inviteEmail });
-                toast.success("Student registered and parent invited successfully");
+                toast.success("Student registered, parent invited.");
             } else {
                 const response = await api.post("/api/invitations/", { email: inviteEmail, role: inviteRole });
                 toast.success(`Invitation sent to ${issuedEmail}.`);
@@ -751,7 +751,7 @@ export default function AdminDashboard() {
         ...(specialistsWithoutSpecialty.length > 0 ? [{
             id: 'missing-specialty',
             title: `${specialistsWithoutSpecialty.length} specialist account${specialistsWithoutSpecialty.length === 1 ? '' : 's'} missing discipline`,
-            description: "Add specialties so assignment decisions stay accurate and easier to scan.",
+            description: "Add specialties to keep assignments accurate.",
             link: "/dashboard?tab=users",
             cta: "Review users",
             tone: 'info' as const,
@@ -1234,27 +1234,27 @@ export default function AdminDashboard() {
                                                                         <>
                                                                             <div
                                                                                 className={getFormPillClass(s.has_parent_assessment, s.parent_assessment_unlocked)}
-                                                                                onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
+                                                                                onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                             >Parent</div>
                                                                             <div
                                                                                 className={getFormPillClass(s.has_specialist_assessment)}
-                                                                                onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not yet submitted")}
+                                                                                onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                             >Specialist</div>
                                                                         </>
                                                                     ) : (
                                                                         <>
                                                                             <div
                                                                                 className={getFormPillClass(s.parent_current_tracker_submitted)}
-                                                                                onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not yet submitted")}
+                                                                                onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                             >Parent</div>
                                                                             <div
                                                                                 className={getFormPillClass(s.specialist_current_tracker_submitted)}
-                                                                                onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not yet submitted")}
+                                                                                onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                             >Specialist</div>
                                                                             {s.status.toUpperCase() === "INTEGRATED" && (
                                                                                 <div
                                                                                     className={getFormPillClass(s.teacher_current_tracker_submitted)}
-                                                                                    onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not yet submitted")}
+                                                                                    onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                                 >Teacher</div>
                                                                             )}
                                                                         </>
@@ -1354,27 +1354,27 @@ export default function AdminDashboard() {
                                                                     <>
                                                                         <div
                                                                             className={getFormPillClass(s.has_parent_assessment, s.parent_assessment_unlocked)}
-                                                                            onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not yet submitted")}
+                                                                            onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                         >Parent</div>
                                                                         <div
                                                                             className={getFormPillClass(s.has_specialist_assessment)}
-                                                                            onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not yet submitted")}
+                                                                            onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                         >Specialist</div>
                                                                     </>
                                                                 ) : (
                                                                     <>
                                                                         <div
                                                                             className={getFormPillClass(s.parent_current_tracker_submitted)}
-                                                                            onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not yet submitted")}
+                                                                            onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                         >Parent</div>
                                                                         <div
                                                                             className={getFormPillClass(s.specialist_current_tracker_submitted)}
-                                                                            onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not yet submitted")}
+                                                                            onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                         >Specialist</div>
                                                                         {s.status.toUpperCase() === "INTEGRATED" && (
                                                                             <div
                                                                                 className={getFormPillClass(s.teacher_current_tracker_submitted)}
-                                                                                onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not yet submitted")}
+                                                                                onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
                                                                             >Teacher</div>
                                                                         )}
                                                                     </>
@@ -1966,7 +1966,7 @@ export default function AdminDashboard() {
                                                                     <button
                                                                         onClick={() => {
                                                                             navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
-                                                                            toast.success('Invite link copied to clipboard!');
+                                                                            toast.success("Invite link copied.");
                                                                         }}
                                                                         className="hover:bg-blue-50 transition-colors duration-200"
                                                                         style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "var(--text-info)", cursor: "pointer", padding: 0 }}
@@ -2022,7 +2022,7 @@ export default function AdminDashboard() {
                                                         {!expiry?.isExpired && (
                                                             <button onClick={() => {
                                                                 navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
-                                                                toast.success('Invite link copied to clipboard!');
+                                                                toast.success("Invite link copied.");
                                                             }} className="btn-secondary text-xs flex-1 text-center py-2" title="Copy Invite Link">
                                                                 Copy Link
                                                             </button>

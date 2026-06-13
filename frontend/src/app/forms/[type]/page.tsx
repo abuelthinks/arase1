@@ -1864,7 +1864,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         student_id: parseInt(studentId || "0"),
                         report_cycle_id: parseInt(reportCycleId)
                     });
-                    toast.success("Unlock requested successfully.");
+                    toast.success("Unlock requested.");
                     await refetchTeamSubmission();
                 } catch (err: any) {
                     toast.error(extractApiError(err));
@@ -1886,7 +1886,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         student_id: parseInt(studentId || "0"),
                         report_cycle_id: parseInt(reportCycleId)
                     });
-                    toast.success(`${formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"} unlocked successfully.`);
+                    toast.success(`${formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"} unlocked.`);
                     await refetchTeamSubmission();
                 } catch (err: any) {
                     toast.error(extractApiError(err));
