@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { Sparkles, TrendingUp, Award } from "lucide-react";
+import { CATEGORY_COLOR, type Discipline } from "@/lib/role-colors";
 
 interface MetricData {
   name: string;
   shortLabel: string;
+  key: Discipline;
   initial: number;
   current: number;
   color: string;
@@ -20,46 +22,51 @@ export default function GoalProgressChart() {
     {
       name: "Speech-Language (SLP)",
       shortLabel: "SLP",
+      key: "SLP",
       initial: 35,
       current: 75,
-      color: "#6366f1",
-      gradient: "url(#slp-grad)",
+      color: CATEGORY_COLOR.SLP.solid,
+      gradient: "url(#SLP-grad)",
       goals: ["Expressive vocabulary increased by 40+ words", "Initiates peer conversation in 4 of 5 trials"],
     },
     {
       name: "Occupational Therapy (OT)",
       shortLabel: "OT",
+      key: "OT",
       initial: 40,
       current: 80,
-      color: "#3b82f6",
-      gradient: "url(#ot-grad)",
+      color: CATEGORY_COLOR.OT.solid,
+      gradient: "url(#OT-grad)",
       goals: ["Fine motor tripod grasp maintained independently", "Transitions between tasks with zero physical prompts"],
     },
     {
       name: "Physical Therapy (PT)",
       shortLabel: "PT",
+      key: "PT",
       initial: 50,
       current: 70,
-      color: "#10b981",
-      gradient: "url(#pt-grad)",
+      color: CATEGORY_COLOR.PT.solid,
+      gradient: "url(#PT-grad)",
       goals: ["Stands on dominant leg for 8+ seconds", "Navigates playground stairs using alternating feet"],
     },
     {
       name: "Behavioral (ABA)",
       shortLabel: "ABA",
+      key: "ABA",
       initial: 25,
       current: 68,
-      color: "#ec4899",
-      gradient: "url(#aba-grad)",
+      color: CATEGORY_COLOR.ABA.solid,
+      gradient: "url(#ABA-grad)",
       goals: ["Self-regulation using deep breathing in 80% of opportunities", "Waiting behavior maintained for 3+ minutes"],
     },
     {
       name: "Cognitive (Psychology)",
       shortLabel: "Psych",
+      key: "PSYCH",
       initial: 45,
       current: 85,
-      color: "#f59e0b",
-      gradient: "url(#psych-grad)",
+      color: CATEGORY_COLOR.PSYCH.solid,
+      gradient: "url(#PSYCH-grad)",
       goals: ["Maintains task attention for 12+ minutes", "Identifies primary and secondary emotions from social cards"],
     },
   ];
@@ -107,26 +114,12 @@ export default function GoalProgressChart() {
         <div className="md:col-span-2 relative flex items-center justify-center border border-line rounded-xl bg-app/40 p-2">
           <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: "visible" }}>
             <defs>
-              <linearGradient id="slp-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#818cf8" />
-                <stop offset="100%" stopColor="#4f46e5" />
-              </linearGradient>
-              <linearGradient id="ot-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#60a5fa" />
-                <stop offset="100%" stopColor="#2563eb" />
-              </linearGradient>
-              <linearGradient id="pt-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#34d399" />
-                <stop offset="100%" stopColor="#059669" />
-              </linearGradient>
-              <linearGradient id="aba-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f472b6" />
-                <stop offset="100%" stopColor="#db2777" />
-              </linearGradient>
-              <linearGradient id="psych-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#fbbf24" />
-                <stop offset="100%" stopColor="#d97706" />
-              </linearGradient>
+              {metrics.map((m) => (
+                <linearGradient key={m.key} id={`${m.key}-grad`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={CATEGORY_COLOR[m.key].from} />
+                  <stop offset="100%" stopColor={CATEGORY_COLOR[m.key].to} />
+                </linearGradient>
+              ))}
             </defs>
 
             {/* Gridlines */}

@@ -7,7 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap, CheckCircle2, FileUp, Loader2, Play, Trash2, XCircle } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
-import { roleColorHex, statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
+import { statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
+import Badge from "@/components/ui/Badge";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
@@ -108,7 +109,6 @@ interface DashboardAction {
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
-const getRoleStyle = roleColorHex;
 const getStatusStyle = statusColorHex;
 
 const getActionTypeStyle = (type: DashboardAction["type"]) => {
@@ -1583,9 +1583,7 @@ export default function AdminDashboard() {
                                                                 </div>
                                                             </td>
                                                             <td style={{ padding: "12px" }}>
-                                                                <span data-role-badge style={{ fontSize: "0.75rem", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "600", letterSpacing: "0.3px" }}>
-                                                                    {u.role}
-                                                                </span>
+                                                                <Badge role={u.role} icon />
                                                             </td>
                                                             <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                                                                 {(u.role === 'TEACHER' || u.role === 'SPECIALIST') ? (
@@ -1636,9 +1634,7 @@ export default function AdminDashboard() {
                                                             </Link>
                                                             <span className="text-sm text-muted mt-1 truncate">{u.email}</span>
                                                         </div>
-                                                        <span data-role-badge style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(u.role).bg, color: getRoleStyle(u.role).color, textAlign: "center", whiteSpace: "nowrap" }}>
-                                                            {u.role}
-                                                        </span>
+                                                        <Badge role={u.role} icon className="shrink-0" />
                                                     </div>
                                                     <div className="text-sm text-muted">
                                                         <span className="font-semibold mr-1">Assigned Kids:</span>
@@ -1948,9 +1944,7 @@ export default function AdminDashboard() {
                                                     <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-subtle-soft transition-colors duration-150">
                                                         <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)", textDecoration: expiry?.isExpired ? 'line-through' : 'none' }}>{inv.email}</td>
                                                         <td style={{ padding: "12px" }}>
-                                                            <span data-role-badge style={{ fontSize: "0.72rem", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, padding: "4px 10px", borderRadius: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.3px" }}>
-                                                                {inv.role}
-                                                            </span>
+                                                            <Badge role={inv.role} icon />
                                                         </td>
                                                         <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                                                         <td style={{ padding: "12px" }}>
@@ -2006,9 +2000,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                             <span className="text-sm text-muted mt-1">Sent: {new Date(inv.created_at).toLocaleDateString()}</span>
                                                         </div>
-                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: getRoleStyle(inv.role).bg, color: getRoleStyle(inv.role).color, textAlign: "center", whiteSpace: "nowrap", flexShrink: 0 }}>
-                                                            {inv.role}
-                                                        </span>
+                                                        <Badge role={inv.role} icon className="shrink-0" />
                                                     </div>
                                                     <div className="flex flex-wrap items-center gap-2 text-sm">
                                                         <span className="text-muted">Expires:</span>
