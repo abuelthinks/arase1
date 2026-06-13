@@ -41,6 +41,15 @@ if not os.environ.get('REDIS_URL'):
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
+    # The form-collaboration soft locks live in the cache; without Redis, use a
+    # local in-memory cache so a single-process dev server (and the test suite)
+    # works without a running Redis.
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'arase-dev-collab',
+        }
+    }
 
 # ─── Email — routed to Mailpit for local testing ─────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

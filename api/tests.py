@@ -1093,7 +1093,230 @@ class DocumentVersionDebouncingTests(APITestCase):
             email='other_admin_deb@example.com', password='Pass123!', role='ADMIN',
         )
         v3 = record_document_version(self.doc, other_admin, 'EDITED_DRAFT')
-        
+
         # Should create a new row since user is different
         self.assertEqual(self.doc.versions.count(), 3)
+
+
+@override_settings(
+    ROOT_URLCONF='backend.urls',
+    CACHES={'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'test-collab',
+    }},
+)
+class FormCollaborationTests(APITestCase):
+    """Real-time collaboration: section locks, finalization, and concurrent opens."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+        self.student = Student.objects.create(
+            first_name='Collab', last_name='Kid',
+            date_of_birth=date(2018, 1, 1), grade='Kinder',
+            status='PENDING_ASSESSMENT',
+        )
+        self.cycle = ReportCycle.objects.create(
+            student=self.student, label='Apr 2026',
+            start_date=date(2026, 4, 1), end_date=date(2026, 4, 30),
+            is_active=True, status='OPEN',
+        )
+        # Two specialists, fully onboarded, on different disciplines.
+        self.slp = User.objects.create_user(
+            email='slp@example.com', password='Pass123!', role='SPECIALIST',
+            first_name='Sam', last_name='Slp',
+            specialties=['Speech-Language Pathology'], languages=['English'],
+        )
+        self.ot = User.objects.create_user(
+            email='ot@example.com', password='Pass123!', role='SPECIALIST',
+            first_name='Olive', last_name='Ot',
+            specialties=['Occupational Therapy'], languages=['English'],
+        )
+        StudentAccess.objects.create(
+            user=self.slp, student=self.student,
+            assigned_specialties=['Speech-Language Pathology'],
+        )
+        StudentAccess.objects.create(
+            user=self.ot, student=self.student,
+            assigned_specialties=['Occupational Therapy'],
+        )
+
+    # ─── Section locks ──────────────────────────────────────────────────────
+
+    def test_acquire_lock_is_atomic(self):
+        from api.services import collaboration_service as cs
+        first = cs.acquire_lock(
+            form_type='assessment', instance_id=1, section_key='A', user=self.slp,
+        )
+        self.assertTrue(first['ok'])
+
+        # A different user cannot take a lock someone else holds.
+        second = cs.acquire_lock(
+            form_type='assessment', instance_id=1, section_key='A', user=self.ot,
+        )
+        self.assertFalse(second['ok'])
+        self.assertEqual(second['held_by']['user_id'], self.slp.id)
+
+        # The holder can refresh their own lock.
+        again = cs.acquire_lock(
+            form_type='assessment', instance_id=1, section_key='A', user=self.slp,
+        )
+        self.assertTrue(again['ok'])
+        self.assertTrue(again['refreshed'])
+
+    def test_release_lock_only_by_holder(self):
+        from api.services import collaboration_service as cs
+        cs.acquire_lock(form_type='assessment', instance_id=1, section_key='A', user=self.slp)
+
+        # Non-holder release is a no-op.
+        self.assertFalse(cs.release_lock(
+            form_type='assessment', instance_id=1, section_key='A', user=self.ot,
+        ))
+        # Peer can now still not acquire (lock intact).
+        self.assertFalse(cs.acquire_lock(
+            form_type='assessment', instance_id=1, section_key='A', user=self.ot,
+        )['ok'])
+
+        # Holder release frees it; peer can then take it.
+        self.assertTrue(cs.release_lock(
+            form_type='assessment', instance_id=1, section_key='A', user=self.slp,
+        ))
+        self.assertTrue(cs.acquire_lock(
+            form_type='assessment', instance_id=1, section_key='A', user=self.ot,
+        )['ok'])
+
+    def test_user_can_edit_section_respects_ownership(self):
+        from api.services.collaboration_service import user_can_edit_section
+        # Shared section: any assigned specialist may edit.
+        self.assertTrue(user_can_edit_section('assessment', 'A', self.slp, self.student.id))
+        self.assertTrue(user_can_edit_section('assessment', 'A', self.ot, self.student.id))
+        # Owned section C belongs to SLP only.
+        self.assertTrue(user_can_edit_section('assessment', 'C', self.slp, self.student.id))
+        self.assertFalse(user_can_edit_section('assessment', 'C', self.ot, self.student.id))
+
+    def test_submit_releases_section_lock(self):
+        from api.services import collaboration_service as cs
+        from api.services import section_service as ss
+
+        ss.save_section(
+            form_type='assessment', user=self.slp, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='C',
+            section_data={'slp_notes': 'done'},
+        )
+        instance = MultidisciplinaryAssessment.objects.get(student=self.student, report_cycle=self.cycle)
+        cs.acquire_lock(form_type='assessment', instance_id=instance.id, section_key='C', user=self.slp)
+        self.assertEqual(len(cs.get_active_locks(form_type='assessment', instance_id=instance.id)), 1)
+
+        ss.submit_section(
+            form_type='assessment', user=self.slp, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='C',
+        )
+        # Submitting drops the lock.
+        self.assertEqual(cs.get_active_locks(form_type='assessment', instance_id=instance.id), [])
+
+    # ─── Concurrent opens / dedupe ──────────────────────────────────────────
+
+    def test_concurrent_ensure_creates_single_row(self):
+        from api.services.section_service import ensure_form
+        ids = set()
+        for _ in range(4):
+            instance, _created = ensure_form(
+                form_type='assessment', user=self.slp,
+                student_id=self.student.id, report_cycle_id=self.cycle.id,
+            )
+            ids.add(instance.id)
+        self.assertEqual(len(ids), 1)
+        self.assertEqual(
+            MultidisciplinaryAssessment.objects.filter(
+                student=self.student, report_cycle=self.cycle,
+            ).count(),
+            1,
+        )
+
+    # ─── Finalization reflects to admin (regression for the duplicate bug) ───
+
+    def test_finalization_marks_profile_submitted_for_admin(self):
+        from api.services import section_service as ss
+        from api.services.student_service import get_student_profile_data
+
+        # SLP fills + submits section C.
+        ss.save_section(
+            form_type='assessment', user=self.slp, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='C',
+            section_data={'slp_notes': 'ok'},
+        )
+        ss.submit_section(
+            form_type='assessment', user=self.slp, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='C',
+        )
+        # Not finalized yet — OT's section D is still required.
+        profile = get_student_profile_data(self.student)
+        self.assertFalse(profile['form_statuses']['multi_assessment']['submitted'])
+
+        # OT fills + submits section D → all required sections done → finalized.
+        ss.save_section(
+            form_type='assessment', user=self.ot, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='D',
+            section_data={'ot_notes': 'ok'},
+        )
+        ss.submit_section(
+            form_type='assessment', user=self.ot, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='D',
+        )
+
+        instance = MultidisciplinaryAssessment.objects.get(student=self.student, report_cycle=self.cycle)
+        self.assertIsNotNone(instance.finalized_at)
+
+        # The admin's profile read now reflects the submission.
+        profile = get_student_profile_data(self.student)
+        self.assertTrue(profile['form_statuses']['multi_assessment']['submitted'])
+
+    def test_profile_prefers_finalized_row_over_newer_empty_cycle(self):
+        """A newer empty cycle's row must not mask an earlier finalized assessment."""
+        from api.services.student_service import get_student_profile_data
+
+        # Finalized assessment on the active cycle.
+        MultidisciplinaryAssessment.objects.create(
+            student=self.student, report_cycle=self.cycle,
+            form_data={}, finalized_at=timezone.now(), submitted_by=self.slp,
+        )
+        # A newer, empty assessment on a later cycle (created after → newer pk/date).
+        later_cycle = ReportCycle.objects.create(
+            student=self.student, label='May 2026',
+            start_date=date(2026, 5, 1), end_date=date(2026, 5, 31),
+            is_active=False, status='OPEN',
+        )
+        MultidisciplinaryAssessment.objects.create(
+            student=self.student, report_cycle=later_cycle, form_data={},
+        )
+
+        # The finalized row wins the read (nulls_last), so admin still sees it done.
+        profile = get_student_profile_data(self.student)
+        self.assertTrue(profile['form_statuses']['multi_assessment']['submitted'])
+
+    # ─── Field-level save merge (defense-in-depth for shared sections) ───────
+
+    def test_partial_saves_merge_on_shared_section(self):
+        """Two specialists writing different fields of a shared section don't clobber."""
+        from api.services import section_service as ss
+
+        # SLP writes one field of shared Section A.
+        ss.save_section(
+            form_type='assessment', user=self.slp, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='A',
+            section_data={'clinical_notes': 'from slp'},
+        )
+        # OT writes a different field of the same shared section.
+        ss.save_section(
+            form_type='assessment', user=self.ot, student_id=self.student.id,
+            report_cycle_id=self.cycle.id, section_key='A',
+            section_data={'correction_notes': 'from ot'},
+        )
+
+        instance = MultidisciplinaryAssessment.objects.get(student=self.student, report_cycle=self.cycle)
+        v2 = instance.form_data.get('v2', {})
+        # Both fields survive — the server merge keeps each specialist's value.
+        self.assertEqual(v2.get('clinical_notes'), 'from slp')
+        self.assertEqual(v2.get('correction_notes'), 'from ot')
 
