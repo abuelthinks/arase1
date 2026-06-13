@@ -11,7 +11,7 @@ function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; c
     return (
         <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "var(--form-control-font-size)", lineHeight: "var(--form-line-height)", cursor: readOnly ? "default" : "pointer", color: "var(--text-primary)", userSelect: "none" }}>
             <input type="checkbox" checked={checked} onChange={readOnly ? undefined : onChange} readOnly={readOnly}
-                style={{ width: 18, height: 18, accentColor: "#4f46e5", cursor: readOnly ? "default" : "pointer" }} />
+                style={{ width: 18, height: 18, accentColor: "var(--accent-primary)", cursor: readOnly ? "default" : "pointer" }} />
             {label}
         </label>
     );
@@ -290,8 +290,8 @@ function TeacherFormContent() {
                             width: "8px", 
                             height: "8px", 
                             borderRadius: "50%", 
-                            background: studentProfile.student.status === "Enrolled" ? "#22c55e" : "#f59e0b",
-                            boxShadow: `0 0 0 2px ${studentProfile.student.status === "Enrolled" ? "#dcfce7" : "#fef3c7"}`
+                            background: studentProfile.student.status === "Enrolled" ? "#22c55e" : "var(--warning)",
+                            boxShadow: `0 0 0 2px ${studentProfile.student.status === "Enrolled" ? "var(--bg-success-light)" : "var(--bg-warning-light)"}`
                         }}></span>
                         Status: {studentProfile.student.status}
                     </div>
@@ -323,7 +323,7 @@ function TeacherFormContent() {
                             onClick={() => setIsTranslated(true)}
                             style={{
                                 padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: isTranslated ? 700 : 500,
-                                color: isTranslated ? "#4f46e5" : "var(--text-secondary)", background: isTranslated ? "var(--bg-secondary)" : "transparent",
+                                color: isTranslated ? "var(--accent-primary)" : "var(--text-secondary)", background: isTranslated ? "var(--bg-secondary)" : "transparent",
                                 boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
                             }}
                         >
@@ -334,12 +334,12 @@ function TeacherFormContent() {
             </div>
 
             {successMsg && (
-                <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#d1fae5", color: "#065f46", border: "1px solid #a7f3d0", marginBottom: "1rem", fontWeight: 600 }}>
+                <div style={{ padding: "12px 16px", borderRadius: "8px", background: "var(--bg-success-light)", color: "var(--text-success)", border: "1px solid #a7f3d0", marginBottom: "1rem", fontWeight: 600 }}>
                     ✓ {successMsg}
                 </div>
             )}
             {errorMsg && (
-                <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", marginBottom: "1rem" }}>
+                <div style={{ padding: "12px 16px", borderRadius: "8px", background: "var(--bg-danger-light)", color: "var(--danger)", border: "1px solid #fca5a5", marginBottom: "1rem" }}>
                     {errorMsg}
                 </div>
             )}
@@ -536,7 +536,7 @@ function TeacherFormContent() {
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
                                 {OPTIONS.gas.map(opt => (
                                     <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.85rem" }}>
-                                        <input type="radio" checked={(form as any)[`h_goal_${g}`] === opt} onChange={() => ro ? undefined : set(`h_goal_${g}` as keyof FormState, opt)} disabled={ro} style={{ accentColor: "#4f46e5" }} />
+                                        <input type="radio" checked={(form as any)[`h_goal_${g}`] === opt} onChange={() => ro ? undefined : set(`h_goal_${g}` as keyof FormState, opt)} disabled={ro} style={{ accentColor: "var(--accent-primary)" }} />
                                         {opt}
                                     </label>
                                 ))}
@@ -584,7 +584,7 @@ function TeacherFormContent() {
                 </button>
                 {!ro && (
                     <button onClick={handleSubmit} disabled={loading}
-                        style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
+                        style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "var(--accent-primary)", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
                         {loading ? "Submitting…" : "Submit Assessment"}
                     </button>
                 )}

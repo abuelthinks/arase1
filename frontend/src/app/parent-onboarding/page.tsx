@@ -620,7 +620,7 @@ export function ParentFormContent({
                                     borderRadius: "6px",
                                     fontSize: "0.85rem",
                                     fontWeight: isTranslated ? 700 : 500,
-                                    color: isTranslated ? "#4f46e5" : "var(--text-secondary)",
+                                    color: isTranslated ? "var(--accent-primary)" : "var(--text-secondary)",
                                     background: isTranslated ? "white" : "transparent",
                                     boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
                                     border: "none",

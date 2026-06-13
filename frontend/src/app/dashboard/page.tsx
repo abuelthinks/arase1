@@ -624,7 +624,7 @@ export default function DashboardPage() {
                                     <button 
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
                                         disabled={safePage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === 1 ? "var(--bg-primary)" : "white", color: safePage === 1 ? "var(--text-muted)" : "inherit", cursor: safePage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === 1 ? "var(--bg-primary)" : "var(--bg-card)", color: safePage === 1 ? "var(--text-muted)" : "inherit", cursor: safePage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
                                     <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safePage} of {totalPages}
@@ -632,7 +632,7 @@ export default function DashboardPage() {
                                     <button 
                                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
                                         disabled={safePage === totalPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === totalPages ? "var(--bg-primary)" : "white", color: safePage === totalPages ? "var(--text-muted)" : "inherit", cursor: safePage === totalPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === totalPages ? "var(--bg-primary)" : "var(--bg-card)", color: safePage === totalPages ? "var(--text-muted)" : "inherit", cursor: safePage === totalPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}

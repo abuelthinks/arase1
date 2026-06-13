@@ -148,7 +148,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
 
     if (!iepId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing IEP ID.</div>;
     if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading IEP…</div>;
-    if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
+    if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--danger)" }}>{errorMsg}</div>;
     if (!iep || !meta) return null;
 
     const set = (section: keyof IEPData, path: string[], value: any) => {

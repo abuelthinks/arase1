@@ -69,9 +69,9 @@ function getExpiryDisplay(expiresAt: string): { label: string; color: string; bg
     if (diffMs <= 0) return { label: 'Expired', color: '#be123c', bg: '#fff1f2', isExpired: true };
     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    if (diffHrs < 6) return { label: `${diffHrs}h ${diffMins}m left`, color: '#b45309', bg: '#fef3c7', isExpired: false };
-    if (diffHrs < 24) return { label: `${diffHrs}h left`, color: '#b45309', bg: '#fef3c7', isExpired: false };
-    return { label: `${diffHrs}h left`, color: '#166534', bg: '#dcfce7', isExpired: false };
+    if (diffHrs < 6) return { label: `${diffHrs}h ${diffMins}m left`, color: 'var(--text-warning)', bg: 'var(--bg-warning-light)', isExpired: false };
+    if (diffHrs < 24) return { label: `${diffHrs}h left`, color: 'var(--text-warning)', bg: 'var(--bg-warning-light)', isExpired: false };
+    return { label: `${diffHrs}h left`, color: 'var(--text-success)', bg: 'var(--bg-success-light)', isExpired: false };
 }
 
 interface StudentData {
@@ -112,9 +112,9 @@ const getRoleStyle = roleColorHex;
 const getStatusStyle = statusColorHex;
 
 const getActionTypeStyle = (type: DashboardAction["type"]) => {
-    if (type === 'positive') return { bg: '#f0fdf4', border: '#bbf7d0', title: '#166534', body: '#15803d' };
-    if (type === 'warning') return { bg: '#fffbeb', border: '#fde68a', title: '#b45309', body: '#b45309' };
-    return { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
+    if (type === 'positive') return { bg: '#f0fdf4', border: '#bbf7d0', title: 'var(--text-success)', body: 'var(--success)' };
+    if (type === 'warning') return { bg: 'var(--bg-warning-light)', border: '#fde68a', title: 'var(--text-warning)', body: 'var(--text-warning)' };
+    return { bg: '#eff6ff', border: '#bfdbfe', title: 'var(--text-info)', body: 'var(--text-info)' };
 };
 
 const getFormPillClass = (isSubmitted?: boolean, isUnlocked?: boolean) => {
@@ -883,7 +883,7 @@ export default function AdminDashboard() {
                                                 {/* Watchlist Items */}
                                                 {watchlistItems.map(item => {
                                                     const toneKey = (item.tone as string) === 'warning' ? "warning" : "info";
-                                                    const tone = toneKey === 'warning' ? { bg: '#fffbeb', border: '#fde68a', title: '#92400e', body: '#b45309' } : { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', body: '#2563eb' };
+                                                    const tone = toneKey === 'warning' ? { bg: 'var(--bg-warning-light)', border: '#fde68a', title: 'var(--text-warning)', body: 'var(--text-warning)' } : { bg: '#eff6ff', border: '#bfdbfe', title: 'var(--text-info)', body: 'var(--text-info)' };
                                                     return (
                                                         <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl shadow-sm" style={{ backgroundColor: tone.bg, border: `1px solid ${tone.border}` }}>
                                                             <div>
@@ -1431,7 +1431,7 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setStudentPage(p => Math.max(1, p - 1))} 
                                         disabled={safeStudentPage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeStudentPage === 1 ? "var(--bg-primary)" : "white", color: safeStudentPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeStudentPage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeStudentPage === 1 ? "var(--bg-primary)" : "var(--bg-card)", color: safeStudentPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeStudentPage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
                                     <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safeStudentPage} of {totalStudentPages}
@@ -1439,7 +1439,7 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setStudentPage(p => Math.min(totalStudentPages, p + 1))} 
                                         disabled={safeStudentPage === totalStudentPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeStudentPage === totalStudentPages ? "var(--bg-primary)" : "white", color: safeStudentPage === totalStudentPages ? "var(--text-muted)" : "inherit", cursor: safeStudentPage === totalStudentPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeStudentPage === totalStudentPages ? "var(--bg-primary)" : "var(--bg-card)", color: safeStudentPage === totalStudentPages ? "var(--text-muted)" : "inherit", cursor: safeStudentPage === totalStudentPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}
@@ -1594,7 +1594,7 @@ export default function AdminDashboard() {
                                                                     </div>
                                                                 ) : u.role === 'PARENT' && u.assigned_student_names && u.assigned_student_names.length > 0 ? (
                                                                     <div
-                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "#fef3c7", color: "#92400e", fontWeight: "bold", fontSize: "0.8rem", padding: "0 8px" }}
+                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "24px", height: "24px", borderRadius: "12px", background: "var(--bg-warning-light)", color: "var(--text-warning)", fontWeight: "bold", fontSize: "0.8rem", padding: "0 8px" }}
                                                                         title={u.assigned_student_names.join(', ')}
                                                                     >
                                                                         {u.assigned_student_names.length} {u.assigned_student_names.length === 1 ? "child" : "children"}
@@ -1605,14 +1605,14 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
                                                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
-                                                                    <Link href={`/users/${u.id}`} aria-label={`View profile of ${displayName}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "#3b82f6" }} title="View Profile">
+                                                                    <Link href={`/users/${u.id}`} aria-label={`View profile of ${displayName}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "var(--text-info)" }} title="View Profile">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
                                                                     </Link>
                                                                     <button onClick={() => {
                                                                         setUserToDelete(u);
                                                                         setDeleteConfirmText("");
                                                                         setDeleteError("");
-                                                                    }} aria-label={`Delete user ${displayName}`} className="hover:bg-danger-soft transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", borderRadius: "6px", padding: 0 }} title="Delete User">
+                                                                    }} aria-label={`Delete user ${displayName}`} className="hover:bg-danger-soft transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", background: "none", border: "none", cursor: "pointer", color: "var(--danger)", borderRadius: "6px", padding: 0 }} title="Delete User">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                                     </button>
                                                                 </div>
@@ -1677,7 +1677,7 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setUserPage(p => Math.max(1, p - 1))} 
                                         disabled={safeUserPage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeUserPage === 1 ? "var(--bg-primary)" : "white", color: safeUserPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeUserPage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeUserPage === 1 ? "var(--bg-primary)" : "var(--bg-card)", color: safeUserPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeUserPage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
                                     <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safeUserPage} of {totalUserPages}
@@ -1685,7 +1685,7 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))} 
                                         disabled={safeUserPage === totalUserPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeUserPage === totalUserPages ? "var(--bg-primary)" : "white", color: safeUserPage === totalUserPages ? "var(--text-muted)" : "inherit", cursor: safeUserPage === totalUserPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeUserPage === totalUserPages ? "var(--bg-primary)" : "var(--bg-card)", color: safeUserPage === totalUserPages ? "var(--text-muted)" : "inherit", cursor: safeUserPage === totalUserPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}
@@ -1969,7 +1969,7 @@ export default function AdminDashboard() {
                                                                             toast.success('Invite link copied to clipboard!');
                                                                         }}
                                                                         className="hover:bg-blue-50 transition-colors duration-200"
-                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0 }}
+                                                                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "var(--text-info)", cursor: "pointer", padding: 0 }}
                                                                         title="Copy Invite Link"
                                                                     >
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -1978,12 +1978,12 @@ export default function AdminDashboard() {
                                                                 <button
                                                                     onClick={() => setInviteToResend(inv)}
                                                                     className="hover:bg-success-soft transition-colors duration-200"
-                                                                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "#16a34a", cursor: "pointer", padding: 0 }}
+                                                                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "var(--success)", cursor: "pointer", padding: 0 }}
                                                                     title="Resend Invitation"
                                                                 >
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.49 2.74l1.51 1.51"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.49-2.74L3.5 16.75"/><polyline points="20 4 20 9 15 9"/><polyline points="4 20 4 15 9 15"/></svg>
                                                                 </button>
-                                                                <button onClick={() => setInviteToRevoke(inv)} className="hover:bg-danger-soft transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0 }} title="Revoke Invite">
+                                                                <button onClick={() => setInviteToRevoke(inv)} className="hover:bg-danger-soft transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 0 }} title="Revoke Invite">
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                                                                 </button>
                                                             </div>
@@ -2047,7 +2047,7 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setInvitationPage(p => Math.max(1, p - 1))} 
                                         disabled={safeInvitationPage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeInvitationPage === 1 ? "var(--bg-primary)" : "white", color: safeInvitationPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeInvitationPage === 1 ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeInvitationPage === 1 ? "var(--bg-primary)" : "var(--bg-card)", color: safeInvitationPage === 1 ? "var(--text-muted)" : "inherit", cursor: safeInvitationPage === 1 ? "not-allowed" : "pointer" }}
                                     >Previous</button>
                                     <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                                         Page {safeInvitationPage} of {totalInvitationPages}
@@ -2055,7 +2055,7 @@ export default function AdminDashboard() {
                                     <button 
                                         onClick={() => setInvitationPage(p => Math.min(totalInvitationPages, p + 1))} 
                                         disabled={safeInvitationPage === totalInvitationPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeInvitationPage === totalInvitationPages ? "var(--bg-primary)" : "white", color: safeInvitationPage === totalInvitationPages ? "var(--text-muted)" : "inherit", cursor: safeInvitationPage === totalInvitationPages ? "not-allowed" : "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safeInvitationPage === totalInvitationPages ? "var(--bg-primary)" : "var(--bg-card)", color: safeInvitationPage === totalInvitationPages ? "var(--text-muted)" : "inherit", cursor: safeInvitationPage === totalInvitationPages ? "not-allowed" : "pointer" }}
                                     >Next</button>
                                 </div>
                             )}
@@ -2072,7 +2072,7 @@ export default function AdminDashboard() {
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
                     <div style={{ background: "var(--bg-secondary)", padding: "2rem", borderRadius: "16px", width: "420px", maxWidth: "90%", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1.5rem" }}>
-                            <div style={{ background: "#e0e7ff", color: "#4f46e5", padding: "8px", borderRadius: "10px" }}>
+                            <div style={{ background: "var(--accent-soft)", color: "var(--accent-primary)", padding: "8px", borderRadius: "10px" }}>
                                 <UserPlus size={20} />
                             </div>
                             <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: "1.25rem", color: "var(--text-primary)", fontWeight: 800 }}>Registration</h2>
@@ -2080,7 +2080,7 @@ export default function AdminDashboard() {
                         
                         <form onSubmit={handleInviteUser} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                             <div>
-                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Account Role <span style={{ color: "#ef4444" }}>*</span></label>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Account Role <span style={{ color: "var(--danger)" }}>*</span></label>
                                 <CustomSelect 
                                     value={inviteRole}
                                     onChange={setInviteRole}
@@ -2094,7 +2094,7 @@ export default function AdminDashboard() {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "var(--danger)" }}>*</span></label>
                                 <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", background: "var(--bg-primary)", fontSize: "0.9rem", transition: "all 0.2s" }} />
                             </div>
                             
@@ -2110,7 +2110,7 @@ export default function AdminDashboard() {
                             <div style={{ marginTop: "1rem", textAlign: "center", borderTop: "1px dashed var(--border-light)", paddingTop: "1rem" }}>
                                 <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
                                     Need to invite multiple people? <br/>
-                                    <Link href="/dashboard?tab=invitations" onClick={() => setShowInviteModal(false)} style={{ color: "#4f46e5", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
+                                    <Link href="/dashboard?tab=invitations" onClick={() => setShowInviteModal(false)} style={{ color: "var(--accent-primary)", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
                                         Go to Bulk Registration <ArrowRight size={14} />
                                     </Link>
                                 </p>
@@ -2124,7 +2124,7 @@ export default function AdminDashboard() {
             {userToDelete && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
                     <div style={{ background: "var(--bg-secondary)", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
-                        <h2 style={{ marginTop: 0, color: "#d32f2f" }}>Delete User</h2>
+                        <h2 style={{ marginTop: 0, color: "var(--danger)" }}>Delete User</h2>
                         <p style={{ color: "var(--text-secondary)", marginBottom: "1rem", fontSize: "0.95rem" }}>
                             You are about to permanently delete <strong>{userToDelete.first_name} {userToDelete.last_name}</strong>.
                         </p>
@@ -2134,7 +2134,7 @@ export default function AdminDashboard() {
                         </p>
 
                         {deleteError && (
-                            <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "10px", borderRadius: "6px", marginBottom: "1rem", fontSize: "0.85rem", fontWeight: "bold" }}>
+                            <div style={{ background: "var(--bg-danger-light)", color: "var(--text-danger)", padding: "10px", borderRadius: "6px", marginBottom: "1rem", fontSize: "0.85rem", fontWeight: "bold" }}>
                                 {deleteError}
                             </div>
                         )}
@@ -2154,7 +2154,7 @@ export default function AdminDashboard() {
                                 <button
                                     onClick={handleConfirmDeleteUser}
                                     disabled={deleteConfirmText !== userToDelete.email}
-                                    style={{ flex: 1, padding: "10px", background: deleteConfirmText === userToDelete.email ? "#d32f2f" : "#fca5a5", color: "white", border: "none", borderRadius: "8px", cursor: deleteConfirmText === userToDelete.email ? "pointer" : "not-allowed", fontWeight: "bold" }}
+                                    style={{ flex: 1, padding: "10px", background: deleteConfirmText === userToDelete.email ? "var(--danger)" : "var(--text-danger)", color: "white", border: "none", borderRadius: "8px", cursor: deleteConfirmText === userToDelete.email ? "pointer" : "not-allowed", fontWeight: "bold" }}
                                 >
                                     Permanently Delete
                                 </button>

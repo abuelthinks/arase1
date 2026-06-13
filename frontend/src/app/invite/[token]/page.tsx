@@ -90,12 +90,12 @@ export default function AcceptInvitePage() {
         return (
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "var(--bg-light)" }}>
                 <div style={{ background: "var(--bg-secondary)", padding: "3rem", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", textAlign: "center", maxWidth: "450px" }}>
-                    <div style={{ color: "#ef4444", marginBottom: "1rem" }}>
+                    <div style={{ color: "var(--danger)", marginBottom: "1rem" }}>
                         <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{ margin: "0 auto" }}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
                     </div>
-                    <h1 style={{ color: "#b91c1c", fontSize: "1.5rem", margin: "0 0 10px 0" }}>Invalid Link</h1>
+                    <h1 style={{ color: "var(--text-danger)", fontSize: "1.5rem", margin: "0 0 10px 0" }}>Invalid Link</h1>
                     <p style={{ color: "var(--text-secondary)", margin: 0 }}>{fatalError}</p>
                 </div>
             </div>
@@ -117,7 +117,7 @@ export default function AcceptInvitePage() {
                 </div>
 
                 {error && (
-                    <div style={{ background: "#fef2f2", color: "#b91c1c", padding: "10px 14px", borderRadius: "8px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px", border: "1px solid #fee2e2" }}>
+                    <div style={{ background: "var(--bg-danger-light)", color: "var(--text-danger)", padding: "10px 14px", borderRadius: "8px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px", border: "1px solid #fee2e2" }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                         {error}
                     </div>
@@ -141,28 +141,28 @@ export default function AcceptInvitePage() {
 
                     <div style={{ display: "flex", gap: "0.75rem" }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>First Name <span style={{ color: "#ef4444" }}>*</span></label>
+                            <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>First Name <span style={{ color: "var(--danger)" }}>*</span></label>
                             <input
                                 required
                                 type="text"
                                 autoComplete="given-name"
                                 placeholder="Grace"
                                 style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
-                                onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
+                                onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
                                 onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
                                 value={formData.firstName}
                                 onChange={e => setFormData({ ...formData, firstName: e.target.value })}
                             />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Last Name <span style={{ color: "#ef4444" }}>*</span></label>
+                            <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Last Name <span style={{ color: "var(--danger)" }}>*</span></label>
                             <input
                                 required
                                 type="text"
                                 autoComplete="family-name"
                                 placeholder="Doe"
                                 style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
-                                onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
+                                onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
                                 onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
                                 value={formData.lastName}
                                 onChange={e => setFormData({ ...formData, lastName: e.target.value })}
@@ -171,7 +171,7 @@ export default function AcceptInvitePage() {
                     </div>
 
                     <div>
-                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Phone Number <span style={{ color: "#ef4444" }}>*</span></label>
+                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Phone Number <span style={{ color: "var(--danger)" }}>*</span></label>
                         <input
                             required
                             type="tel"
@@ -180,7 +180,7 @@ export default function AcceptInvitePage() {
                             pattern="^\+?[0-9\s\-\(\)]{7,15}$"
                             title="Please enter a valid phone number (7-15 digits)."
                             style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
-                            onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
+                            onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
                             onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
                             value={formData.phoneNumber}
                             onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })}
@@ -190,14 +190,14 @@ export default function AcceptInvitePage() {
                     {/* Hidden username field for password managers */}
                     <input type="text" autoComplete="username" value={email} readOnly style={{ display: 'none' }} />
                     <div style={{ position: "relative" }}>
-                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Create Password <span style={{ color: "#ef4444" }}>*</span></label>
+                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Create Password <span style={{ color: "var(--danger)" }}>*</span></label>
                         <input
                             required
                             type="password"
                             autoComplete="new-password"
                             placeholder="••••••••"
                             style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
-                            onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
+                            onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
                             onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
                             value={formData.password}
                             onChange={e => setFormData({ ...formData, password: e.target.value })}
@@ -205,14 +205,14 @@ export default function AcceptInvitePage() {
                     </div>
 
                     <div style={{ position: "relative" }}>
-                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Confirm Password <span style={{ color: "#ef4444" }}>*</span></label>
+                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Confirm Password <span style={{ color: "var(--danger)" }}>*</span></label>
                         <input
                             required
                             type="password"
                             autoComplete="new-password"
                             placeholder="••••••••"
                             style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
-                            onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
+                            onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
                             onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
                             value={formData.confirmPassword}
                             onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}

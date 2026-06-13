@@ -129,7 +129,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
 
     if (!reportId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing Report ID.</div>;
     if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading Monthly Report…</div>;
-    if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "#ef4444" }}>{errorMsg}</div>;
+    if (errorMsg) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--danger)" }}>{errorMsg}</div>;
     if (!report || !meta) return null;
 
     const handleDownload = () => {
@@ -185,7 +185,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                 <div className="hidden md:flex" style={{ marginBottom: "1.5rem", alignItems: "center", gap: "8px" }}>
                 <button type="button" onClick={() => router.back()}
                     style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}
-                    onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+                    onMouseOver={(e) => e.currentTarget.style.color = "var(--text-info)"}
                     onMouseOut={(e) => e.currentTarget.style.color = "var(--text-secondary)"}
                 >
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}>

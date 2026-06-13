@@ -322,7 +322,7 @@ function SectionCard({ title, children, isMySection, isInvalid }: { title: strin
                         : "none",
                 transition: "all 0.2s"
             }} className={isInvalid ? "bg-danger-soft/10" : isMySection ? "" : "bg-card rounded-xl"}>
-            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-light)", background: isInvalid ? "#fee2e2" : isMySection ? "#eef2ff" : "var(--bg-primary)" }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-light)", background: isInvalid ? "var(--bg-danger-light)" : isMySection ? "#eef2ff" : "var(--bg-primary)" }}>
                 <h2 style={{ fontSize: "var(--form-section-title-size)", lineHeight: 1.35 }} className="font-bold text-fg m-0">{title}</h2>
             </div>
             <div className="p-4 sm:p-6 flex flex-col gap-4">
@@ -336,7 +336,7 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
     return (
         <p style={{ fontSize: "var(--form-field-label-size)", lineHeight: "var(--form-line-height)", fontWeight: 650, color: "var(--text-primary)", marginBottom: "6px" }}>
             {label}
-            {required && <span style={{ color: "#ef4444", marginLeft: "4px" }}>*</span>}
+            {required && <span style={{ color: "var(--danger)", marginLeft: "4px" }}>*</span>}
         </p>
     );
 }
@@ -407,7 +407,7 @@ function CheckboxItem({ label, checked, onChange, readOnly }: { label: string; c
                 checked={checked}
                 onChange={onChange}
                 disabled={readOnly}
-                style={{ width: 18, height: 18, accentColor: "#4f46e5", cursor: readOnly ? "not-allowed" : "pointer" }}
+                style={{ width: 18, height: 18, accentColor: "var(--accent-primary)", cursor: readOnly ? "not-allowed" : "pointer" }}
             />
             {label}
         </label>
@@ -424,7 +424,7 @@ function RadioGroup({ options, value, onChange, readOnly }: { options: string[];
                         checked={value === opt}
                         onChange={() => onChange(opt)}
                         disabled={readOnly}
-                        style={{ width: 18, height: 18, accentColor: "#4f46e5", cursor: readOnly ? "not-allowed" : "pointer" }}
+                        style={{ width: 18, height: 18, accentColor: "var(--accent-primary)", cursor: readOnly ? "not-allowed" : "pointer" }}
                     />
                     {opt}
                 </label>
@@ -484,11 +484,11 @@ function ReadOnlyParentSummary({ rows }: { rows: { label: string; value: string 
 }
 
 const GAS_OPTIONS = [
-    { score: 1, label: "None", tone: "#fee2e2", color: "#991b1b" },
-    { score: 2, label: "Minimal", tone: "#fef3c7", color: "#92400e" },
+    { score: 1, label: "None", tone: "var(--bg-danger-light)", color: "var(--text-danger)" },
+    { score: 2, label: "Minimal", tone: "var(--bg-warning-light)", color: "var(--text-warning)" },
     { score: 3, label: "Expected", tone: "#dbeafe", color: "#1e40af" },
-    { score: 4, label: "More", tone: "#d1fae5", color: "#065f46" },
-    { score: 5, label: "Achieved", tone: "#dcfce7", color: "#166534" },
+    { score: 4, label: "More", tone: "var(--bg-success-light)", color: "var(--text-success)" },
+    { score: 5, label: "Achieved", tone: "var(--bg-success-light)", color: "var(--text-success)" },
 ];
 
 const SUPPORT_OPTIONS = ["Independent", "Verbal prompt", "Visual prompt", "Physical support", "Full assistance"];
@@ -580,11 +580,11 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
                 const goalScore = typeof goal.score === "number" ? goal.score : scoreNumberFrom(goal.score);
                 const attention =
                     goal.next_step === "Review goal"
-                        ? { label: "Review goal", bg: "#fef3c7", color: "#92400e" }
+                        ? { label: "Review goal", bg: "var(--bg-warning-light)", color: "var(--text-warning)" }
                         : goalScore && goalScore <= 2
-                            ? { label: "Needs attention", bg: "#fee2e2", color: "#991b1b" }
+                            ? { label: "Needs attention", bg: "var(--bg-danger-light)", color: "var(--text-danger)" }
                             : goalScore === 5
-                                ? { label: "Achieved", bg: "#dcfce7", color: "#166534" }
+                                ? { label: "Achieved", bg: "var(--bg-success-light)", color: "var(--text-success)" }
                                 : null;
 
                 return (
@@ -592,7 +592,7 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start", marginBottom: "8px" }}>
                         <div style={{ minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "3px" }}>
-                                <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 800, color: "#172554" }}>
+                                <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 800, color: "var(--text-primary)" }}>
                                     {goal.goal_id}{goal.domain ? ` (${goal.domain})` : ""}
                                 </p>
                                 {attention && (
@@ -1926,8 +1926,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 width: "8px", 
                                 height: "8px", 
                                 borderRadius: "50%", 
-                                background: studentProfile.student.status === "Enrolled" ? "#22c55e" : "#f59e0b",
-                                boxShadow: `0 0 0 2px ${studentProfile.student.status === "Enrolled" ? "#dcfce7" : "#fef3c7"}`
+                                background: studentProfile.student.status === "Enrolled" ? "#22c55e" : "var(--warning)",
+                                boxShadow: `0 0 0 2px ${studentProfile.student.status === "Enrolled" ? "var(--bg-success-light)" : "var(--bg-warning-light)"}`
                             }}></span>
                             Status: {studentProfile.student.status}
                         </div>
@@ -1983,12 +1983,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         )}
                         {!isViewMode && collabFormType && collabInstanceId && (
                             <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: collab.connected ? "#dcfce7" : "var(--bg-neutral-light)", color: collab.connected ? "#166534" : "var(--text-secondary)", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                                <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: collab.connected ? "var(--bg-success-light)" : "var(--bg-neutral-light)", color: collab.connected ? "var(--text-success)" : "var(--text-secondary)", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
                                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: collab.connected ? "#22c55e" : "var(--text-muted)", display: "inline-block" }} />
                                     {collab.connected ? "Live" : "Reconnecting…"}
                                 </span>
                                 {collab.locks.filter(l => l.user_id !== user?.user_id).map(l => (
-                                    <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px" }}>
+                                    <span key={`${l.user_id}-${l.section_key}`} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "3px 8px", background: "#eef2ff", color: "var(--accent-primary)", borderRadius: "999px" }}>
                                         {l.user_name}{l.section_key && l.section_key !== "*" ? ` · §${l.section_key}` : ""}
                                     </span>
                                 ))}
@@ -2018,7 +2018,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 {/* Alerts */}
                 {successMsg ? (
                     <div className="bg-card min-h-[500px] flex flex-col items-center justify-center p-8 text-center" style={{ borderRadius: "12px", border: "1px solid var(--border-light)", marginBottom: "2rem" }}>
-                        <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px" }}>
+                        <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--bg-success-light)", color: "var(--text-success)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px" }}>
                             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: 40, height: 40 }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
@@ -2033,14 +2033,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 ) : (
                     <>
                         {errorMsg && (
-                            <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", marginBottom: "1rem" }}>
+                            <div style={{ padding: "12px 16px", borderRadius: "8px", background: "var(--bg-danger-light)", color: "var(--danger)", border: "1px solid #fca5a5", marginBottom: "1rem" }}>
                                 {errorMsg}
                             </div>
                         )}
 
                 {/* Section-gating banner */}
                 {!isViewMode && !isAdmin && (formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker") && (
-                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#eef2ff", color: "#3730a3", border: "1px solid #c7d2fe", marginBottom: "1rem", fontSize: "0.875rem" }}>
+                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: "var(--accent-soft)", color: "var(--accent-primary)", border: "1px solid var(--accent-border)", marginBottom: "1rem", fontSize: "0.875rem" }}>
                         {editableSpecialties.length > 0 ? (
                             <>You can edit shared sections and your assigned discipline area{editableSpecialties.length > 1 ? "s" : ""}: <strong>{editableSpecialties.map(s => specialtyShortLabel(s as SectionOwner)).join(", ")}</strong>. Other sections are read-only.</>
                         ) : (
@@ -2050,12 +2050,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 )}
 
                 {specialistOnboardingLocked && (
-                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a", marginBottom: "1rem", fontSize: "0.875rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: "var(--bg-warning-light)", color: "var(--text-warning)", border: "1px solid #fde68a", marginBottom: "1rem", fontSize: "0.875rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                         <span>{specialistOnboardingMessage(user?.specialist_onboarding_missing)}</span>
                         <button
                             type="button"
                             onClick={() => router.push("/specialist-onboarding")}
-                            style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "#d97706", color: "white", fontWeight: 700, cursor: "pointer" }}
+                            style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "var(--warning)", color: "white", fontWeight: 700, cursor: "pointer" }}
                         >
                             Finish setup
                         </button>
@@ -2104,7 +2104,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             <SectionCard key={section.id} title={section.title} isMySection={isMySection} isInvalid={isInvalidSection}>
                                 {ownerLabel && !isViewMode && (
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "-4px", marginBottom: "4px" }}>
-                                        <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#eef2ff", color: "#4338ca", borderRadius: "999px", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                                        <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: "#eef2ff", color: "var(--accent-primary)", borderRadius: "999px", textTransform: "uppercase", letterSpacing: "0.4px" }}>
                                             {ownerLabel}
                                         </span>
                                         {!sectionFullyEditable && sectionOwner !== "MIXED" && (
@@ -2134,7 +2134,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                                 margin: "-10px -14px",
                                                 borderRadius: "12px",
                                                 border: isInvalid ? "1.5px solid #fee2e2" : "1.5px solid transparent",
-                                                background: isInvalid ? "#fef2f2" : "transparent",
+                                                background: isInvalid ? "var(--bg-danger-light)" : "transparent",
                                                 transition: "all 0.2s",
                                                 display: "flex",
                                                 flexDirection: "column",
@@ -2149,7 +2149,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                                         onClick={() => toggleDescription(field.id)}
                                                         style={{
                                                             background: "none", border: "none", padding: "2px 6px",
-                                                            fontSize: "var(--form-small-font-size)", color: "#6366f1", fontWeight: 600,
+                                                            fontSize: "var(--form-small-font-size)", color: "var(--accent-primary)", fontWeight: 600,
                                                             cursor: "pointer", borderRadius: "4px",
                                                             textDecoration: "underline"
                                                         }}
@@ -2160,7 +2160,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                             </div>
 
                                             {isInvalid && (
-                                                <p style={{ color: "#ef4444", fontSize: "0.75rem", fontWeight: 650, marginTop: "-4px", marginBottom: "4px" }}>
+                                                <p style={{ color: "var(--danger)", fontSize: "0.75rem", fontWeight: 650, marginTop: "-4px", marginBottom: "4px" }}>
                                                     * Please select an option or fill in the value
                                                 </p>
                                             )}
@@ -2235,7 +2235,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                                                                 checked={(currentValue && currentValue[row]) === col}
                                                                                 onChange={() => handleGridChange(dataKey, field.id, row, col)}
                                                                                 disabled={fieldReadOnly}
-                                                                                style={{ width: 16, height: 16, accentColor: "#4f46e5", cursor: fieldReadOnly ? "not-allowed" : "pointer" }}
+                                                                                style={{ width: 16, height: 16, accentColor: "var(--accent-primary)", cursor: fieldReadOnly ? "not-allowed" : "pointer" }}
                                                                             />
                                                                         </td>
                                                                     ))}
@@ -2309,7 +2309,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 type="button"
                                 onClick={submitOwnedAssessmentSections}
                                 disabled={specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit}
-                                style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "#cbd5f5" : "#4f46e5", color: "white", fontWeight: 700, cursor: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "not-allowed" : "pointer", fontSize: "0.9rem", minWidth: "190px" }}
+                                style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "#cbd5f5" : "var(--accent-primary)", color: "white", fontWeight: 700, cursor: specialistOnboardingLocked || submittingOwnedSections || !hasSomethingToSubmit ? "not-allowed" : "pointer", fontSize: "0.9rem", minWidth: "190px" }}
                             >
                                 {submittingOwnedSections ? "Submitting..." : `Submit My ${formType === "multidisciplinary-assessment" ? "Assessment" : "Tracker"}`}
                             </button>
@@ -2324,7 +2324,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 Cancel
                             </button>
                             <button type="submit" disabled={loading || specialistOnboardingLocked}
-                                style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "#4f46e5", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
+                                style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: loading ? "#a5b4fc" : "var(--accent-primary)", color: "white", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.9rem" }}>
                                 {loading ? "Submitting…" : "Submit Form"}
                             </button>
                         </div>

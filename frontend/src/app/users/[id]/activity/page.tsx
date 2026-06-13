@@ -59,7 +59,7 @@ export default function UserActivityPage() {
     if (authLoading || (loading && canViewActivity)) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading activity...</div>;
     if (!canViewActivity) return null;
     if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading activity...</div>;
-    if (error)   return <div style={{ padding: "3rem", textAlign: "center", color: "#dc2626" }}>{error}</div>;
+    if (error)   return <div style={{ padding: "3rem", textAlign: "center", color: "var(--danger)" }}>{error}</div>;
     if (!user)   return <div style={{ padding: "3rem", textAlign: "center" }}>User not found.</div>;
 
     const displayName = (user.first_name || user.last_name)
@@ -108,8 +108,8 @@ export default function UserActivityPage() {
                             const isLogin = act.type === "login";
                             const isSystem = act.type === "system";
                             
-                            const bg = isReport ? "#dcfce7" : isNote ? "#fef3c7" : isIEP ? "#f3e8ff" : isSystem ? "#e0f2fe" : "var(--bg-neutral-light)";
-                            const color = isReport ? "#16a34a" : isNote ? "#d97706" : isIEP ? "#9333ea" : isSystem ? "#0284c7" : "var(--text-secondary)";
+                            const bg = isReport ? "var(--bg-success-light)" : isNote ? "var(--bg-warning-light)" : isIEP ? "#f3e8ff" : isSystem ? "#e0f2fe" : "var(--bg-neutral-light)";
+                            const color = isReport ? "var(--success)" : isNote ? "var(--warning)" : isIEP ? "#9333ea" : isSystem ? "#0284c7" : "var(--text-secondary)";
                             
                             return (
                                 <div key={idx} style={{ display: "flex", gap: "16px", alignItems: "flex-start", position: "relative", borderBottom: idx !== mockFullActivities.length - 1 ? "1px solid var(--border-light)" : "none", paddingBottom: idx !== mockFullActivities.length - 1 ? "1.5rem" : "0" }}>

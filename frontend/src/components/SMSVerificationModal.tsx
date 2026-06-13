@@ -67,7 +67,7 @@ export default function SMSVerificationModal({ onClose, onVerified }: Props) {
                             We need to verify your phone number to enable SMS notifications and alerts. 
                             We will send a 6-digit code to your registered mobile number.
                         </p>
-                        {error && <p style={{ color: "#ef4444", marginBottom: "1rem" }}>{error}</p>}
+                        {error && <p style={{ color: "var(--danger)", marginBottom: "1rem" }}>{error}</p>}
                         
                         <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
                             <button className="btn-secondary" onClick={onClose} disabled={loading}>Cancel</button>
@@ -98,7 +98,7 @@ export default function SMSVerificationModal({ onClose, onVerified }: Props) {
                             placeholder="000000"
                         />
 
-                        {error && <p style={{ color: "#ef4444", marginBottom: "1rem" }}>{error}</p>}
+                        {error && <p style={{ color: "var(--danger)", marginBottom: "1rem" }}>{error}</p>}
 
                         <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginTop: "1rem" }}>
                             <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Cancel</button>

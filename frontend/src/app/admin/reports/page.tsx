@@ -246,7 +246,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         }}>
                             {cycleStatus.status === "GENERATING" ? "Generating" : cycleStatus.status}
                         </span>
-                        <span style={{ marginLeft: "auto", fontSize: "0.75rem", fontWeight: 600, color: cycleStatus.days_remaining <= 5 ? "#dc2626" : "var(--text-secondary)" }}>
+                        <span style={{ marginLeft: "auto", fontSize: "0.75rem", fontWeight: 600, color: cycleStatus.days_remaining <= 5 ? "var(--danger)" : "var(--text-secondary)" }}>
                             {cycleStatus.days_remaining} days left
                         </span>
                     </>
@@ -319,7 +319,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             style={{
                                 padding: "10px 20px", borderRadius: "8px",
                                 border: (existingIepId && existingIepStatus === "FINAL") ? "1px solid var(--border-light)" : "none",
-                                background: (existingIepId && existingIepStatus === "FINAL") ? (iepHovered ? "var(--border-light)" : "var(--bg-primary)") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "#4338ca" : "#4f46e5") : "var(--bg-primary)",
+                                background: (existingIepId && existingIepStatus === "FINAL") ? (iepHovered ? "var(--border-light)" : "var(--bg-primary)") : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? (iepHovered ? "var(--accent-primary)" : "var(--accent-primary)") : "var(--bg-primary)",
                                 color: (existingIepId && existingIepStatus === "FINAL") ? "var(--text-primary)" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "white" : "var(--text-muted)",
                                 fontWeight: 700, fontSize: "0.85rem",
                                 cursor: !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
