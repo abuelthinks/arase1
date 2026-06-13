@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { statusColorClass } from "@/lib/role-colors";
 
 interface FormStatus {
     submitted: boolean;
@@ -225,11 +226,10 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             {/* Status bar */}
             <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "1.5rem", padding: "12px 16px", borderRadius: "10px", background: "var(--bg-primary)" }}>
                 <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Student Status:</span>
-                <span style={{
-                    padding: "3px 12px", borderRadius: "999px", fontSize: "0.78rem", fontWeight: 700,
-                    background: ["enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "var(--bg-success-light)" : "var(--bg-danger-light)",
-                    color: ["enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "var(--text-success)" : "var(--text-danger)",
-                }}>
+                <span
+                    className={statusColorClass(studentStatus)}
+                    style={{ padding: "3px 12px", borderRadius: "999px", fontSize: "0.78rem", fontWeight: 700 }}
+                >
                     {studentStatus}
                 </span>
                 {cycleStatus && (

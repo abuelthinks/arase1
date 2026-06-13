@@ -12,6 +12,7 @@ import {
 import api, { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import { extractApiError } from '@/lib/toast-utils';
+import { useAuth } from '@/context/AuthContext';
 
 export interface Notification {
     id: number;
@@ -68,6 +69,7 @@ const NotificationContext = createContext<NotificationContextValue | null>(null)
  * screen (the responsive layout renders one in the navbar and one in the shell).
  */
 export function NotificationProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -76,18 +78,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const toastedIds = useRef<Set<number>>(new Set());
 
     const fetchNotifications = useCallback(async () => {
+        if (!user) return;
         try {
             const res = await api.get('/api/notifications/');
             setNotifications(res.data.notifications);
             setUnreadCount(res.data.unread_count);
-        } catch (error) {
-            console.error("Failed to fetch notifications:", error);
+        } catch (error: any) {
+            if (error?.response?.status !== 401) {
+                console.error("Failed to fetch notifications:", error);
+            }
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user]);
 
     const markAsRead = useCallback(async (id: number) => {
+        if (!user) return;
         try {
             await api.post(`/api/notifications/${id}/read/`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
@@ -95,9 +101,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             toast.error(extractApiError(err, "Couldn't mark as read."));
         }
-    }, []);
+    }, [user]);
 
     const markAllAsRead = useCallback(async () => {
+        if (!user) return;
         try {
             await api.post('/api/notifications/read-all/');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -105,9 +112,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             toast.error(extractApiError(err, "Couldn't mark all as read."));
         }
-    }, []);
+    }, [user]);
 
     const deleteNotification = useCallback(async (id: number) => {
+        if (!user) return;
         try {
             await api.delete(`/api/notifications/${id}/delete/`);
             setNotifications(prev => {
@@ -120,10 +128,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             toast.error(extractApiError(err, "Couldn't delete notification."));
         }
-    }, []);
+    }, [user]);
 
     // ─── Single WebSocket for real-time push ─────────────────────────────────
     const connectWs = useCallback(() => {
+        if (!user) return;
         if (typeof window === 'undefined') return;
         try {
             const ws = new WebSocket(getWsUrl());
@@ -176,9 +185,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
             wsRef.current = ws;
         } catch { /* retry handled by onclose */ }
-    }, []);
+    }, [user]);
 
     useEffect(() => {
+        if (!user) {
+            setNotifications([]);
+            setUnreadCount(0);
+            setLoading(false);
+            return;
+        }
+
         fetchNotifications();
         connectWs();
 
@@ -191,9 +207,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             if (wsRef.current) {
                 wsRef.current.onclose = null; // prevent reconnect on intentional close
                 wsRef.current.close();
+                wsRef.current = null;
             }
         };
-    }, [fetchNotifications, connectWs]);
+    }, [user, fetchNotifications, connectWs]);
 
     return (
         <NotificationContext.Provider
