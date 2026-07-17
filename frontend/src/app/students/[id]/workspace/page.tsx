@@ -396,7 +396,7 @@ function UnifiedWorkspaceContent() {
                 setStagedAssignedStaff((prev) => prev.filter((member) => member.id !== unassigningStaff.id));
             }
         } catch {
-            toast.error("Failed to update team selection.");
+            toast.error("Team update failed.");
         } finally {
             setIsUnassigning(false);
             setUnassigningStaff(null);
@@ -469,7 +469,7 @@ function UnifiedWorkspaceContent() {
             const res = await api.post(`/api/students/${studentId}/parent-assessment-reminder/`);
             toast.success(res.data.message || "Reminder sent.");
         } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to send reminder."));
+            toast.error(extractApiError(err, "Reminder failed."));
         } finally {
             setSendingParentReminder(false);
         }
@@ -497,7 +497,7 @@ function UnifiedWorkspaceContent() {
             setShowEnrollConfirm(false);
             toast.success(res.data.message || "Student enrolled.");
         } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to enroll student."));
+            toast.error(extractApiError(err, "Enrollment failed."));
         } finally {
             setEnrollingStudent(false);
         }

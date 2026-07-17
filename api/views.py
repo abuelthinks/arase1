@@ -2222,7 +2222,14 @@ class GenerateIEPView(APIView):
             student=student,
             metadata={'document_type': 'IEP'},
         )
-        task = generate_iep_task.delay(student_id, report_cycle_id, request.user.id)
+        try:
+            task = generate_iep_task.delay(student_id, report_cycle_id, request.user.id)
+        except Exception as exc:
+            logger.error("Could not queue IEP generation: %s", exc)
+            return Response(
+                {"error": "Background worker is unavailable. Start Redis and a Celery worker, then try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response({
             "message": "IEP generation started.",
@@ -2255,6 +2262,7 @@ class IEPDetailView(APIView):
             "created_at": doc.created_at.isoformat(),
             "status": doc.status,
             "iep_data": doc.iep_data,
+            "pdf_section_visibility": doc.pdf_section_visibility or {},
         })
 
     def patch(self, request, pk):
@@ -2268,16 +2276,28 @@ class IEPDetailView(APIView):
 
         new_data = request.data.get('iep_data')
         new_status = request.data.get('status')
-        if not new_data and not new_status:
-            return Response({"error": "iep_data or status is required."}, status=status.HTTP_400_BAD_REQUEST)
+        new_visibility = request.data.get('pdf_section_visibility')
+        if new_data is None and new_status is None and new_visibility is None:
+            return Response({"error": "iep_data, status, or pdf_section_visibility is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         if new_data:
             doc.iep_data = new_data
         if new_status in [choice[0] for choice in GeneratedDocument.STATUS_CHOICES]:
             doc.status = new_status
+        if isinstance(new_visibility, dict):
+            doc.pdf_section_visibility = new_visibility
 
         doc.save()
-        
+
+        # A visibility-only change is a download preference, not a content edit —
+        # skip version snapshots, activity events, and finalization side effects.
+        if new_data is None and new_status is None:
+            return Response({
+                "message": "IEP section visibility updated.",
+                "pdf_section_visibility": doc.pdf_section_visibility or {},
+                "status": doc.status,
+            })
+
         # Record the version snapshot
         from .services.document_service import record_document_version
         action_label = 'FINALIZED' if new_status == 'FINAL' else 'EDITED_DRAFT'
@@ -2307,7 +2327,7 @@ class IEPDetailView(APIView):
                 metadata={'document_id': doc.id, 'document_type': 'IEP'},
             )
 
-        return Response({"message": "IEP updated.", "iep_data": doc.iep_data, "status": doc.status})
+        return Response({"message": "IEP updated.", "iep_data": doc.iep_data, "status": doc.status, "pdf_section_visibility": doc.pdf_section_visibility or {}})
 
 
 class IEPDownloadView(APIView):
@@ -2348,104 +2368,118 @@ class IEPDownloadView(APIView):
         iep = doc.iep_data
         student = doc.student
 
+        # A section is included unless its toggle has been explicitly set to False.
+        visibility = doc.pdf_section_visibility if isinstance(doc.pdf_section_visibility, dict) else {}
+        def show(section_key):
+            return visibility.get(section_key, True)
+
         elements.append(Paragraph("THERUNI – Comprehensive AI-Generated IEP", title_style))
         elements.append(Spacer(1, 10))
 
         # Section 1
-        s1 = iep.get('section1_student_info', {})
-        elements.append(Paragraph("Section 1 — Student Information", h2))
-        for label, key in [("Student Name", "student_name"), ("Date of Birth", "date_of_birth"), ("Gender", "gender"), ("Grade/Level", "grade_level"), ("IEP Dates", None)]:
-            if key:
-                elements.append(Paragraph(f"<b>{label}:</b> {s1.get(key, 'N/A')}", normal))
-            else:
-                elements.append(Paragraph(f"<b>{label}:</b> {s1.get('iep_start_date', '')} to {s1.get('iep_end_date', '')}", normal))
-        elements.append(Spacer(1, 8))
+        if show('section1_student_info'):
+            s1 = iep.get('section1_student_info', {})
+            elements.append(Paragraph("Section 1 — Student Information", h2))
+            for label, key in [("Student Name", "student_name"), ("Date of Birth", "date_of_birth"), ("Gender", "gender"), ("Grade/Level", "grade_level"), ("IEP Dates", None)]:
+                if key:
+                    elements.append(Paragraph(f"<b>{label}:</b> {s1.get(key, 'N/A')}", normal))
+                else:
+                    elements.append(Paragraph(f"<b>{label}:</b> {s1.get('iep_start_date', '')} to {s1.get('iep_end_date', '')}", normal))
+            elements.append(Spacer(1, 8))
 
         # Section 2
-        s2 = iep.get('section2_background', {})
-        elements.append(Paragraph("Section 2 — Background & Developmental Summary", h2))
-        for sub_label, sub_key in [("Developmental History", "developmental_history"), ("Classroom Functioning", "classroom_functioning"), ("Family Input Summary", "family_input_summary")]:
-            elements.append(Paragraph(f"<b>{sub_label}</b>", h3))
-            elements.append(Paragraph(str(s2.get(sub_key, 'N/A')), normal))
-        elements.append(Spacer(1, 8))
+        if show('section2_background'):
+            s2 = iep.get('section2_background', {})
+            elements.append(Paragraph("Section 2 — Background & Developmental Summary", h2))
+            for sub_label, sub_key in [("Developmental History", "developmental_history"), ("Classroom Functioning", "classroom_functioning"), ("Family Input Summary", "family_input_summary")]:
+                elements.append(Paragraph(f"<b>{sub_label}</b>", h3))
+                elements.append(Paragraph(str(s2.get(sub_key, 'N/A')), normal))
+            elements.append(Spacer(1, 8))
 
         # Section 3
-        s3 = iep.get('section3_strengths', {})
-        elements.append(Paragraph("Section 3 — Strengths & Interests", h2))
-        elements.append(Paragraph("<b>Strengths:</b> " + ", ".join(s3.get("strengths", [])), normal))
-        elements.append(Paragraph("<b>Interests:</b> " + ", ".join(s3.get("interests", [])), normal))
-        elements.append(Spacer(1, 8))
+        if show('section3_strengths'):
+            s3 = iep.get('section3_strengths', {})
+            elements.append(Paragraph("Section 3 — Strengths & Interests", h2))
+            elements.append(Paragraph("<b>Strengths:</b> " + ", ".join(s3.get("strengths", [])), normal))
+            elements.append(Paragraph("<b>Interests:</b> " + ", ".join(s3.get("interests", [])), normal))
+            elements.append(Spacer(1, 8))
 
         # Section 4 — PLOP
-        s4 = iep.get('section4_plop', {})
-        elements.append(Paragraph("Section 4 — Present Levels of Performance (PLOP)", h2))
-        domain_labels = {
-            "communication_slp": "Communication (SLP)",
-            "fine_motor_ot": "Fine Motor, Sensory & ADLs (OT)",
-            "gross_motor_pt": "Gross Motor (PT)",
-            "behavioral_psych": "Behavioral & Emotional (ABA / Developmental Psychology)",
-            "academic_sped": "Academic/Learning (SPED)",
-            "adaptive_life_skills": "Adaptive & Life Skills",
-        }
-        for domain_key, domain_label in domain_labels.items():
-            domain_data = s4.get(domain_key, {})
-            if domain_data:
-                elements.append(Paragraph(domain_label, h3))
-                for field_key, field_val in domain_data.items():
-                    elements.append(Paragraph(f"<b>{field_key.replace('_', ' ').title()}:</b> {field_val}", normal))
-        elements.append(Spacer(1, 8))
+        if show('section4_plop'):
+            s4 = iep.get('section4_plop', {})
+            elements.append(Paragraph("Section 4 — Present Levels of Performance (PLOP)", h2))
+            domain_labels = {
+                "communication_slp": "Communication (SLP)",
+                "fine_motor_ot": "Fine Motor, Sensory & ADLs (OT)",
+                "gross_motor_pt": "Gross Motor (PT)",
+                "behavioral_psych": "Behavioral & Emotional (ABA / Developmental Psychology)",
+                "academic_sped": "Academic/Learning (SPED)",
+                "adaptive_life_skills": "Adaptive & Life Skills",
+            }
+            for domain_key, domain_label in domain_labels.items():
+                domain_data = s4.get(domain_key, {})
+                if domain_data:
+                    elements.append(Paragraph(domain_label, h3))
+                    for field_key, field_val in domain_data.items():
+                        elements.append(Paragraph(f"<b>{field_key.replace('_', ' ').title()}:</b> {field_val}", normal))
+            elements.append(Spacer(1, 8))
 
         # Section 5 — LTG
-        elements.append(Paragraph("Section 5 — Long-Term IEP Goals (1 Year)", h2))
-        for ltg in iep.get('section5_ltg', []):
-            elements.append(Paragraph(f"<b>{ltg.get('id', '')} – {ltg.get('domain', '')}:</b> {ltg.get('goal', '')}", normal))
-            elements.append(Paragraph(f"<i>Aligned disciplines: {ltg.get('disciplines', '')}</i>", normal))
-        elements.append(Spacer(1, 8))
+        if show('section5_ltg'):
+            elements.append(Paragraph("Section 5 — Long-Term IEP Goals (1 Year)", h2))
+            for ltg in iep.get('section5_ltg', []):
+                elements.append(Paragraph(f"<b>{ltg.get('id', '')} – {ltg.get('domain', '')}:</b> {ltg.get('goal', '')}", normal))
+                elements.append(Paragraph(f"<i>Aligned disciplines: {ltg.get('disciplines', '')}</i>", normal))
+            elements.append(Spacer(1, 8))
 
         # Section 6 — STO
-        elements.append(Paragraph("Section 6 — Short-Term Objectives (3–4 months)", h2))
-        for sto in iep.get('section6_sto', []):
-            elements.append(Paragraph(f"<b>Objective {sto.get('id', '')} ({sto.get('ltg_ref', '')}):</b> {sto.get('objective', '')}", normal))
-            elements.append(Paragraph(f"Target: {sto.get('target_skill', '')} | Method: {sto.get('teaching_method', '')} | Criteria: {sto.get('success_criteria', '')} | Freq: {sto.get('frequency', '')} | By: {sto.get('responsible', '')}", normal))
-            elements.append(Spacer(1, 4))
-        elements.append(Spacer(1, 8))
+        if show('section6_sto'):
+            elements.append(Paragraph("Section 6 — Short-Term Objectives (3–4 months)", h2))
+            for sto in iep.get('section6_sto', []):
+                elements.append(Paragraph(f"<b>Objective {sto.get('id', '')} ({sto.get('ltg_ref', '')}):</b> {sto.get('objective', '')}", normal))
+                elements.append(Paragraph(f"Target: {sto.get('target_skill', '')} | Method: {sto.get('teaching_method', '')} | Criteria: {sto.get('success_criteria', '')} | Freq: {sto.get('frequency', '')} | By: {sto.get('responsible', '')}", normal))
+                elements.append(Spacer(1, 4))
+            elements.append(Spacer(1, 8))
 
         # Section 7
-        s7 = iep.get('section7_accommodations', {})
-        elements.append(Paragraph("Section 7 — Accommodations & Modifications", h2))
-        elements.append(Paragraph("<b>Classroom:</b> " + ", ".join(s7.get("classroom", [])), normal))
-        elements.append(Paragraph("<b>Learning Modifications:</b> " + ", ".join(s7.get("learning_modifications", [])), normal))
-        elements.append(Paragraph("<b>Communication Supports:</b> " + ", ".join(s7.get("communication_supports", [])), normal))
-        elements.append(Spacer(1, 8))
+        if show('section7_accommodations'):
+            s7 = iep.get('section7_accommodations', {})
+            elements.append(Paragraph("Section 7 — Accommodations & Modifications", h2))
+            elements.append(Paragraph("<b>Classroom:</b> " + ", ".join(s7.get("classroom", [])), normal))
+            elements.append(Paragraph("<b>Learning Modifications:</b> " + ", ".join(s7.get("learning_modifications", [])), normal))
+            elements.append(Paragraph("<b>Communication Supports:</b> " + ", ".join(s7.get("communication_supports", [])), normal))
+            elements.append(Spacer(1, 8))
 
         # Section 8
-        s8 = iep.get('section8_therapies', {})
-        elements.append(Paragraph("Section 8 — Therapies & Intervention Plan", h2))
-        for therapy_key, therapy_label in [
-            ("speech_therapy", "Speech-Language Pathology"),
-            ("occupational_therapy", "Occupational Therapy"),
-            ("physical_therapy", "Physical Therapy"),
-            ("applied_behavior_analysis", "Applied Behavior Analysis (ABA)"),
-            ("developmental_psychology", "Developmental Psychology"),
-            ("psychology", "Applied Behavior Analysis (ABA) / Developmental Psychology"),
-            ("sped_sessions", "SPED"),
-            ("shadow_teacher", "Shadow Teacher"),
-        ]:
-            t = s8.get(therapy_key, {})
-            if therapy_key == "shadow_teacher":
-                elements.append(Paragraph(f"<b>{therapy_label}:</b> Hours: {t.get('hours', 'N/A')}", normal))
-            else:
-                elements.append(Paragraph(f"<b>{therapy_label}:</b> {t.get('frequency', 'N/A')} — {t.get('focus_areas', 'N/A')}", normal))
-        elements.append(Spacer(1, 8))
+        if show('section8_therapies'):
+            s8 = iep.get('section8_therapies', {})
+            elements.append(Paragraph("Section 8 — Therapies & Intervention Plan", h2))
+            for therapy_key, therapy_label in [
+                ("speech_therapy", "Speech-Language Pathology"),
+                ("occupational_therapy", "Occupational Therapy"),
+                ("physical_therapy", "Physical Therapy"),
+                ("applied_behavior_analysis", "Applied Behavior Analysis (ABA)"),
+                ("developmental_psychology", "Developmental Psychology"),
+                ("psychology", "Applied Behavior Analysis (ABA) / Developmental Psychology"),
+                ("sped_sessions", "SPED"),
+                ("shadow_teacher", "Shadow Teacher"),
+            ]:
+                t = s8.get(therapy_key, {})
+                if therapy_key == "shadow_teacher":
+                    elements.append(Paragraph(f"<b>{therapy_label}:</b> Hours: {t.get('hours', 'N/A')}", normal))
+                else:
+                    elements.append(Paragraph(f"<b>{therapy_label}:</b> {t.get('frequency', 'N/A')} — {t.get('focus_areas', 'N/A')}", normal))
+            elements.append(Spacer(1, 8))
 
         # Section 9
-        s9 = iep.get('section9_home_program', {})
-        elements.append(Paragraph("Section 9 — Home Program", h2))
-        for hp_key, hp_label in [("speech_tasks", "Speech Tasks"), ("sensory_ot_tasks", "Sensory/OT Tasks"), ("behavioral_tasks", "Behavioral Tasks"), ("academic_tasks", "Academic Tasks")]:
-            items = s9.get(hp_key, [])
-            elements.append(Paragraph(f"<b>{hp_label}:</b>", normal))
-            for item in items:
-                elements.append(Paragraph(f"  • {item}", normal))
+        if show('section9_home_program'):
+            s9 = iep.get('section9_home_program', {})
+            elements.append(Paragraph("Section 9 — Home Program", h2))
+            for hp_key, hp_label in [("speech_tasks", "Speech Tasks"), ("sensory_ot_tasks", "Sensory/OT Tasks"), ("behavioral_tasks", "Behavioral Tasks"), ("academic_tasks", "Academic Tasks")]:
+                items = s9.get(hp_key, [])
+                elements.append(Paragraph(f"<b>{hp_label}:</b>", normal))
+                for item in items:
+                    elements.append(Paragraph(f"  • {item}", normal))
 
         pdf.build(elements)
         pdf_bytes = buffer.getvalue()
@@ -2501,7 +2535,14 @@ class GenerateMonthlyReportView(APIView):
             student=student,
             metadata={'document_type': 'MONTHLY'},
         )
-        task = generate_monthly_report_task.delay(student_id, report_cycle_id, request.user.id)
+        try:
+            task = generate_monthly_report_task.delay(student_id, report_cycle_id, request.user.id)
+        except Exception as exc:
+            logger.error("Could not queue monthly report generation: %s", exc)
+            return Response(
+                {"error": "Background worker is unavailable. Start Redis and a Celery worker, then try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response({
             "message": "Monthly report generation started.",

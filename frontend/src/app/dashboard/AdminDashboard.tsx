@@ -156,7 +156,7 @@ const getCardButtonClass = (tone: string) => {
         case "warning":
             return base + "text-warning border-warning-line hover:bg-warning-solid hover:text-warning hover:border-warning-line";
         case "info":
-            return base + "text-blue-700 border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-700";
+            return base + "text-info border-info-line hover:bg-info-strong hover:text-white hover:border-info-line";
         case "success":
             return base + "text-success border-success-line hover:bg-success-solid hover:text-white hover:border-success-line";
         case "attention":
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
             const res = await api.post(`/api/students/${student.id}/${path}/`);
             toast.success(res.data?.message || `Reminder sent to ${label}.`);
         } catch (err: any) {
-            toast.error(extractApiError(err, `Failed to send ${label} reminder.`));
+            toast.error(extractApiError(err, `Reminder failed.`));
         }
     };
 
@@ -280,7 +280,7 @@ export default function AdminDashboard() {
             setBulkEmails(prev => [...prev, ...newEntries]);
             toast.success(`Extracted ${newEntries.length} new email(s)`);
         } else if (text.trim().length > 0) {
-            toast.info("No new valid emails found in the text.");
+            toast.info("No new emails found.");
         }
         setBulkInputText("");
     };
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
     const handleBulkSendInvites = async () => {
         const pendingCount = bulkEmails.filter(e => e.status === 'pending' || e.status === 'error').length;
         if (pendingCount === 0) {
-            toast.error("No pending emails to process.");
+            toast.error("No pending emails.");
             return;
         }
 
@@ -346,7 +346,7 @@ export default function AdminDashboard() {
 
         setIsBulkProcessing(false);
         if (successCount > 0) {
-            toast.success(`Sent ${successCount} invitation${successCount === 1 ? "" : "s"}.`);
+            toast.success(`Sent ${successCount} invite${successCount === 1 ? "" : "s"}.`);
             fetchData(); // Refresh the pending invites table
         }
         
@@ -631,7 +631,7 @@ export default function AdminDashboard() {
                 toast.success("Student registered, parent invited.");
             } else {
                 const response = await api.post("/api/invitations/", { email: inviteEmail, role: inviteRole });
-                toast.success(`Invitation sent to ${issuedEmail}.`);
+                toast.success(`Invite sent to ${issuedEmail}.`);
                 if (response.data?.token) {
                     setCreatedInvite({ email: issuedEmail, token: response.data.token });
                 }
@@ -641,7 +641,7 @@ export default function AdminDashboard() {
             setInviteRole('PARENT');
             fetchData();
         } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to complete action"));
+            toast.error(extractApiError(err, "Action failed."));
         } finally {
             setInvitingUser(false);
         }
@@ -673,9 +673,9 @@ export default function AdminDashboard() {
             await api.delete(`/api/invitations/${inviteToRevoke.id}/`);
             setInvitations(prev => prev.filter(inv => inv.id !== revokedInvite.id));
             setInviteToRevoke(null);
-            toast.success(`Invitation for ${revokedInvite.email} revoked.`);
+            toast.success(`Invite revoked.`);
         } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to delete invitation."));
+            toast.error(extractApiError(err, "Couldn't revoke invite."));
         } finally {
             setInviteActionLoading(false);
         }
@@ -686,7 +686,7 @@ export default function AdminDashboard() {
         setInviteActionLoading(true);
         try {
             const res = await api.post(`/api/invitations/${inviteToResend.id}/resend/`);
-            toast.success(`Invitation resent to ${inviteToResend.email}.`);
+            toast.success(`Invite resent.`);
             const refreshedToken = res.data?.token;
             const email = inviteToResend.email;
             setInviteToResend(null);
@@ -695,7 +695,7 @@ export default function AdminDashboard() {
             }
             fetchData();
         } catch (err: any) {
-            toast.error(extractApiError(err, "Failed to resend invitation."));
+            toast.error(extractApiError(err, "Couldn't resend invite."));
         } finally {
             setInviteActionLoading(false);
         }
@@ -845,7 +845,7 @@ export default function AdminDashboard() {
                                         </div>
                                         <div className="hidden sm:flex gap-2">
                                             <span className="text-xs font-bold text-danger bg-danger-soft px-3 py-1 rounded-full border border-danger-line">{actionCounts.warning} urgent</span>
-                                            <span className="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full border border-blue-200">{actionCounts.info} queued</span>
+                                            <span className="text-xs font-bold text-info bg-info-soft px-3 py-1 rounded-full border border-info-line">{actionCounts.info} queued</span>
                                         </div>
                                     </div>
                                     <div className="p-4 sm:p-5 flex-1 max-h-[400px] overflow-y-auto bg-app/50">
@@ -1071,13 +1071,13 @@ export default function AdminDashboard() {
                                     </div>
                                     
                                     {specialistsWithoutSpecialty.length > 0 && (
-                                        <div className="mt-6 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 transition-colors hover:bg-blue-100/50">
-                                            <div className="mt-0.5 text-blue-500">
+                                        <div className="mt-6 p-3 bg-info-soft border border-info-line rounded-xl flex items-start gap-3">
+                                            <div className="mt-0.5 text-info">
                                                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-blue-900 m-0">{specialistsWithoutSpecialty.length} specialist(s) missing specialty</p>
-                                                <p className="text-xs text-blue-700 mt-0.5 mb-0">Update their profiles for better assignment tracking.</p>
+                                                <p className="text-sm font-bold text-info m-0">{specialistsWithoutSpecialty.length} specialist(s) missing specialty</p>
+                                                <p className="text-xs text-info mt-0.5 mb-0">Update their profiles for better assignment tracking.</p>
                                             </div>
                                         </div>
                                     )}
@@ -1334,7 +1334,7 @@ export default function AdminDashboard() {
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
                                                             <span className="text-xs font-mono text-faint mb-1">#{s.id}</span>
-                                                            <Link href={`/workspace?studentId=${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
+                                                            <Link href={`/workspace?studentId=${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-indigo-600 transition-colors truncate">
                                                                 {s.first_name} {s.last_name}
                                                             </Link>
                                                             <span className="text-sm text-muted mt-1">{s.grade || "Grade TBD"}</span>
@@ -1576,7 +1576,7 @@ export default function AdminDashboard() {
                                                         <tr key={u.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-subtle-soft transition-colors duration-150">
                                                             <td style={{ padding: "12px" }}>
                                                                 <div style={{ display: "flex", flexDirection: "column" }}>
-                                                                    <Link href={`/users/${u.id}`} className="hover:text-blue-500 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                    <Link href={`/users/${u.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
                                                                         {displayName}
                                                                     </Link>
                                                                     <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>{u.email}</span>
@@ -1603,7 +1603,7 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td style={{ padding: "12px", textAlign: "right" }}>
                                                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
-                                                                    <Link href={`/users/${u.id}`} aria-label={`View profile of ${displayName}`} className="hover:bg-blue-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "var(--text-info)" }} title="View Profile">
+                                                                    <Link href={`/users/${u.id}`} aria-label={`View profile of ${displayName}`} className="hover:bg-indigo-50 transition-colors duration-200" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", color: "var(--text-info)" }} title="View Profile">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
                                                                     </Link>
                                                                     <button onClick={() => {
@@ -1629,7 +1629,7 @@ export default function AdminDashboard() {
                                                 <div key={u.id} className="bg-card rounded-xl border border-line p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="flex flex-col min-w-0">
-                                                            <Link href={`/users/${u.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-blue-600 transition-colors truncate">
+                                                            <Link href={`/users/${u.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-indigo-600 transition-colors truncate">
                                                                 {displayName}
                                                             </Link>
                                                             <span className="text-sm text-muted mt-1 truncate">{u.email}</span>
@@ -1962,7 +1962,7 @@ export default function AdminDashboard() {
                                                                             navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
                                                                             toast.success("Invite link copied.");
                                                                         }}
-                                                                        className="hover:bg-blue-50 transition-colors duration-200"
+                                                                        className="hover:bg-indigo-50 transition-colors duration-200"
                                                                         style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "6px", background: "none", border: "none", color: "var(--text-info)", cursor: "pointer", padding: 0 }}
                                                                         title="Copy Invite Link"
                                                                     >

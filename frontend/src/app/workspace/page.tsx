@@ -195,6 +195,11 @@ function UnifiedWorkspaceContent() {
             : statusFilteredTabs;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [hasSeenWorkspaceExplainer, setHasSeenWorkspaceExplainer] = useState(false);
+
+    // -- Delete Student State --
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+    const [deleteError, setDeleteError] = useState("");
     
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -691,7 +696,7 @@ function UnifiedWorkspaceContent() {
                 setStagedAssignedStaff((prev) => prev.filter((member) => member.id !== unassigningStaff.id));
             }
         } catch {
-            toast.error("Failed to update team selection.");
+            toast.error("Team update failed.");
         } finally {
             setIsUnassigning(false);
             setUnassigningStaff(null);
@@ -772,7 +777,7 @@ function UnifiedWorkspaceContent() {
                 id: `parent-reminder-${studentId}`,
                 loading: 'Sending reminder…',
                 success: (res: any) => res.data.message || 'Reminder sent.',
-                error: (err: any) => extractApiError(err, 'Failed to send reminder.'),
+                error: (err: any) => extractApiError(err, 'Reminder failed.'),
             });
         } catch {
             // Error already handled by toastPromise
@@ -794,7 +799,7 @@ function UnifiedWorkspaceContent() {
                 id: `enroll-${studentId}`,
                 loading: 'Enrolling student…',
                 success: (res: any) => res.data.message || 'Student enrolled.',
-                error: (err: any) => extractApiError(err, 'Failed to enroll student.'),
+                error: (err: any) => extractApiError(err, 'Enrollment failed.'),
             });
             const profileRes = await api.get(`/api/students/${studentId}/profile/`);
             const data = profileRes.data;
@@ -838,6 +843,23 @@ function UnifiedWorkspaceContent() {
             // Error already handled by toastPromise
         } finally {
             setIntegratingStudent(false);
+        }
+    };
+
+    const handleDeleteStudent = async () => {
+        if (!studentDetails || !studentId) return;
+        const expectedName = `${studentDetails.first_name} ${studentDetails.last_name}`;
+        if (deleteConfirmText !== expectedName) {
+            setDeleteError("Name does not match.");
+            return;
+        }
+        try {
+            setDeleteError("");
+            await api.delete(`/api/students/${studentId}/`);
+            toast.success("Student deleted.");
+            router.push("/dashboard");
+        } catch (err: any) {
+            setDeleteError(err.response?.data?.error || err.response?.data?.detail || "Failed to delete student.");
         }
     };
 
@@ -1470,6 +1492,24 @@ function UnifiedWorkspaceContent() {
                                 </div>
                             )}
                         </section>
+
+                        {/* Danger Zone Section */}
+                        {user?.role === "ADMIN" && (
+                            <section className="rounded-xl border border-danger-line shadow-sm p-4 bg-danger-soft">
+                                <h2 className="text-base font-bold text-danger mb-3 m-0 flex items-center gap-1.5">
+                                    <AlertCircle size={15} /> Danger Zone
+                                </h2>
+                                <p className="text-xs text-danger mb-4 leading-relaxed font-semibold">
+                                    Permanently delete this student and all of their associated forms, assessments, and reports. This action cannot be undone.
+                                </p>
+                                <button
+                                    onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }}
+                                    className="w-full text-center py-2 px-4 rounded-lg bg-danger-solid hover:bg-danger-strong border border-danger-solid hover:border-danger-strong text-white text-sm font-bold shadow transition-colors duration-200"
+                                >
+                                    Delete Student
+                                </button>
+                            </section>
+                        )}
                     </div>
                     </div>
                 </div>
@@ -3333,6 +3373,65 @@ function UnifiedWorkspaceContent() {
                                 >
                                     {integratingStudent ? "Integrating..." : "Confirm Integration"}
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete Student Confirmation Modal */}
+                {showDeleteModal && studentDetails && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-md bg-card rounded-2xl border border-line p-6 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="h-12 w-12 rounded-full bg-danger-soft flex items-center justify-center shrink-0">
+                                    <AlertCircle className="h-6 w-6 text-danger" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-fg">Delete Student</h3>
+                                    <p className="text-sm text-muted mt-1 leading-relaxed">
+                                        You are about to permanently delete <strong>{studentDetails.first_name} {studentDetails.last_name}</strong> and all associated records. This cannot be undone.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="mb-4 bg-danger-soft border border-danger-line rounded-xl p-3 text-xs font-semibold text-danger leading-relaxed">
+                                <span className="font-bold block mb-1">To confirm, type the student's full name exactly:</span>
+                                <span className="italic select-none font-bold text-sm bg-card/50 px-2 py-0.5 rounded border border-danger-line/25 block w-fit mt-1">
+                                    {studentDetails.first_name} {studentDetails.last_name}
+                                </span>
+                            </div>
+
+                            {deleteError && (
+                                <div className="mb-4 rounded-lg bg-danger-soft border border-danger-line p-3 text-xs font-bold text-danger">
+                                    {deleteError}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-4">
+                                <input
+                                    type="text"
+                                    placeholder="Type full name to confirm"
+                                    value={deleteConfirmText}
+                                    onChange={e => setDeleteConfirmText(e.target.value)}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-line bg-app text-fg focus:outline-none focus:border-danger-line transition-colors"
+                                />
+                                <div className="flex gap-3 justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); setDeleteError(""); }}
+                                        className="px-4 py-2 text-sm font-bold text-muted bg-subtle-soft hover:bg-subtle-soft/80 border border-subtle-line rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDeleteStudent}
+                                        disabled={deleteConfirmText !== `${studentDetails.first_name} ${studentDetails.last_name}`}
+                                        className="px-4 py-2 text-sm font-bold text-white bg-danger-solid hover:bg-danger-strong border border-danger-solid hover:border-danger-strong rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        Permanently Delete
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

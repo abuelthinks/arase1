@@ -331,9 +331,9 @@ export default function SpecialistOnboardingPage() {
                               setRequestingChange(false);
                               setRequestedSpecialty('');
                               setSpecialtyRequestNote('');
-                              toast.success('Specialty change request sent.');
+                              toast.success('Request sent.');
                             } catch (err: any) {
-                              toast.error(extractApiError(err, 'Could not send specialty request.'));
+                              toast.error(extractApiError(err, 'Request failed.'));
                             } finally {
                               setSpecialtyRequestLoading(false);
                             }

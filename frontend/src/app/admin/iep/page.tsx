@@ -10,11 +10,33 @@ import { semanticToneClass, type SemanticTone } from "@/lib/role-colors";
 
 /* ─── Shared UI helpers ───────────────────────────────────────────────────── */
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionToggle({ enabled, onChange, label }: { enabled: boolean; onChange: (v: boolean) => void; label?: string }) {
     return (
-        <div className="bg-card rounded-xl border border-line overflow-hidden mb-5">
-            <div className="px-6 py-3.5 border-b border-line bg-app">
+        <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            onClick={() => onChange(!enabled)}
+            title={enabled ? "Included in the downloaded PDF — click to exclude" : "Excluded from the downloaded PDF — click to include"}
+            className="inline-flex items-center gap-2 shrink-0 cursor-pointer bg-transparent border-none p-0"
+        >
+            <span className={`text-[0.65rem] font-bold uppercase tracking-wider ${enabled ? "text-indigo-600" : "text-faint"}`}>
+                {label ?? (enabled ? "In PDF" : "Hidden")}
+            </span>
+            <span className={`relative inline-flex items-center rounded-full transition-colors h-[18px] w-[32px] ${enabled ? "bg-indigo-600" : "bg-slate-300"}`}>
+                <span className={`inline-block rounded-full bg-white shadow transition-transform h-[14px] w-[14px] ${enabled ? "translate-x-[16px]" : "translate-x-[2px]"}`} />
+            </span>
+        </button>
+    );
+}
+
+function SectionCard({ title, children, toggle }: { title: string; children: React.ReactNode; toggle?: { enabled: boolean; onChange: (v: boolean) => void } }) {
+    const excluded = toggle && !toggle.enabled;
+    return (
+        <div className={`bg-card rounded-xl border overflow-hidden mb-5 transition-opacity ${excluded ? "border-dashed border-slate-300 opacity-55" : "border-line"}`}>
+            <div className="px-6 py-3.5 border-b border-line bg-app flex items-center justify-between gap-3">
                 <h2 className="text-sm font-bold text-fg m-0">{title}</h2>
+                {toggle && <SectionToggle enabled={toggle.enabled} onChange={toggle.onChange} />}
             </div>
             <div className="p-6 flex flex-col gap-3">{children}</div>
         </div>
@@ -75,6 +97,20 @@ interface IEPData {
     section12_signatures: Record<string, string>;
 }
 
+// Sections that can be toggled in/out of the downloaded PDF (must match the
+// keys the backend PDF generator gates on in IEPDownloadView).
+const PDF_SECTION_KEYS = [
+    "section1_student_info",
+    "section2_background",
+    "section3_strengths",
+    "section4_plop",
+    "section5_ltg",
+    "section6_sto",
+    "section7_accommodations",
+    "section8_therapies",
+    "section9_home_program",
+];
+
 const formatDocumentDateTime = (value?: string | null) => {
     if (!value) return "";
     return new Date(value).toLocaleString([], {
@@ -104,6 +140,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
     const [errorMsg, setErrorMsg] = useState("");
     const [showAuditModal, setShowAuditModal] = useState(false);
     const [auditHistory, setAuditHistory] = useState<any[]>([]);
+    const [sectionVisibility, setSectionVisibility] = useState<Record<string, boolean>>({});
     const loadedIepStr = useRef("");
     const editSnapshotStr = useRef("");
 
@@ -114,6 +151,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             .then(res => {
                 setIep(res.data.iep_data);
                 loadedIepStr.current = JSON.stringify(res.data.iep_data);
+                setSectionVisibility(res.data.pdf_section_visibility || {});
                 setMeta({ student_id: res.data.student_id, student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
                 setIepStatus(res.data.status);
                 if (res.data.status === "DRAFT") {
@@ -172,7 +210,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 setEditing(false);
                 // Nudge the admin toward the next step (enroll / integrate).
                 const studentId = meta?.student_id;
-                toast.success("IEP finalized. Ready to place this student.", {
+                toast.success("IEP finalized.", {
                     duration: 8000,
                     action: studentId ? {
                         label: "Go to actions",
@@ -185,10 +223,33 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
     };
 
     const handleDownload = () => {
-        // Redirect to the download endpoint. 
+        // Redirect to the download endpoint.
         // Since it's a file download response, the browser will handle it without leaving the page.
         window.location.href = `${API_BASE_URL}/api/iep/${iepId}/download/`;
     };
+
+    // ─── PDF section visibility (persisted server-side, shared across devices) ───
+    const isAdmin = user?.role === "ADMIN";
+    const isSectionOn = (key: string) => sectionVisibility[key] !== false;
+    const allSectionsOn = PDF_SECTION_KEYS.every(isSectionOn);
+
+    const persistVisibility = (next: Record<string, boolean>) => {
+        setSectionVisibility(next);
+        api.patch(`/api/iep/${iepId}/`, { pdf_section_visibility: next })
+            .catch(() => toast.error("Couldn't save settings."));
+    };
+
+    const setSectionOn = (key: string, on: boolean) => persistVisibility({ ...sectionVisibility, [key]: on });
+
+    const setAllSections = (on: boolean) => {
+        const next = { ...sectionVisibility };
+        PDF_SECTION_KEYS.forEach(k => { next[k] = on; });
+        persistVisibility(next);
+    };
+
+    // Toggle props for a section card — only admins can change download settings.
+    const sectionToggle = (key: string) =>
+        isAdmin ? { enabled: isSectionOn(key), onChange: (v: boolean) => setSectionOn(key, v) } : undefined;
 
     const handleCopyLink = () => {
         const url = `${window.location.origin}/admin/iep?id=${iepId}`;
@@ -253,6 +314,13 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 </div>
                 {user?.role === "ADMIN" && (
                     <div className="flex gap-2 flex-wrap items-center">
+                        <div
+                            className="flex items-center gap-2 rounded-lg border border-line bg-app px-3 py-1.5"
+                            title="Turn every section on or off for the downloaded PDF at once"
+                        >
+                            <span className="text-[0.65rem] font-bold uppercase tracking-wider text-muted">All sections</span>
+                            <SectionToggle enabled={allSectionsOn} onChange={setAllSections} label={allSectionsOn ? "On" : "Off"} />
+                        </div>
                         <button onClick={fetchAuditHistory} className="btn-slate text-xs py-1.5 px-3">⏱️ Audit History</button>
                         <button onClick={handleDownload} className="btn-slate text-xs py-1.5 px-3">📥 Download PDF</button>
                         {editing ? (
@@ -286,7 +354,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             </div>
 
             {/* Section 1 — Student Info */}
-            <SectionCard title="Section 1 — Student Information">
+            <SectionCard title="Section 1 — Student Information" toggle={sectionToggle("section1_student_info")}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     {[["Student Name", "student_name"], ["Date of Birth", "date_of_birth"], ["Gender", "gender"], ["Grade/Level", "grade_level"], ["IEP Start", "iep_start_date"], ["IEP End", "iep_end_date"]].map(([label, key]) => (
                         <Field key={key} label={label} value={s1[key] || ""} edit={false} />
@@ -301,7 +369,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             </SectionCard>
 
             {/* Section 2 — Background */}
-            <SectionCard title="Section 2 — Background & Developmental Summary">
+            <SectionCard title="Section 2 — Background & Developmental Summary" toggle={sectionToggle("section2_background")}>
                 <Field label="Developmental History" value={s2.developmental_history || ""} edit={editing}
                     onChange={v => set("section2_background", ["developmental_history"], v)} />
                 <Field label="Classroom Functioning Overview" value={s2.classroom_functioning || ""} edit={editing}
@@ -311,13 +379,13 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             </SectionCard>
 
             {/* Section 3 — Strengths & Interests */}
-            <SectionCard title="Section 3 — Strengths & Interests">
+            <SectionCard title="Section 3 — Strengths & Interests" toggle={sectionToggle("section3_strengths")}>
                 <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: "4px" }}>Strengths</p><PillList items={s3.strengths} /></div>
                 <div><p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: "4px" }}>Interests / Motivators</p><PillList items={s3.interests} /></div>
             </SectionCard>
 
             {/* Section 4 — PLOP */}
-            <SectionCard title="Section 4 — Present Levels of Performance (PLOP)">
+            <SectionCard title="Section 4 — Present Levels of Performance (PLOP)" toggle={sectionToggle("section4_plop")}>
                 {Object.entries({
                     communication_slp: "Communication (SLP)",
                     fine_motor_ot: "Fine Motor, Sensory & ADLs (OT)",
@@ -329,7 +397,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     const domain = s4[key] || {};
                     return (
                         <div key={key} className="py-3 border-b border-line last:border-0">
-                            <p className="text-xs font-bold text-blue-600 mb-2">{lbl}</p>
+                            <p className="text-xs font-bold text-indigo-600 mb-2">{lbl}</p>
                             <div className="flex flex-col gap-3">
                             {Object.entries(domain).map(([fk, fv]) => (
                                 <Field key={fk} label={fk.replace(/_/g, ' ')} value={String(fv)} edit={editing}
@@ -342,7 +410,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             </SectionCard>
 
             {/* Section 5 — Long-Term Goals */}
-            <SectionCard title="Section 5 — Long-Term IEP Goals (1 Year)">
+            <SectionCard title="Section 5 — Long-Term IEP Goals (1 Year)" toggle={sectionToggle("section5_ltg")}>
                 {s5.map((ltg, i) => (
                     <div key={ltg.id} className="bg-app rounded-xl p-3.5 border border-line flex flex-col gap-3 mb-3 last:mb-0">
                         <p className="text-xs font-bold text-indigo-600 m-0">{ltg.id} — {ltg.domain}</p>
@@ -354,7 +422,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             </SectionCard>
 
             {/* Section 6 — Short-Term Objectives */}
-            <SectionCard title="Section 6 — Short-Term Objectives (3–4 months)">
+            <SectionCard title="Section 6 — Short-Term Objectives (3–4 months)" toggle={sectionToggle("section6_sto")}>
                 {s6.map((sto, i) => (
                     <div key={sto.id} className="bg-app rounded-xl p-3.5 border border-line flex flex-col gap-3 mb-3 last:mb-0">
                         <p className="text-xs font-bold text-success m-0">Objective {sto.id} → {sto.ltg_ref}</p>
@@ -376,14 +444,14 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             </SectionCard>
 
             {/* Section 7 — Accommodations */}
-            <SectionCard title="Section 7 — Accommodations & Modifications">
+            <SectionCard title="Section 7 — Accommodations & Modifications" toggle={sectionToggle("section7_accommodations")}>
                 <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1.5">Classroom Accommodations</p><PillList items={s7.classroom} /></div>
                 <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1.5">Learning Modifications</p><PillList items={s7.learning_modifications} /></div>
                 <div><p className="text-[0.7rem] font-bold uppercase tracking-wider text-faint mb-1.5">Communication Supports</p><PillList items={s7.communication_supports} /></div>
             </SectionCard>
 
             {/* Section 8 — Therapies */}
-            <SectionCard title="Section 8 — Therapies & Intervention Plan">
+            <SectionCard title="Section 8 — Therapies & Intervention Plan" toggle={sectionToggle("section8_therapies")}>
                 {Object.entries({
                     speech_therapy: "Speech-Language Pathology",
                     occupational_therapy: "Occupational Therapy",
@@ -409,7 +477,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             </SectionCard>
 
             {/* Section 9 — Home Program */}
-            <SectionCard title="Section 9 — Home Program">
+            <SectionCard title="Section 9 — Home Program" toggle={sectionToggle("section9_home_program")}>
                 {Object.entries({
                     speech_tasks: "Speech Tasks",
                     sensory_ot_tasks: "Sensory / OT Tasks",
@@ -417,7 +485,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                     academic_tasks: "Academic Tasks"
                 }).map(([key, lbl]) => (
                     <div key={key} className="mb-3 last:mb-0">
-                        <p className="text-xs font-bold text-blue-600 mb-1">{lbl}</p>
+                        <p className="text-xs font-bold text-indigo-600 mb-1">{lbl}</p>
                         <ul className="m-0 pl-5 text-xs text-fg leading-relaxed list-disc">
                             {(s9[key] || []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                         </ul>

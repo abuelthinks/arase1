@@ -253,7 +253,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                     ? (theme === "dark" ? "#1e3a8a" : "#eff6ff")
                     : "transparent",
                   color: placement === "top-right"
-                    ? (theme === "dark" ? "#60a5fa" : "var(--accent-primary, #3b82f6)")
+                    ? (theme === "dark" ? "#a5b4fc" : "var(--accent-primary, #3b82f6)")
                     : (theme === "dark" ? "var(--bg-neutral-light)" : "var(--text-secondary)"),
                 }}
               >
@@ -281,7 +281,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
                     ? (theme === "dark" ? "#1e3a8a" : "#eff6ff")
                     : "transparent",
                   color: placement === "bottom-right"
-                    ? (theme === "dark" ? "#60a5fa" : "var(--accent-primary, #3b82f6)")
+                    ? (theme === "dark" ? "#a5b4fc" : "var(--accent-primary, #3b82f6)")
                     : (theme === "dark" ? "var(--bg-neutral-light)" : "var(--text-secondary)"),
                 }}
               >

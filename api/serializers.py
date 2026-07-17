@@ -57,7 +57,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'email', 'role', 'first_name', 'last_name', 'specialty',
                   'specialties', 'languages',
-                  'phone_number', 'is_phone_verified',
+                  'phone_number', 'is_phone_verified', 'is_active',
                   'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students',
                   'specialist_onboarding_complete', 'specialist_onboarding_missing']
 

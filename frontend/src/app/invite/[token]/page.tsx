@@ -107,7 +107,7 @@ export default function AcceptInvitePage() {
             <div style={{ background: "rgba(255, 255, 255, 0.8)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", padding: "2rem", borderRadius: "16px", boxShadow: "0 20px 40px -10px rgba(0,0,0,0.05), 0 0 0 1px rgba(255,255,255,0.6) inset", width: "100%", maxWidth: "420px", display: "flex", flexDirection: "column", gap: "1.2rem", transition: "all 0.3s ease" }}>
                 
                 <div style={{ textAlign: "center" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", borderRadius: "12px", background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", color: "white", marginBottom: "1rem", boxShadow: "0 6px 12px -4px rgba(59, 130, 246, 0.3)" }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", borderRadius: "12px", background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", color: "white", marginBottom: "1rem", boxShadow: "0 6px 12px -4px rgba(59, 130, 246, 0.3)" }}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
                     </div>
                     <h1 style={{ color: "var(--text-primary)", margin: "0 0 6px 0", fontSize: "1.4rem", fontWeight: 800, letterSpacing: "-0.025em" }}>Complete Setup</h1>
@@ -229,11 +229,11 @@ export default function AcceptInvitePage() {
                             fontSize: "0.95rem", 
                             fontWeight: 700,
                             color: "white",
-                            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
                             border: "none",
                             borderRadius: "8px",
                             cursor: loading ? "not-allowed" : "pointer",
-                            boxShadow: "0 4px 10px 0 rgba(37, 99, 235, 0.3)",
+                            boxShadow: "0 4px 10px 0 rgba(79, 70, 229, 0.3)",
                             transition: "all 0.2s ease",
                             opacity: loading ? 0.8 : 1,
                             display: "flex",
@@ -242,7 +242,7 @@ export default function AcceptInvitePage() {
                             gap: "8px"
                         }}
                         onMouseOver={(e) => { if(!loading) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(37,99,235,0.4)"; } }}
-                        onMouseOut={(e) => { if(!loading) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 10px 0 rgba(37, 99, 235, 0.3)"; } }}
+                        onMouseOut={(e) => { if(!loading) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 10px 0 rgba(79, 70, 229, 0.3)"; } }}
                     >
                         {loading ? (
                             <>

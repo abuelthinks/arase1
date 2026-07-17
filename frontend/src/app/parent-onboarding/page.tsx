@@ -1202,7 +1202,7 @@ export function ParentFormContent({
                         {isWizardMode && currentStep > 0 ? (
                             <button
                                 onClick={handleBackStep}
-                                className="text-sm font-bold text-muted hover:text-blue-600 flex items-center gap-2 transition px-4 py-2 rounded-lg bg-app border border-line hover:bg-card hover:border-blue-300"
+                                className="text-sm font-bold text-muted hover:text-indigo-600 flex items-center gap-2 transition px-4 py-2 rounded-lg bg-app border border-line hover:bg-card hover:border-indigo-300"
                             >
                                 ← Back
                             </button>

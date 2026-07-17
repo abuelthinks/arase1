@@ -28,6 +28,10 @@ import {
     Users,
     User,
     X,
+    Pencil,
+    Trash2,
+    UserPlus,
+    RefreshCw,
 } from "lucide-react";
 
 interface AssignedStudent {
@@ -50,6 +54,7 @@ interface UserData {
     languages?: string[];
     phone_number?: string;
     is_phone_verified?: boolean;
+    is_active?: boolean;
     specialist_onboarding_complete?: boolean;
     specialist_onboarding_missing?: string[];
     assigned_students_count: number;
@@ -142,6 +147,31 @@ export default function UserProfile() {
     const [languageError, setLanguageError] = useState("");
     const [isEditingLanguages, setIsEditingLanguages] = useState(false);
     const [hasSeenProfileExplainer, setHasSeenProfileExplainer] = useState(false);
+
+    // Edit profile state (for Admin)
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editFirstName, setEditFirstName] = useState("");
+    const [editLastName, setEditLastName] = useState("");
+    const [editEmail, setEditEmail] = useState("");
+    const [editPhoneNumber, setEditPhoneNumber] = useState("");
+    const [editIsPhoneVerified, setEditIsPhoneVerified] = useState(false);
+    const [editIsActive, setEditIsActive] = useState(true);
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [profileError, setProfileError] = useState("");
+
+    // Child linkage state
+    const [isLinkingStudent, setIsLinkingStudent] = useState(false);
+    const [allStudents, setAllStudents] = useState<any[]>([]);
+    const [loadingStudents, setLoadingStudents] = useState(false);
+    const [selectedStudentId, setSelectedStudentId] = useState<number | "">("");
+    const [linkingError, setLinkingError] = useState("");
+    const [linkingLoading, setLinkingLoading] = useState(false);
+
+    // Invitation state
+    const [pendingInvitation, setPendingInvitation] = useState<any | null>(null);
+    const [loadingInvitation, setLoadingInvitation] = useState(false);
+    const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
+    const [revokingInviteId, setRevokingInviteId] = useState<number | null>(null);
     
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -170,7 +200,20 @@ export default function UserProfile() {
                 setUser(res.data);
                 setSpecialties(initialSpecialties(res.data));
                 setLanguages(initialLanguages(res.data));
+                
+                // Initialize edit fields
+                setEditFirstName(res.data.first_name || "");
+                setEditLastName(res.data.last_name || "");
+                setEditEmail(res.data.email || "");
+                setEditPhoneNumber(res.data.phone_number || "");
+                setEditIsPhoneVerified(!!res.data.is_phone_verified);
+                setEditIsActive(res.data.is_active !== false);
+                
                 setError("");
+                
+                if (res.data.email && res.data.role === "PARENT") {
+                    fetchInvitation(res.data.email);
+                }
             } catch (err: any) {
                 if (!profileCache.has(cacheKey)) {
                     setError(err.response?.data?.detail || "Failed to load user profile.");
@@ -180,8 +223,143 @@ export default function UserProfile() {
             }
         };
 
+        const fetchInvitation = async (email: string) => {
+            if (authUser?.role !== "ADMIN") return;
+            setLoadingInvitation(true);
+            try {
+                const res = await api.get("/api/invitations/");
+                const invite = res.data.find(
+                    (inv: any) => inv.email.toLowerCase() === email.toLowerCase() && !inv.is_used
+                );
+                setPendingInvitation(invite || null);
+            } catch (err) {
+                console.error("Failed to load invitations", err);
+            } finally {
+                setLoadingInvitation(false);
+            }
+        };
+
         if (id) fetchUser();
-    }, [cacheKey, id]);
+    }, [cacheKey, id, authUser?.role]);
+
+    const handleStartLinking = async () => {
+        setIsLinkingStudent(true);
+        setLoadingStudents(true);
+        setLinkingError("");
+        try {
+            const res = await api.get("/api/students/");
+            setAllStudents(res.data);
+        } catch (err) {
+            setLinkingError("Failed to fetch students.");
+        } finally {
+            setLoadingStudents(false);
+        }
+    };
+
+    const handleLinkStudent = async () => {
+        if (!selectedStudentId || !user) return;
+        setLinkingLoading(true);
+        setLinkingError("");
+        try {
+            await api.post(`/api/students/${selectedStudentId}/assign-parent/`, {
+                parent_id: user.id
+            });
+            const linkedStudent = allStudents.find(s => s.id === Number(selectedStudentId));
+            if (linkedStudent) {
+                const updatedAssigned = [...(user.assigned_students || []), {
+                    id: linkedStudent.id,
+                    first_name: linkedStudent.first_name,
+                    last_name: linkedStudent.last_name,
+                    grade: linkedStudent.grade,
+                    status: linkedStudent.status
+                }];
+                const updatedUser = { ...user, assigned_students: updatedAssigned };
+                setUser(updatedUser);
+                profileCache.set(cacheKey, updatedUser);
+            }
+            setIsLinkingStudent(false);
+            setSelectedStudentId("");
+        } catch (err: any) {
+            setLinkingError(err.response?.data?.error || err.response?.data?.detail || "Failed to link child.");
+        } finally {
+            setLinkingLoading(false);
+        }
+    };
+
+    const handleUnlinkStudent = async (studentId: number) => {
+        if (!user) return;
+        if (!confirm("Are you sure you want to remove this child from the parent's account?")) {
+            return;
+        }
+        try {
+            await api.post(`/api/students/${studentId}/unassign-staff/`, {
+                staff_id: user.id
+            });
+            const updatedAssigned = (user.assigned_students || []).filter(s => s.id !== studentId);
+            const updatedUser = { ...user, assigned_students: updatedAssigned };
+            setUser(updatedUser);
+            profileCache.set(cacheKey, updatedUser);
+        } catch (err: any) {
+            alert(err.response?.data?.error || err.response?.data?.detail || "Failed to unlink child.");
+        }
+    };
+
+    const handleResendInvitation = async (inviteId: number) => {
+        setResendingInviteId(inviteId);
+        try {
+            await api.post(`/api/invitations/${inviteId}/resend/`);
+            alert("Invitation resent successfully!");
+        } catch (err: any) {
+            alert(err.response?.data?.error || "Failed to resend invitation.");
+        } finally {
+            setResendingInviteId(null);
+        }
+    };
+
+    const handleRevokeInvitation = async (inviteId: number) => {
+        if (!confirm("Are you sure you want to revoke this invitation?")) {
+            return;
+        }
+        setRevokingInviteId(inviteId);
+        try {
+            await api.delete(`/api/invitations/${inviteId}/`);
+            setPendingInvitation(null);
+            alert("Invitation revoked successfully!");
+        } catch (err: any) {
+            alert(err.response?.data?.error || "Failed to revoke invitation.");
+        } finally {
+            setRevokingInviteId(null);
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        if (!user) return;
+        setSavingProfile(true);
+        setProfileError("");
+        try {
+            const payload = {
+                first_name: editFirstName,
+                last_name: editLastName,
+                email: editEmail,
+                phone_number: editPhoneNumber,
+                is_phone_verified: editIsPhoneVerified,
+                is_active: editIsActive
+            };
+            const res = await api.patch(`/api/users/${id}/`, payload);
+            setUser(res.data);
+            profileCache.set(cacheKey, res.data);
+            setIsEditingProfile(false);
+        } catch (err: any) {
+            setProfileError(
+                err.response?.data?.email || 
+                err.response?.data?.phone_number || 
+                err.response?.data?.detail || 
+                "Failed to update profile."
+            );
+        } finally {
+            setSavingProfile(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -232,24 +410,32 @@ export default function UserProfile() {
         : isParent
                 ? [
                     { label: "Email", value: user.email, href: `mailto:${user.email}`, icon: Mail },
-                    { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
-                    { label: "Account Status", value: "Active", icon: ShieldCheck },
+                    { label: "Phone", value: user.phone_number ? `${user.phone_number} (${user.is_phone_verified ? "Verified" : "Unverified"})` : "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
+                    { label: "Account Status", value: user.is_active === false ? "Inactive" : "Active", icon: ShieldCheck },
                 ]
                 : [
                     { label: "Email", value: user.email, href: `mailto:${user.email}`, icon: Mail },
-                    
-                    { label: "Phone", value: user.phone_number || "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
+                    { label: "Phone", value: user.phone_number ? `${user.phone_number} (${user.is_phone_verified ? "Verified" : "Unverified"})` : "Not provided", href: user.phone_number ? `tel:${user.phone_number}` : undefined, icon: PhoneCall },
                     { label: "Role", value: user.role, icon: Briefcase },
                     { label: "Last Active", value: formatLastSeen(user.last_login), icon: ActivityIcon },
-                    { label: "Account Status", value: "Active", icon: ShieldCheck },
+                    { label: "Account Status", value: user.is_active === false ? "Inactive" : "Active", icon: ShieldCheck },
                 ];
 
-    const statCards = canViewOperationalDetails && !isParent
-        ? [
-            { label: "Caseload", value: studentCount, note: "total assigned students", tone: "primary" as SemanticTone },
-            { label: "Active", value: activeCount, note: "enrolled students", tone: "success" as SemanticTone },
-            { label: "Needs Follow-up", value: pendingCount + assessedCount, note: "pending or assessed", tone: "warning" as SemanticTone },
-        ]
+    const parentActiveCount = assignedStudents.filter(s => ["ENROLLED", "INTEGRATED"].includes(s.status)).length;
+    const parentPendingCount = assignedStudents.filter(s => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED", "ASSESSED"].includes(s.status)).length;
+
+    const statCards = canViewOperationalDetails
+        ? isParent
+            ? [
+                { label: "Linked Children", value: studentCount, note: "total connected children", tone: "primary" as SemanticTone },
+                { label: "Enrolled", value: parentActiveCount, note: "actively enrolled children", tone: "success" as SemanticTone },
+                { label: "Needs Review", value: parentPendingCount, note: "pending or in assessment", tone: "warning" as SemanticTone },
+              ]
+            : [
+                { label: "Caseload", value: studentCount, note: "total assigned students", tone: "primary" as SemanticTone },
+                { label: "Active", value: activeCount, note: "enrolled students", tone: "success" as SemanticTone },
+                { label: "Needs Follow-up", value: pendingCount + assessedCount, note: "pending or assessed", tone: "warning" as SemanticTone },
+              ]
         : [];
 
     return (
@@ -363,6 +549,58 @@ export default function UserProfile() {
                 </div>
             </SectionCard>
 
+            {/* Pending Invitation Alert (for Admins viewing a parent) */}
+            {isAdmin && isParent && pendingInvitation && (
+                <div className={`flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between ${semanticToneClass("warning")}`}>
+                    <div>
+                        <p className="m-0 text-sm font-extrabold text-warning">
+                            Pending Account Invitation
+                        </p>
+                        <p className="mt-1 text-sm text-fg">
+                            This parent has been invited but has not registered their account yet. Invitation code is: <code className="bg-card px-1.5 py-0.5 rounded border text-xs font-mono">{pendingInvitation.token}</code>
+                        </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                        <button
+                            type="button"
+                            disabled={resendingInviteId !== null}
+                            onClick={() => handleResendInvitation(pendingInvitation.id)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-warning-line bg-card px-3.5 py-2 text-xs font-bold text-warning hover:bg-warning-solid hover:text-white transition-colors duration-200"
+                        >
+                            {resendingInviteId === pendingInvitation.id ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Resending...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                    Resend Invite
+                                </>
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={revokingInviteId !== null}
+                            onClick={() => handleRevokeInvitation(pendingInvitation.id)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-card px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors duration-200"
+                        >
+                            {revokingInviteId === pendingInvitation.id ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Revoking...
+                                </>
+                            ) : (
+                                <>
+                                    <X className="h-3.5 w-3.5" />
+                                    Revoke Invite
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Stats */}
             {statCards.length > 0 && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -402,27 +640,148 @@ export default function UserProfile() {
                         <SectionHeader
                             title={isParent ? "Your Information" : "Profile Information"}
                             description={isParent ? "Your contact details and account status." : "Identity, contact details, and account state."}
+                            action={
+                                isAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (isEditingProfile) {
+                                                setEditFirstName(user.first_name || "");
+                                                setEditLastName(user.last_name || "");
+                                                setEditEmail(user.email || "");
+                                                setEditPhoneNumber(user.phone_number || "");
+                                                setEditIsPhoneVerified(!!user.is_phone_verified);
+                                                setEditIsActive(user.is_active !== false);
+                                                setProfileError("");
+                                            }
+                                            setIsEditingProfile(!isEditingProfile);
+                                        }}
+                                        className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-fg transition-colors hover:bg-app"
+                                    >
+                                        {isEditingProfile ? "Cancel" : "Edit"}
+                                    </button>
+                                )
+                            }
                         />
-                        <div className="flex flex-col gap-2">
-                            {profileInfo.map(item => {
-                                const Icon = item.icon;
-                                return (
-                                    <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5">
-                                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-muted">
-                                            {Icon && <Icon className="h-4 w-4 text-faint" aria-hidden="true" />}
-                                            {item.label}
-                                        </span>
-                                        {item.href ? (
-                                            <a href={item.href} className="break-all text-right text-sm font-bold text-indigo-600 no-underline hover:underline">
-                                                {item.value}
-                                            </a>
-                                        ) : (
-                                            <span className="text-right text-sm font-bold text-fg">{item.value}</span>
-                                        )}
+                        {isEditingProfile ? (
+                            <div className="flex flex-col gap-4">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">First Name</label>
+                                        <input
+                                            type="text"
+                                            value={editFirstName}
+                                            onChange={e => setEditFirstName(e.target.value)}
+                                            className={inputCls}
+                                        />
                                     </div>
-                                );
-                            })}
-                        </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Last Name</label>
+                                        <input
+                                            type="text"
+                                            value={editLastName}
+                                            onChange={e => setEditLastName(e.target.value)}
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={editEmail}
+                                        onChange={e => setEditEmail(e.target.value)}
+                                        className={inputCls}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Phone Number</label>
+                                    <input
+                                        type="text"
+                                        value={editPhoneNumber}
+                                        onChange={e => setEditPhoneNumber(e.target.value)}
+                                        className={inputCls}
+                                    />
+                                </div>
+                                <div className="flex flex-wrap gap-4 items-center justify-between py-3 border-t border-b border-line my-1">
+                                    <label className="flex items-center gap-2 text-sm font-semibold text-fg cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={editIsPhoneVerified}
+                                            onChange={e => setEditIsPhoneVerified(e.target.checked)}
+                                            className="rounded border-line text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                        />
+                                        Phone Verified
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm font-semibold text-fg cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={editIsActive}
+                                            onChange={e => setEditIsActive(e.target.checked)}
+                                            className="rounded border-line text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                        />
+                                        Account Active
+                                    </label>
+                                </div>
+                                {profileError && (
+                                    <p className="m-0 text-xs font-medium text-danger">{profileError}</p>
+                                )}
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={savingProfile}
+                                        onClick={handleSaveProfile}
+                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {savingProfile ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            "Save Changes"
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsEditingProfile(false);
+                                            setEditFirstName(user.first_name || "");
+                                            setEditLastName(user.last_name || "");
+                                            setEditEmail(user.email || "");
+                                            setEditPhoneNumber(user.phone_number || "");
+                                            setEditIsPhoneVerified(!!user.is_phone_verified);
+                                            setEditIsActive(user.is_active !== false);
+                                            setProfileError("");
+                                        }}
+                                        className="flex-1 rounded-xl border border-line px-5 py-3 text-sm font-bold text-fg transition-colors hover:bg-app"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                {profileInfo.map(item => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5">
+                                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-muted">
+                                                {Icon && <Icon className="h-4 w-4 text-faint" aria-hidden="true" />}
+                                                {item.label}
+                                            </span>
+                                            {item.href ? (
+                                                <a href={item.href} className="break-all text-right text-sm font-bold text-indigo-600 no-underline hover:underline">
+                                                    {item.value}
+                                                </a>
+                                            ) : (
+                                                <span className="text-right text-sm font-bold text-fg">{item.value}</span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </SectionCard>
 
                     {!isParent && (
@@ -766,12 +1125,98 @@ export default function UserProfile() {
                             <SectionHeader
                                 title={isParent ? "Children" : "Assigned Students"}
                                 description={isParent ? "Children connected to this account." : "Students this user is currently responsible for supporting."}
-                                action={!isParent ? (
-                                    <span className="inline-flex rounded-full border border-line bg-app px-3 py-1 text-xs font-bold text-muted">
-                                        {activeCount} Active Â· {pendingCount} Pending Â· {assessedCount} Assessed
-                                    </span>
-                                ) : undefined}
+                                action={
+                                    isAdmin ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (isLinkingStudent) {
+                                                    setIsLinkingStudent(false);
+                                                    setSelectedStudentId("");
+                                                } else {
+                                                    handleStartLinking();
+                                                }
+                                            }}
+                                            className="rounded-xl border border-line px-3 py-1.5 text-xs font-bold text-fg transition-colors hover:bg-app flex items-center gap-1.5"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                                            {isLinkingStudent ? "Cancel" : isParent ? "Add Child" : "Assign Student"}
+                                        </button>
+                                    ) : !isParent ? (
+                                        <span className="inline-flex rounded-full border border-line bg-app px-3 py-1 text-xs font-bold text-muted">
+                                            {activeCount} Active · {pendingCount} Pending · {assessedCount} Assessed
+                                        </span>
+                                    ) : undefined
+                                }
                             />
+
+                            {isLinkingStudent && (
+                                <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/20 p-4">
+                                    <h3 className="m-0 text-sm font-bold text-fg mb-3">
+                                        {isParent ? "Link a child to this parent account" : "Assign a student to this user"}
+                                    </h3>
+                                    {loadingStudents ? (
+                                        <div className="flex items-center gap-2 text-xs text-muted py-2">
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            Loading student list...
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-bold text-muted uppercase tracking-wide">Select Student</label>
+                                                <select
+                                                    value={selectedStudentId}
+                                                    onChange={e => {
+                                                        setSelectedStudentId(e.target.value ? Number(e.target.value) : "");
+                                                        setLinkingError("");
+                                                    }}
+                                                    className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm font-medium text-fg focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/15"
+                                                >
+                                                    <option value="">-- Choose a student --</option>
+                                                    {allStudents
+                                                        .filter(student => !assignedStudents.some(s => s.id === student.id))
+                                                        .map(student => (
+                                                            <option key={student.id} value={student.id}>
+                                                                {student.first_name} {student.last_name} (Grade {student.grade || "TBD"})
+                                                            </option>
+                                                        ))}
+                                                </select>
+                                            </div>
+                                            {linkingError && (
+                                                <p className="m-0 text-xs font-medium text-danger">{linkingError}</p>
+                                            )}
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    disabled={linkingLoading || !selectedStudentId}
+                                                    onClick={handleLinkStudent}
+                                                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {linkingLoading ? (
+                                                        <>
+                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                            Linking...
+                                                        </>
+                                                    ) : (
+                                                        "Confirm Link"
+                                                    )}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsLinkingStudent(false);
+                                                        setSelectedStudentId("");
+                                                        setLinkingError("");
+                                                    }}
+                                                    className="flex-1 rounded-lg border border-line px-3 py-2 text-xs font-bold text-fg transition-colors hover:bg-app"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {studentCount === 0 ? (
                                 <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-app/40 py-10 text-center">
@@ -792,21 +1237,41 @@ export default function UserProfile() {
                                     {[...assignedStudents].sort((a, b) => b.id - a.id).map(student => {
                                         const statusCls = statusColorClass(student.status);
                                         return (
-                                            <Link
+                                            <div
                                                 key={student.id}
-                                                href={`/students/${student.id}`}
-                                                className="group flex items-center justify-between gap-3 rounded-xl border border-line bg-card p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                                                className="group flex items-center justify-between gap-3 rounded-xl border border-line bg-card p-3 no-underline transition-colors"
                                             >
-                                                <div>
-                                                    <p className="m-0 text-sm font-bold text-fg group-hover:text-indigo-700">
-                                                        {student.first_name} {student.last_name}
-                                                    </p>
-                                                    <p className="m-0 text-xs text-muted">Grade: {student.grade || "TBD"}</p>
+                                                <Link
+                                                    href={`/students/${student.id}`}
+                                                    className="flex-1 no-underline group-hover:text-indigo-700"
+                                                >
+                                                    <div>
+                                                        <p className="m-0 text-sm font-bold text-fg group-hover:text-indigo-700 transition-colors duration-200">
+                                                            {student.first_name} {student.last_name}
+                                                        </p>
+                                                        <p className="m-0 text-xs text-muted">Grade: {student.grade || "TBD"}</p>
+                                                    </div>
+                                                </Link>
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-extrabold uppercase tracking-wide ${statusCls}`}>
+                                                        {student.status?.replace(/_/g, " ")}
+                                                    </span>
+                                                    {isAdmin && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                handleUnlinkStudent(student.id);
+                                                            }}
+                                                            title="Unlink Child"
+                                                            className="flex h-8 w-8 items-center justify-center rounded-lg text-faint hover:bg-red-50 hover:text-red-600 transition-colors duration-200 border border-transparent hover:border-red-200"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <span className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-extrabold uppercase tracking-wide ${statusCls}`}>
-                                                    {student.status?.replace(/_/g, " ")}
-                                                </span>
-                                            </Link>
+                                            </div>
                                         );
                                     })}
                                 </div>

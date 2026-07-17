@@ -12,9 +12,9 @@
   --text-secondary: #475569;
   --text-muted: #94a3b8;
 
-  --accent-primary: #3b82f6;
-  /* Blue */
-  --accent-hover: #2563eb;
+  --accent-primary: #6366f1;
+  /* Indigo */
+  --accent-hover: #4f46e5;
   --accent-soft: #eef2ff;
   --accent-border: #c7d2fe;
   --accent-text: #3730a3;
@@ -100,6 +100,11 @@
   --text-secondary: #cbd5e1;  /* Slate text */
   --text-muted: #94a3b8;      /* Muted text */
   --border-light: #334155;    /* Border color */
+
+  /* Accent (indigo) tuned for dark surfaces */
+  --accent-soft: rgba(99, 102, 241, 0.15);
+  --accent-border: #4338ca;
+  --accent-text: #c7d2fe;
 
   /* Alert & Status Light States */
   --bg-success-light: #064e3b;
@@ -657,7 +662,7 @@
 /* ── Keyboard Focus Indicators (WCAG 2.4.7) ─────────────────────────────── */
 /* Visible focus ring for all interactive elements when using keyboard */
 *:focus-visible {
-  outline: 3px solid var(--accent-primary, #3b82f6) !important;
+  outline: 3px solid var(--accent-primary, #6366f1) !important;
   outline-offset: 2px !important;
 }
 
@@ -735,6 +740,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
 /* Clean & Simple Card Panels (replacing Glassmorphism) */
 .glass-panel {
   background: var(--bg-secondary);
@@ -757,8 +766,8 @@ body {
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 .btn-primary:hover:not(:disabled) {
-  background-color: #1d4ed8;
-  border-color: #1d4ed8;
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
   color: white;
 }
 .btn-primary:disabled {
@@ -920,7 +929,7 @@ body {
 .form-input:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
 /* Layout utilities */
@@ -1369,8 +1378,8 @@ body {
 
 .profile-action-card:hover,
 .profile-action-card:focus-visible {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
   outline: none;
 }
 
@@ -1387,7 +1396,7 @@ body {
 }
 
 .profile-action-arrow {
-  color: #2563eb;
+  color: var(--accent-hover);
   font-size: 1.3rem;
   line-height: 1;
   font-weight: 700;
@@ -1455,31 +1464,30 @@ body {
 
 /* Container-level */
 [data-sonner-toaster] {
-  --width: 360px;
+  --width: 320px;
   font-family: var(--font-sans) !important;
 }
 
-/* Base toast card — a left accent bar carries the type; the body stays calm.
-   Untyped toasts fall back to a soft neutral tint (never stark white) so they
-   sit in the same family as the typed ones. */
+/* Base toast card — quiet neutral surface; only a thin accent bar and the
+   icon carry the type. Body and title stay calm in every state. */
 [data-sonner-toast][data-styled='true'] {
-  border-radius: 12px !important;
-  border: 1px solid var(--toast-border, var(--border-neutral)) !important;
-  border-left: 4px solid var(--toast-accent, var(--text-neutral)) !important;
-  background: var(--toast-bg, var(--bg-neutral-light)) !important;
-  color: var(--toast-text, var(--text-primary)) !important;
-  box-shadow: var(--shadow-md) !important;
-  padding: 12px 14px 12px 16px !important;
-  gap: 10px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--border-light) !important;
+  border-left: 3px solid var(--toast-accent, var(--border-light)) !important;
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+  padding: 10px 12px 10px 14px !important;
+  gap: 8px !important;
 }
 
-/* Toast title — uses the type's text colour for legible at-a-glance meaning. */
+/* Toast title — neutral, medium weight; the accent bar signals the type. */
 [data-sonner-toast][data-styled='true'] [data-title] {
-  font-weight: 700 !important;
-  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
   line-height: 1.25 !important;
   letter-spacing: -0.01em;
-  color: var(--toast-text, var(--text-primary)) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Toast description — muted, never opacity-dimmed. */
@@ -1530,14 +1538,11 @@ body {
 }
 
 /* ── Type variants ───────────────────────────────────────────────────────── */
-/* Each sets the shared --toast-* vars the base card reads, so the accent bar,
-   border, background tint and title colour all stay in sync per type. */
+/* Each type only tints the accent bar and icon — the card itself stays
+   neutral so toasts read as quiet asides, not banners. */
 
 [data-sonner-toast][data-styled='true'][data-type="success"] {
   --toast-accent: var(--success);
-  --toast-border: var(--border-success);
-  --toast-bg: var(--bg-success-light);
-  --toast-text: var(--text-success);
 }
 [data-sonner-toast][data-styled='true'][data-type="success"] [data-icon] svg {
   color: var(--success) !important;
@@ -1545,29 +1550,20 @@ body {
 
 [data-sonner-toast][data-styled='true'][data-type="error"] {
   --toast-accent: var(--danger);
-  --toast-border: var(--border-danger);
-  --toast-bg: var(--bg-danger-light);
-  --toast-text: var(--text-danger);
 }
 [data-sonner-toast][data-styled='true'][data-type="error"] [data-icon] svg {
   color: var(--danger) !important;
 }
 
 [data-sonner-toast][data-styled='true'][data-type="info"] {
-  --toast-accent: var(--text-info);
-  --toast-border: var(--border-info);
-  --toast-bg: var(--bg-info-light);
-  --toast-text: var(--text-info);
+  --toast-accent: var(--accent-primary);
 }
 [data-sonner-toast][data-styled='true'][data-type="info"] [data-icon] svg {
-  color: var(--text-info) !important;
+  color: var(--accent-primary) !important;
 }
 
 [data-sonner-toast][data-styled='true'][data-type="warning"] {
   --toast-accent: var(--warning);
-  --toast-border: var(--border-warning);
-  --toast-bg: var(--bg-warning-light);
-  --toast-text: var(--text-warning);
 }
 [data-sonner-toast][data-styled='true'][data-type="warning"] [data-icon] svg {
   color: var(--warning) !important;
@@ -1581,11 +1577,9 @@ body {
   }
 
   [data-sonner-toast][data-styled='true'] {
-    border-radius: 12px !important;
-    padding: 12px 14px 12px 16px !important;
-    box-shadow:
-      0 -4px 24px rgba(15, 23, 42, 0.1),
-      0 -1px 6px rgba(15, 23, 42, 0.04) !important;
+    border-radius: 10px !important;
+    padding: 10px 12px 10px 14px !important;
+    box-shadow: var(--shadow-sm) !important;
   }
 }
 

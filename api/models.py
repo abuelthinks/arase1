@@ -304,6 +304,9 @@ class GeneratedDocument(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='DRAFT')
     file = models.FileField(upload_to='generated_reports/', blank=True, null=True)
     iep_data = models.JSONField(default=dict, blank=True)
+    # Maps section key (e.g. "section2_background") -> bool. A missing key means
+    # the section is included. Controls which sections render in the downloaded PDF.
+    pdf_section_visibility = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

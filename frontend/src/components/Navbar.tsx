@@ -24,7 +24,7 @@ export default function Navbar() {
     return (
         <nav className="bg-card border-b border-line px-4 md:px-6 py-1 flex justify-between items-center shadow-sm sticky top-0 z-50">
             <div className="flex items-center gap-4">
-                <Link href="/dashboard" className="font-bold text-lg text-blue-600 hover:text-blue-800 transition">
+                <Link href="/dashboard" className="font-bold text-lg text-indigo-600 hover:text-indigo-800 transition">
                     ARASE
                 </Link>
             </div>

@@ -83,7 +83,7 @@ export default function UserActivityPage() {
                             Back
                         </button>
                         <span style={{ color: "var(--text-muted)" }}>/</span>
-                        <Link href={`/users/${id}`} style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textDecoration: "none" }} className="hover:text-blue-600 hover:underline">
+                        <Link href={`/users/${id}`} style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textDecoration: "none" }} className="hover:text-indigo-600 hover:underline">
                             {displayName}
                         </Link>
                         <span style={{ color: "var(--text-muted)" }}>/</span>

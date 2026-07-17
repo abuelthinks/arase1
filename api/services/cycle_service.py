@@ -100,13 +100,17 @@ def ensure_current_cycle(student):
     month_start = today.replace(day=1)
     month_end = (month_start + relativedelta(months=1)) - timedelta(days=1)
 
-    # Look for an active cycle that covers this month
-    cycle = ReportCycle.objects.filter(
-        student=student,
-        is_active=True,
-        start_date__lte=month_end,
-        end_date__gte=month_start,
-    ).first()
+    # Look for an active MONTHLY cycle that covers this month. The six-month
+    # assessment cycle created at registration also overlaps the current month,
+    # so filter it out by span — otherwise it stays active forever and monthly
+    # cycles are never created for enrolled students.
+    cycle = None
+    for candidate in ReportCycle.objects.filter(student=student, is_active=True):
+        covers_month = candidate.start_date <= month_end and candidate.end_date >= month_start
+        is_monthly = (candidate.end_date - candidate.start_date).days <= 31
+        if covers_month and is_monthly:
+            cycle = candidate
+            break
 
     if cycle:
         # Check if we need to transition to GRACE status

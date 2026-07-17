@@ -1553,10 +1553,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 student: parseInt(studentId),
                 report_cycle: parseInt(reportCycleId),
             });
-            toast.success(`Section reopened for editing.`);
+            toast.success(`Section reopened.`);
             await refreshSectionContributions(reportCycleId);
         } catch (err: any) {
-            toast.error(extractApiError(err, `Failed to reopen Section.`), {
+            toast.error(extractApiError(err, `Couldn't reopen section.`), {
                 id: `reopen-error-${sectionKey}`,
                 duration: 7000,
             });
@@ -1798,8 +1798,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         if (formType === "parent-assessment") {
             setAttemptedSubmit(true);
             if (invalidFields.size > 0) {
-                setErrorMsg("Please fill in all required fields.");
-                toast.error("Please fill in all required fields.", {
+                setErrorMsg("Missing required fields.");
+                toast.error("Missing required fields.", {
                     id: "validation-error",
                     duration: 4000
                 });

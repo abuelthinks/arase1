@@ -164,7 +164,7 @@ function SpecialistsContent() {
         }
       } catch (err) {
         console.error('Failed to load data', err);
-        toast.error('Failed to load specialist data.');
+        toast.error('Could not load specialists.');
       } finally {
         setLoading(false);
       }

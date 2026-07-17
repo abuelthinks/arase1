@@ -33,10 +33,10 @@ interface BannerContent {
 
 const toneStyles = {
     action: {
-        bg: "linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)",
-        border: "#bfdbfe",
-        labelBg: "#dbeafe",
-        labelText: "#1d4ed8",
+        bg: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
+        border: "#c7d2fe",
+        labelBg: "#e0e7ff",
+        labelText: "#4338ca",
         buttonClass: "bg-indigo-600 hover:bg-indigo-700 text-white",
     },
     waiting: {
