@@ -227,9 +227,11 @@ export default function AdminDashboard() {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('PARENT');
+    const [inviteSpecialties, setInviteSpecialties] = useState<SpecialistSpecialty[]>([]);
 
     // Bulk Registration State
     const [bulkRole, setBulkRole] = useState("PARENT");
+    const [bulkSpecialties, setBulkSpecialties] = useState<SpecialistSpecialty[]>([]);
     const [bulkInputText, setBulkInputText] = useState("");
     const [bulkEmails, setBulkEmails] = useState<BulkEmailEntry[]>([]);
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
@@ -334,7 +336,11 @@ export default function AdminDashboard() {
             setBulkEmails([...updatedList]);
 
             try {
-                await api.post("/api/invitations/", { email: updatedList[i].email, role: bulkRole });
+                await api.post("/api/invitations/", {
+                    email: updatedList[i].email,
+                    role: bulkRole,
+                    specialties: bulkRole === 'SPECIALIST' ? bulkSpecialties : [],
+                });
                 updatedList[i].status = 'success';
                 successCount++;
             } catch (err: any) {
@@ -630,7 +636,11 @@ export default function AdminDashboard() {
                 await api.post("/api/students/", { parent_email: inviteEmail });
                 toast.success("Student registered, parent invited.");
             } else {
-                const response = await api.post("/api/invitations/", { email: inviteEmail, role: inviteRole });
+                const response = await api.post("/api/invitations/", {
+                    email: inviteEmail,
+                    role: inviteRole,
+                    specialties: inviteRole === 'SPECIALIST' ? inviteSpecialties : [],
+                });
                 toast.success(`Invite sent to ${issuedEmail}.`);
                 if (response.data?.token) {
                     setCreatedInvite({ email: issuedEmail, token: response.data.token });
@@ -639,6 +649,7 @@ export default function AdminDashboard() {
             setShowInviteModal(false);
             setInviteEmail('');
             setInviteRole('PARENT');
+            setInviteSpecialties([]);
             fetchData();
         } catch (err: any) {
             toast.error(extractApiError(err, "Action failed."));
@@ -1706,7 +1717,7 @@ export default function AdminDashboard() {
                                             <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide">
                                                 Account Role
                                             </label>
-                                            <CustomSelect 
+                                            <CustomSelect
                                                 value={bulkRole}
                                                 onChange={setBulkRole}
                                                 disabled={isBulkProcessing}
@@ -1717,6 +1728,35 @@ export default function AdminDashboard() {
                                                 ]}
                                             />
                                         </div>
+
+                                        {bulkRole === 'SPECIALIST' && (
+                                            <div>
+                                                <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide">
+                                                    Specialty
+                                                </label>
+                                                <p className="text-xs text-muted m-0 mb-2">
+                                                    Applied to everyone in this batch. They can request a change during onboarding.
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {SPECIALIST_SPECIALTIES.map(option => {
+                                                        const checked = bulkSpecialties.includes(option);
+                                                        return (
+                                                            <button
+                                                                key={option}
+                                                                type="button"
+                                                                disabled={isBulkProcessing}
+                                                                aria-pressed={checked}
+                                                                onClick={() => setBulkSpecialties(prev => checked ? prev.filter(s => s !== option) : [...prev, option])}
+                                                                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${checked ? 'border-indigo-400 bg-indigo-50 text-indigo-800 font-bold' : 'border-line bg-card text-muted font-medium hover:border-line hover:bg-app'}`}
+                                                            >
+                                                                {checked && <CheckCircle2 size={14} />}
+                                                                {option}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="flex-1 flex flex-col min-h-[250px]">
                                             <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide flex justify-between">
@@ -2085,6 +2125,39 @@ export default function AdminDashboard() {
                                 />
                             </div>
 
+                            {inviteRole === 'SPECIALIST' && (
+                                <div>
+                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Specialty</label>
+                                    <p style={{ margin: "0 0 8px", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                        Assign now so their disciplines are ready on sign-up. They can request a change during onboarding if it&apos;s wrong.
+                                    </p>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                        {SPECIALIST_SPECIALTIES.map(option => {
+                                            const checked = inviteSpecialties.includes(option);
+                                            return (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    disabled={invitingUser}
+                                                    aria-pressed={checked}
+                                                    onClick={() => setInviteSpecialties(prev => checked ? prev.filter(s => s !== option) : [...prev, option])}
+                                                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                                                    style={{
+                                                        borderColor: checked ? "var(--accent-primary)" : "var(--border-light)",
+                                                        background: checked ? "var(--accent-primary-soft, rgba(99,102,241,0.1))" : "var(--bg-primary)",
+                                                        color: checked ? "var(--accent-primary)" : "var(--text-secondary)",
+                                                        fontWeight: checked ? 700 : 500,
+                                                    }}
+                                                >
+                                                    {checked && <CheckCircle2 size={14} />}
+                                                    {option}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "var(--danger)" }}>*</span></label>
                                 <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", background: "var(--bg-primary)", fontSize: "0.9rem", transition: "all 0.2s" }} />
@@ -2094,7 +2167,7 @@ export default function AdminDashboard() {
                                 <button type="submit" className="btn-primary" style={{ flex: 1, padding: "8px 16px", borderRadius: "8px", fontSize: "0.85rem", opacity: invitingUser ? 0.6 : 1, transition: "all 0.2s" }} disabled={invitingUser}>
                                     {invitingUser ? "Sending..." : "Send Link"}
                                 </button>
-                                <button type="button" onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: "8px 16px", background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--text-muted)", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }} disabled={invitingUser}>
+                                <button type="button" onClick={() => { setShowInviteModal(false); setInviteSpecialties([]); }} style={{ flex: 1, padding: "8px 16px", background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--text-muted)", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }} disabled={invitingUser}>
                                     Cancel
                                 </button>
                             </div>

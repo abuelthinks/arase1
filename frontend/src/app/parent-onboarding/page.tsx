@@ -215,8 +215,10 @@ export function ParentFormContent({
     const studentIdParam = propStudentId || searchParams.get("studentId");
     const draftKey = studentIdParam ? `parent_form_draft_v2_${studentIdParam}` : null;
     const { user } = useAuth();
-    const canViewPII = !isViewMode || user?.role === "ADMIN";
-    const hideBackgroundSection = isViewMode && ["SPECIALIST", "TEACHER"].includes(user?.role || "");
+    // Specialists and teachers see the child's background but never the parent's contact
+    // details, so they can't reach out to the family directly. Admins (and the parent
+    // themselves) see the full section.
+    const canViewPII = !["SPECIALIST", "TEACHER"].includes(user?.role || "");
 
     const [form, setForm] = useState<FormState>(initState());
     const [loading, setLoading] = useState(false);
@@ -330,9 +332,10 @@ export function ParentFormContent({
                     setFullSubmission(res.data);
                     const fd = res.data.form_data;
                     if (!fd) return;
-                    // New v2 format
+                    // New v2 format — merged over defaults because the API redacts the
+                    // parent's contact fields for specialists and teachers.
                     if (fd.v2) {
-                        setForm(fd.v2);
+                        setForm(prev => ({ ...prev, ...fd.v2 }));
                     } else {
                         // Legacy format — map old fields into new state shape as best we can
                         setForm(prev => ({
@@ -392,7 +395,7 @@ export function ParentFormContent({
             const fd = (isTranslated && fullSubmission.translated_data) ? fullSubmission.translated_data : fullSubmission.form_data;
             if (!fd) return;
             if (fd.v2) {
-                setForm(fd.v2);
+                setForm(prev => ({ ...prev, ...fd.v2 }));
             } else {
                 setForm(prev => ({
                     ...prev,
@@ -711,7 +714,7 @@ export function ParentFormContent({
                             </div>
                         </div>
                     )}                    {/* ── STEP 1 (Section A) ─────────────────────────────────────────── */}
-                    {(!isWizardMode || currentStep === 0) && !hideBackgroundSection && (
+                    {(!isWizardMode || currentStep === 0) && (
                     <div className="space-y-10 animate-fadeIn">
                         <section className="bg-card rounded-2xl border border-line p-5 sm:p-8 shadow-sm space-y-7 relative overflow-hidden">
                             <SectionHeader title={isViewMode ? "Section A — Let's start with the basics" : "Let's start with the basics"} description="Help us understand your child's basic background details so we can set up their profile." />
@@ -743,7 +746,7 @@ export function ParentFormContent({
                             </div>
                         </Field>
 
-                        {canViewPII && (
+                        {canViewPII ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <Field label="Parent/Guardian Name" required isInvalid={isFieldInvalid("parent_name", 0)}>
                                     <input type="text" className={inputCls} value={form.parent_name} onChange={e => set("parent_name")(e.target.value)} />
@@ -755,6 +758,10 @@ export function ParentFormContent({
                                     <input type="email" className={inputCls} value={form.email} onChange={e => set("email")(e.target.value)} />
                                 </Field>
                             </div>
+                        ) : (
+                            <p className="m-0 rounded-lg border border-line bg-app px-4 py-3 text-xs font-medium text-muted">
+                                Parent/guardian contact details are hidden. Please coordinate with the admin team.
+                            </p>
                         )}
 
                         <Field label="Primary Language(s)" required isInvalid={isFieldInvalid("primary_language", 0)}>

@@ -115,6 +115,7 @@ def resend_invitation(old_invitation):
     email = old_invitation.email
     role = old_invitation.role
     student = old_invitation.student
+    specialties = list(getattr(old_invitation, 'specialties', None) or [])
 
     # Revoke the old token
     old_invitation.delete()
@@ -124,6 +125,7 @@ def resend_invitation(old_invitation):
         email=email,
         role=role,
         student=student,
+        specialties=specialties,
     )
 
     # Fire the email
@@ -138,7 +140,7 @@ def create_invited_user(invitation, password, first_name="", last_name="", phone
     Returns: User instance
     """
     user = User.objects.create_user(
-        
+
         email=invitation.email,
         password=password,
         first_name=(first_name or "").strip().title(),
@@ -146,6 +148,16 @@ def create_invited_user(invitation, password, first_name="", last_name="", phone
         role=invitation.role,
         phone_number=(phone_number or "").strip()
     )
+
+    # Carry over any specialties the admin pre-assigned on the invitation so the
+    # specialist onboards with their discipline already set (section ownership).
+    if invitation.role == 'SPECIALIST':
+        from api.specialties import validate_specialties
+        specialties = validate_specialties('SPECIALIST', getattr(invitation, 'specialties', None))
+        if specialties:
+            user.specialties = specialties
+            user.specialty = specialties[0]
+            user.save(update_fields=['specialties', 'specialty'])
 
     invitation.is_used = True
     invitation.save()

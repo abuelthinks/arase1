@@ -174,6 +174,9 @@ class UserViewSet(viewsets.ModelViewSet):
             data['email'] = ''
             data['phone_number'] = ''
             data['is_phone_verified'] = False
+            data['assigned_students'] = []
+            data['assigned_students_count'] = 0
+            data['assigned_student_names'] = []
 
         return Response(data)
 

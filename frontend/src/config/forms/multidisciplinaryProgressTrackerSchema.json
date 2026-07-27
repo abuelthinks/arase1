@@ -9,6 +9,11 @@
             "title": "SECTION A — GENERAL INFORMATION",
             "fields": [
                 {
+                    "id": "student_information",
+                    "label": "Student Information",
+                    "type": "readonly_parent_summary"
+                },
+                {
                     "id": "therapist_name",
                     "label": "Therapist Name",
                     "type": "text"

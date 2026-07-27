@@ -191,8 +191,17 @@ function UnifiedWorkspaceContent() {
     const visibleFormTabs = user?.role === "PARENT"
         ? statusFilteredTabs.filter(tab => tab.id === "parent_tracker" || tab.id === "parent_assessment")
         : user?.role === "TEACHER"
-            ? statusFilteredTabs.filter(tab => tab.id === "sped_tracker")
-            : statusFilteredTabs;
+            // Teacher's own form (sped_tracker) plus read-only access to the parent's and
+            // specialist's submissions. These are reference material, not phase-gated
+            // inputs, so derive them from TABS directly.
+            ? TABS.filter(tab => ["parent_tracker", "multi_assessment", "multi_tracker", "sped_tracker"].includes(tab.id))
+            : user?.role === "SPECIALIST"
+                // Specialists have their own two forms plus read-only access to the parent's
+                // assessment/progress and the teacher's progress. These are reference
+                // material, not phase-gated inputs, so derive them from TABS directly rather
+                // than the status-filtered set (which hides parent_assessment once enrolled).
+                ? TABS.filter(tab => ["parent_assessment", "parent_tracker", "multi_assessment", "multi_tracker", "sped_tracker"].includes(tab.id))
+                : statusFilteredTabs;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [hasSeenWorkspaceExplainer, setHasSeenWorkspaceExplainer] = useState(false);
 
@@ -1653,6 +1662,33 @@ function UnifiedWorkspaceContent() {
                 ))
             );
 
+        // Specialists and teachers have their own input form(s) and, separately, read-only
+        // access to the rest of the team's submissions (parent + the other discipline).
+        // These are kept in two groups so the secondary bar can visually distinguish
+        // "what I fill in" from "reference I can only view". Cross-discipline forms only
+        // appear once submitted, so the group never shows empty placeholders.
+        const staffOwnTabs = user?.role === "SPECIALIST"
+            ? [
+                { id: "multi_assessment", label: "Specialist Assessment" },
+                ...(isStudentEnrolled ? [{ id: "multi_tracker", label: "Specialist Progress" }] : []),
+            ]
+            : user?.role === "TEACHER"
+                ? [{ id: "sped_tracker", label: "Teacher Progress" }]
+                : [];
+        const staffReferenceTabs = user?.role === "SPECIALIST"
+            ? [
+                ...(formStatuses?.parent_assessment?.submitted ? [{ id: "parent_assessment", label: "Parent Assessment" }] : []),
+                ...(isStudentEnrolled ? [{ id: "parent_tracker", label: "Parent Progress" }] : []),
+                ...(formStatuses?.sped_tracker?.submitted ? [{ id: "sped_tracker", label: "Teacher Progress" }] : []),
+            ]
+            : user?.role === "TEACHER"
+                ? [
+                    ...(isStudentEnrolled ? [{ id: "parent_tracker", label: "Parent Progress" }] : []),
+                    ...(formStatuses?.multi_assessment?.submitted ? [{ id: "multi_assessment", label: "Specialist Assessment" }] : []),
+                    ...(formStatuses?.multi_tracker?.submitted ? [{ id: "multi_tracker", label: "Specialist Progress" }] : []),
+                ]
+                : [];
+
         return (
             <>
                 <div className="hidden">
@@ -1719,6 +1755,41 @@ function UnifiedWorkspaceContent() {
 
                 <div className="flex-1 bg-card relative overflow-y-auto flex flex-col">
                     {tabBar}
+                    {(staffOwnTabs.length + staffReferenceTabs.length) > 1 && (
+                        <div className="shrink-0 border-b border-line bg-app/70 px-4 py-1 md:px-6">
+                            <div className="flex items-center gap-2 overflow-x-auto secondary-header-scrollbar">
+                                {staffOwnTabs.map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => handleFormTabChange(tab.id)}
+                                        className={workspaceSecondaryTabClass({ active: activeFormTab === tab.id })}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                                {staffReferenceTabs.length > 0 && (
+                                    <>
+                                        <div className="mx-1 h-6 w-px shrink-0 bg-subtle-soft" aria-hidden="true" />
+                                        <span className="shrink-0 pl-1 pr-0.5 text-[0.6rem] font-bold uppercase tracking-widest text-faint">
+                                            Team input
+                                        </span>
+                                        {staffReferenceTabs.map(tab => (
+                                            <button
+                                                key={tab.id}
+                                                type="button"
+                                                onClick={() => handleFormTabChange(tab.id)}
+                                                title="Read-only — submitted by another team member"
+                                                className={workspaceSecondaryTabClass({ active: activeFormTab === tab.id, tone: "neutral" })}
+                                            >
+                                                {tab.label}
+                                            </button>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     <div className="flex-1 overflow-y-auto">
                     {specialistOnboardingIncomplete && (
                         <div className="px-5 pt-5 md:px-6 md:pt-6">
@@ -1774,7 +1845,7 @@ function UnifiedWorkspaceContent() {
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </div>
                             <h3 className="text-lg font-bold text-fg mb-1">Progress Locked</h3>
-                            <p className="text-sm text-muted max-w-sm">{user?.role === "TEACHER" ? "Teacher progress" : "Specialist progress"} can be submitted after the student is enrolled.</p>
+                            <p className="text-sm text-muted max-w-sm">{user?.role === "TEACHER" ? "Teacher progress can be submitted after the student is integrated." : "Specialist progress can be submitted after the student is enrolled."}</p>
                         </div>
                     ) : isParentProgressLocked ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center p-8">
@@ -1976,8 +2047,8 @@ function UnifiedWorkspaceContent() {
                                         const isActive = reportView === tab.id;
                                         const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker") 
                                             ? !isStudentCurrentlyEnrolled 
-                                            : (tab.id === "sped_tracker") 
-                                                ? studentStatus?.toUpperCase() !== "INTEGRATED" 
+                                            : (tab.id === "sped_tracker")
+                                                ? studentStatus?.toUpperCase() !== "INTEGRATED"
                                                 : false;
 
                                         return (
@@ -2068,8 +2139,8 @@ function UnifiedWorkspaceContent() {
                             const isSub = formStatuses?.[tab.id]?.submitted;
                             const isLocked = (tab.id === "parent_tracker" || tab.id === "multi_tracker") 
                                 ? !isStudentCurrentlyEnrolled 
-                                : (tab.id === "sped_tracker") 
-                                    ? studentStatus?.toUpperCase() !== "INTEGRATED" 
+                                : (tab.id === "sped_tracker")
+                                    ? studentStatus?.toUpperCase() !== "INTEGRATED"
                                     : false;
                             const currentStatus = formStatuses?.[tab.id];
 
@@ -2508,11 +2579,11 @@ function UnifiedWorkspaceContent() {
 
         const isLocked = activeTeamRole === "SPECIALIST"
             ? !formStatuses?.parent_assessment?.submitted
-            : !["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
+            : studentStatus?.toUpperCase() !== "INTEGRATED";
 
         const lockReason = activeTeamRole === "SPECIALIST"
             ? "Waiting on Parent Input"
-            : "Waiting for enrollment. Staff cannot be assigned until prerequisite conditions are met.";
+            : "Waiting for integration. A teacher can be assigned once the student is integrated into a mainstream classroom.";
 
         const specialtyGroups = isSpecialist
             ? SPECIALIST_SPECIALTIES.map((specialty) => {

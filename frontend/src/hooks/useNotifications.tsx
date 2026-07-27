@@ -12,6 +12,7 @@ import {
 import api, { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import { extractApiError } from '@/lib/toast-utils';
+import { shouldSuppressToasts } from '@/lib/realtime';
 import { useAuth } from '@/context/AuthContext';
 
 export interface Notification {
@@ -145,15 +146,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
                     // Fire the toast before the state updater (side-effect stays
                     // outside React's render). Deduped by id within this single
-                    // provider instance.
-                    if (!incoming.is_read && !toastedIds.current.has(incoming.id)) {
+                    // provider instance. Kept brief — title only; the full
+                    // message stays in the notification center.
+                    if (!incoming.is_read && !toastedIds.current.has(incoming.id) && !shouldSuppressToasts()) {
                         toastedIds.current.add(incoming.id);
                         if (toastedIds.current.size > 250) {
                             toastedIds.current = new Set(Array.from(toastedIds.current).slice(-150));
                         }
                         toast(incoming.title || 'New notification', {
                             id: `notif-${incoming.id}`,
-                            description: incoming.message || undefined,
                             icon: incoming.actor_name
                                 ? <ActorAvatar name={incoming.actor_name} />
                                 : undefined,

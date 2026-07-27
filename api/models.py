@@ -114,6 +114,11 @@ class Invitation(models.Model):
     token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     role = models.CharField(max_length=20, choices=User.ROLE_CHOICES, default='PARENT')
     student = models.ForeignKey('Student', on_delete=models.SET_NULL, null=True, blank=True, related_name='invitations')
+    specialties = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Specialist disciplines pre-assigned by admin, applied to the account on registration.",
+    )
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(default=default_expiration)

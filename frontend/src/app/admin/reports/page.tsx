@@ -209,8 +209,8 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     const isIntegrated = studentStatus.toLowerCase() === "integrated";
 
     const allTrackersSubmitted = formStatuses
-        ? formStatuses.parent_tracker.submitted && 
-          formStatuses.multi_tracker.submitted && 
+        ? formStatuses.parent_tracker.submitted &&
+          formStatuses.multi_tracker.submitted &&
           (!isIntegrated || formStatuses.sped_tracker.submitted)
         : false;
 

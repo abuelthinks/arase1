@@ -25,12 +25,18 @@ def _parse_json_response(raw: str, provider: str) -> dict:
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:
+        # Models sometimes emit a valid object followed by trailing junk
+        # (a duplicated key, a second object, or a prose note). Recover the
+        # first complete JSON object instead of failing the whole call.
         start = text.find("{")
-        end = text.rfind("}")
-        if start == -1 or end == -1 or end <= start:
+        if start == -1:
             logger.error("%s returned invalid JSON: %s", provider, raw[:1000])
             raise
-        parsed = json.loads(text[start:end + 1])
+        try:
+            parsed, _ = json.JSONDecoder().raw_decode(text[start:])
+        except json.JSONDecodeError:
+            logger.error("%s returned invalid JSON: %s", provider, raw[:1000])
+            raise
 
     if not isinstance(parsed, dict):
         raise ValueError(f"{provider} returned JSON, but not a JSON object.")

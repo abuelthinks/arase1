@@ -32,3 +32,17 @@ export function dispatchRealtimeMessage(message: RealtimeMessage) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<RealtimeMessage>(REALTIME_EVENT_NAME, { detail: message }));
 }
+
+const PUBLIC_ROUTE_PREFIXES = ['/login', '/invite'];
+
+/**
+ * Real-time toasts must never surface on public/unauthenticated pages
+ * (landing, login, invite acceptance). A stale-but-still-valid session cookie
+ * can keep `user` populated on these pages, so gate on the route — not just auth.
+ */
+export function shouldSuppressToasts(): boolean {
+  if (typeof window === 'undefined') return true;
+  const path = window.location.pathname;
+  if (path === '/') return true;
+  return PUBLIC_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}

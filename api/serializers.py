@@ -153,19 +153,38 @@ class SelfUserSerializer(serializers.ModelSerializer):
     )
     specialist_onboarding_complete = serializers.SerializerMethodField()
     specialist_onboarding_missing = serializers.SerializerMethodField()
+    assigned_students_count = serializers.SerializerMethodField()
+    assigned_student_names = serializers.SerializerMethodField()
+    assigned_students = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'role', 'first_name', 'last_name',
             'specialty', 'specialties', 'languages', 'phone_number', 'is_phone_verified',
-            'specialist_onboarding_complete', 'specialist_onboarding_missing'
+            'specialist_onboarding_complete', 'specialist_onboarding_missing',
+            'assigned_students_count', 'assigned_student_names', 'assigned_students'
         ]
         read_only_fields = [
             'id', 'email', 'role',
             'specialty', 'specialties', 'phone_number', 'is_phone_verified',
-            'specialist_onboarding_complete', 'specialist_onboarding_missing'
+            'specialist_onboarding_complete', 'specialist_onboarding_missing',
+            'assigned_students_count', 'assigned_student_names', 'assigned_students'
         ]
+
+    def get_assigned_students_count(self, obj):
+        return obj.student_access.count()
+
+    def get_assigned_student_names(self, obj):
+        accesses = obj.student_access.all().select_related('student')[:5]
+        names = [f"{a.student.first_name} {a.student.last_name}" for a in accesses]
+        if obj.student_access.count() > 5:
+            names.append("...")
+        return names
+
+    def get_assigned_students(self, obj):
+        accesses = obj.student_access.all().select_related('student')
+        return [{"id": a.student.id, "first_name": a.student.first_name, "last_name": a.student.last_name, "grade": a.student.grade, "status": a.student.status} for a in accesses]
 
     def validate_languages(self, value):
         try:
@@ -374,10 +393,40 @@ class ReportCycleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ParentAssessmentSerializer(serializers.ModelSerializer):
+    # Contact keys as stored in form_data — the v2 shape nests answers under 'v2',
+    # older submissions keep them flat or under 'background'.
+    PII_KEYS = ('parent_name', 'phone', 'email', 'parent_guardian_name')
+
     class Meta:
         model = ParentAssessment
         fields = '__all__'
         read_only_fields = ['submitted_by']
+
+    def _redact(self, data):
+        if not isinstance(data, dict):
+            return data
+        cleaned = {
+            key: self._redact(value) if key in ('v2', 'background') else value
+            for key, value in data.items()
+            if key not in self.PII_KEYS
+        }
+        return cleaned
+
+    def to_representation(self, instance):
+        """Strip the parent's contact details for specialists and teachers.
+
+        The form itself hides these fields, but without this they still ship in the
+        API response — staff could read them straight out of the network tab and
+        contact the family outside the system.
+        """
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and getattr(user, 'role', None) in ('SPECIALIST', 'TEACHER'):
+            for key in ('form_data', 'translated_data'):
+                if data.get(key):
+                    data[key] = self._redact(data[key])
+        return data
 
 class SectionContributionSerializer(serializers.ModelSerializer):
     specialist_name = serializers.SerializerMethodField()
@@ -443,10 +492,21 @@ class GeneratedDocumentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class InvitationSerializer(serializers.ModelSerializer):
+    specialties = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+
     class Meta:
         model = Invitation
-        fields = ['id', 'email', 'token', 'role', 'is_used', 'created_at', 'expires_at']
+        fields = ['id', 'email', 'token', 'role', 'specialties', 'is_used', 'created_at', 'expires_at']
         read_only_fields = ['id', 'token', 'is_used', 'created_at', 'expires_at']
+
+    def validate(self, attrs):
+        from .specialties import validate_specialties
+        role = attrs.get('role', getattr(self.instance, 'role', 'PARENT'))
+        try:
+            attrs['specialties'] = validate_specialties(role, attrs.get('specialties'))
+        except ValueError as exc:
+            raise serializers.ValidationError({'specialties': str(exc)})
+        return attrs
 
 class AcceptInvitationSerializer(serializers.Serializer):
     token = serializers.UUIDField()

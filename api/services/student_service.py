@@ -298,6 +298,13 @@ def get_student_profile_data(student, user=None):
                 "parent_email": fd.get("email", ""),
             }
 
+    # Specialists and teachers get the child's background but never the parent's contact
+    # details, so all family communication stays routed through the admin team. Redacted
+    # here rather than only in the UI — otherwise the values still ship in the response.
+    if user and user.role in ('SPECIALIST', 'TEACHER'):
+        for key in ('parent_guardian_name', 'parent_phone', 'parent_email'):
+            parent_info.pop(key, None)
+
     # Assigned staff
     assigned_users = (
         StudentAccess.objects.filter(student=student)
@@ -399,9 +406,11 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
                 )
 
     elif expected_role == 'TEACHER':
-        # Teacher assignment is locked until the student is ENROLLED/INTEGRATED
-        if student.status not in ('ENROLLED', 'INTEGRATED'):
-            raise ValidationError("Cannot assign a Teacher until the student is ENROLLED or INTEGRATED.")
+        # Teacher assignment is locked until the student is INTEGRATED (mainstream
+        # classroom with support) — teachers are not part of the care team while a
+        # student is only ENROLLED.
+        if student.status != 'INTEGRATED':
+            raise ValidationError("Cannot assign a Teacher until the student is INTEGRATED.")
             
     existing_access = StudentAccess.objects.filter(user=staff, student=student).first()
     old_specialties = existing_access.specialty_list() if existing_access else []

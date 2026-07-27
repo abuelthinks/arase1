@@ -386,7 +386,7 @@ export default function UserProfile() {
 
     const assignedStudents = Array.isArray(user.assigned_students) ? user.assigned_students : [];
     const studentCount = assignedStudents.length;
-    const activeCount = assignedStudents.filter(s => s.status === "ENROLLED").length;
+    const activeCount = assignedStudents.filter(s => ["ENROLLED", "INTEGRATED"].includes(s.status)).length;
     const pendingCount = assignedStudents.filter(s => ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"].includes(s.status)).length;
     const assessedCount = assignedStudents.filter(s => s.status === "ASSESSED").length;
     const isParent = role === "PARENT";

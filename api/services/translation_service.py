@@ -12,15 +12,27 @@ def translate_form_data(form_data: dict) -> tuple[dict, str]:
     if not form_data:
         return {}, 'en'
 
-    prompt = f"""
-    Below is a JSON object representing form input data from an educational assessment or progress tracker.
-    1. Detect the primary language of the text values in this JSON (if it is mixed, identify the predominant non-English language if any).
-    2. Translate all string text values in the JSON into standard English. Do NOT change the keys, only the string values.
-    3. Return your response ONLY as a valid, raw JSON object matching the exact structure of the input, plus a top-level `__detected_language` key containing the ISO-639-1 language code of the original text (e.g. 'en', 'ja', 'ar', 'es').
+    prompt = f"""Translate a JSON object's string VALUES into English.
+Rules:
+- Every string value MUST end up in English. If a value is already English, keep it. If it is in another language (e.g. Tagalog/Filipino, Spanish, Japanese, Arabic), REPLACE it with its English translation.
+- Never output non-English words in the result values.
+- Do not change any keys or the nested structure.
+- Add ONE top-level key "__detected_language" set to the ISO-639-1 code of the ORIGINAL text (e.g. en, tl, es, ja, ar). Tagalog markers: ang, ng, masipag, kailangan, tulong, bata, mabait.
+- To pick "__detected_language", look ONLY at the longer free-text sentences. IGNORE names, emails, dates, numbers, and short fixed-choice values like "Male", "Female", "None", "Primary", "Typical", "English". If ANY free-text sentence is in a non-English language, set "__detected_language" to that language's code, EVEN IF most other fields are English. Use "en" only when every free-text sentence is already English.
+- CRITICAL: Never translate English text into another language. English values must be copied UNCHANGED.
 
-    INPUT JSON:
-    {json.dumps(form_data, ensure_ascii=False)}
-    """
+EXAMPLE 1 INPUT: {{"a": "Masipag ang bata", "b": "Kailangan ng tulong"}}
+EXAMPLE 1 OUTPUT: {{"a": "The child is hardworking", "b": "Needs help", "__detected_language": "tl"}}
+
+EXAMPLE 2 INPUT: {{"a": "The student reads very well", "b": "Enjoys group work"}}
+EXAMPLE 2 OUTPUT: {{"a": "The student reads very well", "b": "Enjoys group work", "__detected_language": "en"}}
+
+EXAMPLE 3 INPUT: {{"name": "Rowan", "gender": "Male", "notes": "Mahiyain siya sa simula ngunit masipag"}}
+EXAMPLE 3 OUTPUT: {{"name": "Rowan", "gender": "Male", "notes": "He is shy at first but hardworking", "__detected_language": "tl"}}
+
+INPUT:
+{json.dumps(form_data, ensure_ascii=False)}
+"""
 
     try:
         from api.services.gemini_service import call_gemini_json

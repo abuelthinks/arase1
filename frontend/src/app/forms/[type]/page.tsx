@@ -1994,21 +1994,19 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     )
                                 ) : (
                                     user?.role === "SPECIALIST" && !studentProfile?.generated_documents?.some((doc: any) => doc.document_type === "IEP") && (
-                                        <div className={formBannerClass("neutral")}>
-                                            <div className="text-sm">
-                                                {teamSubmission?.unlock_requested ? (
-                                                    <span>You have requested an admin to unlock this form.</span>
-                                                ) : (
+                                        <div className="flex items-center gap-1.5 text-xs text-muted">
+                                            {teamSubmission?.unlock_requested ? (
+                                                <span>Unlock requested — waiting on an admin.</span>
+                                            ) : (
+                                                <>
                                                     <span>Need to make changes?</span>
-                                                )}
-                                            </div>
-                                            {!teamSubmission?.unlock_requested && (
-                                                <button
-                                                    onClick={requestUnlock}
-                                                    className="rounded-md border border-line bg-card px-3 py-1.5 text-sm font-semibold text-fg transition-colors hover:border-line hover:bg-app"
-                                                >
-                                                    Request Unlock
-                                                </button>
+                                                    <button
+                                                        onClick={requestUnlock}
+                                                        className="font-semibold text-indigo-600 underline underline-offset-2 transition-colors hover:text-indigo-800"
+                                                    >
+                                                        Request unlock
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     )

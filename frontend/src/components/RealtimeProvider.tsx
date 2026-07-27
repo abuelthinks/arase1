@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL } from '@/lib/api';
-import { dispatchRealtimeMessage, type RealtimeMessage } from '@/lib/realtime';
+import { dispatchRealtimeMessage, shouldSuppressToasts, type RealtimeMessage } from '@/lib/realtime';
 
 const RECONNECT_DELAY_MS = 5000;
 
@@ -18,16 +18,19 @@ function getWsUrl(): string {
 function showRealtimeToast(message: RealtimeMessage) {
   const toastPayload = message.toast;
   if (!toastPayload) return;
+  if (shouldSuppressToasts()) return;
 
-  const description = toastPayload.message || undefined;
+  // Stable id so a re-delivered event (reconnect, or overlapping admin/user
+  // groups) updates the same toast in place instead of stacking a duplicate.
+  const options = { id: `realtime-${message.event.id}` };
   if (toastPayload.level === 'success') {
-    toast.success(toastPayload.title, { description });
+    toast.success(toastPayload.title, options);
   } else if (toastPayload.level === 'warning') {
-    toast.warning(toastPayload.title, { description });
+    toast.warning(toastPayload.title, options);
   } else if (toastPayload.level === 'error') {
-    toast.error(toastPayload.title, { description });
+    toast.error(toastPayload.title, options);
   } else {
-    toast(toastPayload.title, { description });
+    toast(toastPayload.title, options);
   }
 }
 
