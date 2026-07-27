@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import Button from "@/components/ui/Button";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -18,6 +20,7 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError("");
+        setShowPassword(false);
 
         try {
             // login() calls the API and sets HttpOnly cookies server-side
@@ -77,16 +80,43 @@ export default function LoginPage() {
 
                     <div className="form-group" style={{ marginBottom: "2rem" }}>
                         <label className="form-label" htmlFor="password">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            className="form-input"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            autoComplete="current-password"
-                            required
-                        />
+                        <div style={{ position: "relative" }}>
+                            <input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                className="form-input"
+                                style={{ paddingRight: "44px" }}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                autoComplete="current-password"
+                                required
+                            />
+                            {password.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((v) => !v)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                aria-pressed={showPassword}
+                                style={{
+                                    position: "absolute",
+                                    top: "50%",
+                                    right: "12px",
+                                    transform: "translateY(-50%)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    background: "none",
+                                    border: "none",
+                                    padding: 0,
+                                    cursor: "pointer",
+                                    color: "var(--text-secondary)",
+                                }}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                            )}
+                        </div>
                     </div>
 
                     <Button type="submit" style={{ width: "100%", padding: "12px" }} disabled={loading}>

@@ -932,6 +932,12 @@ h1, h2, h3 {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
+/* Suppress native password reveal (Edge/IE) so our custom toggle is the only one */
+.form-input::-ms-reveal,
+.form-input::-ms-clear {
+  display: none;
+}
+
 /* Layout utilities */
 .container {
   max-width: 1200px;
