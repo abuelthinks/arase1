@@ -465,7 +465,7 @@ export function StudentProfileContent({ propStudentId, propHideNavigation, propE
             {/* ═══════════════════════════════════════════ */}
             {/* MAIN CONTENT GRID                          */}
             {/* ═══════════════════════════════════════════ */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }} className="profile-grid">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 
                 {/* Student Details */}
                 <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "14px", overflow: "hidden" }}>

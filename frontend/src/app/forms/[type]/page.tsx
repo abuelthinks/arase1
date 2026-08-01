@@ -2394,7 +2394,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
 
             {confirmModal?.isOpen && typeof document !== "undefined" && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-card shadow-xl overflow-hidden">
+                    <div className="w-full max-w-md max-h-[90dvh] rounded-2xl bg-card shadow-xl overflow-auto">
                         <div className="p-6">
                             <h3 className="m-0 text-lg font-bold text-fg">{confirmModal.title}</h3>
                             <p className="mt-2 text-sm text-muted leading-relaxed">{confirmModal.message}</p>

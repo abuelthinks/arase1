@@ -565,7 +565,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
             {/* Audit History Modal */}
             {showAuditModal && (
                 <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[1000] p-4" onClick={() => setShowAuditModal(false)}>
-                    <div className="bg-card rounded-2xl p-8 w-full max-w-[500px] relative border border-line shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="bg-card rounded-2xl p-8 w-full max-w-[500px] max-h-[90dvh] overflow-y-auto relative border border-line shadow-2xl" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 bg-transparent border-none text-xl cursor-pointer text-faint hover:text-muted">×</button>
                         <h2 className="m-0 text-fg text-xl font-extrabold mb-5">Document Audit History</h2>
                         <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2">

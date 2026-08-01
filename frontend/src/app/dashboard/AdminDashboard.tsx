@@ -2258,7 +2258,7 @@ export default function AdminDashboard() {
             {/* ── Revoke Invite Confirmation ──────────────────────────────── */}
             {inviteToRevoke && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                    <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-card p-6 shadow-2xl">
                         <h2 className="m-0 text-lg font-extrabold text-danger">Revoke invitation</h2>
                         <p className="mt-2 text-sm text-muted">
                             Revoking will invalidate the existing invite link for <strong>{inviteToRevoke.email}</strong>. They will not be able to register with the current link.
@@ -2288,7 +2288,7 @@ export default function AdminDashboard() {
             {/* ── Resend Invite Confirmation ──────────────────────────────── */}
             {inviteToResend && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                    <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-card p-6 shadow-2xl">
                         <h2 className="m-0 text-lg font-extrabold text-success">Resend invitation</h2>
                         <p className="mt-2 text-sm text-muted">
                             This will revoke the previous link for <strong>{inviteToResend.email}</strong> and issue a fresh 72-hour invitation. You'll get a new copyable link after the resend.
@@ -2318,7 +2318,7 @@ export default function AdminDashboard() {
             {/* ── Created/Resent Invite Token (copyable) ──────────────────── */}
             {createdInvite && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                    <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-card p-6 shadow-2xl">
                         <h2 className="m-0 text-lg font-extrabold text-fg">Invite link ready</h2>
                         <p className="mt-2 text-sm text-muted">
                             Send this link to <strong>{createdInvite.email}</strong>. It's valid for 72 hours.

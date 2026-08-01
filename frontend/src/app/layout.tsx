@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/hooks/useNotifications";
@@ -12,6 +12,15 @@ import AccessibilityLoader from "@/components/AccessibilityLoader";
 export const metadata: Metadata = {
   title: "ARASE",
   description: "Automated IEP and Assessment Generation Platform",
+};
+
+// `viewportFit: "cover"` is what makes env(safe-area-inset-*) resolve to a real
+// value — without it the insets are always 0 and the mobile bottom nav sits
+// under the home indicator on notched devices.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -28,7 +37,10 @@ export default function RootLayout({
           <NotificationProvider>
             <RealtimeProvider>
               <SkipToContent />
-              <div className="flex flex-col h-screen overflow-hidden w-full">
+              {/* dvh, not vh — mobile browser chrome makes 100vh taller than the
+                  visible viewport, which pushed the fixed bottom nav off-screen
+                  with no way to scroll to it. */}
+              <div className="flex flex-col h-[100dvh] overflow-hidden w-full">
                 <div className="shrink-0 md:hidden">
                   <Navbar />
                 </div>

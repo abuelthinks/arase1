@@ -442,7 +442,7 @@ export default function UserProfile() {
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 md:px-0">
             {viewerIsParent && !hasSeenProfileExplainer && (
                 <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-card rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
+                    <div className="bg-card rounded-[24px] shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
                             <div className="p-8 text-center relative">
                                 <div className="absolute top-4 right-4 text-faint hover:text-muted cursor-pointer transition-colors p-1" onClick={() => { setHasSeenProfileExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-profile-explainer", "true"); }}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

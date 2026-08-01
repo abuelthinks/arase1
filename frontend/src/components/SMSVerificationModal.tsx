@@ -55,10 +55,11 @@ export default function SMSVerificationModal({ onClose, onVerified }: Props) {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            zIndex: 9999
+            zIndex: 9999,
+            padding: "1rem"
         }}>
             <div style={{
-                background: "var(--bg-secondary)", padding: "2rem", borderRadius: "12px", width: "400px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+                background: "var(--bg-secondary)", padding: "2rem", borderRadius: "12px", width: "400px", maxWidth: "100%", maxHeight: "90dvh", overflowY: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
             }}>
                 {step === "request" ? (
                     <div style={{ textAlign: "center" }}>

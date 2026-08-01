@@ -1587,6 +1587,100 @@ h1, h2, h3 {
     padding: 10px 12px 10px 14px !important;
     box-shadow: var(--shadow-sm) !important;
   }
+
+  /*
+   * iOS Safari zooms the viewport in whenever a focused control's font-size is
+   * under 16px — and it never zooms back out, so the user is left panning a
+   * form. The forms carry ~150 such controls each (Tailwind text-xs/text-sm,
+   * the --form-control-font-size token, and inline fontSize values), so this is
+   * enforced centrally rather than chased per-input. !important is required to
+   * beat both utility classes and inline styles.
+   *
+   * Checkboxes and radios are excluded — font-size does not drive their size,
+   * and they are handled by the tap-target rules below.
+   */
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /*
+   * Tap targets. 44px is the iOS HIG / WCAG 2.5.5 minimum; the desktop-tuned
+   * controls sit at 30–38px. Applied as a floor via min-height so nothing that
+   * is already large enough changes.
+   *
+   * !important because many of these controls carry an inline `min-height`
+   * (e.g. the form selects at 34px, the GAS score buttons), and an inline
+   * declaration outranks any stylesheet rule regardless of selector weight.
+   */
+  button,
+  [role='button'],
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  .btn-primary,
+  .btn-secondary,
+  .btn-indigo,
+  .btn-green,
+  .btn-red,
+  .btn-slate,
+  .btn-amber {
+    min-height: 44px !important;
+  }
+
+  /* Checkboxes and radios scale by box size, not font-size. The form controls
+     ship at 18px. Nudge the box itself only slightly — blowing it up to 44px
+     looks wrong — and instead make the wrapping label the 44px tap target, so
+     the whole "☐ Reading practice" row toggles. */
+  input[type='checkbox'],
+  input[type='radio'] {
+    min-width: 20px !important;
+    min-height: 20px !important;
+  }
+
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    min-height: 44px;
+  }
+
+  /* Icon-only buttons need width too, not just height. Matches both a bare icon
+     and an icon with an absolutely-positioned badge (e.g. the notification
+     bell), which is why this is not `svg:only-child`. */
+  button:has(> svg):not(:has(> :not(svg):not(span))) {
+    min-width: 44px;
+  }
+
+  /* Opt-out for controls that are genuinely decorative or sit inside a larger
+     tappable row, where a 44px floor would break the layout instead of helping. */
+  .tap-target-exempt,
+  .tap-target-exempt button,
+  .tap-target-exempt input,
+  .tap-target-exempt select {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  /*
+   * Legibility floor. The UI is tuned for a monitor and leans on 8.8–10.9px
+   * arbitrary sizes for status pills, meta lines, and helper text — readable at
+   * arm's length on a desktop, a squint on a phone. Raised in two tiers rather
+   * than one blanket rule: the micro-badges sit inside fixed 16px circles and
+   * would overflow if pushed the whole way.
+   *
+   * Deliberately NOT touching text-[0.5rem] — those are decorative "●"
+   * separators, not content.
+   */
+  .text-\[0\.55rem\] {
+    font-size: 0.625rem; /* 8.8px → 10px */
+  }
+
+  .text-\[0\.6rem\],
+  .text-\[0\.62rem\],
+  .text-\[0\.63rem\],
+  .text-\[0\.65rem\],
+  .text-\[0\.68rem\] {
+    font-size: 0.6875rem; /* 9.6–10.9px → 11px */
+  }
 }
 
 

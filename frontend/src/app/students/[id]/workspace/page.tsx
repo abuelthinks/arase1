@@ -1931,7 +1931,7 @@ function UnifiedWorkspaceContent() {
 
                 {showEnrollConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
-                        <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                        <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-card p-6 shadow-2xl">
                             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </div>
@@ -1976,7 +1976,7 @@ function UnifiedWorkspaceContent() {
                 `}} />
                 {pendingTeamNavigation && (
                     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-lg rounded-2xl bg-card shadow-xl overflow-hidden">
+                        <div className="w-full max-w-lg max-h-[90dvh] rounded-2xl bg-card shadow-xl overflow-auto">
                             <div className="p-6">
                                 <div className="flex items-start gap-4">
                                     <div className="h-11 w-11 shrink-0 rounded-full bg-warning-soft flex items-center justify-center">
@@ -2068,7 +2068,7 @@ function UnifiedWorkspaceContent() {
                 {/* Unassign Confirmation Modal */}
                 {unassigningStaff && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-full max-w-md max-h-[90dvh] bg-card rounded-2xl shadow-xl overflow-auto animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="h-12 w-12 rounded-full bg-danger-soft flex items-center justify-center shrink-0">

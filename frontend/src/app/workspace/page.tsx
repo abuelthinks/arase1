@@ -163,6 +163,9 @@ function UnifiedWorkspaceContent() {
     const [studentSort, setStudentSort] = useState<StudentSidebarSort>("recent");
     const [studentStatusFilter, setStudentStatusFilter] = useState("ALL");
     const [studentGradeFilter, setStudentGradeFilter] = useState("ALL");
+    // The student list is a desktop sidebar; on mobile it opens as a slide-over
+    // from the header, since there is no room for a persistent second column.
+    const [mobileStudentListOpen, setMobileStudentListOpen] = useState(false);
     const [studentName, setStudentName] = useState("");
     const [studentStatus, setStudentStatus] = useState("");
     const [studentDetails, setStudentDetails] = useState<any>(null);
@@ -3026,6 +3029,136 @@ function UnifiedWorkspaceContent() {
         return aName.localeCompare(bName);
     });
 
+    // Shared by the desktop sidebar and the mobile slide-over so both stay in
+    // sync. `headerWidthClass` keeps the desktop header from reflowing while the
+    // sidebar animates to w-0 on collapse; mobile just fills its panel.
+    const renderStudentList = (headerWidthClass: string, onPick?: () => void) => (
+        <>
+            <div className={`p-3.5 border-b border-line shrink-0 ${headerWidthClass} bg-card`}>
+                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-wider mb-2">Students</p>
+                <div className="relative mb-2">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
+                    <input
+                        type="text"
+                        placeholder="Search students..."
+                        value={studentSearch}
+                        onChange={(e) => setStudentSearch(e.target.value)}
+                        className="w-full bg-app border border-line rounded-lg py-1.5 pl-8 pr-3 text-xs text-fg placeholder:text-faint focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                    />
+                </div>
+                <div className="flex gap-1 rounded-lg border border-line bg-app p-0.5 mb-2">
+                    <button
+                        type="button"
+                        title="Sort by latest activity"
+                        onClick={() => setStudentSort("recent")}
+                        className={`h-6 flex-1 rounded-md px-2 text-[0.65rem] font-bold transition-all ${studentSort === "recent" ? "bg-card text-indigo-700 shadow-xs" : "text-muted hover:text-fg"}`}
+                    >
+                        Recent
+                    </button>
+                    <button
+                        type="button"
+                        title="Sort alphabetically"
+                        onClick={() => setStudentSort("az")}
+                        className={`h-6 flex-1 rounded-md px-2 text-[0.65rem] font-bold transition-all ${studentSort === "az" ? "bg-card text-indigo-700 shadow-xs" : "text-muted hover:text-fg"}`}
+                    >
+                        A-Z
+                    </button>
+                </div>
+                <div className="flex gap-1.5">
+                    <div className="relative flex-1 min-w-0">
+                        <select
+                            value={studentStatusFilter}
+                            onChange={(e) => setStudentStatusFilter(e.target.value)}
+                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
+                                studentStatusFilter !== "ALL"
+                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
+                                    : "border-line text-muted hover:border-line hover:text-fg"
+                            }`}
+                            aria-label="Filter students by status"
+                        >
+                            <option value="ALL">All statuses</option>
+                            {sidebarStatuses.map(status => (
+                                <option key={status} value={status}>{formatStatusLabel(status)}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentStatusFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
+                    </div>
+                    <div className="relative flex-1 min-w-0">
+                        <select
+                            value={studentGradeFilter}
+                            onChange={(e) => setStudentGradeFilter(e.target.value)}
+                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
+                                studentGradeFilter !== "ALL"
+                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
+                                    : "border-line text-muted hover:border-line hover:text-fg"
+                            }`}
+                            aria-label="Filter students by grade"
+                        >
+                            <option value="ALL">All grades</option>
+                            {sidebarGrades.map(grade => (
+                                <option key={grade} value={grade}>{grade}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentGradeFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
+                    </div>
+                </div>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
+                {filteredStudents.length === 0 ? (
+                    <p className="text-xs text-faint text-center py-6">No students found.</p>
+                ) : (
+                    filteredStudents.map(s => {
+                        const isCurrent = s.id.toString() === studentId;
+                        const sidebarStatusLabel = statusLabel(s.status);
+                        const statusDot = statusColorHex(s.status);
+                        const pick = () => {
+                            onPick?.();
+                            if (!isCurrent) navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace, user?.role));
+                        };
+                        return (
+                            <div
+                                key={s.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={pick}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        pick();
+                                    }
+                                }}
+                                className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 min-h-[44px] text-left transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                    isCurrent
+                                        ? 'bg-indigo-50/90'
+                                        : 'hover:bg-subtle-soft/70'
+                                }`}
+                                style={{ cursor: isCurrent ? 'default' : 'pointer' }}
+                                title={`${s.first_name} ${s.last_name} — ${sidebarStatusLabel}`}
+                            >
+                                <span
+                                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                                    style={{ background: statusDot.color }}
+                                    aria-hidden="true"
+                                />
+                                <span className="min-w-0 flex-1">
+                                    <span className={`block truncate text-[0.78rem] leading-snug ${isCurrent ? 'font-bold text-indigo-900' : 'font-medium text-fg group-hover:text-indigo-900'}`}>
+                                        {s.first_name} {s.last_name}
+                                    </span>
+                                    <span className={`block truncate text-[0.62rem] leading-snug ${isCurrent ? 'text-indigo-600/80' : 'text-faint'}`}>
+                                        {sidebarStatusLabel}{s.grade ? ` · ${s.grade}` : ''}
+                                    </span>
+                                </span>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+            <div className="px-3 py-2.5 border-t border-line bg-app">
+                <p className="text-[0.63rem] font-medium text-faint text-center uppercase tracking-wider">{filteredStudents.length} of {allStudents.length} students</p>
+            </div>
+        </>
+    );
+
     const workspaceStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "var(--bg-neutral-light)", color: "var(--text-secondary)", label: studentStatus };
     const currentStudentDetails = studentDetails || allStudents.find(s => s.id?.toString() === studentId);
     const studentGrade = currentStudentDetails?.grade;
@@ -3034,7 +3167,25 @@ function UnifiedWorkspaceContent() {
             <div className="flex flex-col gap-2 px-4 py-2 md:px-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-4">
                     <div className="flex min-w-0 flex-col justify-center md:border-r md:border-line md:pr-4">
-                        <h1 className="m-0 truncate text-lg font-extrabold leading-tight tracking-tight text-fg" title={studentName}>
+                        {showStudentSidebar ? (
+                            <button
+                                type="button"
+                                onClick={() => setMobileStudentListOpen(true)}
+                                className="md:hidden flex min-w-0 items-center gap-1.5 text-left"
+                                aria-label="Switch student"
+                                aria-haspopup="dialog"
+                            >
+                                <h1 className="m-0 truncate text-lg font-extrabold leading-tight tracking-tight text-fg" title={studentName}>
+                                    {studentName}
+                                </h1>
+                                <ChevronDown size={16} className="shrink-0 text-faint" />
+                            </button>
+                        ) : (
+                            <h1 className="m-0 truncate text-lg font-extrabold leading-tight tracking-tight text-fg md:hidden" title={studentName}>
+                                {studentName}
+                            </h1>
+                        )}
+                        <h1 className="m-0 hidden truncate text-lg font-extrabold leading-tight tracking-tight text-fg md:block" title={studentName}>
                             {studentName}
                         </h1>
                         <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
@@ -3090,7 +3241,7 @@ function UnifiedWorkspaceContent() {
         <div className="flex h-full w-full overflow-hidden relative">
                 {user?.role === "PARENT" && !hasSeenWorkspaceExplainer && (
                     <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-                        <div className="bg-card rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
+                        <div className="bg-card rounded-[24px] shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
                             <div className="p-8 text-center relative">
                                 <div className="absolute top-4 right-4 text-faint hover:text-muted cursor-pointer transition-colors p-1" onClick={() => { setHasSeenWorkspaceExplainer(true); if (typeof window !== "undefined") window.localStorage.setItem("arase:seen-workspace-explainer", "true"); }}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -3124,127 +3275,34 @@ function UnifiedWorkspaceContent() {
                 )}
                 {showStudentSidebar && (
                     <>
-                        {/* Student List Sidebar — fixed secondary sidebar */}
+                        {/* Student List Sidebar — desktop only; mobile uses the slide-over below */}
                         <div className={`hidden md:flex flex-col bg-card border-r border-line shrink-0 h-full overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'w-0 border-r-0' : 'w-56'}`}>
-                            <div className="p-3.5 border-b border-line shrink-0 w-56 bg-card">
-                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-wider mb-2">Students</p>
-                                <div className="relative mb-2">
-                                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search students..."
-                                        value={studentSearch}
-                                        onChange={(e) => setStudentSearch(e.target.value)}
-                                        className="w-full bg-app border border-line rounded-lg py-1.5 pl-8 pr-3 text-xs text-fg placeholder:text-faint focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-                                    />
-                                </div>
-                                <div className="flex gap-1 rounded-lg border border-line bg-app p-0.5 mb-2">
-                                    <button
-                                        type="button"
-                                        title="Sort by latest activity"
-                                        onClick={() => setStudentSort("recent")}
-                                        className={`h-6 flex-1 rounded-md px-2 text-[0.65rem] font-bold transition-all ${studentSort === "recent" ? "bg-card text-indigo-700 shadow-xs" : "text-muted hover:text-fg"}`}
-                                    >
-                                        Recent
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="Sort alphabetically"
-                                        onClick={() => setStudentSort("az")}
-                                        className={`h-6 flex-1 rounded-md px-2 text-[0.65rem] font-bold transition-all ${studentSort === "az" ? "bg-card text-indigo-700 shadow-xs" : "text-muted hover:text-fg"}`}
-                                    >
-                                        A-Z
-                                    </button>
-                                </div>
-                                <div className="flex gap-1.5">
-                                    <div className="relative flex-1 min-w-0">
-                                        <select
-                                            value={studentStatusFilter}
-                                            onChange={(e) => setStudentStatusFilter(e.target.value)}
-                                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
-                                                studentStatusFilter !== "ALL"
-                                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
-                                                    : "border-line text-muted hover:border-line hover:text-fg"
-                                            }`}
-                                            aria-label="Filter students by status"
-                                        >
-                                            <option value="ALL">All statuses</option>
-                                            {sidebarStatuses.map(status => (
-                                                <option key={status} value={status}>{formatStatusLabel(status)}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentStatusFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
-                                    </div>
-                                    <div className="relative flex-1 min-w-0">
-                                        <select
-                                            value={studentGradeFilter}
-                                            onChange={(e) => setStudentGradeFilter(e.target.value)}
-                                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
-                                                studentGradeFilter !== "ALL"
-                                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
-                                                    : "border-line text-muted hover:border-line hover:text-fg"
-                                            }`}
-                                            aria-label="Filter students by grade"
-                                        >
-                                            <option value="ALL">All grades</option>
-                                            {sidebarGrades.map(grade => (
-                                                <option key={grade} value={grade}>{grade}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentGradeFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
-                                {filteredStudents.length === 0 ? (
-                                    <p className="text-xs text-faint text-center py-6">No students found.</p>
-                                ) : (
-                                    filteredStudents.map(s => {
-                                        const isCurrent = s.id.toString() === studentId;
-                                        const sidebarStatusLabel = statusLabel(s.status);
-                                        const statusDot = statusColorHex(s.status);
-                                        return (
-                                            <div
-                                                key={s.id}
-                                                role="button"
-                                                tabIndex={0}
-                                                onClick={() => !isCurrent && navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace, user?.role))}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' || e.key === ' ') {
-                                                        e.preventDefault();
-                                                        if (!isCurrent) navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace, user?.role));
-                                                    }
-                                                }}
-                                                className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                                    isCurrent
-                                                        ? 'bg-indigo-50/90'
-                                                        : 'hover:bg-subtle-soft/70'
-                                                }`}
-                                                style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                title={`${s.first_name} ${s.last_name} — ${sidebarStatusLabel}`}
-                                            >
-                                                <span
-                                                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                                                    style={{ background: statusDot.color }}
-                                                    aria-hidden="true"
-                                                />
-                                                <span className="min-w-0 flex-1">
-                                                    <span className={`block truncate text-[0.78rem] leading-snug ${isCurrent ? 'font-bold text-indigo-900' : 'font-medium text-fg group-hover:text-indigo-900'}`}>
-                                                        {s.first_name} {s.last_name}
-                                                    </span>
-                                                    <span className={`block truncate text-[0.62rem] leading-snug ${isCurrent ? 'text-indigo-600/80' : 'text-faint'}`}>
-                                                        {sidebarStatusLabel}{s.grade ? ` · ${s.grade}` : ''}
-                                                    </span>
-                                                </span>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                            <div className="px-3 py-2.5 border-t border-line bg-app">
-                                <p className="text-[0.63rem] font-medium text-faint text-center uppercase tracking-wider">{filteredStudents.length} of {allStudents.length} students</p>
-                            </div>
+                            {renderStudentList("w-56")}
                         </div>
+
+                        {/* Mobile student switcher — same list, as a slide-over */}
+                        {mobileStudentListOpen && (
+                            <div className="md:hidden">
+                                <div
+                                    className="fixed inset-0 z-[120] bg-slate-900/40 backdrop-blur-sm"
+                                    onClick={() => setMobileStudentListOpen(false)}
+                                />
+                                <div className="fixed inset-y-0 left-0 z-[121] flex w-[84vw] max-w-xs flex-col bg-card shadow-2xl border-r border-line">
+                                    <div className="flex items-center justify-between px-3 py-2 border-b border-line shrink-0">
+                                        <span className="text-sm font-extrabold text-fg">Switch student</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMobileStudentListOpen(false)}
+                                            className="p-2 rounded-lg text-muted hover:bg-subtle-soft"
+                                            aria-label="Close student list"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    {renderStudentList("w-full", () => setMobileStudentListOpen(false))}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
 
@@ -3274,7 +3332,7 @@ function UnifiedWorkspaceContent() {
 
                 {pendingTeamNavigation && (
                     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-lg rounded-2xl bg-card shadow-xl overflow-hidden">
+                        <div className="w-full max-w-lg max-h-[90dvh] rounded-2xl bg-card shadow-xl overflow-auto">
                             <div className="p-6">
                                 <div className="flex items-start gap-4">
                                     <div className="h-11 w-11 shrink-0 rounded-full bg-warning-soft flex items-center justify-center">
@@ -3367,7 +3425,7 @@ function UnifiedWorkspaceContent() {
                 {/* Unassign Confirmation Modal */}
                 {unassigningStaff && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-full max-w-md max-h-[90dvh] bg-card rounded-2xl shadow-xl overflow-auto animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="h-12 w-12 rounded-full bg-danger-soft flex items-center justify-center shrink-0">
@@ -3411,7 +3469,7 @@ function UnifiedWorkspaceContent() {
 
                 {showEnrollConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
-                        <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                        <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-card p-6 shadow-2xl">
                             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             </div>
@@ -3443,7 +3501,7 @@ function UnifiedWorkspaceContent() {
 
                 {showIntegrateConfirm && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4">
-                        <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                        <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-card p-6 shadow-2xl">
                             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
                                 <GraduationCap size={24} />
                             </div>
@@ -3476,7 +3534,7 @@ function UnifiedWorkspaceContent() {
                 {/* Delete Student Confirmation Modal */}
                 {showDeleteModal && studentDetails && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-md bg-card rounded-2xl border border-line p-6 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-full max-w-md max-h-[90dvh] bg-card rounded-2xl border border-line p-6 shadow-xl overflow-auto animate-in fade-in zoom-in-95 duration-200">
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="h-12 w-12 rounded-full bg-danger-soft flex items-center justify-center shrink-0">
                                     <AlertCircle className="h-6 w-6 text-danger" />

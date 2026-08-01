@@ -371,7 +371,7 @@ function TeacherFormContent() {
             {/* SECTION B */}
             <SectionCard title="Section B — Classroom Participation">
                 <FieldGroup label="B1. Attendance & Participation">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {OPTIONS.b1.map(opt => (
                             <CheckboxItem key={opt} label={opt} checked={form.b1_attendance.includes(opt)} onChange={() => tog("b1_attendance", opt)} readOnly={ro} />
                         ))}
@@ -379,7 +379,7 @@ function TeacherFormContent() {
                 </FieldGroup>
                 <div style={{ paddingTop: "12px" }}>
                     <FieldGroup label="B2. Engagement During Lessons">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.b2.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.b2_participation.includes(opt)} onChange={() => tog("b2_participation", opt)} readOnly={ro} />
                             ))}
@@ -396,7 +396,7 @@ function TeacherFormContent() {
             {/* SECTION C */}
             <SectionCard title="Section C — Academic Progress">
                 <FieldGroup label="C1. Literacy">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {OPTIONS.c1.map(opt => (
                             <CheckboxItem key={opt} label={opt} checked={form.c1_literacy.includes(opt)} onChange={() => tog("c1_literacy", opt)} readOnly={ro} />
                         ))}
@@ -406,7 +406,7 @@ function TeacherFormContent() {
 
                 <div style={{ paddingTop: "12px", borderTop: "1px dashed var(--border-light)" }}>
                     <FieldGroup label="C2. Numeracy">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.c2.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.c2_numeracy.includes(opt)} onChange={() => tog("c2_numeracy", opt)} readOnly={ro} />
                             ))}
@@ -417,7 +417,7 @@ function TeacherFormContent() {
 
                 <div style={{ paddingTop: "12px", borderTop: "1px dashed var(--border-light)" }}>
                     <FieldGroup label="C3. Pre-Academic Skills">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.c3.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.c3_pre_academic.includes(opt)} onChange={() => tog("c3_pre_academic", opt)} readOnly={ro} />
                             ))}
@@ -430,7 +430,7 @@ function TeacherFormContent() {
             {/* SECTION D */}
             <SectionCard title="Section D — Learning Behaviors">
                 <FieldGroup label="D1. Focus & Attention">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {OPTIONS.d1.map(opt => (
                             <CheckboxItem key={opt} label={opt} checked={form.d1_focus.includes(opt)} onChange={() => tog("d1_focus", opt)} readOnly={ro} />
                         ))}
@@ -438,7 +438,7 @@ function TeacherFormContent() {
                 </FieldGroup>
                 <div style={{ paddingTop: "12px" }}>
                     <FieldGroup label="D2. Task Completion">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.d2.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.d2_task_completion.includes(opt)} onChange={() => tog("d2_task_completion", opt)} readOnly={ro} />
                             ))}
@@ -455,7 +455,7 @@ function TeacherFormContent() {
             {/* SECTION E */}
             <SectionCard title="Section E — Social Skills & Peer Interaction">
                 <FieldGroup label="E1. Peer Interaction">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {OPTIONS.e1.map(opt => (
                             <CheckboxItem key={opt} label={opt} checked={form.e1_peer_interaction.includes(opt)} onChange={() => tog("e1_peer_interaction", opt)} readOnly={ro} />
                         ))}
@@ -463,7 +463,7 @@ function TeacherFormContent() {
                 </FieldGroup>
                 <div style={{ paddingTop: "12px" }}>
                     <FieldGroup label="E2. Functional Social Skills">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.e2.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.e2_social_skills.includes(opt)} onChange={() => tog("e2_social_skills", opt)} readOnly={ro} />
                             ))}
@@ -480,7 +480,7 @@ function TeacherFormContent() {
             {/* SECTION F */}
             <SectionCard title="Section F — Behavior & Emotional Regulation">
                 <FieldGroup label="F1. Behavior Throughout the Week">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {OPTIONS.f1.map(opt => (
                             <CheckboxItem key={opt} label={opt} checked={form.f1_behavior.includes(opt)} onChange={() => tog("f1_behavior", opt)} readOnly={ro} />
                         ))}
@@ -488,7 +488,7 @@ function TeacherFormContent() {
                 </FieldGroup>
                 <div style={{ paddingTop: "12px" }}>
                     <FieldGroup label="F2. Emotional Regulation">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.f2.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.f2_emotional_regulation.includes(opt)} onChange={() => tog("f2_emotional_regulation", opt)} readOnly={ro} />
                             ))}
@@ -505,7 +505,7 @@ function TeacherFormContent() {
             {/* SECTION G */}
             <SectionCard title="Section G — Independence & Adaptive Skills">
                 <FieldGroup label="G1. Independence in School Routines">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {OPTIONS.g1.map(opt => (
                             <CheckboxItem key={opt} label={opt} checked={form.g1_independence.includes(opt)} onChange={() => tog("g1_independence", opt)} readOnly={ro} />
                         ))}
@@ -513,7 +513,7 @@ function TeacherFormContent() {
                 </FieldGroup>
                 <div style={{ paddingTop: "12px" }}>
                     <FieldGroup label="G2. Life Skills (School Setting)">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.g2.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.g2_life_skills.includes(opt)} onChange={() => tog("g2_life_skills", opt)} readOnly={ro} />
                             ))}
@@ -554,7 +554,7 @@ function TeacherFormContent() {
             {/* SECTION I */}
             <SectionCard title="Section I — SPED Teacher Recommendations">
                 <FieldGroup label="I1. Classroom Recommendations">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {OPTIONS.i1.map(opt => (
                             <CheckboxItem key={opt} label={opt} checked={form.i1_classroom_recs.includes(opt)} onChange={() => tog("i1_classroom_recs", opt)} readOnly={ro} />
                         ))}
@@ -562,7 +562,7 @@ function TeacherFormContent() {
                 </FieldGroup>
                 <div style={{ paddingTop: "12px" }}>
                     <FieldGroup label="I2. Home Support Recommendations">
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {OPTIONS.i2.map(opt => (
                                 <CheckboxItem key={opt} label={opt} checked={form.i2_home_support_recs.includes(opt)} onChange={() => tog("i2_home_support_recs", opt)} readOnly={ro} />
                             ))}

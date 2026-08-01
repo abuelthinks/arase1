@@ -90,7 +90,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <NotificationBell direction={widgetPlacement === 'bottom-right' ? 'up' : 'down'} alignOffset="-right-4" />
             </div>
 
-            <main id="main-content" className={`flex-1 h-full ${isWorkspace ? 'p-0 overflow-hidden' : 'px-0 pt-6 pb-28 md:py-8 md:px-12 md:pb-8 overflow-y-auto'}`}>
+            {/* Workspace routes are a full-height app layout with their own inner
+                scroll panes, so they can't rely on the pb-28 the other routes get.
+                Reserving the mobile bottom nav's height as padding here shrinks
+                main's content box, which keeps every inner pane — and the submit
+                buttons at the bottom of the forms — clear of the fixed nav. */}
+            <main id="main-content" className={`flex-1 h-full ${isWorkspace ? 'p-0 pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0 overflow-hidden' : 'px-0 pt-6 pb-28 md:py-8 md:px-12 md:pb-8 overflow-y-auto'}`}>
                 {children}
             </main>
         </div>
