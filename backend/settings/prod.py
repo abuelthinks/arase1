@@ -13,6 +13,9 @@ SECRET_KEY = os.environ['SECRET_KEY']
 ALLOWED_HOSTS = [
     'arase1-production.up.railway.app',
     'arase1.vercel.app',
+    # Railway's internal healthcheck probe sends this Host header — without it
+    # the probe gets a 400 DisallowedHost and every deploy is marked failed.
+    'healthcheck.railway.app',
     # Allow overriding via env var for future domain changes
     *parse_csv_env('ALLOWED_HOSTS'),
     # Render injects this automatically — covers *.onrender.com deployments
