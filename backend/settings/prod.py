@@ -77,7 +77,9 @@ SECURE_HSTS_PRELOAD = True
 
 # --- Secure Proxy & Redirects ---
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_REDIRECT_EXEMPT = [r'^/api/', r'^/$']
+# SecurityMiddleware matches these against request.path with the leading slash
+# stripped, so patterns must not start with one — '^/api/' silently never matches.
+SECURE_REDIRECT_EXEMPT = [r'^api/', r'^$']
 # CSRF and allowed hosts are handled by deployment environment variables.
 
 # ─── SMS — Production Configuration ──────────────────────────────────────────
