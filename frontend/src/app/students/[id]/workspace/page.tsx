@@ -11,7 +11,7 @@ import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
-import { statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
+import { statusColorClass, statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -65,8 +65,10 @@ const nextActionClass = (status?: string, tone?: string) => {
     return studentRowActionPillClass(status || "ARCHIVED", tone);
 };
 
-const buildStudentWorkspaceHref = (student: any, fallbackWorkspace: string) => {
-    const action = student.next_action;
+const buildStudentWorkspaceHref = (student: any, fallbackWorkspace: string, role?: string) => {
+    // next_action is an admin triage hint and can deep-link to draft documents, which
+    // the API refuses to serve to non-admins. Only admins follow it.
+    const action = role === "ADMIN" ? student.next_action : null;
     const params = new URLSearchParams();
     params.set("workspace", action?.workspace || fallbackWorkspace);
     if (action?.tab) params.set("tab", action.tab);
@@ -86,6 +88,7 @@ function UnifiedWorkspaceContent() {
     // -- Global State --
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [studentSearch, setStudentSearch] = useState("");
+    const [studentGradeFilter, setStudentGradeFilter] = useState("ALL");
     const [studentName, setStudentName] = useState("");
     const [studentStatus, setStudentStatus] = useState("");
     const [studentDetails, setStudentDetails] = useState<any>(null);
@@ -725,16 +728,28 @@ function UnifiedWorkspaceContent() {
                 <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-line bg-app flex flex-col shrink-0">
                     <div className="p-6 border-b border-line flex flex-col gap-1">
                         <h1 className="text-xl font-bold text-fg m-0 truncate" title={studentName}>{studentName}</h1>
-                        {studentStatus && (
-                            <span style={{
-                                fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
-                                padding: "2px 8px", borderRadius: "999px", width: "fit-content",
-                                background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
-                                color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)"
-                            }}>
-                                {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
-                            </span>
-                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            {studentStatus && (
+                                <span style={{
+                                    fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                    padding: "2px 8px", borderRadius: "999px", width: "fit-content",
+                                    background: STATUS_COLORS[studentStatus?.toUpperCase()]?.bg || "var(--bg-neutral-light)",
+                                    color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)"
+                                }}>
+                                    {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                                </span>
+                            )}
+                            {(studentDetails?.grade || allStudents.find(s => s.id?.toString() === studentId)?.grade) && (
+                                <span style={{
+                                    fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                    padding: "2px 8px", borderRadius: "999px", width: "fit-content",
+                                    background: "var(--bg-subtle-soft, #f1f5f9)", color: "var(--text-secondary, #64748b)",
+                                    border: "1px solid var(--border-line, #e2e8f0)"
+                                }}>
+                                    {studentDetails?.grade || allStudents.find(s => s.id?.toString() === studentId)?.grade}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
                         <div className="px-4">
@@ -959,6 +974,16 @@ function UnifiedWorkspaceContent() {
                                     color: STATUS_COLORS[studentStatus?.toUpperCase()]?.color || "var(--text-secondary)"
                                 }}>
                                     {STATUS_COLORS[studentStatus?.toUpperCase()]?.label || studentStatus}
+                                </span>
+                            )}
+                            {(studentDetails?.grade || allStudents.find(s => s.id?.toString() === studentId)?.grade) && (
+                                <span style={{
+                                    fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+                                    padding: "2px 8px", borderRadius: "999px",
+                                    background: "var(--bg-subtle-soft, #f1f5f9)", color: "var(--text-secondary, #64748b)",
+                                    border: "1px solid var(--border-line, #e2e8f0)"
+                                }}>
+                                    {studentDetails?.grade || allStudents.find(s => s.id?.toString() === studentId)?.grade}
                                 </span>
                             )}
                         </div>
@@ -1782,6 +1807,10 @@ function UnifiedWorkspaceContent() {
         );
     }
 
+    const sidebarGrades = Array.from(
+        new Set(allStudents.map(s => s.grade).filter(Boolean))
+    ).sort();
+
     const filteredStudents = [...allStudents].sort((a, b) => {
         const aRecent = a.recent_activity_at ? new Date(a.recent_activity_at).getTime() : 0;
         const bRecent = b.recent_activity_at ? new Date(b.recent_activity_at).getTime() : 0;
@@ -1791,7 +1820,9 @@ function UnifiedWorkspaceContent() {
         return aName.localeCompare(bName);
     }).filter(s => {
         const query = studentSearch.toLowerCase();
-        return (s.first_name + " " + s.last_name).toLowerCase().includes(query) || s.status?.toLowerCase().includes(query);
+        const matchesSearch = !query || (s.first_name + " " + s.last_name).toLowerCase().includes(query) || s.status?.toLowerCase().includes(query);
+        const matchesGrade = studentGradeFilter === "ALL" || s.grade === studentGradeFilter;
+        return matchesSearch && matchesGrade;
     });
 
     return (
@@ -1799,85 +1830,66 @@ function UnifiedWorkspaceContent() {
             <div className="flex h-full w-full overflow-hidden relative">
                 {showStudentSidebar && (
                     <div className="hidden md:flex flex-col w-56 bg-card border-r border-line shrink-0 h-full">
-                        <div className="p-4 border-b border-line">
-                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-2">Students</p>
-                            <div className="relative">
+                        <div className="p-3.5 border-b border-line shrink-0 w-56 bg-card">
+                            <p className="text-[0.65rem] font-bold text-faint uppercase tracking-wider mb-2">Students</p>
+                            <div className="relative mb-2">
                                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
                                 <input
                                     type="text"
-                                    placeholder="Search..."
+                                    placeholder="Search students..."
                                     value={studentSearch}
                                     onChange={(e) => setStudentSearch(e.target.value)}
-                                    className="w-full bg-app border border-line rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    className="w-full bg-app border border-line rounded-lg py-1.5 pl-8 pr-3 text-xs text-fg placeholder:text-faint focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                                 />
                             </div>
+                            <select
+                                value={studentGradeFilter}
+                                onChange={(e) => setStudentGradeFilter(e.target.value)}
+                                className="h-7 w-full rounded-lg border border-line bg-card px-2 text-[0.68rem] font-medium text-muted outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors"
+                                aria-label="Filter students by grade"
+                            >
+                                <option value="ALL">All grades</option>
+                                {sidebarGrades.map(grade => (
+                                    <option key={grade} value={grade}>{grade}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar">
-                            <div className="py-2 px-2">
-                                {filteredStudents.length === 0 ? (
-                                    <p className="text-xs text-faint text-center py-4">No students found.</p>
-                                ) : (
-                                    filteredStudents.map(s => {
-                                        const isCurrent = s.id.toString() === studentId;
-                                        const dot = statusColorHex(s.status || "ARCHIVED").color;
-                                        const nextAction = user?.role === "ADMIN" ? s.next_action : null;
-                                        return (
-                                            <div
-                                                key={s.id}
-                                                role="button"
-                                                tabIndex={0}
-                                                onClick={() => !isCurrent && navigateWithTeamGuard(buildStudentWorkspaceHref(s, workspace))}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' || e.key === ' ') {
-                                                        e.preventDefault();
-                                                        if (!isCurrent) navigateWithTeamGuard(buildStudentWorkspaceHref(s, workspace));
-                                                    }
-                                                }}
-                                                className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                                    isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-app'
-                                                }`}
-                                                style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                title={`${s.first_name} ${s.last_name} — ${s.status?.replace(/_/g, ' ')}`}
-                                            >
-                                                {isCurrent && (
-                                                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />
-                                                )}
-                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-subtle-soft text-muted'}`}>
-                                                    {s.first_name?.[0]}{s.last_name?.[0]}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-fg'}`}>
-                                                        {s.first_name} {s.last_name}
-                                                    </span>
-                                                    {nextAction && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const params = new URLSearchParams();
-                                                                params.set("workspace", nextAction.workspace || "overview");
-                                                                if (nextAction.tab) params.set("tab", nextAction.tab);
-                                                                if (nextAction.view) params.set("view", nextAction.view);
-                                                                if (nextAction.docId) params.set("docId", nextAction.docId);
-                                                                if (nextAction.teamRole) params.set("teamRole", nextAction.teamRole);
-                                                                navigateWithTeamGuard(`/students/${s.id}/workspace?${params.toString()}`);
-                                                            }}
-                                                            className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-all duration-200 cursor-pointer ${nextActionClass(s.status, nextAction.tone)}`}
-                                                            title={`Click to resolve action: ${nextAction.label}`}
-                                                        >
-                                                            {nextAction.label}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={s.status?.replace(/_/g, ' ')}></span>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
+                            {filteredStudents.length === 0 ? (
+                                <p className="text-xs text-faint text-center py-6">No students found.</p>
+                            ) : (
+                                filteredStudents.map(s => {
+                                    const isCurrent = s.id.toString() === studentId;
+                                    return (
+                                        <div
+                                            key={s.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => !isCurrent && navigateWithTeamGuard(buildStudentWorkspaceHref(s, workspace, user?.role))}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    if (!isCurrent) navigateWithTeamGuard(buildStudentWorkspaceHref(s, workspace, user?.role));
+                                                }
+                                            }}
+                                            className={`group w-full flex items-center justify-between px-3.5 py-2.5 text-left border-b border-line transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                                isCurrent
+                                                    ? 'bg-indigo-50/90 text-indigo-900 font-bold border-l-4 border-l-indigo-600 pl-3'
+                                                    : 'text-fg hover:bg-subtle-soft/70 hover:text-indigo-900 border-l-4 border-l-transparent'
+                                            }`}
+                                            style={{ cursor: isCurrent ? 'default' : 'pointer' }}
+                                            title={`${s.first_name} ${s.last_name}`}
+                                        >
+                                            <span className={`text-[0.78rem] truncate ${isCurrent ? 'font-bold text-indigo-900' : 'font-medium text-fg group-hover:text-indigo-900'}`}>
+                                                {s.first_name} {s.last_name}
+                                            </span>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
-                        <div className="p-3 border-t border-line bg-app">
-                            <p className="text-[0.6rem] text-faint text-center">{allStudents.length} students total</p>
+                        <div className="px-3 py-2.5 border-t border-line bg-app">
+                            <p className="text-[0.63rem] font-medium text-faint text-center uppercase tracking-wider">{filteredStudents.length} of {allStudents.length} students</p>
                         </div>
                     </div>
                 )}

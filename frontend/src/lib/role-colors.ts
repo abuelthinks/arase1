@@ -105,8 +105,9 @@ export function roleColorClass(role: RoleKey): string {
 // ── Student lifecycle ───────────────────────────────────────────────────────
 // The status sequence is a pipeline, so its colors form an ordered ramp rather
 // than a grab-bag of semantic tones: a cool slate (queued) advances through
-// sky → blue → teal → green (fully served), with archived dropped to a faint,
-// de-emphasized gray. It uses NO alert hues — amber/pink/red are reserved for
+// sky → blue → teal (receiving services), then breaks to violet for integrated —
+// the goal state gets a hue outside the ramp so it reads as "graduated" rather
+// than one more step past enrolled. Archived drops to a faint, de-emphasized gray. It uses NO alert hues — amber/pink/red are reserved for
 // genuine problems (e.g. an item stalled in a stage too long), so those colors
 // keep their meaning. Backed by --stage-* tokens, so pills swap in dark mode.
 
@@ -151,7 +152,7 @@ export const STAGE_HEX: Record<LifecycleStage, { bg: string; color: string; bord
     scheduled:  { bg: "#e0f2fe", color: "#075985", border: "#bae6fd" },
     assessed:   { bg: "#dbeafe", color: "#1e40af", border: "#bfdbfe" },
     enrolled:   { bg: "#ccfbf1", color: "#115e59", border: "#99f6e4" },
-    integrated: { bg: "#d1fae5", color: "#065f46", border: "#a7f3d0" },
+    integrated: { bg: "#ede9fe", color: "#5b21b6", border: "#ddd6fe" },
     closed:     { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" },
 };
 

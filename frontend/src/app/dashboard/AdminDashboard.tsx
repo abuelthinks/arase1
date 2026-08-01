@@ -190,6 +190,7 @@ export default function AdminDashboard() {
 
     // Student search & filter
     const [studentSearch, setStudentSearch] = useState("");
+    const [studentGradeFilter, setStudentGradeFilter] = useState("ALL");
     const [activeStatusTab, setActiveStatusTab] = useState<string>("");
     
     // Student Sorting
@@ -445,12 +446,15 @@ export default function AdminDashboard() {
     }));
     const activeStatusLabel = effectiveStatusTab ? statusLabel(effectiveStatusTab) : "Students";
 
+    const uniqueGrades = Array.from(new Set(students.map(s => s.grade).filter(Boolean))).sort();
+
     const processedStudents = students.filter(s => {
         const searchTerms = studentSearch.toLowerCase().trim().split(/\s+/);
         const searchableString = `${s.first_name} ${s.last_name} ${s.id}`.toLowerCase();
         const matchesSearch = searchTerms.every(term => searchableString.includes(term));
         const matchesStatus = getStudentStatusFilterKey(s.status) === effectiveStatusTab;
-        return matchesSearch && matchesStatus;
+        const matchesGrade = studentGradeFilter === "ALL" || s.grade === studentGradeFilter;
+        return matchesSearch && matchesStatus && matchesGrade;
     });
 
     if (studentSortConfig.key && studentSortConfig.direction) {
@@ -618,7 +622,7 @@ export default function AdminDashboard() {
     
     useEffect(() => {
         setStudentPage(1);
-    }, [studentSearch, studentItemsPerPage]);
+    }, [studentSearch, studentGradeFilter, studentItemsPerPage]);
     
     useEffect(() => {
         setInvitationPage(1);
@@ -1121,6 +1125,27 @@ export default function AdminDashboard() {
                                             }}
                                         />
                                     </div>
+                                    <select
+                                        value={studentGradeFilter}
+                                        onChange={e => setStudentGradeFilter(e.target.value)}
+                                        style={{
+                                            height: "38px",
+                                            padding: "0 12px",
+                                            borderRadius: "6px",
+                                            border: "1px solid var(--border-light)",
+                                            fontSize: "0.85rem",
+                                            background: "var(--bg-secondary)",
+                                            color: "var(--text-primary)",
+                                            outline: "none",
+                                            fontWeight: 500,
+                                        }}
+                                        aria-label="Filter students by grade"
+                                    >
+                                        <option value="ALL">All grades</option>
+                                        {uniqueGrades.map(grade => (
+                                            <option key={grade} value={grade}>{grade}</option>
+                                        ))}
+                                    </select>
                                     {studentSearch && (
                                         <button
                                             onClick={() => setStudentSearch('')}

@@ -38,7 +38,10 @@ INPUT:
         from api.services.gemini_service import call_gemini_json
 
         translated_obj = call_gemini_json(prompt, temperature=0.1)
-        detected_language = translated_obj.pop('__detected_language', 'en')
+        if not isinstance(translated_obj, dict):
+            return form_data, 'en'
+            
+        detected_language = str(translated_obj.pop('__detected_language', 'en') or 'en').lower()
 
         return translated_obj, detected_language
     except Exception as e:

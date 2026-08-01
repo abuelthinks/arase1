@@ -147,6 +147,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
     useEffect(() => {
         if (!iepId) return;
         setLoading(true);
+        setErrorMsg("");
         api.get(`/api/iep/${iepId}/`)
             .then(res => {
                 setIep(res.data.iep_data);

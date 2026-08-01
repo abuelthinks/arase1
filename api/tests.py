@@ -1320,3 +1320,137 @@ class FormCollaborationTests(APITestCase):
         self.assertEqual(v2.get('clinical_notes'), 'from slp')
         self.assertEqual(v2.get('correction_notes'), 'from ot')
 
+
+# ─── Translation Feature Tests ────────────────────────────────────────────────
+
+from unittest.mock import patch
+
+class TranslationFeatureTests(APITestCase):
+    def setUp(self):
+        self.parent = User.objects.create_user(
+            email='transparent@example.com',
+            password='Pass123!',
+            role='PARENT',
+        )
+        self.student = Student.objects.create(
+            first_name='Translation',
+            last_name='Test',
+            date_of_birth=date(2018, 1, 1),
+            grade='Kinder',
+            status='ENROLLED',
+        )
+        self.cycle = ReportCycle.objects.create(
+            student=self.student,
+            label='April 2026',
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 30),
+            is_active=True,
+            status='OPEN',
+        )
+
+    def test_translate_form_data_empty(self):
+        from api.services.translation_service import translate_form_data
+        data, lang = translate_form_data({})
+        self.assertEqual(data, {})
+        self.assertEqual(lang, 'en')
+
+        data_none, lang_none = translate_form_data(None)
+        self.assertEqual(data_none, {})
+        self.assertEqual(lang_none, 'en')
+
+    @patch('api.services.gemini_service.call_gemini_json')
+    def test_translate_form_data_success(self, mock_gemini):
+        from api.services.translation_service import translate_form_data
+
+        mock_gemini.return_value = {
+            'notes': 'The child is hardworking and shy',
+            '__detected_language': 'tl'
+        }
+        input_data = {'notes': 'Mahiyain ang bata at masipag'}
+        data, lang = translate_form_data(input_data)
+
+        self.assertEqual(data, {'notes': 'The child is hardworking and shy'})
+        self.assertEqual(lang, 'tl')
+
+    @patch('api.services.gemini_service.call_gemini_json')
+    def test_translate_form_data_error_fallback(self, mock_gemini):
+        from api.services.translation_service import translate_form_data
+
+        mock_gemini.side_effect = Exception("LLM connection timeout")
+        input_data = {'notes': 'Mahiyain ang bata'}
+        data, lang = translate_form_data(input_data)
+
+        self.assertEqual(data, input_data)
+        self.assertEqual(lang, 'en')
+
+    @patch('api.services.gemini_service.call_gemini_json')
+    def test_translate_form_data_task_execution(self, mock_gemini):
+        from api.tasks import translate_form_data_task
+
+        mock_gemini.return_value = {
+            'notes': 'Hardworking student',
+            '__detected_language': 'tl'
+        }
+
+        assessment = ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'Masipag na mag-aaral'},
+        )
+
+        res = translate_form_data_task('parentassessment', assessment.id)
+        self.assertEqual(res['status'], 'completed')
+        self.assertEqual(res['language'], 'tl')
+
+        assessment.refresh_from_db()
+        self.assertEqual(assessment.translated_data, {'notes': 'Hardworking student'})
+        self.assertEqual(assessment.original_language, 'tl')
+
+    def test_post_save_signal_prevents_recursion(self):
+        assessment = ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'Sample notes'},
+        )
+
+        # Triggering a save with update_fields=['translated_data', 'original_language'] should not fail or trigger recursion loop
+        assessment.translated_data = {'notes': 'Sample notes'}
+        assessment.original_language = 'en'
+        assessment.save(update_fields=['translated_data', 'original_language'])
+        
+        assessment.refresh_from_db()
+        self.assertEqual(assessment.translated_data, {'notes': 'Sample notes'})
+
+    def test_iep_generator_uses_translated_data(self):
+        from api.iep_generator import _collect_form_data
+
+        assessment = ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'Original Tagalog text'},
+            translated_data={'notes': 'Translated English text'},
+            original_language='tl',
+        )
+
+        collected = _collect_form_data({'parent': assessment})
+        self.assertEqual(collected['parent']['notes'], 'Translated English text')
+
+    def test_monthly_report_generator_uses_translated_data(self):
+        from api.monthly_report_generator import _collect_form_data
+
+        assessment = ParentAssessment.objects.create(
+            student=self.student,
+            report_cycle=self.cycle,
+            submitted_by=self.parent,
+            form_data={'notes': 'Original Tagalog text'},
+            translated_data={'notes': 'Translated English text'},
+            original_language='tl',
+        )
+
+        collected = _collect_form_data({'parent': assessment})
+        self.assertEqual(collected['parent']['notes'], 'Translated English text')
+
+

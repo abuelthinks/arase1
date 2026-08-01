@@ -44,7 +44,7 @@
   --stage-scheduled-bg: #e0f2fe;  --stage-scheduled-text: #075985;  --stage-scheduled-border: #bae6fd;
   --stage-assessed-bg: #dbeafe;   --stage-assessed-text: #1e40af;   --stage-assessed-border: #bfdbfe;
   --stage-enrolled-bg: #ccfbf1;   --stage-enrolled-text: #115e59;   --stage-enrolled-border: #99f6e4;
-  --stage-integrated-bg: #d1fae5; --stage-integrated-text: #065f46; --stage-integrated-border: #a7f3d0;
+  --stage-integrated-bg: #ede9fe; --stage-integrated-text: #5b21b6; --stage-integrated-border: #ddd6fe;
   --stage-closed-bg: #f8fafc;     --stage-closed-text: #94a3b8;     --stage-closed-border: #e2e8f0;
 
   /* Borders & Shadows */
@@ -136,7 +136,7 @@
   --stage-scheduled-bg: #075985;  --stage-scheduled-text: #bae6fd;  --stage-scheduled-border: #0369a1;
   --stage-assessed-bg: #1e3a8a;   --stage-assessed-text: #93c5fd;   --stage-assessed-border: #1d4ed8;
   --stage-enrolled-bg: #134e4a;   --stage-enrolled-text: #5eead4;   --stage-enrolled-border: #0f766e;
-  --stage-integrated-bg: #064e3b; --stage-integrated-text: #6ee7b7; --stage-integrated-border: #047857;
+  --stage-integrated-bg: #4c1d95; --stage-integrated-text: #c4b5fd; --stage-integrated-border: #6d28d9;
   --stage-closed-bg: #1e293b;     --stage-closed-text: #64748b;     --stage-closed-border: #334155;
 }
 

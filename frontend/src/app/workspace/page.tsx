@@ -6,7 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import {
-    Search, ChevronLeft, ChevronRight,
+    Search, ChevronLeft, ChevronRight, ChevronDown,
     UserPlus, FileText, Mail, ClipboardList, Calendar, GraduationCap,
     Users, FolderOpen, FileCheck2, Plus,
     Sparkles, AlertCircle, CheckCircle2, Lock, Check, X,
@@ -136,10 +136,12 @@ const nextActionClass = (status?: string, tone?: string) => {
     return studentRowActionPillClass(status || "ARCHIVED", tone);
 };
 
-const buildWorkspaceStudentHref = (student: any, fallbackWorkspace: string) => {
+const buildWorkspaceStudentHref = (student: any, fallbackWorkspace: string, role?: string) => {
     const params = new URLSearchParams();
     params.set("studentId", student.id.toString());
-    const action = student.next_action;
+    // next_action is an admin triage hint and can deep-link to draft documents, which
+    // the API refuses to serve to non-admins. Only admins follow it.
+    const action = role === "ADMIN" ? student.next_action : null;
     params.set("workspace", action?.workspace || fallbackWorkspace);
     if (action?.tab) params.set("tab", action.tab);
     if (action?.view) params.set("view", action.view);
@@ -160,6 +162,7 @@ function UnifiedWorkspaceContent() {
     const [studentSearch, setStudentSearch] = useState("");
     const [studentSort, setStudentSort] = useState<StudentSidebarSort>("recent");
     const [studentStatusFilter, setStudentStatusFilter] = useState("ALL");
+    const [studentGradeFilter, setStudentGradeFilter] = useState("ALL");
     const [studentName, setStudentName] = useState("");
     const [studentStatus, setStudentStatus] = useState("");
     const [studentDetails, setStudentDetails] = useState<any>(null);
@@ -1912,10 +1915,14 @@ function UnifiedWorkspaceContent() {
             : activeReportView === "generator"
                 ? (hasDocs ? (docs[0].type === "MONTHLY" ? "monthly" : "iep") : "empty")
                 : activeReportView;
+        // A docId from the URL can belong to another student or to a draft this user
+        // cannot open, so only honour it when it is in this student's visible docs.
+        const pickDocId = (list: any[]) =>
+            (list.some(d => d.id.toString() === activeDocId) ? activeDocId : list[0]?.id?.toString());
         const selectedDocId = reportView === "iep"
-            ? (activeDocId || iepDocs[0]?.id?.toString())
+            ? pickDocId(iepDocs)
             : reportView === "monthly"
-                ? (activeDocId || monthlyDocs[0]?.id?.toString())
+                ? pickDocId(monthlyDocs)
                 : undefined;
         const isGenerator = reportView === "generator";
         const isEmptyState = reportView === "empty";
@@ -2994,12 +3001,17 @@ function UnifiedWorkspaceContent() {
         new Set(allStudents.map(s => getSidebarStatusFilterKey(s.status)).filter(Boolean))
     ).sort((a, b) => formatStatusLabel(a).localeCompare(formatStatusLabel(b)));
 
+    const sidebarGrades = Array.from(
+        new Set(allStudents.map(s => s.grade).filter(Boolean))
+    ).sort();
+
     const filteredStudents = [...allStudents].filter(s => {
         const query = studentSearch.trim().toLowerCase();
         const fullName = `${s.first_name || ""} ${s.last_name || ""}`.trim().toLowerCase();
         const matchesSearch = !query || fullName.includes(query) || formatStatusLabel(s.status).toLowerCase().includes(query);
         const matchesStatus = studentStatusFilter === "ALL" || getSidebarStatusFilterKey(s.status) === studentStatusFilter;
-        return matchesSearch && matchesStatus;
+        const matchesGrade = studentGradeFilter === "ALL" || s.grade === studentGradeFilter;
+        return matchesSearch && matchesStatus && matchesGrade;
     }).sort((a, b) => {
         const aName = `${a.first_name || ""} ${a.last_name || ""}`.trim().toLowerCase();
         const bName = `${b.first_name || ""} ${b.last_name || ""}`.trim().toLowerCase();
@@ -3015,25 +3027,36 @@ function UnifiedWorkspaceContent() {
     });
 
     const workspaceStatusInfo = STATUS_COLORS[studentStatus?.toUpperCase()] || { bg: "var(--bg-neutral-light)", color: "var(--text-secondary)", label: studentStatus };
+    const currentStudentDetails = studentDetails || allStudents.find(s => s.id?.toString() === studentId);
+    const studentGrade = currentStudentDetails?.grade;
     const tabBar = user?.role !== "PARENT" ? (
         <div className="border-b border-line shrink-0 bg-card relative z-10">
             <div className="flex flex-col gap-2 px-4 py-2 md:px-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-4">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2 md:border-r md:border-line md:pr-4">
+                    <div className="flex min-w-0 flex-col justify-center md:border-r md:border-line md:pr-4">
                         <h1 className="m-0 truncate text-lg font-extrabold leading-tight tracking-tight text-fg" title={studentName}>
                             {studentName}
                         </h1>
-                        {studentStatus && (
-                            <span
-                                className="rounded-full px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider"
-                                style={{
-                                    background: workspaceStatusInfo.bg,
-                                    color: workspaceStatusInfo.color,
-                                }}
-                            >
-                                {workspaceStatusInfo.label || studentStatus}
-                            </span>
-                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            {studentStatus && (
+                                <span
+                                    className="rounded-full px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider shrink-0"
+                                    style={{
+                                        background: workspaceStatusInfo.bg,
+                                        color: workspaceStatusInfo.color,
+                                    }}
+                                >
+                                    {workspaceStatusInfo.label || studentStatus}
+                                </span>
+                            )}
+                            {studentGrade && (
+                                <span
+                                    className="rounded-full bg-subtle-soft border border-line px-2 py-0.5 text-[0.55rem] font-bold text-muted uppercase tracking-wider shrink-0"
+                                >
+                                    {studentGrade}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-1 overflow-x-auto secondary-header-scrollbar">
                         {user?.role === "ADMIN" && (
@@ -3103,24 +3126,24 @@ function UnifiedWorkspaceContent() {
                     <>
                         {/* Student List Sidebar — fixed secondary sidebar */}
                         <div className={`hidden md:flex flex-col bg-card border-r border-line shrink-0 h-full overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'w-0 border-r-0' : 'w-56'}`}>
-                            <div className="p-4 border-b border-line shrink-0 w-56">
-                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-2">Students</p>
+                            <div className="p-3.5 border-b border-line shrink-0 w-56 bg-card">
+                                <p className="text-[0.65rem] font-bold text-faint uppercase tracking-wider mb-2">Students</p>
                                 <div className="relative mb-2">
                                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
                                     <input
                                         type="text"
-                                        placeholder="Search..."
+                                        placeholder="Search students..."
                                         value={studentSearch}
                                         onChange={(e) => setStudentSearch(e.target.value)}
-                                        className="w-full bg-app border border-line rounded-md py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                        className="w-full bg-app border border-line rounded-lg py-1.5 pl-8 pr-3 text-xs text-fg placeholder:text-faint focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                                     />
                                 </div>
-                                <div className="flex gap-1 rounded-md border border-line bg-app p-0.5 mb-2">
+                                <div className="flex gap-1 rounded-lg border border-line bg-app p-0.5 mb-2">
                                     <button
                                         type="button"
                                         title="Sort by latest activity"
                                         onClick={() => setStudentSort("recent")}
-                                        className={`h-7 flex-1 rounded px-2 text-[0.65rem] font-bold transition-colors ${studentSort === "recent" ? "bg-card text-indigo-700 shadow-sm" : "text-muted hover:text-fg"}`}
+                                        className={`h-6 flex-1 rounded-md px-2 text-[0.65rem] font-bold transition-all ${studentSort === "recent" ? "bg-card text-indigo-700 shadow-xs" : "text-muted hover:text-fg"}`}
                                     >
                                         Recent
                                     </button>
@@ -3128,97 +3151,98 @@ function UnifiedWorkspaceContent() {
                                         type="button"
                                         title="Sort alphabetically"
                                         onClick={() => setStudentSort("az")}
-                                        className={`h-7 flex-1 rounded px-2 text-[0.65rem] font-bold transition-colors ${studentSort === "az" ? "bg-card text-indigo-700 shadow-sm" : "text-muted hover:text-fg"}`}
+                                        className={`h-6 flex-1 rounded-md px-2 text-[0.65rem] font-bold transition-all ${studentSort === "az" ? "bg-card text-indigo-700 shadow-xs" : "text-muted hover:text-fg"}`}
                                     >
                                         A-Z
                                     </button>
                                 </div>
-                                <select
-                                    value={studentStatusFilter}
-                                    onChange={(e) => setStudentStatusFilter(e.target.value)}
-                                    className="h-8 w-full rounded-md border border-line bg-card px-2 text-[0.7rem] font-semibold text-muted outline-none focus:ring-1 focus:ring-indigo-500"
-                                    aria-label="Filter students by status"
-                                >
-                                    <option value="ALL">All statuses</option>
-                                    {sidebarStatuses.map(status => (
-                                        <option key={status} value={status}>{formatStatusLabel(status)}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                <div className="py-2 px-2">
-                                    {filteredStudents.length === 0 ? (
-                                        <p className="text-xs text-faint text-center py-4">No students found.</p>
-                                    ) : (
-                                        filteredStudents.map(s => {
-                                            const isCurrent = s.id.toString() === studentId;
-                                            const dot = statusColorHex(s.status || "ARCHIVED").color;
-                                            const sidebarStatusLabel = statusLabel(s.status);
-                                            const nextAction = user?.role === "ADMIN" ? s.next_action : null;
-                                            const showStatusPill = user?.role !== "ADMIN" || !nextAction;
-                                            return (
-                                                <div
-                                                    key={s.id}
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onClick={() => !isCurrent && navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace))}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' || e.key === ' ') {
-                                                            e.preventDefault();
-                                                            if (!isCurrent) navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace));
-                                                        }
-                                                    }}
-                                                    className={`w-full relative flex items-start gap-2.5 text-left px-3 py-2 rounded-lg transition-all mb-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                                        isCurrent ? 'bg-indigo-50 border border-indigo-200 shadow-sm pl-4' : 'border border-transparent hover:bg-app'
-                                                    }`}
-                                                    style={{ cursor: isCurrent ? 'default' : 'pointer' }}
-                                                    title={`${s.first_name} ${s.last_name} — ${sidebarStatusLabel}`}
-                                                >
-                                                    {isCurrent && (
-                                                        <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600" aria-hidden />
-                                                    )}
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold shrink-0 ${isCurrent ? 'bg-indigo-200 text-indigo-800' : 'bg-subtle-soft text-muted'}`}>
-                                                        {s.first_name?.[0]}{s.last_name?.[0]}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <span className={`text-xs font-semibold block truncate ${isCurrent ? 'text-indigo-800' : 'text-fg'}`}>
-                                                            {s.first_name} {s.last_name}
-                                                        </span>
-                                                        {showStatusPill && (
-                                                            <span className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold ${statusColorClass(s.status || "ARCHIVED")}`}>
-                                                                {sidebarStatusLabel}
-                                                            </span>
-                                                        )}
-                                                        {nextAction && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const params = new URLSearchParams();
-                                                                    params.set("studentId", s.id.toString());
-                                                                    params.set("workspace", nextAction.workspace || "overview");
-                                                                    if (nextAction.tab) params.set("tab", nextAction.tab);
-                                                                    if (nextAction.view) params.set("view", nextAction.view);
-                                                                    if (nextAction.docId) params.set("docId", nextAction.docId);
-                                                                    if (nextAction.teamRole) params.set("teamRole", nextAction.teamRole);
-                                                                    navigateWithTeamGuard(`/workspace?${params.toString()}`);
-                                                                }}
-                                                                className={`mt-1 inline-flex max-w-full truncate rounded-full border px-2 py-0.5 text-[0.58rem] font-bold transition-all duration-200 cursor-pointer ${nextActionClass(s.status, nextAction.tone)}`}
-                                                                title={`Click to resolve action: ${nextAction.label}`}
-                                                            >
-                                                                {nextAction.label}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    <span className="mt-2.5 w-2 h-2 rounded-full shrink-0" style={{ background: dot }} title={sidebarStatusLabel}></span>
-                                                </div>
-                                            );
-                                        })
-                                    )}
+                                <div className="flex gap-1.5">
+                                    <div className="relative flex-1 min-w-0">
+                                        <select
+                                            value={studentStatusFilter}
+                                            onChange={(e) => setStudentStatusFilter(e.target.value)}
+                                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
+                                                studentStatusFilter !== "ALL"
+                                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
+                                                    : "border-line text-muted hover:border-line hover:text-fg"
+                                            }`}
+                                            aria-label="Filter students by status"
+                                        >
+                                            <option value="ALL">All statuses</option>
+                                            {sidebarStatuses.map(status => (
+                                                <option key={status} value={status}>{formatStatusLabel(status)}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentStatusFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
+                                    </div>
+                                    <div className="relative flex-1 min-w-0">
+                                        <select
+                                            value={studentGradeFilter}
+                                            onChange={(e) => setStudentGradeFilter(e.target.value)}
+                                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
+                                                studentGradeFilter !== "ALL"
+                                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
+                                                    : "border-line text-muted hover:border-line hover:text-fg"
+                                            }`}
+                                            aria-label="Filter students by grade"
+                                        >
+                                            <option value="ALL">All grades</option>
+                                            {sidebarGrades.map(grade => (
+                                                <option key={grade} value={grade}>{grade}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentGradeFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="p-3 border-t border-line bg-app">
-                                <p className="text-[0.6rem] text-faint text-center">{filteredStudents.length} of {allStudents.length} students</p>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
+                                {filteredStudents.length === 0 ? (
+                                    <p className="text-xs text-faint text-center py-6">No students found.</p>
+                                ) : (
+                                    filteredStudents.map(s => {
+                                        const isCurrent = s.id.toString() === studentId;
+                                        const sidebarStatusLabel = statusLabel(s.status);
+                                        const statusDot = statusColorHex(s.status);
+                                        return (
+                                            <div
+                                                key={s.id}
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() => !isCurrent && navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace, user?.role))}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        if (!isCurrent) navigateWithTeamGuard(buildWorkspaceStudentHref(s, workspace, user?.role));
+                                                    }
+                                                }}
+                                                className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                                    isCurrent
+                                                        ? 'bg-indigo-50/90'
+                                                        : 'hover:bg-subtle-soft/70'
+                                                }`}
+                                                style={{ cursor: isCurrent ? 'default' : 'pointer' }}
+                                                title={`${s.first_name} ${s.last_name} — ${sidebarStatusLabel}`}
+                                            >
+                                                <span
+                                                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                                                    style={{ background: statusDot.color }}
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="min-w-0 flex-1">
+                                                    <span className={`block truncate text-[0.78rem] leading-snug ${isCurrent ? 'font-bold text-indigo-900' : 'font-medium text-fg group-hover:text-indigo-900'}`}>
+                                                        {s.first_name} {s.last_name}
+                                                    </span>
+                                                    <span className={`block truncate text-[0.62rem] leading-snug ${isCurrent ? 'text-indigo-600/80' : 'text-faint'}`}>
+                                                        {sidebarStatusLabel}{s.grade ? ` · ${s.grade}` : ''}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                            <div className="px-3 py-2.5 border-t border-line bg-app">
+                                <p className="text-[0.63rem] font-medium text-faint text-center uppercase tracking-wider">{filteredStudents.length} of {allStudents.length} students</p>
                             </div>
                         </div>
                     </>

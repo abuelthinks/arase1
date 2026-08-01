@@ -117,6 +117,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
     useEffect(() => {
         if (!reportId) return;
         setLoading(true);
+        setErrorMsg("");
         api.get(`/api/monthly-report/${reportId}/`)
             .then(res => {
                 setReport(res.data.report_data);
