@@ -60,7 +60,15 @@ export default function AcceptInvitePage() {
                 router.push("/login");
             }, 3000);
         } catch (err: any) {
-            setError(err.response?.data?.error || "Failed to accept invitation. The link may be expired or invalid.");
+            const data = err.response?.data;
+            setError(
+                data?.error
+                || data?.first_name?.[0]
+                || data?.last_name?.[0]
+                || data?.phone_number?.[0]
+                || data?.password?.[0]
+                || "Failed to accept invitation. The link may be expired or invalid."
+            );
         } finally {
             setLoading(false);
         }
@@ -171,9 +179,8 @@ export default function AcceptInvitePage() {
                     </div>
 
                     <div>
-                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Phone Number <span style={{ color: "var(--danger)" }}>*</span></label>
+                        <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Phone Number <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>
                         <input
-                            required
                             type="tel"
                             autoComplete="tel"
                             placeholder="+1 (555) 123-4567"

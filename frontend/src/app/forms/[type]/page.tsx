@@ -8,6 +8,7 @@ import { extractApiError } from "@/lib/toast-utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { Languages } from "lucide-react";
 import {
     SHARED,
     SLP,
@@ -682,14 +683,25 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
     );
 }
 
+// Free-text notes and the read-only parent summary are never required.
+const REQUIRED_EXEMPT_TYPES = new Set(["textarea", "readonly_parent_summary"]);
+
 function isFieldRequired(formType: string, field: any): boolean {
-    if (formType !== "parent-assessment") return false;
-    return field.type !== "text" && field.type !== "textarea" && field.type !== "readonly_parent_summary";
+    if (REQUIRED_EXEMPT_TYPES.has(field.type)) return false;
+    if (formType === "parent-assessment") return field.type !== "text";
+    // Multi-disciplinary forms validate per field, but only inside the
+    // specialist's own discipline sections (see isSectionValidated).
+    return formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker";
 }
 
 function isFieldEmpty(field: any, val: any): boolean {
     if (field.type === "checkbox_group") {
         return !Array.isArray(val) || val.length === 0;
+    }
+    if (field.type === "goal_rating_group") {
+        // Dynamic IEP goals — complete only once every goal carries a score.
+        if (!Array.isArray(val) || val.length === 0) return true;
+        return val.some((goal: any) => !goal?.score);
     }
     if (field.type === "grid") {
         if (!val || typeof val !== "object") return true;
@@ -734,26 +746,6 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         actionVariant: "danger" | "primary" | "warning";
         onConfirm: () => void;
     } | null>(null);
-
-    const invalidFields = useMemo(() => {
-        if (formType !== "parent-assessment") return new Set<string>();
-        const invalidSet = new Set<string>();
-        if (!schema?.sections) return invalidSet;
-
-        for (const section of schema.sections) {
-            const dataKey = section.__dataSection || section.id;
-            if (!section.fields) continue;
-            for (const field of section.fields) {
-                if (isFieldRequired(formType, field)) {
-                    const currentValue = formData[dataKey]?.[field.id];
-                    if (isFieldEmpty(field, currentValue)) {
-                        invalidSet.add(`${dataKey}_${field.id}`);
-                    }
-                }
-            }
-        }
-        return invalidSet;
-    }, [formType, schema, formData]);
 
     // Last-known server values per (sectionId, fieldId). Used by the peer
     // merge logic to detect which local fields the user has edited since the
@@ -816,6 +808,49 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     // bucket. Virtual sections (e.g. section_f1/section_f2) carry a
     // __dataSection pointer on the schema entry; everything else is itself.
     const dataKeyFor = (section: any): string => section?.__dataSection || section?.id;
+
+    // Which sections get per-field required validation.
+    //
+    //   Tracker     — every section the therapist can edit. The whole form is
+    //                 one therapist's record of their own sessions, so Sections
+    //                 A/B/D/E/F are their data too, not co-authored content.
+    //   Assessment  — their own discipline section only. Sections A/B/G are
+    //                 genuinely written by the team together (Section G holds a
+    //                 summary per discipline), so no single specialist can be
+    //                 asked to complete them.
+    const isSectionValidated = useCallback((sectionId: string): boolean => {
+        if (formType === "parent-assessment") return true;
+        if (!isSectionScopedForm || isViewMode || isAdmin) return false;
+        const owner = getSectionOwner(formType, sectionId);
+        if (!owner || owner === "MIXED") return false;
+        if (owner === SHARED) return formType === "multidisciplinary-tracker";
+        return editableSpecialties.includes(owner);
+    }, [editableSpecialties, formType, isAdmin, isSectionScopedForm, isViewMode]);
+
+    const missingFieldsBySection = useMemo(() => {
+        const result: Record<string, any[]> = {};
+        if (!schema?.sections) return result;
+        for (const section of schema.sections) {
+            if (!section.fields || !isSectionValidated(section.id)) continue;
+            const dataKey = dataKeyFor(section);
+            const missing = section.fields.filter((field: any) =>
+                isFieldRequired(formType, field) && isFieldEmpty(field, formData[dataKey]?.[field.id]),
+            );
+            if (missing.length > 0) result[section.id] = missing;
+        }
+        return result;
+    }, [formData, formType, isSectionValidated, schema]);
+
+    const invalidFields = useMemo(() => {
+        const invalidSet = new Set<string>();
+        for (const section of schema?.sections || []) {
+            const missing = missingFieldsBySection[section.id];
+            if (!missing) continue;
+            const dataKey = dataKeyFor(section);
+            missing.forEach((field: any) => invalidSet.add(`${dataKey}_${field.id}`));
+        }
+        return invalidSet;
+    }, [missingFieldsBySection, schema]);
 
     // For Translation Toggle
     const [fullSubmission, setFullSubmission] = useState<any>(null);
@@ -948,10 +983,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         currentUserId: user?.user_id,
         onSectionSaved: (event) => {
             const isOwnEcho = event.by.user_id === user?.user_id;
+            // A peer's draft save only changes content, which arrives on this
+            // event — contribution status is unchanged, so no refetch needed.
             mergePeerChangesIfClean(event.form_data, isOwnEcho);
-            if (isSectionScopedForm && reportCycleId && !isOwnEcho) {
-                refreshSectionContributions(reportCycleId);
-            }
         },
         onSectionSubmitted: (event) => {
             const isOwnEcho = event.by.user_id === user?.user_id;
@@ -1021,6 +1055,20 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             })
             .catch(err => console.debug("collab ensure failed:", err));
     }, [collabFormType, isViewMode, studentId, reportCycleId, teamSubmission?.id, schema]);
+
+    // Save/submit responses already embed `section_contributions`, so applying
+    // them here avoids a second round trip per keystroke-driven autosave. Every
+    // saved request counts against the per-user rate limit, and two specialists
+    // typing at once used to burn through it mid-session.
+    const applySectionContributions = useCallback((formPayload: any) => {
+        const contributions = formPayload?.section_contributions;
+        if (!Array.isArray(contributions)) return;
+        const next: Record<string, any> = {};
+        for (const contribution of contributions) {
+            next[contribution.section_key] = contribution;
+        }
+        setSectionContributions(next);
+    }, []);
 
     const refreshSectionContributions = useCallback(async (cycleId = reportCycleId) => {
         if (!isSectionScopedForm || !studentId || !cycleId) return;
@@ -1477,6 +1525,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 section_data: sectionPayload,
             });
             setTeamSubmission(saveRes.data);
+            applySectionContributions(saveRes.data);
             // Mark these fields as in-sync with the server so future peer
             // merges can tell them apart from in-progress local edits.
             const snapshotSection = serverSnapshot.current[dataKey] || {};
@@ -1488,10 +1537,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     report_cycle: parseInt(reportCycleId),
                 });
                 setTeamSubmission(submitRes.data);
+                applySectionContributions(submitRes.data);
                 // Submitted section is now read-only — drop our presence lock so
                 // peers aren't shown as blocked on a section we're done with.
                 releaseSectionLock(section.id);
-                await refreshSectionContributions(reportCycleId);
 
                 if (submitRes.data?.finalized_at) {
                     const message = `${schema.title || "Form"} finalized successfully.`;
@@ -1515,7 +1564,6 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 return submitRes.data;
             }
 
-            await refreshSectionContributions(reportCycleId);
             const message = `${displayLabel} saved.`;
             if (!silent) {
                 setSuccessMsg(message);
@@ -1531,11 +1579,11 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             return null;
         }
     }, [
+        applySectionContributions,
         formData,
         formType,
         propHideNavigation,
         propOnSubmitted,
-        refreshSectionContributions,
         releaseSectionLock,
         reportCycleId,
         router,
@@ -1628,29 +1676,20 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             return;
         }
 
-        // Check for empty assigned sections
-        const isSectionEmpty = (sec: any): boolean => {
-            const dataKey = dataKeyFor(sec);
-            const sectionData = formData[dataKey] || {};
-            if (!sec.fields || sec.fields.length === 0) return true;
-            return sec.fields.every((field: any) => {
-                const val = sectionData[field.id];
-                return isFieldEmpty(field, val);
-            });
-        };
+        // Every required field must be filled — a section is not "done" just
+        // because one of its fields has a value.
+        const incompleteSections = (schema.sections || []).filter(
+            (sec: any) => (missingFieldsBySection[sec.id]?.length ?? 0) > 0,
+        );
 
-        const emptyAssignedSections = (schema.sections || []).filter((sec: any) => {
-            const owner = getSectionOwner(formType, sec.id);
-            const isAssigned = owner && owner !== SHARED && owner !== "MIXED" && editableSpecialties.includes(owner);
-            return isAssigned && isSectionEmpty(sec);
-        });
-
-        if (emptyAssignedSections.length > 0) {
+        if (incompleteSections.length > 0) {
             setAttemptedSectionSubmit(true);
-            const labels = emptyAssignedSections.map((sec: any) => {
-                return sec.title?.split("—")?.[0]?.trim() || sec.id;
+            const labels = incompleteSections.map((sec: any) => {
+                const title = sec.title?.split("—")?.[0]?.trim() || sec.id;
+                const missing = missingFieldsBySection[sec.id] || [];
+                return `${title} (${missing.length} field${missing.length === 1 ? "" : "s"} left)`;
             });
-            const message = `You must complete your assigned sections before submitting: ${labels.join(", ")}`;
+            const message = `Please complete every required field before submitting: ${labels.join(", ")}`;
             setErrorMsg(message);
             toast.error(message, { id: "validation-error", duration: 7000 });
 
@@ -1701,10 +1740,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     const finalized = !!data.finalized;
                     if (data.form) {
                         setTeamSubmission(data.form);
+                        applySectionContributions(data.form);
                     }
                     // Everything we owned is submitted/read-only now — drop our locks.
                     collabReleaseAll();
-                    await refreshSectionContributions(reportCycleId);
         
                     const message = finalized
                         ? `${schema.title || "Form"} finalized successfully.`
@@ -1729,6 +1768,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             }
         });
     }, [
+        applySectionContributions,
         collabReleaseAll,
         flushPendingAssessmentAutosaves,
         formType,
@@ -1736,9 +1776,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         isAdmin,
         isSectionScopedForm,
         isViewMode,
+        missingFieldsBySection,
         propHideNavigation,
         propOnSubmitted,
-        refreshSectionContributions,
         reportCycleId,
         router,
         schema,
@@ -1752,6 +1792,8 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         const pendingEntries = Object.entries(pendingSectionSaves);
         if (pendingEntries.length === 0) return;
 
+        // 3s rather than 1s: peers already see live edits over the collab
+        // socket, so the server round trip only needs to keep the draft safe.
         const timeoutId = setTimeout(async () => {
             for (const [sectionId, token] of pendingEntries) {
                 const section = sectionById[sectionId];
@@ -1764,7 +1806,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     return next;
                 });
             }
-        }, 1000);
+        }, 3000);
 
         return () => clearTimeout(timeoutId);
     }, [
@@ -1895,6 +1937,23 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         });
     };
 
+    // Rendered twice — floating beside the title on desktop, in normal flow
+    // below the header on phones — so the markup lives in one place.
+    const translationToggle = isViewMode && hasTranslation ? (
+        <button
+            type="button"
+            onClick={() => setIsTranslated(!isTranslated)}
+            aria-pressed={isTranslated}
+            title={isTranslated ? "Showing an AI translation — switch back to the original" : "Translate this form to English"}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm transition-colors ${isTranslated
+                ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                : "border-line bg-card text-muted hover:bg-app hover:text-fg"}`}
+        >
+            <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+            {isTranslated ? "Show original" : "Translate to English"}
+        </button>
+    ) : null;
+
     if (!studentId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing student context. Return to dashboard.</div>;
     if (!schema) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading form…</div>;
     if (propHideNavigation && formInitializing) {
@@ -1967,8 +2026,15 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         </div>
                     </div>
                 )}
+                {/* Desktop: zero-height, riding the title line on the right. */}
+                {translationToggle && (
+                    <div className="hidden h-0 items-start justify-end sm:flex">
+                        {translationToggle}
+                    </div>
+                )}
+
                 {/* Header */}
-                <div className="flex flex-col items-start gap-4 mb-6 w-full">
+                <div className="flex flex-col items-start gap-4 mb-6 w-full sm:pr-44">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold text-fg m-0 flex flex-wrap items-baseline gap-2 leading-tight">
                             {schema.title}
@@ -2032,25 +2098,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             </div>
                         )}
                     </div>
-                    {isViewMode && hasTranslation && (
-                        <div className="flex gap-1 bg-app p-1 rounded-lg border border-line">
-                            <button
-                                type="button"
-                                onClick={() => setIsTranslated(false)}
-                                className={`px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${!isTranslated ? "font-bold text-fg bg-card shadow-sm" : "font-medium text-muted hover:text-fg hover:bg-subtle-soft"}`}
-                            >
-                                Original
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsTranslated(true)}
-                                className={`px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${isTranslated ? "font-bold text-indigo-600 bg-card shadow-sm" : "font-medium text-muted hover:text-fg hover:bg-subtle-soft"}`}
-                            >
-                                English (AI) ✨
-                            </button>
-                        </div>
-                    )}
                 </div>
+
+                {/* Phone: below the header, left-aligned with the form. */}
+                {translationToggle && (
+                    <div className="mb-4 flex justify-start sm:hidden">
+                        {translationToggle}
+                    </div>
+                )}
 
                 {/* Alerts */}
                 {successMsg ? (
@@ -2127,16 +2182,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 : sectionOwner === SHARED ? "Shared"
                                 : sectionOwner === "MIXED" ? "Per-field"
                                 : specialtyShortLabel(sectionOwner);
-                            const isSectionEmpty = (sec: any): boolean => {
-                                const dk = dataKeyFor(sec);
-                                const sectionData = formData[dk] || {};
-                                if (!sec.fields || sec.fields.length === 0) return true;
-                                return sec.fields.every((field: any) => {
-                                    const val = sectionData[field.id];
-                                    return isFieldEmpty(field, val);
-                                });
-                            };
-                            const isInvalidSection = attemptedSectionSubmit && isMySection && isSectionEmpty(section);
+                            const sectionValidated = isSectionValidated(section.id);
+                            const isInvalidSection = attemptedSectionSubmit
+                                && (missingFieldsBySection[section.id]?.length ?? 0) > 0;
                             // Presence locks: who (if anyone) is currently editing this section.
                             const sectionLockKey = !isViewMode ? lockKeyForSection(section.id) : null;
                             const peerLock = sectionLockKey ? collab.isLockedByOther(sectionLockKey) : null;
@@ -2178,9 +2226,10 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                         || Boolean(peerLock)
                                         || (!isViewMode && !isFieldEditable(section.id, field.id));
 
-                                    const isRequired = isFieldRequired(formType, field);
+                                    const isRequired = sectionValidated && isFieldRequired(formType, field);
                                     const fieldKey = `${dataKey}_${field.id}`;
-                                    const isInvalid = attemptedSubmit && invalidFields.has(fieldKey);
+                                    const isInvalid = (attemptedSubmit || attemptedSectionSubmit)
+                                        && invalidFields.has(fieldKey);
 
                                     return (
                                         <div 

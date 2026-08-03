@@ -395,7 +395,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         disabled={existingMonthlyId ? false : !monthlyEnabled}
                         title={
                             existingMonthlyId
-                                ? (existingMonthlyStatus === "FINAL" ? "View finalized monthly report" : "View draft monthly report")
+                                ? "View monthly report"
                                 : !isEnrolled
                                 ? "Requires Active status"
                                 : !allTrackersSubmitted

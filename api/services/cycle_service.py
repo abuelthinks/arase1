@@ -1,83 +1,26 @@
 """
 Cycle Management Service
 =========================
-Handles monthly cycle rotation, lazy creation, auto-generation triggers,
-and carry-forward of recommendations from previous reports.
+Handles monthly cycle rotation, lazy creation, and carry-forward of
+recommendations from previous reports.
+
+Documents are never generated from here — an admin reviews the submitted
+inputs and triggers the IEP or the monthly report explicitly.
 """
 
 import logging
 from datetime import date, timedelta
 
-from django.db import transaction
 from dateutil.relativedelta import relativedelta
 
 from api.models import (
-    Student, ReportCycle, GeneratedDocument,
-    ParentAssessment, MultidisciplinaryAssessment,
+    ReportCycle, GeneratedDocument,
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
 )
-from api.services.workflow_state_service import has_finalized_multidisciplinary_assessment
 
 logger = logging.getLogger(__name__)
 
 GRACE_PERIOD_DAYS = ReportCycle.GRACE_PERIOD_DAYS
-
-
-def check_and_trigger_iep_generation(student, cycle):
-    """
-    Generate the initial IEP once required assessment inputs are complete.
-    Runs synchronously so auto-generation works without a Celery worker.
-    """
-    existing_iep = GeneratedDocument.objects.filter(
-        student=student,
-        report_cycle=cycle,
-        document_type='IEP',
-    ).first()
-    if existing_iep:
-        return False, existing_iep
-
-    has_parent = ParentAssessment.objects.filter(student=student, report_cycle=cycle).exists()
-    has_multi = has_finalized_multidisciplinary_assessment(student, cycle)
-    if not (has_parent and has_multi):
-        return False, None
-
-    try:
-        from api.services.iep_service import run_iep_generation
-        from api.services.realtime_service import create_activity_event
-        create_activity_event(
-            event_type='REPORT_GENERATING',
-            title=f"IEP generation started for {student}",
-            student=student,
-            metadata={'document_type': 'IEP'},
-        )
-        doc, _ = run_iep_generation(student.id, cycle.id)
-        logger.info("IEP auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
-        create_activity_event(
-            event_type='REPORT_READY',
-            title=f"IEP draft ready for {student}",
-            student=student,
-            metadata={'document_id': doc.id, 'document_type': 'IEP'},
-        )
-        try:
-            from api.services.notification_service import notify_auto_iep_ready
-            notify_auto_iep_ready(student, doc)
-        except Exception:
-            pass  # Don't block IEP generation if notification fails
-        return True, doc
-    except Exception as exc:
-        logger.error("Failed to auto-generate IEP for student=%s cycle=%s: %s", student.id, cycle.id, exc)
-        try:
-            from api.services.realtime_service import create_activity_event
-            create_activity_event(
-                event_type='REPORT_FAILED',
-                title=f"IEP generation failed for {student}",
-                message=str(exc),
-                student=student,
-                metadata={'document_type': 'IEP', 'toast': 'error'},
-            )
-        except Exception:
-            pass
-        return False, None
 
 
 # ─── Lazy Cycle Creation ─────────────────────────────────────────────────────
@@ -157,87 +100,6 @@ def ensure_current_cycle(student):
     except Exception:
         pass
     return cycle
-
-
-# ─── Auto-Generation Trigger ─────────────────────────────────────────────────
-
-def check_and_trigger_auto_generation(student, cycle):
-    """
-    Called after every tracker submission. If all required trackers exist for this
-    cycle, triggers monthly report generation (sync — no Celery dependency).
-
-    The generated report is saved as DRAFT so the admin can review before
-    finalising.
-
-    Returns: (triggered: bool, doc_or_none)
-    """
-    with transaction.atomic():
-        cycle = ReportCycle.objects.select_for_update().get(id=cycle.id)
-        if cycle.status in ('GENERATING', 'COMPLETED'):
-            return False, None
-
-        existing_report = GeneratedDocument.objects.filter(
-            student=student,
-            report_cycle=cycle,
-            document_type='MONTHLY',
-        ).first()
-        if existing_report:
-            return False, existing_report
-
-        p = ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-        m = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle, finalized_at__isnull=False).exists()
-
-        if student.status == 'INTEGRATED':
-            s = SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-            if not (p and m and s):
-                return False, None
-        else:
-            if not (p and m):
-                return False, None
-
-        cycle.status = 'GENERATING'
-        cycle.save(update_fields=['status'])
-        from api.services.realtime_service import create_activity_event
-        create_activity_event(
-            event_type='REPORT_GENERATING',
-            title=f"Monthly report generation started for {student}",
-            student=student,
-            metadata={'cycle_id': cycle.id, 'document_type': 'MONTHLY'},
-        )
-
-    try:
-        from api.services.iep_service import run_monthly_report_generation
-        doc, _ = run_monthly_report_generation(student.id, cycle.id)
-        logger.info("Monthly report auto-generated for student=%s cycle=%s doc=%s", student.id, cycle.id, doc.id)
-        from api.services.realtime_service import create_activity_event
-        create_activity_event(
-            event_type='REPORT_READY',
-            title=f"Monthly report draft ready for {student}",
-            student=student,
-            metadata={'document_id': doc.id, 'cycle_id': cycle.id, 'document_type': 'MONTHLY'},
-        )
-        try:
-            from api.services.notification_service import notify_auto_report_ready
-            notify_auto_report_ready(student, doc)
-        except Exception:
-            pass  # Don't block report generation if notification fails
-        return True, doc
-    except Exception as exc:
-        logger.error("Failed to auto-generate monthly report for student=%s cycle=%s: %s", student.id, cycle.id, exc)
-        cycle.status = 'OPEN'  # Reset so it can be retried
-        cycle.save(update_fields=['status'])
-        try:
-            from api.services.realtime_service import create_activity_event
-            create_activity_event(
-                event_type='REPORT_FAILED',
-                title=f"Monthly report generation failed for {student}",
-                message=str(exc),
-                student=student,
-                metadata={'cycle_id': cycle.id, 'document_type': 'MONTHLY', 'toast': 'error'},
-            )
-        except Exception:
-            pass
-        return False, None
 
 
 # ─── Carry-Forward Recommendations ───────────────────────────────────────────

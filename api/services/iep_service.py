@@ -61,6 +61,20 @@ def run_iep_generation(student_id, cycle_id):
 
     iep_data = generate_iep(student, cycle, inputs)
 
+    # The PDF is rendered before the row is created so the document never exists
+    # in a half-built state: clients refreshing mid-generation either see no IEP
+    # or a complete one. (The stored PDF is an archival copy — downloads
+    # re-render from iep_data on demand — so a render failure is not fatal.)
+    pdf_name, pdf_content = None, None
+    try:
+        from api.document_generator import _generate_iep_pdf
+        pdf_name = f"{student.last_name}_{student.first_name}_IEP_{cycle.start_date}.pdf"
+        pdf_content = _generate_iep_pdf(student, iep_data)
+    except Exception as e:
+        logger.error(
+            "Could not render IEP PDF for student=%s: %s", student.id, e, exc_info=True,
+        )
+
     doc = GeneratedDocument.objects.create(
         student=student,
         report_cycle=cycle,
@@ -69,15 +83,15 @@ def run_iep_generation(student_id, cycle_id):
         status='FINAL',
     )
 
-    # Generate PDF and save to storage (S3 in production, local in dev)
-    try:
-        from api.document_generator import _generate_iep_pdf
-        filename = f"{student.last_name}_{student.first_name}_IEP_{cycle.start_date}.pdf"
-        file_content = _generate_iep_pdf(student, iep_data)
-        doc.file.save(filename, file_content, save=True)
-        logger.info("IEP PDF saved to storage for student=%s (doc_id=%s)", student.id, doc.id)
-    except Exception as e:
-        logger.warning("Could not save IEP PDF to storage: %s", e)
+    if pdf_content is not None:
+        try:
+            doc.file.save(pdf_name, pdf_content, save=True)
+            logger.info("IEP PDF saved to storage for student=%s (doc_id=%s)", student.id, doc.id)
+        except Exception as e:
+            logger.error(
+                "Could not save IEP PDF to storage for student=%s (doc_id=%s): %s",
+                student.id, doc.id, e, exc_info=True,
+            )
 
     return doc, iep_data
 
@@ -168,22 +182,36 @@ def run_monthly_report_generation(student_id, cycle_id):
 
     report_data = generate_monthly_report(student, cycle, inputs)
 
+    # Same shape as the IEP: render first, then insert a complete FINAL record,
+    # so the document never exists in a half-built state. An admin triggers this
+    # deliberately and edits in place afterwards — there is no draft stage.
+    pdf_name, pdf_content = None, None
+    try:
+        from api.document_generator import _generate_monthly_pdf
+        pdf_name = f"{student.last_name}_{student.first_name}_MonthlyReport_{cycle.start_date}.pdf"
+        pdf_content = _generate_monthly_pdf(student, report_data)
+    except Exception as e:
+        logger.error(
+            "Could not render monthly report PDF for student=%s: %s", student.id, e, exc_info=True,
+        )
+
     doc = GeneratedDocument.objects.create(
         student=student,
         report_cycle=cycle,
         document_type='MONTHLY',
         iep_data=report_data,  # reusing iep_data JSONField
+        status='FINAL',
     )
 
-    # Generate PDF and save to storage (S3 in production, local in dev)
-    try:
-        from api.document_generator import _generate_monthly_pdf
-        filename = f"{student.last_name}_{student.first_name}_MonthlyReport_{cycle.start_date}.pdf"
-        file_content = _generate_monthly_pdf(student, report_data)
-        doc.file.save(filename, file_content, save=True)
-        logger.info("Monthly report PDF saved to storage for student=%s (doc_id=%s)", student.id, doc.id)
-    except Exception as e:
-        logger.warning("Could not save monthly report PDF to storage: %s", e)
+    if pdf_content is not None:
+        try:
+            doc.file.save(pdf_name, pdf_content, save=True)
+            logger.info("Monthly report PDF saved to storage for student=%s (doc_id=%s)", student.id, doc.id)
+        except Exception as e:
+            logger.error(
+                "Could not save monthly report PDF to storage for student=%s (doc_id=%s): %s",
+                student.id, doc.id, e, exc_info=True,
+            )
 
     # Auto-update IEP Section 10 with the fresh progress data
     try:
@@ -191,8 +219,15 @@ def run_monthly_report_generation(student_id, cycle_id):
     except Exception as e:
         logger.warning("Could not update IEP Section 10: %s", e)
 
-    if cycle.status == 'GENERATING':
-        cycle.status = 'COMPLETED'
-        cycle.save(update_fields=['status'])
+    # Generating the report is what closes the cycle now — there is no separate
+    # finalize step left to do it.
+    try:
+        from api.services.cycle_service import complete_cycle
+        complete_cycle(cycle)
+    except Exception as e:
+        logger.error(
+            "Could not complete cycle=%s after generating its report: %s",
+            cycle.id, e, exc_info=True,
+        )
 
     return doc, report_data

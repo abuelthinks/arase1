@@ -3,6 +3,7 @@ User/invitation business logic extracted from views.py.
 """
 
 from api.models import User, Invitation, Student, StudentAccess
+from api.grade_levels import grade_level_matches
 from api.specialties import (
     APPLIED_BEHAVIOR_ANALYSIS,
     DEVELOPMENTAL_PSYCHOLOGY,
@@ -116,6 +117,7 @@ def resend_invitation(old_invitation):
     role = old_invitation.role
     student = old_invitation.student
     specialties = list(getattr(old_invitation, 'specialties', None) or [])
+    grade_level = getattr(old_invitation, 'grade_level', '') or ''
 
     # Revoke the old token
     old_invitation.delete()
@@ -126,6 +128,7 @@ def resend_invitation(old_invitation):
         role=role,
         student=student,
         specialties=specialties,
+        grade_level=grade_level,
     )
 
     # Fire the email
@@ -158,6 +161,15 @@ def create_invited_user(invitation, password, first_name="", last_name="", phone
             user.specialties = specialties
             user.specialty = specialties[0]
             user.save(update_fields=['specialties', 'specialty'])
+
+    # Same idea for teachers: the grade level the admin picked on the invitation
+    # lands on the account so student matching works from day one.
+    if invitation.role == 'TEACHER':
+        from api.grade_levels import validate_grade_level
+        grade_level = validate_grade_level('TEACHER', getattr(invitation, 'grade_level', ''))
+        if grade_level:
+            user.grade_level = grade_level
+            user.save(update_fields=['grade_level'])
 
     invitation.is_used = True
     invitation.save()
@@ -206,9 +218,11 @@ def score_staff_for_student(student_id=None):
 
     concerns = []
     primary_langs = []
+    student_grade = ""
     if student_id:
         try:
             student = Student.objects.get(id=student_id)
+            student_grade = student.grade or ""
             pa = ParentAssessment.objects.filter(student=student).order_by('-created_at').first()
             if pa and pa.form_data:
                 fd = pa.form_data
@@ -266,13 +280,19 @@ def score_staff_for_student(student_id=None):
     for u in staff_qs:
         user_specialties = u.specialty_list()
         specialty_score = _score(user_specialties, concerns) if concerns else 0
-        
+
         user_langs = [str(l).upper().strip() for l in u.language_list() if l]
         language_bonus = 0
         if primary_langs and any(l in user_langs for l in primary_langs):
             language_bonus = 4  # +4 points for matching a language
-            
-        combined = (specialty_score * 3) + language_bonus - u.caseload
+
+        # Teachers carry no specialty, so grade level is their equivalent signal:
+        # without it a teacher's score is caseload alone.
+        grade_bonus = 0
+        if u.role == 'TEACHER' and grade_level_matches(u.grade_level, student_grade):
+            grade_bonus = 6
+
+        combined = (specialty_score * 3) + language_bonus + grade_bonus - u.caseload
         scored.append((combined, u, user_specialties))
 
     best_teacher = None
@@ -315,6 +335,8 @@ def score_staff_for_student(student_id=None):
             "role": u.role,
             "specialty": normalized_list[0] if normalized_list else "",
             "specialties": normalized_list,
+            "grade_level": u.grade_level or "",
+            "grade_match": u.role == 'TEACHER' and grade_level_matches(u.grade_level, student_grade),
             "languages": u.language_list(),
             "caseload": u.caseload,
             "recommended": is_recommended,

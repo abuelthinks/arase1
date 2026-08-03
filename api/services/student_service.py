@@ -411,7 +411,24 @@ def assign_staff_to_student(student_id, staff_id, expected_role, specialties=Non
         # student is only ENROLLED.
         if student.status != 'INTEGRATED':
             raise ValidationError("Cannot assign a Teacher until the student is INTEGRATED.")
-            
+
+        # Enforce: exactly one teacher per student. Unlike specialists, who split
+        # a student between disciplines, a student sits in one classroom.
+        existing_teacher_access = (
+            StudentAccess.objects
+            .filter(student=student, user__role='TEACHER')
+            .exclude(user_id=staff.id)
+            .select_related('user')
+            .first()
+        )
+        if existing_teacher_access:
+            current = existing_teacher_access.user
+            current_name = f"{current.first_name} {current.last_name}".strip() or current.email
+            raise ValidationError(
+                f"{current_name} is already this student's teacher. Remove them before assigning another."
+            )
+
+
     existing_access = StudentAccess.objects.filter(user=staff, student=student).first()
     old_specialties = existing_access.specialty_list() if existing_access else []
     access, created = StudentAccess.objects.get_or_create(user=staff, student=student)
@@ -589,6 +606,8 @@ def update_student_team(student_id, specialist_assignments, teacher_ids, changed
     except ValueError as exc:
         raise ValidationError(str(exc))
     desired_teachers = {int(teacher_id) for teacher_id in teacher_ids}
+    if len(desired_teachers) > 1:
+        raise ValidationError("A student can only have one teacher.")
 
     existing_access = (
         StudentAccess.objects
@@ -630,6 +649,12 @@ def update_student_team(student_id, specialist_assignments, teacher_ids, changed
             removed_specialties_detected = True
             staff_partially_removed.append((staff, removed_specialties))
 
+    # Teachers are removed before the new one is added: with one teacher per
+    # student, swapping A for B would otherwise trip the uniqueness guard in
+    # assign_staff_to_student while A is still attached.
+    for staff_id in set(existing_teachers) - desired_teachers:
+        unassign_staff_from_student(student_id, staff_id, unassigned_by=changed_by)
+
     for staff_id in desired_teachers:
         if staff_id in existing_teachers:
             continue
@@ -645,9 +670,6 @@ def update_student_team(student_id, specialist_assignments, teacher_ids, changed
     for staff_id in existing_specialists:
         if staff_id not in desired_specialists:
             unassign_staff_from_student(student_id, staff_id, unassigned_by=changed_by)
-
-    for staff_id in set(existing_teachers) - desired_teachers:
-        unassign_staff_from_student(student_id, staff_id, unassigned_by=changed_by)
 
     if removed_specialties_detected:
         from api.services.section_service import re_evaluate_finalization

@@ -21,6 +21,21 @@ from api.models import (
     User,
 )
 
+# Every required field of an owned assessment section — owned sections only
+# submit once all of them hold content (notes stay optional).
+FILLED_SECTION_C = {
+    'expressive_language': ['Uses single words'],
+    'receptive_language': ['Follows one-step directions'],
+    'speech_sound': ['Age-appropriate'],
+    'pragmatics': ['Initiates interaction'],
+}
+FILLED_SECTION_D = {
+    'fine_motor_skills': ['Grasps utensils'],
+    'sensory_processing': ['Tolerates textures'],
+    'adls': ['Dresses with help'],
+    'ot_emotional_regulation': ['Calms with support'],
+}
+
 
 @override_settings(ROOT_URLCONF='backend.urls')
 class SecurityHardeningTests(APITestCase):
@@ -583,31 +598,7 @@ class SecurityHardeningTests(APITestCase):
         self.assertEqual(monthly_action['link'], f'/workspace?studentId={self.student.id}&workspace=reports&view=generator')
         self.assertEqual(monthly_action['type'], 'positive')
 
-    def test_admin_actions_include_finalize_iep_draft_before_enrollment_review(self):
-        self.student.status = 'ASSESSED'
-        self.student.save(update_fields=['status'])
-        doc = GeneratedDocument.objects.create(
-            student=self.student,
-            report_cycle=self.active_cycle,
-            document_type='IEP',
-            status='DRAFT',
-            iep_data={'section1_student_info': {}},
-        )
-
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.get('/api/dashboard/actions/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        actions = response.data['actions']
-        finalize_action = next(
-            action for action in actions
-            if action['id'] == f'review_iep_{doc.id}'
-        )
-        self.assertEqual(finalize_action['title'], 'Finalize IEP Draft: Jamie Doe')
-        self.assertEqual(finalize_action['action_text'], 'Finalize ->')
-        self.assertFalse(any(action['id'] == f'review_{self.student.id}' for action in actions))
-
-    def test_admin_actions_include_generate_iep_fallback_when_auto_generation_missing(self):
+    def test_admin_actions_include_generate_iep_when_assessment_inputs_complete(self):
         self.student.status = 'ASSESSED'
         self.student.save(update_fields=['status'])
         ParentAssessment.objects.create(
@@ -634,7 +625,7 @@ class SecurityHardeningTests(APITestCase):
             action for action in actions
             if action['id'] == f'generate_iep_{self.student.id}'
         )
-        self.assertEqual(generate_action['title'], 'Generate IEP Draft: Jamie Doe')
+        self.assertEqual(generate_action['title'], 'Generate IEP: Jamie Doe')
         self.assertEqual(generate_action['link'], f'/workspace?studentId={self.student.id}&workspace=reports&view=generator')
 
     def test_enrollment_requires_finalized_iep(self):
@@ -1202,7 +1193,7 @@ class FormCollaborationTests(APITestCase):
         ss.save_section(
             form_type='assessment', user=self.slp, student_id=self.student.id,
             report_cycle_id=self.cycle.id, section_key='C',
-            section_data={'slp_notes': 'done'},
+            section_data={**FILLED_SECTION_C, 'slp_notes': 'done'},
         )
         instance = MultidisciplinaryAssessment.objects.get(student=self.student, report_cycle=self.cycle)
         cs.acquire_lock(form_type='assessment', instance_id=instance.id, section_key='C', user=self.slp)
@@ -1244,7 +1235,7 @@ class FormCollaborationTests(APITestCase):
         ss.save_section(
             form_type='assessment', user=self.slp, student_id=self.student.id,
             report_cycle_id=self.cycle.id, section_key='C',
-            section_data={'slp_notes': 'ok'},
+            section_data={**FILLED_SECTION_C, 'slp_notes': 'ok'},
         )
         ss.submit_section(
             form_type='assessment', user=self.slp, student_id=self.student.id,
@@ -1258,7 +1249,7 @@ class FormCollaborationTests(APITestCase):
         ss.save_section(
             form_type='assessment', user=self.ot, student_id=self.student.id,
             report_cycle_id=self.cycle.id, section_key='D',
-            section_data={'ot_notes': 'ok'},
+            section_data={**FILLED_SECTION_D, 'ot_notes': 'ok'},
         )
         ss.submit_section(
             form_type='assessment', user=self.ot, student_id=self.student.id,

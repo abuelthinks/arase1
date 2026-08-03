@@ -234,7 +234,7 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
 
     return (
         <section
-            className="relative mb-8 overflow-hidden rounded-2xl border p-6 shadow-sm transition-all duration-300 md:p-8"
+            className="relative mb-6 overflow-hidden rounded-2xl border p-5 shadow-sm transition-all duration-300 md:mb-8 md:p-8"
             style={{ background: style.bg, borderColor: style.border }}
             aria-label={content.student ? `Next step for ${fullName}` : "Welcome next step"}
         >
@@ -250,22 +250,22 @@ export default function WelcomeBanner({ students }: WelcomeBannerProps) {
                 </svg>
             </button>
 
-            <div className="flex flex-col justify-between gap-6 pr-8 md:flex-row md:items-center">
+            <div className="flex flex-col justify-between gap-4 pr-8 md:gap-6 md:flex-row md:items-center">
                 <div className="max-w-3xl">
                     <div
-                        className="mb-4 inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wide"
+                        className="mb-3 inline-flex items-center rounded-full px-3 py-1 text-[0.7rem] font-extrabold uppercase tracking-wide md:mb-4 md:text-xs"
                         style={{ background: style.labelBg, color: style.labelText }}
                     >
                         {content.label}
                     </div>
-                    <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-fg md:text-3xl">
+                    <h2 className="mb-2 text-xl font-extrabold tracking-tight text-fg md:mb-3 md:text-3xl">
                         {content.title}
                     </h2>
-                    <p className="m-0 text-base font-medium leading-relaxed text-muted md:text-lg">
+                    <p className="m-0 text-sm font-medium leading-relaxed text-muted md:text-lg">
                         {content.body}
                     </p>
                     {content.note && (
-                        <p className="mt-3 text-sm font-semibold text-muted">
+                        <p className="mt-2 text-xs font-semibold text-muted md:mt-3 md:text-sm">
                             {content.note}
                         </p>
                     )}

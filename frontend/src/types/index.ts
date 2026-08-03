@@ -9,18 +9,40 @@ import type { SpecialistSpecialty } from "@/lib/specialties";
 
 export type Role = "ADMIN" | "TEACHER" | "SPECIALIST" | "PARENT";
 
+export interface SpecialtyChangeRequest {
+    id: number;
+    specialist: number;
+    specialist_name: string;
+    specialist_email: string;
+    current_specialties: SpecialistSpecialty[];
+    requested_specialties: SpecialistSpecialty[];
+    added: SpecialistSpecialty[];
+    removed: SpecialistSpecialty[];
+    note: string;
+    status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+    admin_note: string;
+    reviewed_by_name: string;
+    reviewed_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface UserPayload {
     user_id: number;
     role: Role;
-    
+
     first_name?: string;
     last_name?: string;
     email?: string;
     specialty?: SpecialistSpecialty | "";
     specialties?: SpecialistSpecialty[];
+    grade_level?: string;
     languages?: string[];
     specialist_onboarding_complete?: boolean;
     specialist_onboarding_missing?: string[];
+    teacher_profile_complete?: boolean;
+    teacher_profile_missing?: string[];
+    pending_specialty_request?: SpecialtyChangeRequest | null;
 }
 
 export interface UserProfile {
@@ -31,9 +53,12 @@ export interface UserProfile {
     first_name: string;
     last_name: string;
     specialty: SpecialistSpecialty | "";
+    grade_level?: string;
     languages?: string[];
     specialist_onboarding_complete?: boolean;
     specialist_onboarding_missing?: string[];
+    teacher_profile_complete?: boolean;
+    teacher_profile_missing?: string[];
     assigned_students_count: number;
     assigned_student_names: string[];
     assigned_students: StudentSummary[];

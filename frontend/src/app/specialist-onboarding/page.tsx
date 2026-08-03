@@ -15,7 +15,9 @@ import {
   ArrowRight,
   BadgeCheck,
   Check,
+  Clock,
   Loader2,
+  Minus,
   PencilLine,
   Plus,
   Sparkles,
@@ -26,7 +28,7 @@ import {
 const inputCls =
   'w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg placeholder:font-normal placeholder:text-faint transition-colors hover:bg-card focus:border-indigo-400 focus:bg-card focus:outline-none focus:ring-4 focus:ring-indigo-500/15';
 
-function LanguagePill({
+function TogglePill({
   label,
   checked,
   onToggle,
@@ -63,10 +65,12 @@ export default function SpecialistOnboardingPage() {
   const [error, setError] = useState('');
   const [specialtyConfirmed, setSpecialtyConfirmed] = useState(false);
   const [requestingChange, setRequestingChange] = useState(false);
-  const [requestedSpecialty, setRequestedSpecialty] = useState('');
+  const [requestedSpecialties, setRequestedSpecialties] = useState<string[]>([]);
   const [specialtyRequestNote, setSpecialtyRequestNote] = useState('');
   const [specialtyRequestLoading, setSpecialtyRequestLoading] = useState(false);
-  const [specialtyRequestSent, setSpecialtyRequestSent] = useState(false);
+  const [cancellingRequest, setCancellingRequest] = useState(false);
+  // Name comes from sign-up, so it shows as a review row until they ask to edit it.
+  const [editingName, setEditingName] = useState(false);
 
   const specialties = useMemo(() => {
     if (Array.isArray(user?.specialties) && user.specialties.length > 0) {
@@ -76,6 +80,12 @@ export default function SpecialistOnboardingPage() {
   }, [user?.specialties, user?.specialty]);
 
   const hasSpecialty = specialties.length > 0;
+  const pendingRequest = user?.pending_specialty_request ?? null;
+
+  // The request carries the full desired set — added/removed are just the diff.
+  const addedSpecialties = requestedSpecialties.filter((s) => !specialties.includes(s));
+  const removedSpecialties = specialties.filter((s) => !requestedSpecialties.includes(s));
+  const hasSpecialtyDelta = addedSpecialties.length > 0 || removedSpecialties.length > 0;
   const knownLanguageSet = new Set(LANGUAGE_OPTIONS.map((language) => language.toLowerCase()));
   const customLanguages = languages.filter((language) => !knownLanguageSet.has(language.toLowerCase()));
 
@@ -131,23 +141,6 @@ export default function SpecialistOnboardingPage() {
     <ProtectedRoute allowedRoles={['SPECIALIST']}>
       <div className="bg-app py-8 md:py-12">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 md:px-0">
-          {/* Progress indicator */}
-          <ol className="flex items-center gap-3 text-sm">
-            <li className="flex items-center gap-2 font-bold text-indigo-700">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs text-white shadow-sm">
-                1
-              </span>
-              Profile
-            </li>
-            <li className="h-px flex-1 bg-subtle-soft" aria-hidden="true" />
-            <li className="flex items-center gap-2 font-medium text-faint">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-card text-xs">
-                2
-              </span>
-              Schedule
-            </li>
-          </ol>
-
           <section className="rounded-2xl border border-line bg-card p-6 shadow-sm md:p-8">
             {/* Header */}
             <div className="mb-7 flex items-start gap-4 border-b border-line pb-5">
@@ -156,48 +149,71 @@ export default function SpecialistOnboardingPage() {
               </div>
               <div>
                 <h1 className="m-0 text-2xl font-extrabold leading-tight text-fg">
-                  Complete your specialist profile
+                  {firstName ? `Hi ${firstName} — one quick check` : 'One quick check'}
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
-                  Add your name and working languages so families can be matched correctly. Your specialty is managed by admin.
+                  You&apos;re almost in. We just want to make sure we got your details right before you
+                  head to your dashboard. Takes about 20 seconds, and you won&apos;t see this again.
                 </p>
               </div>
             </div>
 
-            {/* Name fields */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-fg" htmlFor="first-name">
-                  First name
-                </label>
-                <div className="relative">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" aria-hidden="true" />
-                  <input
-                    id="first-name"
-                    type="text"
-                    value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
-                    className={`${inputCls} pl-9`}
-                    placeholder="Jane"
-                  />
+            {/* Name — already collected at sign-up, so this is a review row, not a form. */}
+            <div className="rounded-2xl border border-line bg-app/70 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <User className="h-5 w-5 shrink-0 text-indigo-600" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">Your name</p>
+                    {editingName ? null : (
+                      <p className="mt-0.5 truncate text-base font-extrabold text-fg">
+                        {`${firstName} ${lastName}`.trim() || 'Not set'}
+                      </p>
+                    )}
+                  </div>
                 </div>
+                {!editingName && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingName(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-1.5 text-xs font-bold text-fg transition-colors hover:bg-app"
+                  >
+                    <PencilLine className="h-3.5 w-3.5" aria-hidden="true" />
+                    Change
+                  </button>
+                )}
               </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-fg" htmlFor="last-name">
-                  Last name
-                </label>
-                <div className="relative">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" aria-hidden="true" />
-                  <input
-                    id="last-name"
-                    type="text"
-                    value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
-                    className={`${inputCls} pl-9`}
-                    placeholder="Doe"
-                  />
+
+              {editingName && (
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-fg" htmlFor="first-name">
+                      First name
+                    </label>
+                    <input
+                      id="first-name"
+                      type="text"
+                      value={firstName}
+                      onChange={(event) => setFirstName(event.target.value)}
+                      className={inputCls}
+                      placeholder="Jane"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-fg" htmlFor="last-name">
+                      Last name
+                    </label>
+                    <input
+                      id="last-name"
+                      type="text"
+                      value={lastName}
+                      onChange={(event) => setLastName(event.target.value)}
+                      className={inputCls}
+                      placeholder="Doe"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Specialty */}
@@ -235,11 +251,77 @@ export default function SpecialistOnboardingPage() {
                 </div>
               )}
 
-              {hasSpecialty && (
+              {hasSpecialty && pendingRequest && (
+                <div className={`mt-4 rounded-xl border p-4 ${semanticToneClass('warning')}`}>
+                  <div className="flex items-start gap-3">
+                    <Clock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="m-0 text-sm font-bold">Waiting for admin approval</p>
+                      <p className="mt-1 text-sm">
+                        Your specialties stay as they are until an admin approves these edits.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {pendingRequest.added.map((specialty) => (
+                          <span
+                            key={`add-${specialty}`}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass('success')}`}
+                          >
+                            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                            {specialty}
+                          </span>
+                        ))}
+                        {pendingRequest.removed.map((specialty) => (
+                          <span
+                            key={`remove-${specialty}`}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass('danger')}`}
+                          >
+                            <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                      {pendingRequest.note && (
+                        <p className="mt-3 text-sm italic">"{pendingRequest.note}"</p>
+                      )}
+                      <button
+                        type="button"
+                        disabled={cancellingRequest}
+                        onClick={async () => {
+                          setCancellingRequest(true);
+                          try {
+                            await api.delete('/api/users/request-specialty-change/');
+                            await refreshUser();
+                            toast.success('Request withdrawn.');
+                          } catch (err: any) {
+                            toast.error(extractApiError(err, 'Could not withdraw the request.'));
+                          } finally {
+                            setCancellingRequest(false);
+                          }
+                        }}
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-current px-3 py-1.5 text-xs font-bold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {cancellingRequest ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                            Withdrawing...
+                          </>
+                        ) : (
+                          <>
+                            <X className="h-3.5 w-3.5" aria-hidden="true" />
+                            Withdraw request
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {hasSpecialty && !pendingRequest && (
                 <div className="mt-4 rounded-xl border border-line bg-card p-4">
-                  <p className="m-0 text-sm font-bold text-fg">Did we get your specialty right?</p>
+                  <p className="m-0 text-sm font-bold text-fg">Did we get your specialties right?</p>
                   <p className="mt-1 text-sm text-muted">
-                    If this is not your actual specialty, send a change request to admin.
+                    If something is missing or shouldn't be there, ask admin to add or remove it.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
@@ -247,7 +329,7 @@ export default function SpecialistOnboardingPage() {
                       onClick={() => {
                         setSpecialtyConfirmed(true);
                         setRequestingChange(false);
-                        setRequestedSpecialty('');
+                        setRequestedSpecialties([]);
                         setSpecialtyRequestNote('');
                       }}
                       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
@@ -262,7 +344,11 @@ export default function SpecialistOnboardingPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setRequestingChange((current) => !current);
+                        setRequestingChange((current) => {
+                          const next = !current;
+                          if (next) setRequestedSpecialties(specialties);
+                          return next;
+                        });
                         setSpecialtyConfirmed(false);
                       }}
                       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
@@ -272,37 +358,70 @@ export default function SpecialistOnboardingPage() {
                       }`}
                     >
                       <PencilLine className="h-4 w-4" aria-hidden="true" />
-                      Request change
+                      Request an edit
                     </button>
                   </div>
 
-                  {specialtyConfirmed && !requestingChange && !specialtyRequestSent && (
+                  {specialtyConfirmed && !requestingChange && (
                     <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-success">
                       <Check className="h-4 w-4" aria-hidden="true" />
-                      Great — your specialty is confirmed.
+                      Great — your specialties are confirmed.
                     </p>
                   )}
 
                   {requestingChange && (
                     <div className="mt-4 flex flex-col gap-3">
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-fg" htmlFor="requested-specialty">
-                          Requested specialty
-                        </label>
-                        <select
-                          id="requested-specialty"
-                          value={requestedSpecialty}
-                          onChange={(event) => setRequestedSpecialty(event.target.value)}
-                          className="w-full rounded-xl border border-line bg-app/60 px-4 py-3 text-sm font-medium text-fg transition-colors hover:bg-card focus:border-warning-line focus:bg-card focus:outline-none focus:ring-4 focus:ring-warning/15"
-                        >
-                          <option value="">Select specialty</option>
-                          {SPECIALIST_SPECIALTIES.filter((option) => !specialties.includes(option)).map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
+                        <p className="m-0 text-sm font-bold text-fg">Which specialties should you hold?</p>
+                        <p className="m-0 text-sm text-muted">
+                          Tick every discipline you practise. Untick anything assigned to you by mistake.
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2.5">
+                          {SPECIALIST_SPECIALTIES.map((option) => (
+                            <TogglePill
+                              key={option}
+                              label={option}
+                              checked={requestedSpecialties.includes(option)}
+                              onToggle={() =>
+                                setRequestedSpecialties((prev) =>
+                                  prev.includes(option)
+                                    ? prev.filter((s) => s !== option)
+                                    : [...prev, option],
+                                )
+                              }
+                            />
                           ))}
-                        </select>
+                        </div>
                       </div>
+
+                      {hasSpecialtyDelta && (
+                        <div className="rounded-xl border border-line bg-app/60 p-3">
+                          <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">
+                            Admin will be asked to
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {addedSpecialties.map((specialty) => (
+                              <span
+                                key={`add-${specialty}`}
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass('success')}`}
+                              >
+                                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                                Add {specialty}
+                              </span>
+                            ))}
+                            {removedSpecialties.map((specialty) => (
+                              <span
+                                key={`remove-${specialty}`}
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass('danger')}`}
+                              >
+                                <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                                Remove {specialty}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-2">
                         <label className="block text-sm font-bold text-fg" htmlFor="specialty-note">
                           Note for admin
@@ -319,19 +438,20 @@ export default function SpecialistOnboardingPage() {
                       <div>
                         <button
                           type="button"
-                          disabled={specialtyRequestLoading || !requestedSpecialty}
+                          disabled={
+                            specialtyRequestLoading || !hasSpecialtyDelta || requestedSpecialties.length === 0
+                          }
                           onClick={async () => {
                             setSpecialtyRequestLoading(true);
                             try {
                               await api.post('/api/users/request-specialty-change/', {
-                                specialty: requestedSpecialty,
+                                specialties: requestedSpecialties,
                                 note: specialtyRequestNote,
                               });
-                              setSpecialtyRequestSent(true);
+                              await refreshUser();
                               setRequestingChange(false);
-                              setRequestedSpecialty('');
                               setSpecialtyRequestNote('');
-                              toast.success('Request sent.');
+                              toast.success('Request sent to admin.');
                             } catch (err: any) {
                               toast.error(extractApiError(err, 'Request failed.'));
                             } finally {
@@ -349,24 +469,24 @@ export default function SpecialistOnboardingPage() {
                             'Send request'
                           )}
                         </button>
+                        {requestedSpecialties.length === 0 && (
+                          <p className="mt-2 text-xs font-medium text-danger">
+                            Keep at least one specialty selected.
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )}
-
-                  {specialtyRequestSent && (
-                    <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-success">
-                      <Check className="h-4 w-4" aria-hidden="true" />
-                      Your specialty change request was sent to admin.
-                    </p>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Languages */}
-            <div className="mt-6">
+            {/* Languages — the one thing sign-up didn't already ask for. */}
+            <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="m-0 text-sm font-bold text-fg">Session languages</p>
+                <p className="m-0 text-sm font-extrabold text-fg">
+                  One thing we still need — your session languages
+                </p>
                 {languages.length > 0 && (
                   <span className="text-xs font-semibold text-indigo-600">
                     {languages.length} selected
@@ -374,14 +494,15 @@ export default function SpecialistOnboardingPage() {
                 )}
               </div>
               <p className="mt-1 text-sm text-muted">
-                Select the languages you can comfortably use with parents and children.
+                Pick the languages you can comfortably use with parents and children. We use these to
+                match you with families you can talk to directly.
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2.5">
                 {LANGUAGE_OPTIONS.map((option) => {
                   const checked = languages.some((language) => language.toLowerCase() === option.toLowerCase());
                   return (
-                    <LanguagePill
+                    <TogglePill
                       key={option}
                       label={option}
                       checked={checked}
@@ -468,7 +589,7 @@ export default function SpecialistOnboardingPage() {
                     </>
                   ) : (
                     <>
-                      Save & set my schedule
+                      Looks right — take me in
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </>
                   )}

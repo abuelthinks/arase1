@@ -10,7 +10,7 @@ from .views import (
     EnrollStudentView, IntegrateStudentView, ArchiveStudentView,
     UserViewSet, CreateInvitationView, AcceptInvitationView, ManageInvitationView, ResendInvitationView,
     StaffListView,
-    RequestSpecialtyChangeView,
+    RequestSpecialtyChangeView, SpecialtyChangeRequestListView, SpecialtyChangeRequestReviewView,
     GenerateIEPView, IEPDetailView, IEPDownloadView,
     GenerateMonthlyReportView, MonthlyReportDetailView, MonthlyReportDownloadView,
     AdminDashboardActionsView,
@@ -60,6 +60,8 @@ urlpatterns = [
     path('users/send-verification-sms/', SendVerificationSMSView.as_view(), name='send-verification-sms'),
     path('users/verify-sms/', VerifySMSView.as_view(), name='verify-sms'),
     path('users/request-specialty-change/', RequestSpecialtyChangeView.as_view(), name='request-specialty-change'),
+    path('specialty-change-requests/', SpecialtyChangeRequestListView.as_view(), name='specialty-change-request-list'),
+    path('specialty-change-requests/<int:pk>/review/', SpecialtyChangeRequestReviewView.as_view(), name='specialty-change-request-review'),
     # Section-scoped multi-specialist forms
     path('inputs/multidisciplinary-assessment/sections/<str:section_key>/',
          AssessmentSectionWriteView.as_view(), name='assessment-section-write'),

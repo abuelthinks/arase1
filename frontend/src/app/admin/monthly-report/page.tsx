@@ -106,9 +106,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
 
     const [report, setReport] = useState<MonthlyReportData | null>(null);
     const [meta, setMeta] = useState<{ student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
-    const [reportStatus, setReportStatus] = useState<string>("DRAFT");
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
     const [copied, setCopied] = useState(false);
     const [showAuditModal, setShowAuditModal] = useState(false);
@@ -122,7 +120,6 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
             .then(res => {
                 setReport(res.data.report_data);
                 setMeta({ student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
-                setReportStatus(res.data.status);
             })
             .catch(() => setErrorMsg("Failed to load monthly report."))
             .finally(() => setLoading(false));
@@ -136,15 +133,6 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
     const handleDownload = () => {
         // Redirect to download endpoint
         window.location.href = `${API_BASE_URL}/api/monthly-report/${reportId}/download/`;
-    };
-
-    const handleSaveStatus = async (newStatus: string) => {
-        setSaving(true);
-        try {
-            const res = await api.patch(`/api/monthly-report/${reportId}/`, { status: newStatus });
-            setReportStatus(res.data.status);
-        } catch { setErrorMsg("Failed to save status."); }
-        finally { setSaving(false); }
     };
 
     const handleCopyLink = () => {
@@ -177,8 +165,6 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
         if (s >= 2) return semanticToneHex("warning");
         return semanticToneHex("danger");
     };
-    const reportStatusStyle = semanticToneHex(reportStatus === "FINAL" ? "success" : "warning");
-
     return (
         <div style={{ maxWidth: propHideNavigation ? "1024px" : "900px", margin: "0 auto", padding: propHideNavigation ? "1.5rem 1.25rem 3rem" : "2rem 1rem 4rem" }}>
             {/* Breadcrumb Nav */}
@@ -206,9 +192,6 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                 <div>
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                         📊 Monthly Progress Report
-                        <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: "6px", verticalAlign: "middle", background: reportStatusStyle.bg, color: reportStatusStyle.color, border: `1px solid ${reportStatusStyle.border}` }}>
-                            {reportStatus === "FINAL" ? "FINAL" : "DRAFT"}
-                        </span>
                     </h1>
                     <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
                         {meta.student_name} · {report.report_period || "Progress Report"} · Generated {formatDocumentDateTime(meta.created_at)}
@@ -224,18 +207,6 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                             style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-secondary)", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)" }}>
                             📥 Download PDF
                         </button>
-                        <span className="hidden md:block" style={{ width: "1px", height: "24px", background: "var(--text-muted)", margin: "0 4px" }}></span>
-                        {reportStatus !== "FINAL" ? (
-                            <button onClick={() => handleSaveStatus("FINAL")} disabled={saving}
-                                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: semanticToneHex("success").color, color: "white", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                {saving ? "Saving…" : "✅ Finalize"}
-                            </button>
-                        ) : (
-                            <button onClick={() => handleSaveStatus("DRAFT")} disabled={saving}
-                                style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-light)", background: "var(--bg-primary)", color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                                {saving ? "Saving…" : "Revert to Draft"}
-                            </button>
-                        )}
                     </div>
                 )}
             </div>
@@ -383,7 +354,7 @@ export function MonthlyReportContent({ propId, propHideNavigation }: { propId?: 
                                         </div>
                                         <div>
                                             <p style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "var(--text-primary)", fontWeight: 700 }}>
-                                                {item.action === "GENERATED" ? "AI Generated Draft" : item.action === "EDITED_DRAFT" ? "Draft Saved" : "Document Finalized"}
+                                                {item.action === "GENERATED" ? "AI Generated" : item.action === "EDITED_DRAFT" ? "Edited" : "Document Finalized"}
                                             </p>
                                             <p style={{ margin: "0 0 2px 0", fontSize: "0.8rem", color: "var(--text-secondary)" }}>By {item.edited_by}</p>
                                             <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>{new Date(item.created_at).toLocaleString()}</p>

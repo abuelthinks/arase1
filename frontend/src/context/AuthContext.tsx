@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import api, { fetchCsrfCookie } from "@/lib/api";
+import type { SpecialtyChangeRequest } from "@/types";
 
 type Role = "ADMIN" | "TEACHER" | "SPECIALIST" | "PARENT";
 
@@ -15,9 +16,13 @@ interface UserPayload {
     is_phone_verified?: boolean;
     specialty?: string;
     specialties?: string[];
+    grade_level?: string;
     languages?: string[];
     specialist_onboarding_complete?: boolean;
     specialist_onboarding_missing?: string[];
+    teacher_profile_complete?: boolean;
+    teacher_profile_missing?: string[];
+    pending_specialty_request?: SpecialtyChangeRequest | null;
 }
 
 interface AuthContextType {

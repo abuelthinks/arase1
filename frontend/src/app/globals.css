@@ -1589,5 +1589,46 @@ h1, h2, h3 {
   }
 }
 
+/* ── Mobile Readability ──────────────────────────────────────────────────── */
+/*
+ * Phone-sized screens get a larger form type scale. 15px labels and controls
+ * are comfortable on a desktop monitor at arm's length but cramped on a phone,
+ * and any text input under 16px makes iOS zoom the whole page on focus — which
+ * then leaves the form horizontally scrolled. Overriding the tokens lifts every
+ * form built on them (parent assessment, specialist, teacher) in one place.
+ */
+@media (max-width: 767px) {
+  :root {
+    --form-section-title-size: 1.125rem;  /* 18px */
+    --form-field-label-size: 1rem;        /* 16px */
+    --form-control-font-size: 1rem;       /* 16px */
+    --form-helper-font-size: 0.9375rem;   /* 15px */
+    --form-small-font-size: 0.875rem;     /* 14px */
+  }
+
+  /* Catches inline-styled and utility-class controls alike; many predate the
+     tokens and hardcode 0.85–0.9rem, which is where the iOS zoom comes from. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: max(16px, var(--form-control-font-size)) !important;
+    line-height: var(--form-line-height);
+  }
+
+  /* Tailwind's two smallest steps carry most body copy and captions in this
+     app. One step up on phones, scoped to main so the nav, toasts and floating
+     chrome keep their compact scale. The extra `main` beats the plain utility
+     on specificity, so no !important is needed. */
+  main .text-xs {
+    font-size: 0.8125rem;  /* 12px → 13px */
+    line-height: 1.15rem;
+  }
+
+  main .text-sm {
+    font-size: 0.9375rem;  /* 14px → 15px */
+    line-height: 1.375rem;
+  }
+}
+
 
 

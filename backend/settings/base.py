@@ -200,7 +200,11 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '30/minute',
-        'user': '200/minute',
+        # Collaborative form editing is chatty — section autosaves, peer sync and
+        # workspace refreshes all bill to the same per-user bucket. 200/min was
+        # low enough that two specialists working a form together could exhaust
+        # it mid-session and get 429s on every subsequent page load.
+        'user': os.environ.get('USER_THROTTLE_RATE', '600/minute'),
         'sms': '5/hour',
         'sms_verify': '10/hour',
     },

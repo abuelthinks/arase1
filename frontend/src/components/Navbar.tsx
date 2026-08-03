@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, ChevronDown } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import AccessibilityToolbar from "@/components/AccessibilityToolbar";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -31,7 +32,10 @@ export default function Navbar() {
 
             {/* Avatar dropdown & Notifications */}
             <div className="flex items-center gap-1.5 relative">
-                <AccessibilityToolbar />
+                {/* This bar is the phone-only chrome (the desktop shell renders the
+                    floating toolbar instead). Parents get just light/dark here —
+                    contrast and text scaling stay on the larger-screen panel. */}
+                {user?.role === "PARENT" ? <ThemeToggle /> : <AccessibilityToolbar />}
                 <NotificationBell />
 
                 <div className="relative group">

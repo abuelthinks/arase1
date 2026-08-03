@@ -164,6 +164,74 @@ def notify_parent_welcome_to_register_child(user, student=None):
     )
 
 
+def notify_specialist_welcome_to_complete_profile(user):
+    """Welcome a newly registered specialist and point them at onboarding."""
+    if user.role != 'SPECIALIST':
+        return None
+
+    first_name = (user.first_name or '').strip()
+    title = f"Welcome to ARASE{f', {first_name}' if first_name else ''}"
+
+    specialties = user.specialty_list()
+    if specialties:
+        message = (
+            f"You're set up for {', '.join(specialties)}. "
+            "Add your name and session languages to finish your profile — "
+            "you can ask admin to correct your specialties there if anything looks wrong."
+        )
+    else:
+        message = (
+            "Add your name and session languages to finish your profile. "
+            "Admin will assign your specialties shortly."
+        )
+
+    return notify_user_in_app(
+        user=user,
+        notification_type='SYSTEM',
+        title=title,
+        message=message,
+        link="/specialist-onboarding",
+        actor_name="ARASE",
+        dedupe_key=f"specialist-welcome-complete-profile:{user.id}",
+    )
+
+
+def notify_teacher_welcome_to_complete_profile(user):
+    """Welcome a newly registered teacher and point them at their profile.
+
+    Unlike the specialist version this is a nudge, not a gate — a teacher can
+    work with an incomplete profile, but their languages feed student matching.
+    """
+    if user.role != 'TEACHER':
+        return None
+
+    first_name = (user.first_name or '').strip()
+    title = f"Welcome to ARASE{f', {first_name}' if first_name else ''}"
+
+    grade_level = user.grade_level or ''
+    if grade_level:
+        message = (
+            f"You're set up for {grade_level}. "
+            "Add the languages you can use with families so students get matched to you correctly — "
+            "ask admin if your grade level looks wrong."
+        )
+    else:
+        message = (
+            "Add the languages you can use with families so students get matched to you correctly. "
+            "Admin will assign your grade level shortly."
+        )
+
+    return notify_user_in_app(
+        user=user,
+        notification_type='SYSTEM',
+        title=title,
+        message=message,
+        link=f"/users/{user.id}",
+        actor_name="ARASE",
+        dedupe_key=f"teacher-welcome-complete-profile:{user.id}",
+    )
+
+
 def notify_parent_assessment_unlock_requested(parent_user, student):
     """Notify admins that a parent asked to edit a submitted parent assessment."""
     student_name = f"{student.first_name} {student.last_name}".strip()
@@ -200,6 +268,66 @@ def notify_specialist_tracker_unlock_requested(specialist_user, student):
         message=f"{actor} has requested to unlock the specialist progress tracker for {student_name}.",
         link=f"/workspace?studentId={student.id}&workspace=forms&tab=multi_tracker",
         actor_name=actor,
+    )
+
+
+def _describe_specialty_delta(added, removed):
+    """Human-readable summary of an add/remove specialty delta."""
+    parts = []
+    if added:
+        parts.append(f"add {', '.join(added)}")
+    if removed:
+        parts.append(f"remove {', '.join(removed)}")
+    return ' and '.join(parts) if parts else 'no change'
+
+
+def notify_specialty_change_requested(change_request):
+    """Notify admins that a specialist asked to add or remove specialties."""
+    specialist = change_request.specialist
+    actor = _user_display_name(specialist)
+    delta = _describe_specialty_delta(
+        change_request.added_specialties(),
+        change_request.removed_specialties(),
+    )
+    message = f"{actor} requested to {delta}."
+    if change_request.note:
+        message = f"{message} Note: {change_request.note}"
+
+    notify_admins_in_app(
+        notification_type='SYSTEM',
+        title=f"Specialty change request: {actor}",
+        message=message,
+        link=f"/users/{specialist.id}",
+        actor_name=actor,
+    )
+
+
+def notify_specialty_change_reviewed(change_request):
+    """Notify the specialist that an admin approved or rejected their request."""
+    specialist = change_request.specialist
+    reviewer = _user_display_name(change_request.reviewed_by) if change_request.reviewed_by else 'Admin'
+    approved = change_request.status == 'APPROVED'
+
+    if approved:
+        applied = ', '.join(change_request.requested_specialties or []) or 'no specialties'
+        message = f"{reviewer} approved your specialty change request. You are now assigned to {applied}."
+    else:
+        delta = _describe_specialty_delta(
+            change_request.added_specialties(),
+            change_request.removed_specialties(),
+        )
+        message = f"{reviewer} declined your request to {delta}. Your specialties are unchanged."
+
+    if change_request.admin_note:
+        message = f"{message} Note: {change_request.admin_note}"
+
+    return notify_user_in_app(
+        user=specialist,
+        notification_type='SYSTEM',
+        title='Specialty change approved' if approved else 'Specialty change declined',
+        message=message,
+        link='/workspace',
+        actor_name=reviewer,
     )
 
 
@@ -364,34 +492,6 @@ def notify_tracker_progress(user, student, cycle, submitted_count=None, total_re
         exclude_user=user if user else None,
         actor_name=actor,
         dedupe_key=f"tracker-progress:{student.id}:{cycle.id}:{submitted_count}:{total_required}",
-    )
-
-
-# ─── Auto-Generation Notifications ───────────────────────────────────────────
-
-def notify_auto_report_ready(student, doc):
-    """Notify admins that a monthly report was auto-generated and needs review."""
-    student_name = f"{student.first_name} {student.last_name}"
-    notify_admins_in_app(
-        notification_type='REPORT_GENERATED',
-        title=f"Monthly report ready: {student_name}",
-        message=f"All trackers submitted. Draft report auto-generated and awaiting review.",
-        link=f"/workspace?studentId={student.id}&workspace=reports&view=monthly&docId={doc.id}",
-        actor_name="System",
-        dedupe_key=f"monthly-report-generated:{doc.id}:admins",
-    )
-
-
-def notify_auto_iep_ready(student, doc):
-    """Notify admins that an IEP was auto-generated."""
-    student_name = f"{student.first_name} {student.last_name}"
-    notify_admins_in_app(
-        notification_type='IEP_GENERATED',
-        title=f"IEP draft ready for review: {student_name}",
-        message="Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize when ready.",
-        link=f"/workspace?studentId={student.id}&workspace=reports&view=iep&docId={doc.id}",
-        actor_name="System",
-        dedupe_key=f"iep-generated:{doc.id}:admins",
     )
 
 

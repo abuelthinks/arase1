@@ -58,6 +58,12 @@ class User(AbstractUser):
         blank=True,
         help_text="All specialist disciplines this user holds. Source of truth for section ownership.",
     )
+    grade_level = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text="The grade level a teacher handles. Assigned by admin, used for student matching.",
+    )
     languages = models.JSONField(
         default=list,
         blank=True,
@@ -77,6 +83,28 @@ class User(AbstractUser):
             return [str(language).strip() for language in self.languages if str(language).strip()]
         return []
 
+    def teacher_profile_missing(self) -> list[str]:
+        """Profile fields a teacher can fill in themselves.
+
+        Grade level is deliberately excluded — it is admin-assigned (like a
+        specialist's specialty), so a teacher can never clear it from their own
+        profile. A missing grade level surfaces on the admin dashboard instead.
+        """
+        if self.role != 'TEACHER':
+            return []
+
+        missing = []
+        if not (self.first_name or '').strip():
+            missing.append('first_name')
+        if not (self.last_name or '').strip():
+            missing.append('last_name')
+        if not self.language_list():
+            missing.append('languages')
+        return missing
+
+    def is_teacher_profile_complete(self) -> bool:
+        return len(self.teacher_profile_missing()) == 0
+
     def specialist_onboarding_missing(self) -> list[str]:
         if self.role != 'SPECIALIST':
             return []
@@ -94,6 +122,73 @@ class User(AbstractUser):
 
     def is_specialist_onboarding_complete(self) -> bool:
         return len(self.specialist_onboarding_missing()) == 0
+
+
+class SpecialtyChangeRequest(models.Model):
+    """
+    A specialist's proposed edit to their own assigned specialties.
+
+    `requested_specialties` is the full desired end state, not a delta — the
+    add/remove diff is derived against whatever the specialist holds right now,
+    so an admin editing specialties while a request is open never leaves a
+    stale delta behind. Nothing is applied until an admin approves.
+    """
+
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+        ('CANCELLED', 'Cancelled'),
+    )
+
+    specialist = models.ForeignKey(User, on_delete=models.CASCADE, related_name='specialty_change_requests')
+    current_specialties = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Snapshot of the specialist's specialties when the request was raised.",
+    )
+    requested_specialties = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Full set of specialties the specialist wants to end up with.",
+    )
+    note = models.TextField(blank=True, default='', help_text="Specialist's explanation for admin.")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    admin_note = models.TextField(blank=True, default='', help_text="Admin's reply when approving or rejecting.")
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='specialty_change_reviews',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['specialist'],
+                condition=models.Q(status='PENDING'),
+                name='unique_pending_specialty_change_request',
+            ),
+        ]
+
+    def baseline_specialties(self) -> list[str]:
+        """Live specialties for a pending request; the snapshot once it is decided."""
+        if self.status == 'PENDING':
+            return self.specialist.specialty_list()
+        return list(self.current_specialties or [])
+
+    def added_specialties(self) -> list[str]:
+        baseline = self.baseline_specialties()
+        return [s for s in (self.requested_specialties or []) if s not in baseline]
+
+    def removed_specialties(self) -> list[str]:
+        requested = self.requested_specialties or []
+        return [s for s in self.baseline_specialties() if s not in requested]
+
+    def __str__(self):
+        return f"Specialty request by {self.specialist.email} ({self.status})"
+
 
 class PhoneVerification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phone_verifications')
@@ -118,6 +213,12 @@ class Invitation(models.Model):
         default=list,
         blank=True,
         help_text="Specialist disciplines pre-assigned by admin, applied to the account on registration.",
+    )
+    grade_level = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text="Grade level pre-assigned by admin, applied to the teacher account on registration.",
     )
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

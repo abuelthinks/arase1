@@ -3,7 +3,11 @@ Celery tasks for async processing.
 These tasks are dispatched from views and run in the background by Celery workers.
 """
 
+import logging
+
 from celery import shared_task
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
@@ -27,10 +31,17 @@ def generate_iep_task(self, student_id, cycle_id, user_id=None):
         from api.services.realtime_service import create_activity_event
         create_activity_event(
             event_type='REPORT_READY',
-            title=f"IEP draft ready for {doc.student}",
+            title=f"IEP ready for {doc.student}",
             student=doc.student,
             metadata={'document_id': doc.id, 'document_type': 'IEP'},
         )
+        # The document is complete and visible the moment it lands, so this is
+        # where the family and the care team get told.
+        try:
+            from api.services.notification_service import notify_iep_finalized
+            notify_iep_finalized(doc.student, doc.id)
+        except Exception:
+            logger.warning("Could not notify users about IEP %s", doc.id, exc_info=True)
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
         try:
@@ -70,10 +81,17 @@ def generate_monthly_report_task(self, student_id, cycle_id, user_id=None):
         from api.services.realtime_service import create_activity_event
         create_activity_event(
             event_type='REPORT_READY',
-            title=f"Monthly report draft ready for {doc.student}",
+            title=f"Monthly report ready for {doc.student}",
             student=doc.student,
             metadata={'document_id': doc.id, 'document_type': 'MONTHLY'},
         )
+        # Parents, specialists and the teacher are told here — there is no
+        # separate finalize step left to announce it.
+        try:
+            from api.services.notification_service import notify_monthly_report_finalized
+            notify_monthly_report_finalized(doc.student, doc.id)
+        except Exception:
+            logger.warning("Could not notify users about monthly report %s", doc.id, exc_info=True)
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
         try:

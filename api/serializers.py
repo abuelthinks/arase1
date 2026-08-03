@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .languages import normalize_languages
+from .grade_levels import validate_grade_level
 from .specialties import validate_specialties
 from .models import (
     User, Student, StudentAccess, ReportCycle, GeneratedDocument,
@@ -10,7 +11,7 @@ from .models import (
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     Invitation, Notification, SpecialistPreference, SectionContribution,
     SpecialistAvailabilitySlot, AssessmentAppointment, DiagnosticReport,
-    ActivityEvent,
+    ActivityEvent, SpecialtyChangeRequest,
 )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -34,6 +35,53 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['role'] = user.role
         return token
 
+class SpecialtyChangeRequestSerializer(serializers.ModelSerializer):
+    specialist_name = serializers.SerializerMethodField()
+    specialist_email = serializers.CharField(source='specialist.email', read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+    added = serializers.SerializerMethodField()
+    removed = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SpecialtyChangeRequest
+        fields = [
+            'id', 'specialist', 'specialist_name', 'specialist_email',
+            'current_specialties', 'requested_specialties', 'added', 'removed',
+            'note', 'status', 'admin_note', 'reviewed_by_name', 'reviewed_at',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+    def _display_name(self, user):
+        if not user:
+            return ''
+        return f"{user.first_name} {user.last_name}".strip() or user.email
+
+    def get_specialist_name(self, obj):
+        return self._display_name(obj.specialist)
+
+    def get_reviewed_by_name(self, obj):
+        return self._display_name(obj.reviewed_by)
+
+    def get_added(self, obj):
+        return obj.added_specialties()
+
+    def get_removed(self, obj):
+        return obj.removed_specialties()
+
+
+def _pending_specialty_request(user):
+    """Serialized pending specialty change request for a specialist, or None."""
+    if getattr(user, 'role', None) != 'SPECIALIST':
+        return None
+    prefetched = getattr(user, 'prefetched_pending_specialty_requests', None)
+    if prefetched is not None:
+        pending = prefetched[0] if prefetched else None
+    else:
+        pending = user.specialty_change_requests.filter(status='PENDING').first()
+    return SpecialtyChangeRequestSerializer(pending).data if pending else None
+
+
 class AdminUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     specialties = serializers.ListField(
@@ -48,18 +96,26 @@ class AdminUserSerializer(serializers.ModelSerializer):
     )
     specialist_onboarding_complete = serializers.SerializerMethodField()
     specialist_onboarding_missing = serializers.SerializerMethodField()
+    teacher_profile_complete = serializers.SerializerMethodField()
+    teacher_profile_missing = serializers.SerializerMethodField()
     assigned_students_count = serializers.SerializerMethodField()
     assigned_student_names = serializers.SerializerMethodField()
 
     assigned_students = serializers.SerializerMethodField()
+    pending_specialty_request = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['id', 'email', 'role', 'first_name', 'last_name', 'specialty',
-                  'specialties', 'languages',
+                  'specialties', 'grade_level', 'languages',
                   'phone_number', 'is_phone_verified', 'is_active',
                   'password', 'assigned_students_count', 'assigned_student_names', 'assigned_students',
-                  'specialist_onboarding_complete', 'specialist_onboarding_missing']
+                  'specialist_onboarding_complete', 'specialist_onboarding_missing',
+                  'teacher_profile_complete', 'teacher_profile_missing',
+                  'pending_specialty_request']
+
+    def get_pending_specialty_request(self, obj):
+        return _pending_specialty_request(obj)
 
     def get_assigned_students_count(self, obj):
         return obj.student_access.count()
@@ -104,6 +160,23 @@ class AdminUserSerializer(serializers.ModelSerializer):
         validated_data['specialty'] = normalized[0] if normalized else ''
         return normalized
 
+    def _resolve_grade_level(self, role: str, validated_data: dict, instance=None) -> str:
+        """Normalize the teacher grade level, falling back to what the user already holds."""
+        if 'grade_level' in validated_data:
+            raw = validated_data.get('grade_level') or ''
+        elif instance is not None:
+            raw = instance.grade_level or ''
+        else:
+            raw = ''
+
+        try:
+            normalized = validate_grade_level(role, raw)
+        except ValueError as exc:
+            raise serializers.ValidationError({"grade_level": str(exc)})
+
+        validated_data['grade_level'] = normalized
+        return normalized
+
     def validate_languages(self, value):
         try:
             return normalize_languages(value)
@@ -116,9 +189,16 @@ class AdminUserSerializer(serializers.ModelSerializer):
     def get_specialist_onboarding_missing(self, obj):
         return obj.specialist_onboarding_missing() if hasattr(obj, 'specialist_onboarding_missing') else []
 
+    def get_teacher_profile_complete(self, obj):
+        return obj.is_teacher_profile_complete() if hasattr(obj, 'is_teacher_profile_complete') else True
+
+    def get_teacher_profile_missing(self, obj):
+        return obj.teacher_profile_missing() if hasattr(obj, 'teacher_profile_missing') else []
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         self._resolve_specialties(validated_data.get('role', ''), validated_data)
+        self._resolve_grade_level(validated_data.get('role', ''), validated_data)
         # Title-case names
         if 'first_name' in validated_data:
             validated_data['first_name'] = validated_data['first_name'].strip().title()
@@ -134,6 +214,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password', None)
         next_role = validated_data.get('role', instance.role)
         self._resolve_specialties(next_role, validated_data, instance=instance)
+        self._resolve_grade_level(next_role, validated_data, instance=instance)
         if 'first_name' in validated_data:
             validated_data['first_name'] = validated_data['first_name'].strip().title()
         if 'last_name' in validated_data:
@@ -153,24 +234,36 @@ class SelfUserSerializer(serializers.ModelSerializer):
     )
     specialist_onboarding_complete = serializers.SerializerMethodField()
     specialist_onboarding_missing = serializers.SerializerMethodField()
+    teacher_profile_complete = serializers.SerializerMethodField()
+    teacher_profile_missing = serializers.SerializerMethodField()
     assigned_students_count = serializers.SerializerMethodField()
     assigned_student_names = serializers.SerializerMethodField()
     assigned_students = serializers.SerializerMethodField()
+    pending_specialty_request = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'role', 'first_name', 'last_name',
-            'specialty', 'specialties', 'languages', 'phone_number', 'is_phone_verified',
+            'specialty', 'specialties', 'grade_level', 'languages',
+            'phone_number', 'is_phone_verified',
             'specialist_onboarding_complete', 'specialist_onboarding_missing',
-            'assigned_students_count', 'assigned_student_names', 'assigned_students'
+            'teacher_profile_complete', 'teacher_profile_missing',
+            'assigned_students_count', 'assigned_student_names', 'assigned_students',
+            'pending_specialty_request'
         ]
+        # Grade levels sit with specialty: admin-assigned, never self-editable.
         read_only_fields = [
             'id', 'email', 'role',
-            'specialty', 'specialties', 'phone_number', 'is_phone_verified',
+            'specialty', 'specialties', 'grade_level', 'phone_number', 'is_phone_verified',
             'specialist_onboarding_complete', 'specialist_onboarding_missing',
-            'assigned_students_count', 'assigned_student_names', 'assigned_students'
+            'teacher_profile_complete', 'teacher_profile_missing',
+            'assigned_students_count', 'assigned_student_names', 'assigned_students',
+            'pending_specialty_request'
         ]
+
+    def get_pending_specialty_request(self, obj):
+        return _pending_specialty_request(obj)
 
     def get_assigned_students_count(self, obj):
         return obj.student_access.count()
@@ -204,6 +297,12 @@ class SelfUserSerializer(serializers.ModelSerializer):
 
     def get_specialist_onboarding_missing(self, obj):
         return obj.specialist_onboarding_missing() if hasattr(obj, 'specialist_onboarding_missing') else []
+
+    def get_teacher_profile_complete(self, obj):
+        return obj.is_teacher_profile_complete() if hasattr(obj, 'is_teacher_profile_complete') else True
+
+    def get_teacher_profile_missing(self, obj):
+        return obj.teacher_profile_missing() if hasattr(obj, 'teacher_profile_missing') else []
 
 class StudentSerializer(serializers.ModelSerializer):
     has_parent_assessment = serializers.SerializerMethodField()
@@ -346,18 +445,14 @@ class StudentSerializer(serializers.ModelSerializer):
                 return action('Awaiting Specialists', 'waiting', workspace='forms', tab='multi_assessment', priority=30)
 
         if status == 'ASSESSED':
-            if latest_iep and latest_iep.status != 'FINAL':
-                return action('Finalize IEP', 'positive', 'reports', view='iep', doc_id=latest_iep.id, priority=10)
             if not latest_iep and has_parent and has_finalized_multi:
-                return action('Generate IEP draft', 'info', 'reports', view='generator', priority=20)
-            if latest_iep and latest_iep.status == 'FINAL':
+                return action('Generate IEP', 'info', 'reports', view='generator', priority=20)
+            if latest_iep:
                 return action('Ready for placement', 'positive', 'overview', priority=30)
 
         if status == 'ENROLLED':
-            if latest_iep and latest_iep.status != 'FINAL':
-                return action('Finalize IEP', 'positive', 'reports', view='iep', doc_id=latest_iep.id, priority=10)
             if not latest_iep and has_parent and has_finalized_multi:
-                return action('Generate IEP draft', 'info', 'reports', view='generator', priority=20)
+                return action('Generate IEP', 'info', 'reports', view='generator', priority=20)
 
         if status == 'INTEGRATED' and not has_teacher:
             return action('Assign teacher', 'warning', 'team', team_role='TEACHER', priority=20)
@@ -367,8 +462,6 @@ class StudentSerializer(serializers.ModelSerializer):
             specialist_done = MultidisciplinaryProgressTracker.objects.filter(student=obj, report_cycle=cycle, finalized_at__isnull=False).exists()
             teacher_required = status == 'INTEGRATED'
             teacher_done = not teacher_required or SpedProgressTracker.objects.filter(student=obj, report_cycle=cycle).exists()
-            if latest_monthly and latest_monthly.status == 'DRAFT':
-                return action('Review monthly', 'positive', 'reports', view='monthly', doc_id=latest_monthly.id, priority=10)
             if not (parent_done and specialist_done and teacher_done):
                 next_tab = 'parent_tracker'
                 if parent_done and not specialist_done:
@@ -493,10 +586,11 @@ class GeneratedDocumentSerializer(serializers.ModelSerializer):
 
 class InvitationSerializer(serializers.ModelSerializer):
     specialties = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    grade_level = serializers.CharField(required=False, allow_blank=True, default='')
 
     class Meta:
         model = Invitation
-        fields = ['id', 'email', 'token', 'role', 'specialties', 'is_used', 'created_at', 'expires_at']
+        fields = ['id', 'email', 'token', 'role', 'specialties', 'grade_level', 'is_used', 'created_at', 'expires_at']
         read_only_fields = ['id', 'token', 'is_used', 'created_at', 'expires_at']
 
     def validate(self, attrs):
@@ -506,13 +600,18 @@ class InvitationSerializer(serializers.ModelSerializer):
             attrs['specialties'] = validate_specialties(role, attrs.get('specialties'))
         except ValueError as exc:
             raise serializers.ValidationError({'specialties': str(exc)})
+        try:
+            attrs['grade_level'] = validate_grade_level(role, attrs.get('grade_level'))
+        except ValueError as exc:
+            raise serializers.ValidationError({'grade_level': str(exc)})
         return attrs
 
 class AcceptInvitationSerializer(serializers.Serializer):
     token = serializers.UUIDField()
     password = serializers.CharField(write_only=True)
-    first_name = serializers.CharField(required=False, allow_blank=True, default="")
-    last_name = serializers.CharField(required=False, allow_blank=True, default="")
+    # Required: a nameless staff account shows up blank everywhere it is assigned.
+    first_name = serializers.CharField(required=True, allow_blank=False, trim_whitespace=True)
+    last_name = serializers.CharField(required=True, allow_blank=False, trim_whitespace=True)
     phone_number = serializers.RegexField(
         regex=r'^\+?[0-9\s\-\(\)]{7,15}$',
         required=False, 

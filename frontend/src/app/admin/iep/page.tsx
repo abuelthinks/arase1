@@ -131,7 +131,6 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
     const { user } = useAuth();
 
     const [iep, setIep] = useState<IEPData | null>(null);
-    const [iepStatus, setIepStatus] = useState<string>("DRAFT");
     const [meta, setMeta] = useState<{ student_id: number; student_name: string; created_at: string; report_cycle: { start: string; end: string } } | null>(null);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -154,11 +153,6 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 loadedIepStr.current = JSON.stringify(res.data.iep_data);
                 setSectionVisibility(res.data.pdf_section_visibility || {});
                 setMeta({ student_id: res.data.student_id, student_name: res.data.student_name, created_at: res.data.created_at, report_cycle: res.data.report_cycle });
-                setIepStatus(res.data.status);
-                if (res.data.status === "DRAFT") {
-                    setEditing(true);
-                    editSnapshotStr.current = JSON.stringify(res.data.iep_data);
-                }
             })
             .catch(() => setErrorMsg("Failed to load IEP."))
             .finally(() => setLoading(false));
@@ -172,9 +166,8 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
         
         const timeoutId = setTimeout(() => {
             setSaving(true);
-            api.patch(`/api/iep/${iepId}/`, { iep_data: iep, status: iepStatus })
-                .then(res => {
-                    setIepStatus(res.data.status);
+            api.patch(`/api/iep/${iepId}/`, { iep_data: iep })
+                .then(() => {
                     loadedIepStr.current = currentIepStr;
                     setErrorMsg("");
                 })
@@ -183,7 +176,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
         }, 1500);
 
         return () => clearTimeout(timeoutId);
-    }, [iep, editing, iepId, iepStatus]);
+    }, [iep, editing, iepId]);
 
     if (!iepId) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Missing IEP ID.</div>;
     if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>Loading IEP…</div>;
@@ -201,24 +194,20 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
         });
     };
 
-    const handleSave = async (newStatus?: string) => {
+    const handleSave = async () => {
         setSaving(true);
-        const payloadStatus = newStatus || iepStatus;
         try {
-            const res = await api.patch(`/api/iep/${iepId}/`, { iep_data: iep, status: payloadStatus });
-            setIepStatus(res.data.status);
-            if (newStatus === "FINAL") {
-                setEditing(false);
-                // Nudge the admin toward the next step (enroll / integrate).
-                const studentId = meta?.student_id;
-                toast.success("IEP finalized.", {
-                    duration: 8000,
-                    action: studentId ? {
-                        label: "Go to actions",
-                        onClick: () => router.push(`/workspace?studentId=${studentId}&workspace=overview`),
-                    } : undefined,
-                });
-            }
+            await api.patch(`/api/iep/${iepId}/`, { iep_data: iep });
+            setEditing(false);
+            // Nudge the admin toward the next step (enroll / integrate).
+            const studentId = meta?.student_id;
+            toast.success("Changes saved.", {
+                duration: 8000,
+                action: studentId ? {
+                    label: "Go to actions",
+                    onClick: () => router.push(`/workspace?studentId=${studentId}&workspace=overview`),
+                } : undefined,
+            });
         } catch { setErrorMsg("Failed to save."); }
         finally { setSaving(false); }
     };
@@ -305,9 +294,6 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                 <div>
                     <h1 className="text-xl md:text-2xl font-extrabold text-fg m-0 flex items-center gap-2.5 flex-wrap">
                         Comprehensive AI-Generated IEP
-                        <span className={iepBadgeClass(iepStatus === "FINAL" ? "success" : "warning", "rounded border")}>
-                            {iepStatus === "FINAL" ? "FINAL" : "DRAFT"}
-                        </span>
                     </h1>
                     <p className="text-xs text-muted mt-1">
                         {meta.student_name} · Generated {formatDocumentDateTime(meta.created_at)}
@@ -333,15 +319,15 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                                         setIep(original);
                                         loadedIepStr.current = snapshot;
                                         setSaving(true);
-                                        api.patch(`/api/iep/${iepId}/`, { iep_data: original, status: iepStatus })
+                                        api.patch(`/api/iep/${iepId}/`, { iep_data: original })
                                             .then(() => setErrorMsg(""))
                                             .catch(() => setErrorMsg("Failed to revert changes."))
                                             .finally(() => setSaving(false));
                                     }
                                     setEditing(false);
                                 }} className="btn-slate text-xs py-1.5 px-3">Cancel Edit</button>
-                                <button onClick={() => handleSave("FINAL")} disabled={saving} className="btn-green text-xs py-1.5 px-3">
-                                    ✅ Finalize
+                                <button onClick={() => handleSave()} disabled={saving} className="btn-green text-xs py-1.5 px-3">
+                                    ✅ Done Editing
                                 </button>
                                 <span className="text-[0.7rem] text-muted italic ml-1">
                                     {saving ? "Saving…" : "All changes saved"}
@@ -580,7 +566,7 @@ export function IEPViewerContent({ propId, propHideNavigation }: { propId?: stri
                                         </div>
                                         <div>
                                             <p className="m-0 text-sm font-bold text-fg">
-                                                {item.action === "GENERATED" ? "AI Generated Draft" : item.action === "EDITED_DRAFT" ? "Draft Saved" : "Document Finalized"}
+                                                {item.action === "GENERATED" ? "AI Generated" : item.action === "EDITED_DRAFT" ? "Edited" : "Document Finalized"}
                                             </p>
                                             <p className="m-0 text-xs text-muted">By {item.edited_by}</p>
                                             <p className="m-0 text-[0.7rem] text-faint mt-0.5">{new Date(item.created_at).toLocaleString()}</p>

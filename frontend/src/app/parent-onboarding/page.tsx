@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { semanticToneClass, type SemanticTone } from "@/lib/role-colors";
+import { Languages } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -240,7 +241,7 @@ export function ParentFormContent({
     const getStepRequiredFields = (step: number): (keyof FormState)[] => {
         switch (step) {
             case 0:
-                return ["first_name", "last_name", "date_of_birth", "gender", "grade", "primary_language", "medical_alerts", "parent_name", "phone", "email"];
+                return ["first_name", "last_name", "date_of_birth", "gender", "grade", "primary_language", "medical_alerts", "known_conditions", "parent_name", "email"];
             case 1:
                 return [
                     "milestone_sitting",
@@ -322,6 +323,18 @@ export function ParentFormContent({
 
     const checked = (key: keyof FormState, val: string) =>
         ((form[key] as string[]) ?? []).includes(val);
+
+    // "None" is exclusive: picking it clears every other condition, and picking
+    // any condition clears "None".
+    const toggleKnownCondition = (val: string) =>
+        setForm(prev => {
+            const current = (prev.known_conditions as string[]) ?? [];
+            if (val === "None") {
+                return { ...prev, known_conditions: current.includes("None") ? [] : ["None"], known_conditions_other: "" };
+            }
+            const next = toggle(current.filter(c => c !== "None"), val);
+            return { ...prev, known_conditions: next, known_conditions_other: next.includes("Other") ? prev.known_conditions_other : "" };
+        });
 
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
@@ -580,62 +593,57 @@ export function ParentFormContent({
 
     const dis = isViewMode;
 
+    // Rendered twice — floating beside the unlock line on desktop, in normal
+    // flow below it on phones — so the markup lives in one place.
+    const translationToggle = isViewMode && hasTranslation ? (
+        <button
+            type="button"
+            onClick={() => setIsTranslated(!isTranslated)}
+            aria-pressed={isTranslated}
+            title={isTranslated
+                ? "Showing an AI translation — switch back to the original"
+                : `Translate this form from ${fullSubmission?.original_language || "the original language"} to English`}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm transition-colors ${isTranslated
+                ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                : "border-line bg-card text-muted hover:bg-app hover:text-fg"}`}
+        >
+            <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+            {isTranslated ? "Show original" : "Translate to English"}
+        </button>
+    ) : null;
+
     // ── render ────────────────────────────────────────────────────────────────
 
     return (
         <ProtectedRoute allowedRoles={isViewMode ? undefined : ["PARENT"]}>
-            <div className="max-w-5xl mx-auto px-4 pt-8 pb-12 relative">
+            <div className={`max-w-5xl mx-auto px-4 pb-12 relative ${propHideNavigation ? "pt-5" : "pt-8"}`}>
                 <div ref={topRef} className="absolute -top-10 left-0 w-full" />
-                
-                {/* Top bar */}
-                <div className="flex flex-col items-start gap-4 mb-5 w-full">
-                    <div>
+
+                {/* Embedded in the workspace the tab and status bar above already
+                    carry the subtitle's information, so only the title remains. */}
+                {propHideNavigation ? (
+                    <div className="mb-4">
                         <h1 className="text-2xl font-bold text-fg tracking-tight">
                             Parent Assessment Form
                         </h1>
-                        <p className="text-sm text-muted mt-0.5">
-                            {isViewMode ? "Past submission — read only." : "Help us understand your child's unique needs, strengths, and background."}
+                        <p className="mt-0.5 text-sm text-muted">
+                            {user?.role === "PARENT"
+                                ? "Your child's background, developmental history, and the needs you shared when you joined — the team uses this to build their learning plan."
+                                : "The parent's account of the child's background, developmental history, and needs, collected at intake."}
                         </p>
                     </div>
-                    {isViewMode && hasTranslation && (
-                        <div style={{ display: "flex", gap: "4px", background: "var(--bg-primary)", padding: "4px", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                            <button
-                                onClick={() => setIsTranslated(false)}
-                                style={{
-                                    padding: "6px 12px",
-                                    borderRadius: "6px",
-                                    fontSize: "0.85rem",
-                                    fontWeight: !isTranslated ? 700 : 500,
-                                    color: !isTranslated ? "var(--text-primary)" : "var(--text-secondary)",
-                                    background: !isTranslated ? "white" : "transparent",
-                                    boxShadow: !isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    transition: "all 0.2s"
-                                }}
-                            >
-                                Original
-                            </button>
-                            <button
-                                onClick={() => setIsTranslated(true)}
-                                style={{
-                                    padding: "6px 12px",
-                                    borderRadius: "6px",
-                                    fontSize: "0.85rem",
-                                    fontWeight: isTranslated ? 700 : 500,
-                                    color: isTranslated ? "var(--accent-primary)" : "var(--text-secondary)",
-                                    background: isTranslated ? "white" : "transparent",
-                                    boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    transition: "all 0.2s"
-                                }}
-                            >
-                                English (AI) ✨
-                            </button>
+                ) : (
+                    <div className="flex flex-col items-start gap-4 mb-5 w-full">
+                        <div>
+                            <h1 className="text-2xl font-bold text-fg tracking-tight">
+                                Parent Assessment Form
+                            </h1>
+                            <p className="text-sm text-muted mt-0.5">
+                                {isViewMode ? "Past submission — read only." : "Help us understand your child's unique needs, strengths, and background."}
+                            </p>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 {successMsg && (
                     <div className={`mb-5 rounded-lg border px-4 py-3 text-sm font-semibold ${semanticToneClass("success")}`}>{successMsg}</div>
@@ -645,8 +653,16 @@ export function ParentFormContent({
                     <div className={`mb-5 rounded-lg border px-4 py-3 text-sm ${semanticToneClass("danger")}`}>{errorMsg}</div>
                 )}
 
+                {/* Desktop: zero-height, so it rides the unlock line on the right.
+                    The phone copy renders below that line instead — see further down. */}
+                {translationToggle && (
+                    <div className="hidden h-0 items-start justify-end sm:flex">
+                        {translationToggle}
+                    </div>
+                )}
+
                 {showParentUnlockPanel && (
-                    <div className="mb-5">
+                    <div className="mb-4 sm:pr-44">
                         {user?.role === "ADMIN" ? (
                             (fullSubmission?.unlock_requested || fullSubmission?.unlocked_at) && (
                                 <div className={formBannerClass(specialistSubmitted ? "neutral" : fullSubmission?.unlocked_at ? "success" : "warning")}>
@@ -673,29 +689,34 @@ export function ParentFormContent({
                             )
                         ) : (
                             user?.role === "PARENT" && !specialistSubmitted && (
-                                <div className={formBannerClass(fullSubmission?.unlocked_at ? "success" : fullSubmission?.unlock_requested ? "success" : "neutral")}>
-                                    <div className="text-sm">
-                                        {fullSubmission?.unlocked_at ? (
-                                            <span>This form has been unlocked. You can edit and resubmit it.</span>
-                                        ) : fullSubmission?.unlock_requested ? (
-                                            <span>Unlock request sent to admin. You have requested an admin to unlock this form.</span>
-                                        ) : (
+                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
+                                    {fullSubmission?.unlocked_at ? (
+                                        <span>This form has been unlocked — you can edit and resubmit it.</span>
+                                    ) : fullSubmission?.unlock_requested ? (
+                                        <span>Unlock requested — waiting on an admin.</span>
+                                    ) : (
+                                        <>
                                             <span>Need to make changes?</span>
-                                        )}
-                                    </div>
-                                    {!fullSubmission?.unlock_requested && !fullSubmission?.unlocked_at && (
-                                        <button
-                                            type="button"
-                                            onClick={requestParentUnlock}
-                                            disabled={unlockLoading}
-                                            className="rounded-md border border-line bg-card px-3 py-1.5 text-sm font-semibold text-fg transition-colors hover:border-line hover:bg-app disabled:cursor-not-allowed disabled:opacity-60"
-                                        >
-                                            {unlockLoading ? "Requesting..." : "Request Unlock"}
-                                        </button>
+                                            <button
+                                                type="button"
+                                                onClick={requestParentUnlock}
+                                                disabled={unlockLoading}
+                                                className="font-semibold text-indigo-600 underline underline-offset-2 transition-colors hover:text-indigo-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {unlockLoading ? "Requesting..." : "Request unlock"}
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             )
                         )}
+                    </div>
+                )}
+
+                {/* Phone: below the unlock line, left-aligned with the form. */}
+                {translationToggle && (
+                    <div className="mb-4 flex justify-start sm:hidden">
+                        {translationToggle}
                     </div>
                 )}
 
@@ -751,7 +772,7 @@ export function ParentFormContent({
                                 <Field label="Parent/Guardian Name" required isInvalid={isFieldInvalid("parent_name", 0)}>
                                     <input type="text" className={inputCls} value={form.parent_name} onChange={e => set("parent_name")(e.target.value)} />
                                 </Field>
-                                <Field label="Phone" required isInvalid={isFieldInvalid("phone", 0)}>
+                                <Field label="Phone" isInvalid={isFieldInvalid("phone", 0)}>
                                     <input type="text" className={inputCls} value={form.phone} onChange={e => set("phone")(e.target.value)} />
                                 </Field>
                                 <Field label="Email" required isInvalid={isFieldInvalid("email", 0)}>
@@ -787,12 +808,12 @@ export function ParentFormContent({
                             )}
                         </Field>
 
-                        <Field label="Optional — Known Conditions">
+                        <Field label="Known Conditions" required isInvalid={isFieldInvalid("known_conditions", 0)}>
                             <div className="flex flex-wrap gap-3">
-                                {["Autism", "Speech Delay", "ADHD", "Learning Difficulty", "Developmental Delay", "Sensory Difficulty", "Not sure"].map(c => (
-                                    <Cb key={c} label={c} checked={checked("known_conditions", c)} onChange={() => setArr("known_conditions")(c)} disabled={dis} />
+                                {["None", "Autism", "Speech Delay", "ADHD", "Learning Difficulty", "Developmental Delay", "Sensory Difficulty", "Not sure"].map(c => (
+                                    <Cb key={c} label={c} checked={checked("known_conditions", c)} onChange={() => toggleKnownCondition(c)} disabled={dis} />
                                 ))}
-                                <Cb label="Other:" checked={checked("known_conditions", "Other")} onChange={() => setArr("known_conditions")("Other")} disabled={dis} />
+                                <Cb label="Other:" checked={checked("known_conditions", "Other")} onChange={() => toggleKnownCondition("Other")} disabled={dis} />
                                 {checked("known_conditions", "Other") && (
                                     <input className={`${inputCls} w-48`} placeholder="Specify…" value={form.known_conditions_other} onChange={e => set("known_conditions_other")(e.target.value)} disabled={dis} />
                                 )}

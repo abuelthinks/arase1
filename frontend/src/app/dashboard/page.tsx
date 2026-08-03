@@ -8,13 +8,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
-import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon, Plus, LayoutGrid, List } from "lucide-react";
+import { Calendar, Search, ClipboardList, Clock, CheckCircle2, Sparkles, Archive, FileText, ArrowRight, Users as UsersIcon, Plus, LayoutGrid, List, Smartphone } from "lucide-react";
 import { semanticToneClass, statusColorClass, statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
 import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
 import PageHeader from "@/components/ui/PageHeader";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
+import { isTeacherProfileIncomplete, teacherProfileMessage } from "@/lib/teacher-profile";
 
 interface Student {
     id: number;
@@ -55,10 +56,11 @@ export default function DashboardPage() {
     const [gradeFilter, setGradeFilter] = useState("ALL");
     const [statusFilters, setStatusFilters] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [itemsPerPage, setItemsPerPage] = useState(25);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [studentSortConfig, setStudentSortConfig] = useState<{ key: 'id' | 'name' | 'grade' | 'status' | null; direction: 'asc' | 'desc' | null }>({ key: null, direction: null });
     const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
+    const teacherProfileIncomplete = isTeacherProfileIncomplete(user);
 
     const handleStudentSort = (key: 'id' | 'name' | 'grade' | 'status') => {
         setStudentSortConfig(prev => {
@@ -229,7 +231,9 @@ export default function DashboardPage() {
             case "TEACHER": {
                 const enrolled = students.filter(s => s.status === "ENROLLED").length;
                 if (enrolled === 0) {
-                    return "Your students will appear here once they're enrolled.";
+                    // The empty-state card below explains what happens next — keep this short
+                    // so the same message isn't stacked twice on the page.
+                    return "Your class list is empty right now.";
                 }
                 return `You have ${enrolled} enrolled student${enrolled !== 1 ? "s" : ""} to track this cycle.`;
             }
@@ -240,7 +244,7 @@ export default function DashboardPage() {
                 if (pending > 0) parts.push(`${pending} awaiting assessment`);
                 if (enrolled > 0) parts.push(`${enrolled} enrolled`);
                 if (parts.length === 0) {
-                    return "No active students yet — your caseload will appear here.";
+                    return "Your caseload is empty right now.";
                 }
                 return `You have ${parts.join(" and ")}.`;
             }
@@ -257,7 +261,7 @@ export default function DashboardPage() {
                     if (needsTracker > 0) parts.push(`${needsTracker} monthly update${needsTracker > 1 ? 's' : ''} due`);
                     return `You have ${parts.join(' and ')}.`;
                 }
-                return "All caught up! Nothing needed right now ✨";
+                return "All caught up! Nothing needed right now.";
             }
             default: return "";
         }
@@ -265,9 +269,9 @@ export default function DashboardPage() {
 
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
-        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
-        return { text: "Good evening", emoji: "🌙" };
+        if (hour < 12) return "Good morning";
+        if (hour < 17) return "Good afternoon";
+        return "Good evening";
     };
 
     const getStudentWorkspaceHref = (studentId: number, tab?: string) => {
@@ -298,7 +302,7 @@ export default function DashboardPage() {
                 {user?.role === "PARENT" && isPhoneVerified === false && (
                     <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:px-5 sm:py-3 ${semanticToneClass("warning")}`}>
                         <div className="flex items-start gap-3">
-                            <span className="text-xl leading-none mt-0.5">📱</span>
+                            <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
                             <p className="m-0 text-sm md:text-[0.9rem] text-warning font-medium">
                                 {user?.phone_number
                                     ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
@@ -345,12 +349,25 @@ export default function DashboardPage() {
                     </div>
                 )}
 
+                {/* A nudge, not a gate — teachers can work with an incomplete profile. */}
+                {teacherProfileIncomplete && (
+                    <div className={`mb-6 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${semanticToneClass("info")}`}>
+                        <div className="flex items-start gap-3">
+                            <Calendar className="mt-0.5 h-5 w-5 shrink-0" />
+                            <div>
+                                <p className="m-0 text-sm font-bold">Finish your profile</p>
+                                <p className="m-0 text-sm">{teacherProfileMessage(user?.teacher_profile_missing)}</p>
+                            </div>
+                        </div>
+                        <Link href={`/users/${user?.user_id}`} className="rounded-lg bg-info-strong px-4 py-2 text-center text-sm font-bold text-white hover:bg-info-strong">
+                            Update profile
+                        </Link>
+                    </div>
+                )}
+
                 {/* Page header */}
                 <PageHeader
-                    title={<>
-                        <span>{getTimeGreeting().text}, {user?.first_name || 'there'}</span>
-                        <span>{getTimeGreeting().emoji}</span>
-                    </>}
+                    title={`${getTimeGreeting()}, ${user?.first_name || "there"}`}
                     subtitle={getSubtitle()}
                     meta={user?.role !== "PARENT" && students.length > 0 ? (
                         <span className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1 text-xs font-bold text-muted">
@@ -387,12 +404,14 @@ export default function DashboardPage() {
                                 </Link>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line bg-app/40 p-12 text-center">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-card text-faint shadow-sm">
-                                    <UsersIcon className="h-6 w-6" aria-hidden="true" />
+                            <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-app/40 p-8 text-center">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-card text-faint shadow-sm">
+                                    <UsersIcon className="h-5 w-5" aria-hidden="true" />
                                 </div>
-                                <p className="m-0 text-sm font-medium text-muted">
-                                    No students assigned at this time.
+                                <p className="m-0 max-w-sm text-sm text-muted">
+                                    Admin assigns students to your{" "}
+                                    {user?.role === "TEACHER" ? "class list" : "caseload"}. You&apos;ll get a
+                                    notification the moment your first one arrives.
                                 </p>
                             </div>
                         )
@@ -494,12 +513,12 @@ export default function DashboardPage() {
                                                             key={status}
                                                             onClick={() => toggleStatusFilter(status)}
                                                             aria-pressed={isActive}
-                                                            className={`flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3 text-xs font-bold transition-colors duration-200 cursor-pointer ${isActive ? 'shadow-sm' : 'border-line bg-card text-muted hover:border-line hover:bg-app hover:text-fg'}`}
+                                                            className={`flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3 text-xs font-bold transition-colors duration-200 cursor-pointer sm:min-h-9 ${isActive ? 'shadow-sm' : 'border-line bg-card text-muted hover:border-line hover:bg-app hover:text-fg'}`}
                                                             style={isActive ? { background: style.bg, borderColor: style.color, color: style.color } : {}}
                                                         >
                                                             <span className="h-2.5 w-2.5 rounded-full" style={{ background: style.color }} />
                                                             <span className="uppercase">{statusLabel(status)}</span>
-                                                            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-white/75' : 'bg-subtle-soft text-muted'}`}>
+                                                            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-card/75' : 'bg-subtle-soft text-muted'}`}>
                                                                 {count}
                                                             </span>
                                                         </button>
@@ -589,7 +608,7 @@ export default function DashboardPage() {
 
                                                 {/* Status */}
                                                 <div className={`flex items-start gap-3 border-b px-5 py-3 ${statusTone}`}>
-                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80">
+                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card/80">
                                                         <statusInfo.Icon className="h-4 w-4" aria-hidden="true" />
                                                     </div>
                                                     <p className="m-0 text-sm font-semibold leading-snug">
@@ -646,7 +665,7 @@ export default function DashboardPage() {
                                     <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "left", background: "var(--bg-secondary)" }}>
                                         <thead>
                                             <tr>
-                                                <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
+                                                <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
                                                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                         ID
                                                         <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
@@ -654,7 +673,7 @@ export default function DashboardPage() {
                                                         </span>
                                                     </div>
                                                 </th>
-                                                <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
+                                                <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
                                                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                         STUDENT
                                                         <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
@@ -662,7 +681,7 @@ export default function DashboardPage() {
                                                         </span>
                                                     </div>
                                                 </th>
-                                                <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
+                                                <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
                                                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                         GRADE
                                                         <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
@@ -670,7 +689,7 @@ export default function DashboardPage() {
                                                         </span>
                                                     </div>
                                                 </th>
-                                                <th onClick={() => handleStudentSort('status')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
+                                                <th onClick={() => handleStudentSort('status')} style={{ cursor: "pointer", padding: "12px 16px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", userSelect: "none" }}>
                                                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                         STATUS
                                                         <span style={{ opacity: studentSortConfig.key === 'status' ? 1 : 0.3 }}>
@@ -678,10 +697,10 @@ export default function DashboardPage() {
                                                         </span>
                                                     </div>
                                                 </th>
-                                                <th style={{ padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))" }}>
+                                                <th style={{ padding: "12px 16px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))" }}>
                                                     FORMS STATUS
                                                 </th>
-                                                <th style={{ padding: "12px 16px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", textAlign: "right" }}>
+                                                <th style={{ padding: "12px 16px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light, var(--border-light))", textAlign: "right" }}>
                                                     ACTION
                                                 </th>
                                             </tr>
@@ -859,7 +878,7 @@ export default function DashboardPage() {
                                                     </div>
                                                 </div>
                                                 <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${statusClass}`}>
-                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/80">
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-card/80">
                                                         <StatusIcon className="h-3.5 w-3.5" aria-hidden="true" />
                                                     </div>
                                                     <span className="text-xs font-bold">{statusLabel(s.status)}</span>
@@ -893,19 +912,19 @@ export default function DashboardPage() {
 
                             {/* Pagination Controls */}
                             {processedStudents.length > 0 && totalPages > 1 && (
-                                <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "1rem" }}>
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                         disabled={safePage === 1}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === 1 ? "var(--bg-primary)" : "var(--bg-card)", color: safePage === 1 ? "var(--text-muted)" : "inherit", cursor: safePage === 1 ? "not-allowed" : "pointer" }}
+                                        className="min-h-11 rounded-md border border-line bg-card px-4 text-sm font-semibold text-fg transition-colors hover:bg-app disabled:cursor-not-allowed disabled:bg-app disabled:text-muted"
                                     >Previous</button>
-                                    <span style={{ padding: "6px 12px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+                                    <span className="min-h-11 shrink-0 px-2 py-3 text-sm text-muted">
                                         Page {safePage} of {totalPages}
                                     </span>
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                         disabled={safePage === totalPages}
-                                        style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-light)", background: safePage === totalPages ? "var(--bg-primary)" : "var(--bg-card)", color: safePage === totalPages ? "var(--text-muted)" : "inherit", cursor: safePage === totalPages ? "not-allowed" : "pointer" }}
+                                        className="min-h-11 rounded-md border border-line bg-card px-4 text-sm font-semibold text-fg transition-colors hover:bg-app disabled:cursor-not-allowed disabled:bg-app disabled:text-muted"
                                     >Next</button>
                                 </div>
                             )}

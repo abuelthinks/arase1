@@ -7,7 +7,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap, CheckCircle2, FileUp, Loader2, Play, Trash2, XCircle } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
-import { statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
+import { GRADE_LEVELS, type GradeLevel } from "@/lib/grade-levels";
+import { roleColorHex, semanticToneClass, statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
+import type { SpecialtyChangeRequest } from "@/types";
 import Badge from "@/components/ui/Badge";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
@@ -35,8 +37,27 @@ interface UserData {
     last_name: string;
     specialty?: SpecialistSpecialty | "";
     specialties?: SpecialistSpecialty[];
+    grade_level?: string;
     assigned_students_count: number;
     assigned_student_names: string[];
+    pending_specialty_request?: SpecialtyChangeRequest | null;
+}
+
+function SpecialtyRequestBadge({ request }: { request: SpecialtyChangeRequest }) {
+    const summary = [
+        ...request.added.map(s => `Add ${s}`),
+        ...request.removed.map(s => `Remove ${s}`),
+    ].join(', ');
+
+    return (
+        <span
+            title={`Specialty change requested: ${summary}${request.note ? ` — "${request.note}"` : ''}`}
+            className={`inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[0.7rem] font-bold ${semanticToneClass('warning')}`}
+        >
+            <Clock size={11} className="shrink-0" aria-hidden="true" />
+            Specialty request
+        </span>
+    );
 }
 
 interface BulkEmailEntry {
@@ -174,9 +195,9 @@ export default function AdminDashboard() {
     const { user: authUser } = useAuth();
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return { text: "Good morning", emoji: "☀️" };
-        if (hour < 17) return { text: "Good afternoon", emoji: "👋" };
-        return { text: "Good evening", emoji: "🌙" };
+        if (hour < 12) return "Good morning";
+        if (hour < 17) return "Good afternoon";
+        return "Good evening";
     };
 
     // Check URL for explicit tab, default to students
@@ -198,7 +219,7 @@ export default function AdminDashboard() {
 
     // Student Pagination
     const [studentPage, setStudentPage] = useState(1);
-    const [studentItemsPerPage, setStudentItemsPerPage] = useState(10);
+    const [studentItemsPerPage, setStudentItemsPerPage] = useState(25);
 
     // User search & filter
     const [userSearch, setUserSearch] = useState("");
@@ -209,7 +230,7 @@ export default function AdminDashboard() {
 
     // User Pagination
     const [userPage, setUserPage] = useState(1);
-    const [userItemsPerPage, setUserItemsPerPage] = useState(10);
+    const [userItemsPerPage, setUserItemsPerPage] = useState(25);
 
     // Invitation search & filter
     const [invitationSearch, setInvitationSearch] = useState("");
@@ -220,7 +241,7 @@ export default function AdminDashboard() {
 
     // Invitation Pagination
     const [invitationPage, setInvitationPage] = useState(1);
-    const [invitationItemsPerPage, setInvitationItemsPerPage] = useState(10);
+    const [invitationItemsPerPage, setInvitationItemsPerPage] = useState(25);
 
 
 
@@ -229,10 +250,12 @@ export default function AdminDashboard() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('PARENT');
     const [inviteSpecialties, setInviteSpecialties] = useState<SpecialistSpecialty[]>([]);
+    const [inviteGradeLevel, setInviteGradeLevel] = useState<GradeLevel | ''>('');
 
     // Bulk Registration State
     const [bulkRole, setBulkRole] = useState("PARENT");
     const [bulkSpecialties, setBulkSpecialties] = useState<SpecialistSpecialty[]>([]);
+    const [bulkGradeLevel, setBulkGradeLevel] = useState<GradeLevel | ''>('');
     const [bulkInputText, setBulkInputText] = useState("");
     const [bulkEmails, setBulkEmails] = useState<BulkEmailEntry[]>([]);
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
@@ -341,6 +364,7 @@ export default function AdminDashboard() {
                     email: updatedList[i].email,
                     role: bulkRole,
                     specialties: bulkRole === 'SPECIALIST' ? bulkSpecialties : [],
+                    grade_level: bulkRole === 'TEACHER' ? bulkGradeLevel : '',
                 });
                 updatedList[i].status = 'success';
                 successCount++;
@@ -437,14 +461,23 @@ export default function AdminDashboard() {
         acc[statusKey] = (acc[statusKey] || 0) + 1;
         return acc;
     }, {});
-    const effectiveStatusTab = activeStatusTab || (uniqueStatuses.length > 0 ? uniqueStatuses[0] : "");
-    const statusFilterOptions = uniqueStatuses.map(status => ({
-        status,
-        label: statusLabel(status),
-        count: statusCounts[status] || 0,
-        style: getStatusStyle(status),
-    }));
-    const activeStatusLabel = effectiveStatusTab ? statusLabel(effectiveStatusTab) : "Students";
+    const effectiveStatusTab = activeStatusTab || "ALL";
+    const statusFilterOptions = [
+        {
+            status: "ALL",
+            label: "All statuses",
+            count: students.length,
+            style: { bg: "var(--bg-primary)", color: "var(--text-secondary)" },
+        },
+        ...uniqueStatuses.map(status => ({
+            status,
+            label: statusLabel(status),
+            count: statusCounts[status] || 0,
+            style: getStatusStyle(status),
+        })),
+    ];
+    const isAllStatusView = effectiveStatusTab === "ALL";
+    const activeStatusLabel = isAllStatusView ? "" : statusLabel(effectiveStatusTab);
 
     const uniqueGrades = Array.from(new Set(students.map(s => s.grade).filter(Boolean))).sort();
 
@@ -452,7 +485,7 @@ export default function AdminDashboard() {
         const searchTerms = studentSearch.toLowerCase().trim().split(/\s+/);
         const searchableString = `${s.first_name} ${s.last_name} ${s.id}`.toLowerCase();
         const matchesSearch = searchTerms.every(term => searchableString.includes(term));
-        const matchesStatus = getStudentStatusFilterKey(s.status) === effectiveStatusTab;
+        const matchesStatus = isAllStatusView || getStudentStatusFilterKey(s.status) === effectiveStatusTab;
         const matchesGrade = studentGradeFilter === "ALL" || s.grade === studentGradeFilter;
         return matchesSearch && matchesStatus && matchesGrade;
     });
@@ -484,13 +517,181 @@ export default function AdminDashboard() {
             }
             if (aVal < bVal) return studentSortConfig.direction === 'asc' ? -1 : 1;
             if (aVal > bVal) return studentSortConfig.direction === 'asc' ? 1 : -1;
+            if (studentSortConfig.key === 'status') {
+                return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
+            }
             return 0;
         });
     }
 
-    const totalStudentPages = Math.ceil(processedStudents.length / studentItemsPerPage) || 1;
+    // Aggregate view: one column per pipeline stage, always in pipeline order.
+    const aggregateStatusOrder = ["PENDING_ASSESSMENT", "ASSESSED", "ENROLLED", "INTEGRATED"];
+    const studentGroups = Array.from(new Set([...aggregateStatusOrder, ...uniqueStatuses]))
+        .sort((a, b) => (statusPriority[a] || 99) - (statusPriority[b] || 99))
+        .map(status => ({
+            status,
+            label: statusLabel(status),
+            style: getStatusStyle(status),
+            total: statusCounts[status] || 0,
+            students: processedStudents.filter(s => getStudentStatusFilterKey(s.status) === status),
+        }));
+    const aggregateRowCount = Math.max(0, ...studentGroups.map(g => g.students.length));
+
+    const totalStudentPages = (isAllStatusView
+        ? Math.ceil(aggregateRowCount / studentItemsPerPage)
+        : Math.ceil(processedStudents.length / studentItemsPerPage)) || 1;
     const safeStudentPage = Math.min(Math.max(1, studentPage), totalStudentPages);
-    const paginatedStudents = processedStudents.slice((safeStudentPage - 1) * studentItemsPerPage, safeStudentPage * studentItemsPerPage);
+    const studentRowStart = (safeStudentPage - 1) * studentItemsPerPage;
+    const paginatedStudents = processedStudents.slice(studentRowStart, studentRowStart + studentItemsPerPage);
+    const aggregateRowsOnPage = Math.max(0, Math.min(studentItemsPerPage, aggregateRowCount - studentRowStart));
+
+    const renderStudentFormPills = (s: StudentData) => (
+        s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
+            <>
+                <div
+                    className={getFormPillClass(s.has_parent_assessment, s.parent_assessment_unlocked)}
+                    onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
+                >Parent</div>
+                <div
+                    className={getFormPillClass(s.has_specialist_assessment)}
+                    onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
+                >Specialist</div>
+            </>
+        ) : (
+            <>
+                <div
+                    className={getFormPillClass(s.parent_current_tracker_submitted)}
+                    onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
+                >Parent</div>
+                <div
+                    className={getFormPillClass(s.specialist_current_tracker_submitted)}
+                    onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
+                >Specialist</div>
+                {s.status.toUpperCase() === "INTEGRATED" && (
+                    <div
+                        className={getFormPillClass(s.teacher_current_tracker_submitted)}
+                        onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
+                    >Teacher</div>
+                )}
+            </>
+        )
+    );
+
+    const renderStudentRow = (s: StudentData) => {
+        const nextAction = s.next_action;
+        return (
+            <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }}>
+                <td style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.85rem" }}>#{s.id}</td>
+                <td style={{ padding: "12px" }}>
+                    <Link href={`/workspace?studentId=${s.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                        {s.first_name} {s.last_name}
+                    </Link>
+                </td>
+                <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{s.grade}</td>
+                <td style={{ padding: "12px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxWidth: "250px" }}>
+                        {renderStudentFormPills(s)}
+                    </div>
+                </td>
+                <td style={{ padding: "12px", textAlign: "right" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", alignItems: "center" }}>
+                        {nextAction ? (
+                            nextAction.tone === "waiting" ? (
+                                <button
+                                    onClick={() => handleWaitingAction(s, nextAction)}
+                                    style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: "6px", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px", cursor: "help" }}
+                                    className={`${getActionButtonClass(s.status, nextAction.tone)} hover:opacity-90`}
+                                >
+                                    {nextAction.label}
+                                </button>
+                            ) : (
+                                <Link
+                                    href={buildStudentActionHref(s)}
+                                    style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: "6px", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}
+                                    className={getActionButtonClass(s.status, nextAction.tone)}
+                                >
+                                    {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
+                                    {nextAction.label}
+                                </Link>
+                            )
+                        ) : (
+                            <Link
+                                href={`/workspace?studentId=${s.id}`}
+                                style={{ fontSize: "0.75rem", padding: "6px 12px", background: "var(--bg-primary)", border: "1px solid var(--border-light)", borderRadius: "6px", color: "var(--text-secondary)", textDecoration: "none", fontWeight: 600 }}
+                                className="transition-colors hover:bg-subtle-soft"
+                            >
+                                Open Workspace
+                            </Link>
+                        )}
+                    </div>
+                </td>
+            </tr>
+        );
+    };
+
+    const renderStudentCard = (s: StudentData) => {
+        const ss = getStatusStyle(s.status);
+        const nextAction = s.next_action;
+        return (
+            <div key={s.id} className="bg-card rounded-xl border border-line p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
+                <div className="flex justify-between items-start gap-2">
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-mono text-faint mb-1">#{s.id}</span>
+                        <Link href={`/workspace?studentId=${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-indigo-600 transition-colors truncate">
+                            {s.first_name} {s.last_name}
+                        </Link>
+                        <span className="text-sm text-muted mt-1">{s.grade || "Grade TBD"}</span>
+                    </div>
+                    <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: ss.bg, color: ss.color, textAlign: "center", whiteSpace: "nowrap" }}>
+                        {statusLabel(s.status)}
+                    </span>
+                </div>
+
+                <div className="flex flex-col gap-2 border-t border-line pt-3">
+                    <div className="flex flex-col gap-2">
+                        <span className="text-faint font-semibold text-xs">
+                            {["ENROLLED", "INTEGRATED"].includes(s.status.toUpperCase()) ? "Progress Trackers" : "Assessments"}
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                            {renderStudentFormPills(s)}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border-t border-line pt-3 flex flex-wrap gap-2 justify-end w-full">
+                    {nextAction ? (
+                        nextAction.tone === "waiting" ? (
+                            <button
+                                onClick={() => handleWaitingAction(s, nextAction)}
+                                style={{ cursor: "help" }}
+                                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center hover:opacity-90 ${getActionButtonClass(s.status, nextAction.tone)}`}
+                                title={nextAction.label}
+                            >
+                                {nextAction.label}
+                            </button>
+                        ) : (
+                            <Link
+                                href={buildStudentActionHref(s)}
+                                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center ${getActionButtonClass(s.status, nextAction.tone)}`}
+                                title={nextAction.label}
+                            >
+                                {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
+                                {nextAction.label}
+                            </Link>
+                        )
+                    ) : (
+                        <Link
+                            href={`/workspace?studentId=${s.id}`}
+                            className="text-xs px-3 py-1.5 rounded bg-app border border-line text-fg font-bold no-underline hover:bg-subtle-soft transition-colors flex-1 text-center"
+                            title="Open Workspace"
+                        >
+                            Open Workspace
+                        </Link>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     /* ─── Filtered, Sorted, and Paginated Users ──────────────────────────── */
 
@@ -530,11 +731,29 @@ export default function AdminDashboard() {
         });
     }
 
+    // Aggregate view: one column per role when no single role is selected.
+    const isAllRolesView = !userRoleFilter;
+    const aggregateRoleOrder = ["TEACHER", "SPECIALIST", "PARENT", "ADMIN"];
+    const userGroups = Array.from(new Set([...aggregateRoleOrder, ...uniqueUserRoles]))
+        .map(role => ({
+            role,
+            label: role.charAt(0) + role.slice(1).toLowerCase(),
+            style: roleColorHex(role),
+            users: processedUsers.filter(u => u.role === role),
+        }));
+    const aggregateUserRowCount = Math.max(0, ...userGroups.map(g => g.users.length));
+
     // Pagination Logic
-    const totalUserPages = Math.ceil(processedUsers.length / userItemsPerPage) || 1;
+    const totalUserPages = (isAllRolesView
+        ? Math.ceil(aggregateUserRowCount / userItemsPerPage)
+        : Math.ceil(processedUsers.length / userItemsPerPage)) || 1;
     // ensure current page is within bounds
     const safeUserPage = Math.min(Math.max(1, userPage), totalUserPages);
-    const paginatedUsers = processedUsers.slice((safeUserPage - 1) * userItemsPerPage, safeUserPage * userItemsPerPage);
+    const userRowStart = (safeUserPage - 1) * userItemsPerPage;
+    const paginatedUsers = processedUsers.slice(userRowStart, userRowStart + userItemsPerPage);
+    const aggregateUserRowsOnPage = Math.max(0, Math.min(userItemsPerPage, aggregateUserRowCount - userRowStart));
+    const visibleAggregateUserCount = userGroups.reduce(
+        (n, g) => n + g.users.slice(userRowStart, userRowStart + userItemsPerPage).length, 0);
 
     /* ─── Filtered, Sorted, and Paginated Invitations ────────────────────── */
 
@@ -644,6 +863,7 @@ export default function AdminDashboard() {
                     email: inviteEmail,
                     role: inviteRole,
                     specialties: inviteRole === 'SPECIALIST' ? inviteSpecialties : [],
+                    grade_level: inviteRole === 'TEACHER' ? inviteGradeLevel : '',
                 });
                 toast.success(`Invite sent to ${issuedEmail}.`);
                 if (response.data?.token) {
@@ -654,6 +874,7 @@ export default function AdminDashboard() {
             setInviteEmail('');
             setInviteRole('PARENT');
             setInviteSpecialties([]);
+            setInviteGradeLevel('');
             fetchData();
         } catch (err: any) {
             toast.error(extractApiError(err, "Action failed."));
@@ -742,6 +963,7 @@ export default function AdminDashboard() {
     const staffSortedByCaseload = [...instructionalStaff].sort((a, b) => (b.assigned_students_count || 0) - (a.assigned_students_count || 0));
     const unassignedStaff = instructionalStaff.filter(u => (u.assigned_students_count || 0) === 0);
     const specialistsWithoutSpecialty = specialistUsers.filter(u => !((u.specialties && u.specialties.length > 0) || u.specialty));
+    const teachersWithoutGradeLevel = teacherUsers.filter(u => !u.grade_level);
     const averageCaseload = instructionalStaff.length
         ? instructionalStaff.reduce((sum, user) => sum + (user.assigned_students_count || 0), 0) / instructionalStaff.length
         : 0;
@@ -771,6 +993,14 @@ export default function AdminDashboard() {
             cta: "Review users",
             tone: 'info' as const,
         }] : []),
+        ...(teachersWithoutGradeLevel.length > 0 ? [{
+            id: 'missing-grade-level',
+            title: `${teachersWithoutGradeLevel.length} teacher account${teachersWithoutGradeLevel.length === 1 ? '' : 's'} missing grade level`,
+            description: "Assign grade levels so students get matched to the right teacher.",
+            link: "/dashboard?tab=users",
+            cta: "Review users",
+            tone: 'info' as const,
+        }] : []),
     ].slice(0, 5);
 
     const adminActionSummary = (() => {
@@ -786,9 +1016,8 @@ export default function AdminDashboard() {
         <>
             {/* Desktop heading */}
             <div className="hidden md:block mb-6">
-                <h2 className="m-0 text-3xl font-bold text-fg flex items-center gap-2">
-                    <span>{getTimeGreeting().text}, {authUser?.first_name || "Admin"}</span>
-                    <span>{getTimeGreeting().emoji}</span>
+                <h2 className="m-0 text-3xl font-bold text-fg">
+                    {getTimeGreeting()}, {authUser?.first_name || "Admin"}
                 </h2>
                 <p className="mt-2 text-base text-muted">
                     {activeTab === "analytics" && adminActionSummary}
@@ -1180,7 +1409,7 @@ export default function AdminDashboard() {
                                                         >
                                                             <span className="h-2.5 w-2.5 rounded-full" style={{ background: option.style.color }} />
                                                             <span className="uppercase">{option.label}</span>
-                                                            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-white/75' : 'bg-subtle-soft text-muted'}`}>
+                                                            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${isActive ? 'bg-card/75' : 'bg-subtle-soft text-muted'}`}>
                                                                 {option.count}
                                                             </span>
                                                         </button>
@@ -1212,9 +1441,54 @@ export default function AdminDashboard() {
                                                 {students.length === 0
                                                     ? "No students in the system yet."
                                                     : studentSearch
-                                                        ? `No ${activeStatusLabel.toLowerCase()} students match "${studentSearch}". Try a different search term.`
-                                                        : `No ${activeStatusLabel.toLowerCase()} students to show.`}
+                                                        ? `No ${activeStatusLabel.toLowerCase()} students match "${studentSearch}". Try a different search term.`.replace(/\s+/g, " ")
+                                                        : `No ${activeStatusLabel.toLowerCase()} students to show.`.replace(/\s+/g, " ")}
                                             </p>
+                                        </div>
+                                    ) : isAllStatusView ? (
+                                        <div style={{ overflowX: "auto", width: "100%" }}>
+                                            <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", tableLayout: "fixed", textAlign: "left" }}>
+                                                <thead>
+                                                    <tr>
+                                                        {studentGroups.map((group, i) => (
+                                                            <th key={group.status} style={{ padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", borderRight: i < studentGroups.length - 1 ? "1px solid var(--border-light)" : undefined }}>
+                                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: group.style.color, flexShrink: 0 }} />
+                                                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.label}</span>
+                                                                    <span style={{ marginLeft: "auto", color: "var(--text-muted)" }}>{group.students.length}</span>
+                                                                </div>
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {aggregateRowCount === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={studentGroups.length} style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                                                                No students match the current filters.
+                                                            </td>
+                                                        </tr>
+                                                    ) : Array.from({ length: aggregateRowsOnPage }).map((_, offset) => {
+                                                        const rowIndex = studentRowStart + offset;
+                                                        return (
+                                                        <tr key={rowIndex} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }}>
+                                                            {studentGroups.map((group, i) => {
+                                                                const s = group.students[rowIndex];
+                                                                return (
+                                                                    <td key={group.status} style={{ padding: "12px", borderRight: i < studentGroups.length - 1 ? "1px solid var(--border-light)" : undefined, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                                        {s ? (
+                                                                            <Link href={`/workspace?studentId=${s.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                                {s.first_name} {s.last_name}
+                                                                            </Link>
+                                                                        ) : null}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     ) : (
                                         <>
@@ -1222,7 +1496,7 @@ export default function AdminDashboard() {
                                                 <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('id')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ID
                                                             <span style={{ opacity: studentSortConfig.key === 'id' ? 1 : 0.3 }}>
@@ -1230,7 +1504,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('name')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             STUDENT
                                                             <span style={{ opacity: studentSortConfig.key === 'name' ? 1 : 0.3 }}>
@@ -1238,7 +1512,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleStudentSort('grade')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             GRADE
                                                             <span style={{ opacity: studentSortConfig.key === 'grade' ? 1 : 0.3 }}>
@@ -1246,215 +1520,19 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>
+                                                    <th style={{ padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>
                                                         {["ENROLLED", "INTEGRATED"].includes(effectiveStatusTab.toUpperCase()) ? "FORMS STATUS (PROGRESS)" : "FORMS STATUS (ASSESSMENT)"}
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>ACTION</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>ACTION</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {paginatedStudents.map(s => {
-                                                    const nextAction = s.next_action;
-                                                    return (
-                                                        <tr key={s.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }}>
-                                                            <td style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.85rem" }}>#{s.id}</td>
-                                                            <td style={{ padding: "12px" }}>
-                                                                <Link href={`/workspace?studentId=${s.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
-                                                                    {s.first_name} {s.last_name}
-                                                                </Link>
-                                                            </td>
-                                                            <td style={{ padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{s.grade}</td>
-                                                            <td style={{ padding: "12px" }}>
-                                                                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxWidth: "250px" }}>
-                                                                    {s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
-                                                                        <>
-                                                                            <div
-                                                                                className={getFormPillClass(s.has_parent_assessment, s.parent_assessment_unlocked)}
-                                                                                onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                            >Parent</div>
-                                                                            <div
-                                                                                className={getFormPillClass(s.has_specialist_assessment)}
-                                                                                onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                            >Specialist</div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <div
-                                                                                className={getFormPillClass(s.parent_current_tracker_submitted)}
-                                                                                onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                            >Parent</div>
-                                                                            <div
-                                                                                className={getFormPillClass(s.specialist_current_tracker_submitted)}
-                                                                                onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                            >Specialist</div>
-                                                                            {s.status.toUpperCase() === "INTEGRATED" && (
-                                                                                <div
-                                                                                    className={getFormPillClass(s.teacher_current_tracker_submitted)}
-                                                                                    onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                                >Teacher</div>
-                                                                            )}
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                            <td style={{ padding: "12px", textAlign: "right" }}>
-                                                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", alignItems: "center" }}>
-                                                                    {nextAction ? (
-                                                                        nextAction.tone === "waiting" ? (
-                                                                            <button 
-                                                                                onClick={() => handleWaitingAction(s, nextAction)}
-                                                                                style={{ 
-                                                                                    fontSize: "0.75rem", 
-                                                                                    padding: "6px 12px", 
-                                                                                    borderRadius: "6px", 
-                                                                                    fontWeight: 600,
-                                                                                    display: "flex",
-                                                                                    alignItems: "center",
-                                                                                    gap: "4px",
-                                                                                    cursor: "help",
-                                                                                }} 
-                                                                                className={`${getActionButtonClass(s.status, nextAction.tone)} hover:opacity-90`}
-                                                                            >
-                                                                                {nextAction.label}
-                                                                            </button>
-                                                                        ) : (
-                                                                            <Link 
-                                                                                href={buildStudentActionHref(s)} 
-                                                                                style={{ 
-                                                                                    fontSize: "0.75rem", 
-                                                                                    padding: "6px 12px", 
-                                                                                    borderRadius: "6px", 
-                                                                                    fontWeight: 600,
-                                                                                    display: "flex",
-                                                                                    alignItems: "center",
-                                                                                    gap: "4px"
-                                                                                }} 
-                                                                                className={getActionButtonClass(s.status, nextAction.tone)}
-                                                                            >
-                                                                                {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
-                                                                                {nextAction.label}
-                                                                            </Link>
-                                                                        )
-                                                                    ) : (
-                                                                        <Link 
-                                                                            href={`/workspace?studentId=${s.id}`} 
-                                                                            style={{ 
-                                                                                fontSize: "0.75rem", 
-                                                                                padding: "6px 12px", 
-                                                                                background: "var(--bg-primary)", 
-                                                                                border: "1px solid var(--border-light)", 
-                                                                                borderRadius: "6px", 
-                                                                                color: "var(--text-secondary)", 
-                                                                                textDecoration: "none", 
-                                                                                fontWeight: 600 
-                                                                            }} 
-                                                                            className="transition-colors hover:bg-subtle-soft"
-                                                                        >
-                                                                            Open Workspace
-                                                                        </Link>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
+                                                {paginatedStudents.map(s => renderStudentRow(s))}
                                             </tbody>
                                         </table>
                                     </div>
                                     <div className="md:hidden flex flex-col gap-3 p-3 bg-app/50">
-                                        {paginatedStudents.map(s => {
-                                            const ss = getStatusStyle(s.status);
-                                            const nextAction = s.next_action;
-                                            return (
-                                                <div key={s.id} className="bg-card rounded-xl border border-line p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3">
-                                                    <div className="flex justify-between items-start gap-2">
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="text-xs font-mono text-faint mb-1">#{s.id}</span>
-                                                            <Link href={`/workspace?studentId=${s.id}`} className="font-bold text-[var(--text-primary)] no-underline text-[1.1rem] hover:text-indigo-600 transition-colors truncate">
-                                                                {s.first_name} {s.last_name}
-                                                            </Link>
-                                                            <span className="text-sm text-muted mt-1">{s.grade || "Grade TBD"}</span>
-                                                        </div>
-                                                        <span style={{ fontSize: "0.65rem", fontWeight: "bold", padding: "4px 8px", borderRadius: "12px", textTransform: "uppercase", background: ss.bg, color: ss.color, textAlign: "center", whiteSpace: "nowrap" }}>
-                                                            {statusLabel(s.status)}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="flex flex-col gap-2 border-t border-line pt-3">
-                                                        <div className="flex flex-col gap-2">
-                                                            <span className="text-faint font-semibold text-xs">
-                                                                {["ENROLLED", "INTEGRATED"].includes(s.status.toUpperCase()) ? "Progress Trackers" : "Assessments"}
-                                                            </span>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {s.status.toUpperCase() !== "ENROLLED" && s.status.toUpperCase() !== "INTEGRATED" ? (
-                                                                    <>
-                                                                        <div
-                                                                            className={getFormPillClass(s.has_parent_assessment, s.parent_assessment_unlocked)}
-                                                                            onClick={() => s.has_parent_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                        >Parent</div>
-                                                                        <div
-                                                                            className={getFormPillClass(s.has_specialist_assessment)}
-                                                                            onClick={() => s.has_specialist_assessment ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_assessment`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                        >Specialist</div>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <div
-                                                                            className={getFormPillClass(s.parent_current_tracker_submitted)}
-                                                                            onClick={() => s.parent_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=parent_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                        >Parent</div>
-                                                                        <div
-                                                                            className={getFormPillClass(s.specialist_current_tracker_submitted)}
-                                                                            onClick={() => s.specialist_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=multi_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                        >Specialist</div>
-                                                                        {s.status.toUpperCase() === "INTEGRATED" && (
-                                                                            <div
-                                                                                className={getFormPillClass(s.teacher_current_tracker_submitted)}
-                                                                                onClick={() => s.teacher_current_tracker_submitted ? router.push(`/workspace?studentId=${s.id}&workspace=forms&tab=sped_tracker`) : toast.error("Not submitted yet.", { id: "not-submitted" })}
-                                                                            >Teacher</div>
-                                                                        )}
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="border-t border-line pt-3 flex flex-wrap gap-2 justify-end w-full">
-                                                        {nextAction ? (
-                                                            nextAction.tone === "waiting" ? (
-                                                                <button 
-                                                                    onClick={() => handleWaitingAction(s, nextAction)}
-                                                                    style={{ 
-                                                                        cursor: "help",
-                                                                    }} 
-                                                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center hover:opacity-90 ${getActionButtonClass(s.status, nextAction.tone)}`} 
-                                                                    title={nextAction.label}
-                                                                >
-                                                                    {nextAction.label}
-                                                                </button>
-                                                            ) : (
-                                                                <Link 
-                                                                    href={buildStudentActionHref(s)} 
-                                                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-bold flex-1 justify-center ${getActionButtonClass(s.status, nextAction.tone)}`} 
-                                                                    title={nextAction.label}
-                                                                >
-                                                                    {nextAction.tone === "positive" ? <Sparkles size={12} /> : null}
-                                                                    {nextAction.label}
-                                                                </Link>
-                                                            )
-                                                        ) : (
-                                                            <Link 
-                                                                href={`/workspace?studentId=${s.id}`} 
-                                                                className="text-xs px-3 py-1.5 rounded bg-app border border-line text-fg font-bold no-underline hover:bg-subtle-soft transition-colors flex-1 text-center" 
-                                                                title="Open Workspace"
-                                                            >
-                                                                Open Workspace
-                                                            </Link>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                        {paginatedStudents.map(s => renderStudentCard(s))}
                                     </div>
                                 </>
                             )}
@@ -1506,6 +1584,23 @@ export default function AdminDashboard() {
                                         />
                                     </div>
                                     <div className="flex gap-2 items-center overflow-x-auto w-full md:w-auto pb-1 md:pb-0" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                                        <button
+                                            onClick={() => { setUserRoleFilter(""); setUserPage(1); }}
+                                            style={{
+                                                padding: "6px 14px",
+                                                borderRadius: "20px",
+                                                border: `1px solid ${isAllRolesView ? 'var(--accent-primary)' : 'var(--border-light)'}`,
+                                                fontSize: "0.8rem",
+                                                fontWeight: isAllRolesView ? 600 : 400,
+                                                background: isAllRolesView ? '#eff6ff' : 'var(--bg-primary)',
+                                                color: isAllRolesView ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                                cursor: "pointer",
+                                                transition: "all 0.2s",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            ALL USERS
+                                        </button>
                                         {uniqueUserRoles.map(r => {
                                             const isActive = userRoleFilter === r;
                                             return (
@@ -1528,20 +1623,12 @@ export default function AdminDashboard() {
                                                 </button>
                                             );
                                         })}
-                                        {(userSearch || userRoleFilter) && (
-                                            <button 
-                                                onClick={() => { setUserSearch(''); setUserRoleFilter(''); }}
-                                                style={{ padding: "6px 12px", background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
-                                            >
-                                                Clear Filters
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             </div>
                             
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
-                                <span>Showing {Math.min(processedUsers.length, paginatedUsers.length)} of {processedUsers.length} users</span>
+                                <span>Showing {isAllRolesView ? visibleAggregateUserCount : Math.min(processedUsers.length, paginatedUsers.length)} of {processedUsers.length} users</span>
                                 {users.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                         <span>Show:</span>
@@ -1571,13 +1658,59 @@ export default function AdminDashboard() {
                                                     ? `No users match the selected role filters.`
                                                     : "No users to show."}
                                 </p>
+                            ) : isAllRolesView ? (
+                                <div style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "2px solid var(--border-light)" }}>
+                                    <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse", tableLayout: "fixed", textAlign: "left" }}>
+                                        <thead>
+                                            <tr>
+                                                {userGroups.map((group, i) => (
+                                                    <th key={group.role} style={{ padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", borderRight: i < userGroups.length - 1 ? "1px solid var(--border-light)" : undefined }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: group.style.color, flexShrink: 0 }} />
+                                                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.label}</span>
+                                                            <span style={{ marginLeft: "auto" }}>{group.users.length}</span>
+                                                        </div>
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {aggregateUserRowCount === 0 ? (
+                                                <tr>
+                                                    <td colSpan={userGroups.length} style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                                                        No users match the current filters.
+                                                    </td>
+                                                </tr>
+                                            ) : Array.from({ length: aggregateUserRowsOnPage }).map((_, offset) => {
+                                                const rowIndex = userRowStart + offset;
+                                                return (
+                                                <tr key={rowIndex} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle" }} className="hover:bg-subtle-soft transition-colors duration-150">
+                                                    {userGroups.map((group, i) => {
+                                                        const u = group.users[rowIndex];
+                                                        const displayName = u ? ((u.first_name || u.last_name) ? `${u.first_name} ${u.last_name}`.trim() : u.email) : "";
+                                                        return (
+                                                            <td key={group.role} style={{ padding: "12px", borderRight: i < userGroups.length - 1 ? "1px solid var(--border-light)" : undefined, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                                {u ? (
+                                                                    <Link href={`/users/${u.id}`} className="hover:text-indigo-600 hover:underline transition-colors duration-200" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: "bold", fontSize: "0.95rem" }}>
+                                                                        {displayName}
+                                                                    </Link>
+                                                                ) : null}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             ) : (
                                 <>
                                     <div className="hidden md:block" style={{ overflowX: "auto", width: "100%", borderRadius: "12px", border: "2px solid var(--border-light)" }}>
                                         <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleUserSort('name')} aria-sort={userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('name')} aria-sort={userSortConfig.key === 'name' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             NAME
                                                             <span style={{ opacity: userSortConfig.key === 'name' ? 1 : 0.3 }}>
@@ -1585,7 +1718,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleUserSort('role')} aria-sort={userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('role')} aria-sort={userSortConfig.key === 'role' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ROLE
                                                             <span style={{ opacity: userSortConfig.key === 'role' ? 1 : 0.3 }}>
@@ -1593,7 +1726,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleUserSort('kids')} aria-sort={userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleUserSort('kids')} aria-sort={userSortConfig.key === 'kids' ? (userSortConfig.direction === 'desc' ? 'descending' : 'ascending') : undefined} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ASSIGNED KIDS
                                                             <span style={{ opacity: userSortConfig.key === 'kids' ? 1 : 0.3 }}>
@@ -1601,7 +1734,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>Action</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1616,6 +1749,11 @@ export default function AdminDashboard() {
                                                                         {displayName}
                                                                     </Link>
                                                                     <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>{u.email}</span>
+                                                                    {u.pending_specialty_request && (
+                                                                        <div style={{ marginTop: "6px" }}>
+                                                                            <SpecialtyRequestBadge request={u.pending_specialty_request} />
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             <td style={{ padding: "12px" }}>
@@ -1669,6 +1807,11 @@ export default function AdminDashboard() {
                                                                 {displayName}
                                                             </Link>
                                                             <span className="text-sm text-muted mt-1 truncate">{u.email}</span>
+                                                            {u.pending_specialty_request && (
+                                                                <div className="mt-1.5">
+                                                                    <SpecialtyRequestBadge request={u.pending_specialty_request} />
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <Badge role={u.role} icon className="shrink-0" />
                                                     </div>
@@ -1772,6 +1915,35 @@ export default function AdminDashboard() {
                                                                 disabled={isBulkProcessing}
                                                                 aria-pressed={checked}
                                                                 onClick={() => setBulkSpecialties(prev => checked ? prev.filter(s => s !== option) : [...prev, option])}
+                                                                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${checked ? 'border-indigo-400 bg-indigo-50 text-indigo-800 font-bold' : 'border-line bg-card text-muted font-medium hover:border-line hover:bg-app'}`}
+                                                            >
+                                                                {checked && <CheckCircle2 size={14} />}
+                                                                {option}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {bulkRole === 'TEACHER' && (
+                                            <div>
+                                                <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-wide">
+                                                    Grade Level
+                                                </label>
+                                                <p className="text-xs text-muted m-0 mb-2">
+                                                    Applied to everyone in this batch. Used to match students to the right teacher.
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {GRADE_LEVELS.map(option => {
+                                                        const checked = bulkGradeLevel === option;
+                                                        return (
+                                                            <button
+                                                                key={option}
+                                                                type="button"
+                                                                disabled={isBulkProcessing}
+                                                                aria-pressed={checked}
+                                                                onClick={() => setBulkGradeLevel(checked ? '' : option)}
                                                                 className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${checked ? 'border-indigo-400 bg-indigo-50 text-indigo-800 font-bold' : 'border-line bg-card text-muted font-medium hover:border-line hover:bg-app'}`}
                                                             >
                                                                 {checked && <CheckCircle2 size={14} />}
@@ -1974,7 +2146,7 @@ export default function AdminDashboard() {
                                         <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
-                                                    <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             EMAIL
                                                             <span style={{ opacity: invitationSortConfig.key === 'email' ? 1 : 0.3 }}>
@@ -1982,7 +2154,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleInvitationSort('role')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleInvitationSort('role')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             ROLE
                                                             <span style={{ opacity: invitationSortConfig.key === 'role' ? 1 : 0.3 }}>
@@ -1990,7 +2162,7 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th onClick={() => handleInvitationSort('date')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
+                                                    <th onClick={() => handleInvitationSort('date')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             SENT DATE
                                                             <span style={{ opacity: invitationSortConfig.key === 'date' ? 1 : 0.3 }}>
@@ -1998,8 +2170,8 @@ export default function AdminDashboard() {
                                                             </span>
                                                         </div>
                                                     </th>
-                                                    <th style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>EXPIRES</th>
-                                                    <th style={{ padding: "12px", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>EXPIRES</th>
+                                                    <th style={{ padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -2183,6 +2355,39 @@ export default function AdminDashboard() {
                                 </div>
                             )}
 
+                            {inviteRole === 'TEACHER' && (
+                                <div>
+                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Grade Level</label>
+                                    <p style={{ margin: "0 0 8px", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                        Assign now so student matching works from their first day. You can change it later on their profile.
+                                    </p>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                        {GRADE_LEVELS.map(option => {
+                                            const checked = inviteGradeLevel === option;
+                                            return (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    disabled={invitingUser}
+                                                    aria-pressed={checked}
+                                                    onClick={() => setInviteGradeLevel(checked ? '' : option)}
+                                                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                                                    style={{
+                                                        borderColor: checked ? "var(--accent-primary)" : "var(--border-light)",
+                                                        background: checked ? "var(--accent-primary-soft, rgba(99,102,241,0.1))" : "var(--bg-primary)",
+                                                        color: checked ? "var(--accent-primary)" : "var(--text-secondary)",
+                                                        fontWeight: checked ? 700 : 500,
+                                                    }}
+                                                >
+                                                    {checked && <CheckCircle2 size={14} />}
+                                                    {option}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email Address <span style={{ color: "var(--danger)" }}>*</span></label>
                                 <input required type="email" placeholder="name@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="form-input" style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", background: "var(--bg-primary)", fontSize: "0.9rem", transition: "all 0.2s" }} />
@@ -2192,7 +2397,7 @@ export default function AdminDashboard() {
                                 <button type="submit" className="btn-primary" style={{ flex: 1, padding: "8px 16px", borderRadius: "8px", fontSize: "0.85rem", opacity: invitingUser ? 0.6 : 1, transition: "all 0.2s" }} disabled={invitingUser}>
                                     {invitingUser ? "Sending..." : "Send Link"}
                                 </button>
-                                <button type="button" onClick={() => { setShowInviteModal(false); setInviteSpecialties([]); }} style={{ flex: 1, padding: "8px 16px", background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--text-muted)", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }} disabled={invitingUser}>
+                                <button type="button" onClick={() => { setShowInviteModal(false); setInviteSpecialties([]); setInviteGradeLevel(''); }} style={{ flex: 1, padding: "8px 16px", background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--text-muted)", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }} disabled={invitingUser}>
                                     Cancel
                                 </button>
                             </div>

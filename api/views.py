@@ -20,7 +20,7 @@ from .models import (
     ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     User, Invitation, PhoneVerification, Notification, SpecialistPreference,
     SectionContribution, SpecialistAvailabilitySlot, AssessmentAppointment,
-    DiagnosticReport, ActivityEvent,
+    DiagnosticReport, ActivityEvent, SpecialtyChangeRequest,
 )
 from .services.notification_service import (
     notify_admins_in_app, notify_form_submitted, notify_tracker_progress,
@@ -28,6 +28,7 @@ from .services.notification_service import (
     notify_assessment_scheduled, notify_assessment_cancelled,
     notify_parent_assessment_unlock_requested, notify_parent_assessment_unlocked,
     notify_specialist_assessment_unlock_requested, notify_specialist_tracker_unlock_requested,
+    notify_specialty_change_requested, notify_specialty_change_reviewed,
 )
 from .services.workflow_state_service import has_finalized_iep, has_finalized_multidisciplinary_assessment
 from .serializers import (
@@ -37,7 +38,7 @@ from .serializers import (
     AdminUserSerializer, SelfUserSerializer, InvitationSerializer, AcceptInvitationSerializer, NotificationSerializer,
     SpecialistPreferenceSerializer, SpecialistAvailabilitySlotSerializer,
     AssessmentAppointmentSerializer, DiagnosticReportSerializer,
-    ActivityEventSerializer,
+    ActivityEventSerializer, SpecialtyChangeRequestSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -147,13 +148,23 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        from django.db.models import Prefetch
+
+        # Serializers expose the open specialty change request, so prefetch it
+        # rather than re-querying per row.
+        pending_requests = Prefetch(
+            'specialty_change_requests',
+            queryset=SpecialtyChangeRequest.objects.filter(status='PENDING'),
+            to_attr='prefetched_pending_specialty_requests',
+        )
+
         user = self.request.user
         if user.role == 'ADMIN':
-            return User.objects.all().order_by('-date_joined')
+            return User.objects.all().prefetch_related(pending_requests).order_by('-date_joined')
         from django.db.models import Q
         return User.objects.filter(
             Q(id=user.id) | Q(role__in=['SPECIALIST', 'TEACHER'])
-        ).distinct()
+        ).prefetch_related(pending_requests).distinct()
 
     def get_serializer_class(self):
         if self.request.user.role == 'ADMIN':
@@ -248,39 +259,151 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class RequestSpecialtyChangeView(APIView):
+    """
+    Specialist-facing endpoint for proposing an edit to their own specialties.
+
+    The payload carries the full desired set (`specialties`), so a specialist can
+    add and remove in one request. Nothing is applied until an admin approves —
+    see SpecialtyChangeRequestReviewView.
+    """
     permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Return the specialist's own pending request, if any."""
+        if request.user.role != 'SPECIALIST':
+            return Response({"error": "Only specialists have specialty change requests."}, status=status.HTTP_403_FORBIDDEN)
+        pending = SpecialtyChangeRequest.objects.filter(specialist=request.user, status='PENDING').first()
+        return Response(SpecialtyChangeRequestSerializer(pending).data if pending else None)
 
     def post(self, request):
         user = request.user
         if user.role != 'SPECIALIST':
             return Response({"error": "Only specialists can request a specialty change."}, status=status.HTTP_403_FORBIDDEN)
 
-        requested_specialty = (request.data.get('specialty') or '').strip()
+        from .specialties import validate_specialties
+
+        # `specialties` (full desired set) is canonical; `specialty` stays supported
+        # for older clients that could only swap to a single discipline.
+        raw = request.data.get('specialties')
+        if raw is None:
+            raw = request.data.get('specialty')
         note = (request.data.get('note') or '').strip()
 
-        from .specialties import normalize_specialty, SPECIALIST_SPECIALTIES
+        try:
+            requested = validate_specialties('SPECIALIST', raw)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        normalized_specialty = normalize_specialty(requested_specialty)
-        if not normalized_specialty or normalized_specialty not in SPECIALIST_SPECIALTIES:
-            return Response({"error": "Select a valid specialty."}, status=status.HTTP_400_BAD_REQUEST)
+        if not requested:
+            return Response({"error": "Select at least one specialty."}, status=status.HTTP_400_BAD_REQUEST)
 
         current_specialties = user.specialty_list()
-        if normalized_specialty in current_specialties:
-            return Response({"error": "That specialty is already assigned to your account."}, status=status.HTTP_400_BAD_REQUEST)
+        if set(requested) == set(current_specialties):
+            return Response(
+                {"error": "That matches your current specialties — add or remove at least one."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        specialist_name = f"{user.first_name} {user.last_name}".strip() or user.email
-        current_label = ', '.join(current_specialties) if current_specialties else 'Not assigned'
-        message = f"{specialist_name} requested a specialty change from {current_label} to {normalized_specialty}."
-        if note:
-            message = f"{message} Note: {note}"
+        # A specialist may revise an open request instead of stacking duplicates.
+        change_request = SpecialtyChangeRequest.objects.filter(specialist=user, status='PENDING').first()
+        if change_request:
+            change_request.current_specialties = current_specialties
+            change_request.requested_specialties = requested
+            change_request.note = note
+            change_request.save(update_fields=['current_specialties', 'requested_specialties', 'note', 'updated_at'])
+        else:
+            change_request = SpecialtyChangeRequest.objects.create(
+                specialist=user,
+                current_specialties=current_specialties,
+                requested_specialties=requested,
+                note=note,
+            )
 
-        notify_admins_in_app(
-            'SYSTEM',
-            f"Specialty change request: {specialist_name}",
-            message,
-            link=f"/users/{user.id}",
+        notify_specialty_change_requested(change_request)
+        return Response(
+            SpecialtyChangeRequestSerializer(change_request).data,
+            status=status.HTTP_201_CREATED,
         )
-        return Response({"message": "Your specialty change request was sent to admin."}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        """Specialist withdraws their own pending request."""
+        change_request = SpecialtyChangeRequest.objects.filter(specialist=request.user, status='PENDING').first()
+        if not change_request:
+            return Response({"error": "You have no pending specialty change request."}, status=status.HTTP_404_NOT_FOUND)
+        change_request.status = 'CANCELLED'
+        change_request.save(update_fields=['status', 'updated_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SpecialtyChangeRequestListView(APIView):
+    """GET: pending specialty change requests across all specialists (admin only)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied("Only admins can view specialty change requests.")
+        requests_qs = (
+            SpecialtyChangeRequest.objects
+            .filter(status=request.query_params.get('status', 'PENDING'))
+            .select_related('specialist', 'reviewed_by')
+        )
+        return Response(SpecialtyChangeRequestSerializer(requests_qs, many=True).data)
+
+
+class SpecialtyChangeRequestReviewView(APIView):
+    """POST: admin approves or rejects a pending specialty change request."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied("Only admins can review specialty change requests.")
+
+        try:
+            change_request = SpecialtyChangeRequest.objects.select_related('specialist').get(pk=pk)
+        except SpecialtyChangeRequest.DoesNotExist:
+            return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if change_request.status != 'PENDING':
+            return Response({"error": "This request has already been reviewed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        action = (request.data.get('action') or '').strip().lower()
+        if action not in ('approve', 'reject'):
+            return Response({"error": "Action must be 'approve' or 'reject'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        admin_note = (request.data.get('admin_note') or '').strip()
+        specialist = change_request.specialist
+
+        with transaction.atomic():
+            if action == 'approve':
+                from .specialties import validate_specialties
+                try:
+                    approved = validate_specialties('SPECIALIST', change_request.requested_specialties)
+                except ValueError as exc:
+                    return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+                if not approved:
+                    return Response({"error": "This request no longer resolves to a valid specialty."}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Snapshot what was actually replaced so the decided record reads true.
+                change_request.current_specialties = specialist.specialty_list()
+                specialist.specialties = approved
+                specialist.specialty = approved[0]
+                specialist.save(update_fields=['specialties', 'specialty'])
+
+            change_request.status = 'APPROVED' if action == 'approve' else 'REJECTED'
+            change_request.admin_note = admin_note
+            change_request.reviewed_by = request.user
+            change_request.reviewed_at = timezone.now()
+            change_request.save(update_fields=[
+                'status', 'admin_note', 'reviewed_by', 'reviewed_at', 'current_specialties', 'updated_at',
+            ])
+
+        notify_specialty_change_reviewed(change_request)
+
+        specialist.refresh_from_db()
+        return Response({
+            "request": SpecialtyChangeRequestSerializer(change_request).data,
+            "specialties": specialist.specialty_list(),
+        })
 
 # ─── Form Input ViewSets ─────────────────────────────────────────────────────
 
@@ -434,8 +557,6 @@ class ParentAssessmentViewSet(BaseInputViewSet):
             dedupe_key=dedupe_key,
             is_resubmission=is_resubmission,
         )
-        from .services.cycle_service import check_and_trigger_iep_generation
-        check_and_trigger_iep_generation(instance.student, instance.report_cycle)
 
 
 class MultidisciplinaryAssessmentViewSet(BaseInputViewSet):
@@ -567,8 +688,6 @@ class ParentProgressTrackerViewSet(BaseInputViewSet):
             dedupe_key=f"form-submitted:parent-tracker:{instance.id}",
         )
         notify_tracker_progress(self.request.user, instance.student, instance.report_cycle)
-        from .services.cycle_service import check_and_trigger_auto_generation
-        check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
 
 class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
@@ -664,9 +783,6 @@ class MultidisciplinaryProgressTrackerViewSet(BaseInputViewSet):
                     )
                 _maybe_finalize('tracker', instance, user)
 
-        from .services.cycle_service import check_and_trigger_auto_generation
-        check_and_trigger_auto_generation(instance.student, instance.report_cycle)
-
         transaction.on_commit(lambda: broadcast_section_saved(
             form_type='tracker', instance=instance, section_key='*',
             user=user, form_data_v2=instance.form_data,
@@ -709,8 +825,6 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
             dedupe_key=f"form-submitted:teacher-tracker:{instance.id}",
         )
         notify_tracker_progress(self.request.user, instance.student, instance.report_cycle)
-        from .services.cycle_service import check_and_trigger_auto_generation
-        check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
 # ─── Section-scoped writes (multi-specialist forms) ──────────────────────────
 
@@ -1407,16 +1521,7 @@ class AdminDashboardActionsView(APIView):
 
                 report = latest_monthly.get((s.id, cycle.id))
 
-                if report and report.status == 'DRAFT':
-                    actions.append({
-                        "id": f"review_report_{s.id}",
-                        "title": f"Review Monthly Report: {s.first_name} {s.last_name}",
-                        "description": f"{cycle.label} report auto-generated. Review and finalize.",
-                        "action_text": "Review →",
-                        "link": f"/workspace?studentId={s.id}&workspace=reports&view=monthly&docId={report.id}",
-                        "type": "positive"
-                    })
-                elif all_trackers_submitted and not report:
+                if all_trackers_submitted and not report:
                     actions.append({
                         "id": f"monthly_{s.id}",
                         "title": f"Generate Monthly Progress Report: {s.first_name} {s.last_name}",
@@ -1439,27 +1544,10 @@ class AdminDashboardActionsView(APIView):
                         "type": "warning"
                     })
 
-        # 2. Auto-generated IEP drafts waiting for admin review.
-        draft_iep_student_ids = set()
-        for doc in GeneratedDocument.objects.filter(
-            document_type='IEP', status='DRAFT'
-        ).select_related('student').order_by('-created_at'):
-            draft_iep_student_ids.add(doc.student_id)
-            actions.append({
-                "id": f"review_iep_{doc.id}",
-                "title": f"Finalize IEP Draft: {doc.student.first_name} {doc.student.last_name}",
-                "description": "Multidisciplinary assessment finalized — IEP draft auto-generated. Review and finalize.",
-                "action_text": "Review →",
-                "description": "IEP draft auto-generated from finalized assessment inputs. Review, edit if needed, then finalize.",
-                "action_text": "Finalize ->",
-                "link": f"/workspace?studentId={doc.student_id}&workspace=reports&view=iep&docId={doc.id}",
-                "type": "positive",
-            })
-
-        # 3. Ready for Enrollment Review
+        # 2. Ready for Enrollment Review
+        #    Generated IEPs are complete on arrival — admins edit them in place
+        #    rather than passing them through a draft-review gate.
         for s in Student.objects.filter(status='ASSESSED'):
-            if s.id in draft_iep_student_ids:
-                continue
             cycle = ReportCycle.objects.filter(student=s, is_active=True).first()
             latest_iep = GeneratedDocument.objects.filter(
                 student=s,
@@ -1469,8 +1557,8 @@ class AdminDashboardActionsView(APIView):
             if not latest_iep and has_parent_assessment and has_finalized_multidisciplinary_assessment(s, cycle):
                 actions.append({
                     "id": f"generate_iep_{s.id}",
-                    "title": f"Generate IEP Draft: {s.first_name} {s.last_name}",
-                    "description": "Specialist assessment is finalized, but no IEP draft exists yet.",
+                    "title": f"Generate IEP: {s.first_name} {s.last_name}",
+                    "description": "Specialist assessment is finalized, but no IEP exists yet.",
                     "action_text": "Generate ->",
                     "link": f"/workspace?studentId={s.id}&workspace=reports&view=generator",
                     "type": "warning",
@@ -1487,7 +1575,7 @@ class AdminDashboardActionsView(APIView):
                 "type": "info"
             })
 
-        # 4. Parent Onboarding Submitted — bulk check to avoid N+1
+        # 3. Parent Onboarding Submitted — bulk check to avoid N+1
         inquiry_students = list(Student.objects.filter(status='PENDING_ASSESSMENT'))
         if inquiry_students:
             assessed_inquiry_ids = set(
@@ -1578,6 +1666,7 @@ class AssignTeacherView(APIView):
 
         try:
             from .services.student_service import assign_staff_to_student
+            from rest_framework.exceptions import ValidationError
             staff, student = assign_staff_to_student(
                 student_id,
                 teacher_id,
@@ -1585,6 +1674,11 @@ class AssignTeacherView(APIView):
                 assigned_by=request.user,
             )
             return Response({"message": f"Teacher {staff.email} assigned to {student.first_name}."})
+        except ValidationError as ve:
+            detail = ve.detail
+            if isinstance(detail, list) and detail:
+                detail = detail[0]
+            return Response({"error": str(detail)}, status=status.HTTP_400_BAD_REQUEST)
         except (User.DoesNotExist, Student.DoesNotExist):
             return Response({"error": "Teacher or Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -2092,6 +2186,12 @@ class AcceptInvitationView(APIView):
             if user.role == 'PARENT':
                 from .services.notification_service import notify_parent_welcome_to_register_child
                 notify_parent_welcome_to_register_child(user, invitation.student)
+            elif user.role == 'SPECIALIST':
+                from .services.notification_service import notify_specialist_welcome_to_complete_profile
+                notify_specialist_welcome_to_complete_profile(user)
+            elif user.role == 'TEACHER':
+                from .services.notification_service import notify_teacher_welcome_to_complete_profile
+                notify_teacher_welcome_to_complete_profile(user)
             from .services.realtime_service import create_activity_event
             create_activity_event(
                 event_type='USER_REGISTERED',
@@ -2929,6 +3029,14 @@ class NotificationListView(APIView):
                     from .services.notification_service import notify_parent_welcome_to_register_child
                     notify_parent_welcome_to_register_child(request.user, student)
 
+        elif request.user.role == 'SPECIALIST' and not request.user.is_specialist_onboarding_complete():
+            # Backfills specialists who registered before the welcome existed.
+            # Gated on incomplete onboarding so settled specialists aren't greeted again.
+            dedupe_key = f"specialist-welcome-complete-profile:{request.user.id}"
+            if not Notification.objects.filter(recipient=request.user, dedupe_key=dedupe_key).exists():
+                from .services.notification_service import notify_specialist_welcome_to_complete_profile
+                notify_specialist_welcome_to_complete_profile(request.user)
+
         qs = Notification.objects.filter(recipient=request.user)[:50]
         unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
         serializer = NotificationSerializer(qs, many=True)
@@ -2982,16 +3090,23 @@ class ActivityEventListView(APIView):
         user = request.user
         limit = min(int(request.query_params.get('limit', 50)), 100)
         student_id = request.query_params.get('student_id')
+        actor_id = request.query_params.get('actor_id')
 
         qs = ActivityEvent.objects.select_related('student', 'actor')
-        if user.role == 'ADMIN':
-            if student_id:
-                qs = qs.filter(student_id=student_id)
-        else:
+
+        if actor_id:
+            # The per-user activity log. Scoping by actor instead of by student
+            # team on purpose: a user's own trail includes account events that
+            # aren't attached to any student.
+            if user.role != 'ADMIN' and str(user.id) != str(actor_id):
+                raise PermissionDenied("You can only view your own activity.")
+            qs = qs.filter(actor_id=actor_id)
+        elif user.role != 'ADMIN':
             student_ids = StudentAccess.objects.filter(user=user).values_list('student_id', flat=True)
             qs = qs.filter(visibility='STUDENT_TEAM', student_id__in=student_ids)
-            if student_id:
-                qs = qs.filter(student_id=student_id)
+
+        if student_id:
+            qs = qs.filter(student_id=student_id)
 
         serializer = ActivityEventSerializer(qs[:limit], many=True)
         return Response({'events': serializer.data})

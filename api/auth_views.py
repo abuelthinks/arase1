@@ -153,6 +153,8 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        from .serializers import _pending_specialty_request
+
         user = request.user
         return Response({
             'user_id': user.id,
@@ -166,7 +168,11 @@ class MeView(APIView):
             'specialties': user.specialty_list() if hasattr(user, 'specialty_list') else (
                 [user.specialty] if getattr(user, 'specialty', '') else []
             ),
+            'grade_level': getattr(user, 'grade_level', '') or '',
             'languages': user.language_list() if hasattr(user, 'language_list') else [],
             'specialist_onboarding_complete': user.is_specialist_onboarding_complete() if hasattr(user, 'is_specialist_onboarding_complete') else True,
             'specialist_onboarding_missing': user.specialist_onboarding_missing() if hasattr(user, 'specialist_onboarding_missing') else [],
+            'teacher_profile_complete': user.is_teacher_profile_complete() if hasattr(user, 'is_teacher_profile_complete') else True,
+            'teacher_profile_missing': user.teacher_profile_missing() if hasattr(user, 'teacher_profile_missing') else [],
+            'pending_specialty_request': _pending_specialty_request(user),
         })

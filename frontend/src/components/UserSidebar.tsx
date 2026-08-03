@@ -20,6 +20,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
     const [lastParentStudentId, setLastParentStudentId] = useState<string | null>(null);
     const [fallbackParentStudentId, setFallbackParentStudentId] = useState<string | null>(null);
     const [isProgressLocked, setIsProgressLocked] = useState(false);
+    const [children, setChildren] = useState<any[]>([]);
 
     const isTeacher = user?.role === "TEACHER";
     const isSpecialist = user?.role === "SPECIALIST";
@@ -46,6 +47,7 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
             window.localStorage.getItem("arase:last-parent-student-id");
 
         api.get("/api/students/").then(res => {
+            setChildren(res.data || []);
             const firstEnrolled = res.data?.find((student: any) => student.status === "ENROLLED")?.id;
             const firstAny = res.data?.[0]?.id;
             const chosen = firstEnrolled || firstAny;
@@ -71,6 +73,19 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
             }
         }).catch(() => {});
     }, [isParent, pathname, searchParams]);
+
+    // A child whose initial assessment is still outstanding has no workspace to
+    // land in yet — send them to the onboarding form, same as the dashboard CTA.
+    const childHref = (child: any) =>
+        child.status === "PENDING_ASSESSMENT" && !child.has_parent_assessment
+            ? `/parent-onboarding?studentId=${child.id}`
+            : `/workspace?studentId=${child.id}`;
+
+    const activeChildId = searchParams.get("studentId") || pathname.match(/^\/students\/(\d+)/)?.[1] || null;
+    // Progress and My Children were two doors into the same place. The children
+    // now live under My Children, and viewing one keeps that section active.
+    const showChildSubmenu = isParent && !collapsed && children.length > 0;
+    const isChildrenSectionActive = isMyChildren || (isParent && isWorkspace);
 
     const openMonthlyProgress = () => {
         if (!isParent) return;
@@ -106,25 +121,19 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                 <nav className="flex flex-col gap-1 w-full">
                     {!collapsed && (
                         <div className="px-2 pb-1 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
-                            My Work
+                            Work
                         </div>
                     )}
 
-                    {isParent && (
+                    {isParent && collapsed && (
                         <button
                             type="button"
                             onClick={() => !isProgressLocked && openMonthlyProgress()}
                             disabled={isProgressLocked}
-                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProgressLocked ? 'text-faint cursor-not-allowed opacity-70' : isParentMonthlyProgress ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`}
+                            className={`flex items-center justify-center px-0 py-2 rounded-lg text-sm transition-all duration-200 ${isProgressLocked ? 'text-faint cursor-not-allowed opacity-70' : isParentMonthlyProgress ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'}`}
                             title={isProgressLocked ? "Available after initial assessment" : "Progress"}
                         >
                             <LayoutTemplate size={18} />
-                            {!collapsed && (
-                                <div className="flex items-center justify-between w-full">
-                                    <span className="truncate">Progress</span>
-                                    {isProgressLocked && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>}
-                                </div>
-                            )}
                         </button>
                     )}
 
@@ -135,10 +144,29 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                         </Link>
                     )}
 
-                    <Link href="/dashboard" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isMyChildren ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} aria-current={isMyChildren ? "page" : undefined} title={isTeacher || isSpecialist ? "My Students" : "My Children"}>
+                    <Link href="/dashboard" className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isChildrenSectionActive ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} aria-current={isMyChildren ? "page" : undefined} title={isTeacher || isSpecialist ? "My Students" : "My Children"}>
                         <BookOpen size={18} />
                         {!collapsed && <span className="truncate">{isTeacher || isSpecialist ? "My Students" : "My Children"}</span>}
                     </Link>
+
+                    {showChildSubmenu && (
+                        <div className="ml-[1.4rem] mt-0.5 flex flex-col gap-0.5 border-l border-[var(--border-light)] pl-1.5">
+                            {children.map(child => {
+                                const isActiveChild = isWorkspace && String(child.id) === activeChildId;
+                                return (
+                                    <Link
+                                        key={child.id}
+                                        href={childHref(child)}
+                                        title={`${child.first_name} ${child.last_name}`}
+                                        aria-current={isActiveChild ? "page" : undefined}
+                                        className={`truncate rounded-md px-2 py-1.5 text-[0.78rem] transition-colors duration-200 ${isActiveChild ? 'bg-indigo-50 font-bold text-[var(--accent-primary)]' : 'text-[var(--text-secondary)] font-normal hover:bg-app hover:text-[var(--text-primary)]'}`}
+                                    >
+                                        {child.first_name}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {!collapsed && (
                         <div className="px-2 pb-1 mt-5 text-[0.65rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">
@@ -153,15 +181,15 @@ export default function UserSidebar({ collapsed = false, onToggle }: UserSidebar
                                 <User size={18} />
                                 {!collapsed && (
                                     <div className="flex items-center justify-between w-full">
-                                        <span className="truncate">My Profile</span>
+                                        <span className="truncate">Profile</span>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                                     </div>
                                 )}
                             </button>
                         ) : (
-                            <Link href={`/users/${user.user_id}`} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="My Profile">
+                            <Link href={`/users/${user.user_id}`} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${isProfile ? 'bg-[var(--accent-primary)] text-white font-bold' : 'text-[var(--text-primary)] hover:bg-app font-normal'} ${collapsed ? 'justify-center px-0' : ''}`} title="Profile">
                                 <User size={18} />
-                                {!collapsed && <span className="truncate">My Profile</span>}
+                                {!collapsed && <span className="truncate">Profile</span>}
                             </Link>
                         )
                     )}

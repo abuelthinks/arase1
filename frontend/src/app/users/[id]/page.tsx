@@ -1,26 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import api from "@/lib/api";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { LANGUAGE_OPTIONS, normalizeLanguages } from "@/lib/languages";
 import { semanticToneClass, statusColorClass, type SemanticTone } from "@/lib/role-colors";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
+import { GRADE_LEVELS, normalizeGradeLevel, type GradeLevel } from "@/lib/grade-levels";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
+import type { SpecialtyChangeRequest } from "@/types";
+import { toast } from "sonner";
+import { extractApiError } from "@/lib/toast-utils";
 import type { LucideIcon } from "lucide-react";
 import {
     ActivityIcon,
-    ArrowLeft,
     ArrowRight,
     BadgeCheck,
     Briefcase,
     Check,
     ChevronRight,
+    Clock,
     Languages,
     Loader2,
     Mail,
+    Minus,
     PhoneCall,
     Plus,
     ShieldCheck,
@@ -51,15 +56,19 @@ interface UserData {
     last_name: string;
     specialty: SpecialistSpecialty | "";
     specialties?: SpecialistSpecialty[];
+    grade_level?: string;
     languages?: string[];
     phone_number?: string;
     is_phone_verified?: boolean;
     is_active?: boolean;
     specialist_onboarding_complete?: boolean;
     specialist_onboarding_missing?: string[];
+    teacher_profile_complete?: boolean;
+    teacher_profile_missing?: string[];
     assigned_students_count: number;
     assigned_students: AssignedStudent[];
     last_login?: string;
+    pending_specialty_request?: SpecialtyChangeRequest | null;
 }
 
 const inputCls =
@@ -95,13 +104,29 @@ function getRoleSummary(role: string): string {
     }
 }
 
-function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-    return (
-        <section className={`rounded-2xl border border-line bg-card p-6 shadow-sm md:p-7 ${className}`}>
-            {children}
-        </section>
-    );
+// "raised" carries the hairline border and shadow; "quiet" drops both so the
+// side rail sits a level below the primary column instead of competing with it.
+function SectionCard({
+    children,
+    className = "",
+    variant = "raised",
+}: {
+    children: React.ReactNode;
+    className?: string;
+    variant?: "raised" | "quiet";
+}) {
+    const surface = variant === "quiet"
+        ? "rounded-2xl bg-card p-6 md:p-7"
+        : "rounded-2xl border border-line bg-card p-6 shadow-sm md:p-7";
+    return <section className={`${surface} ${className}`}>{children}</section>;
 }
+
+const STAT_VALUE_TONE_CLASS: Partial<Record<SemanticTone, string>> = {
+    primary: "text-accent-text",
+    success: "text-success",
+    warning: "text-warning",
+    danger: "text-danger",
+};
 
 function SectionHeader({
     title,
@@ -113,7 +138,7 @@ function SectionHeader({
     action?: React.ReactNode;
 }) {
     return (
-        <div className="mb-5 flex flex-col gap-3 border-b border-indigo-100/60 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <h2 className="m-0 text-lg font-extrabold text-fg">{title}</h2>
                 {description && <p className="mt-1 text-sm text-muted">{description}</p>}
@@ -129,7 +154,6 @@ function profileBadgeClass(tone: SemanticTone, extra = "") {
 
 export default function UserProfile() {
     const { id } = useParams();
-    const router = useRouter();
     const { user: authUser } = useAuth();
     const cacheKey = String(id);
     const cached = id ? profileCache.get(cacheKey) ?? null : null;
@@ -141,6 +165,18 @@ export default function UserProfile() {
     const [savingSpecialty, setSavingSpecialty] = useState(false);
     const [specialtyError, setSpecialtyError] = useState("");
     const [isEditingSpecialty, setIsEditingSpecialty] = useState(false);
+    const [specialtyRequestNote, setSpecialtyRequestNote] = useState("");
+    const [reviewingRequest, setReviewingRequest] = useState<"approve" | "reject" | null>(null);
+    // Self-service specialty request (specialist viewing their own profile)
+    const [isRequestingSpecialty, setIsRequestingSpecialty] = useState(false);
+    const [requestedSpecialties, setRequestedSpecialties] = useState<SpecialistSpecialty[]>([]);
+    const [ownRequestNote, setOwnRequestNote] = useState("");
+    const [sendingOwnRequest, setSendingOwnRequest] = useState(false);
+    const [withdrawingOwnRequest, setWithdrawingOwnRequest] = useState(false);
+    const [gradeLevel, setGradeLevel] = useState<GradeLevel | "">("");
+    const [savingGradeLevel, setSavingGradeLevel] = useState(false);
+    const [gradeLevelError, setGradeLevelError] = useState("");
+    const [isEditingGradeLevel, setIsEditingGradeLevel] = useState(false);
     const [languages, setLanguages] = useState<string[]>([]);
     const [languageOther, setLanguageOther] = useState("");
     const [savingLanguages, setSavingLanguages] = useState(false);
@@ -189,8 +225,82 @@ export default function UserProfile() {
     const initialLanguages = (raw: UserData): string[] =>
         normalizeLanguages(Array.isArray(raw.languages) ? raw.languages : []);
 
+    const initialGradeLevel = (raw: UserData): GradeLevel | "" =>
+        (normalizeGradeLevel(raw.grade_level) as GradeLevel) || "";
+
     const isAdmin = authUser?.role === "ADMIN";
     const onboardingIncomplete = isSpecialistOnboardingIncomplete(user ?? authUser);
+    const pendingSpecialtyRequest = user?.pending_specialty_request ?? null;
+
+    const reviewSpecialtyRequest = async (action: "approve" | "reject") => {
+        if (!pendingSpecialtyRequest) return;
+        setReviewingRequest(action);
+        setSpecialtyError("");
+        try {
+            const res = await api.post(
+                `/api/specialty-change-requests/${pendingSpecialtyRequest.id}/review/`,
+                { action, admin_note: specialtyRequestNote },
+            );
+            const nextSpecialties = (res.data?.specialties ?? []) as SpecialistSpecialty[];
+            profileCache.delete(cacheKey);
+            setUser(prev => prev ? {
+                ...prev,
+                pending_specialty_request: null,
+                ...(action === "approve"
+                    ? { specialties: nextSpecialties, specialty: nextSpecialties[0] ?? "" }
+                    : {}),
+            } : prev);
+            if (action === "approve") setSpecialties(nextSpecialties);
+            setSpecialtyRequestNote("");
+            toast.success(action === "approve" ? "Specialties updated." : "Request declined.");
+        } catch (err: any) {
+            toast.error(extractApiError(err, "Could not review the request."));
+        } finally {
+            setReviewingRequest(null);
+        }
+    };
+
+    const ownRequestAdded = requestedSpecialties.filter(s => !specialties.includes(s));
+    const ownRequestRemoved = specialties.filter(s => !requestedSpecialties.includes(s));
+    const ownRequestHasChange = ownRequestAdded.length > 0 || ownRequestRemoved.length > 0;
+
+    const refreshProfile = async () => {
+        const res = await api.get(`/api/users/${id}/`);
+        profileCache.set(cacheKey, res.data);
+        setUser(res.data);
+        return res.data as UserData;
+    };
+
+    const sendOwnSpecialtyRequest = async () => {
+        setSendingOwnRequest(true);
+        try {
+            await api.post("/api/users/request-specialty-change/", {
+                specialties: requestedSpecialties,
+                note: ownRequestNote,
+            });
+            await refreshProfile();
+            setIsRequestingSpecialty(false);
+            setOwnRequestNote("");
+            toast.success("Request sent to admin.");
+        } catch (err: any) {
+            toast.error(extractApiError(err, "Request failed."));
+        } finally {
+            setSendingOwnRequest(false);
+        }
+    };
+
+    const withdrawOwnSpecialtyRequest = async () => {
+        setWithdrawingOwnRequest(true);
+        try {
+            await api.delete("/api/users/request-specialty-change/");
+            await refreshProfile();
+            toast.success("Request withdrawn.");
+        } catch (err: any) {
+            toast.error(extractApiError(err, "Could not withdraw the request."));
+        } finally {
+            setWithdrawingOwnRequest(false);
+        }
+    };
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -199,8 +309,9 @@ export default function UserProfile() {
                 profileCache.set(cacheKey, res.data);
                 setUser(res.data);
                 setSpecialties(initialSpecialties(res.data));
+                setGradeLevel(initialGradeLevel(res.data));
                 setLanguages(initialLanguages(res.data));
-                
+
                 // Initialize edit fields
                 setEditFirstName(res.data.first_name || "");
                 setEditLastName(res.data.last_name || "");
@@ -337,14 +448,21 @@ export default function UserProfile() {
         setSavingProfile(true);
         setProfileError("");
         try {
-            const payload = {
-                first_name: editFirstName,
-                last_name: editLastName,
-                email: editEmail,
-                phone_number: editPhoneNumber,
-                is_phone_verified: editIsPhoneVerified,
-                is_active: editIsActive
-            };
+            // Non-admins may only send their own name; anything else is rejected
+            // by UserViewSet.partial_update.
+            const payload = isAdmin
+                ? {
+                    first_name: editFirstName,
+                    last_name: editLastName,
+                    email: editEmail,
+                    phone_number: editPhoneNumber,
+                    is_phone_verified: editIsPhoneVerified,
+                    is_active: editIsActive
+                }
+                : {
+                    first_name: editFirstName,
+                    last_name: editLastName
+                };
             const res = await api.patch(`/api/users/${id}/`, payload);
             setUser(res.data);
             profileCache.set(cacheKey, res.data);
@@ -400,7 +518,16 @@ export default function UserProfile() {
     );
     const canViewPrivateContact = isAdmin || viewingOwnProfile;
     const canViewOperationalDetails = isAdmin || viewingOwnProfile;
-    const canEditLanguages = role === "SPECIALIST" && (isAdmin || authUser?.user_id === user.id);
+    // Teachers carry languages too — they feed the same student-matching score.
+    const canEditLanguages = (role === "SPECIALIST" || role === "TEACHER") && (isAdmin || authUser?.user_id === user.id);
+    // Non-admins on their own profile can only patch first_name/last_name — see
+    // UserViewSet.partial_update. The page reads as "my account" for them
+    // instead of the admin account record it shows an admin.
+    const isSelfServiceView = !isAdmin && viewingOwnProfile;
+    const canEditIdentity = isAdmin || viewingOwnProfile;
+    // The caseload list lives in the sidebar for specialists and teachers, so it
+    // only earns a panel here for admins and for parents seeing their children.
+    const showStudentsPanel = isAdmin || (isParent && viewingOwnProfile);
     const knownLanguageSet = new Set(LANGUAGE_OPTIONS.map(l => l.toLowerCase()));
 
     const profileInfo = !canViewPrivateContact
@@ -439,7 +566,7 @@ export default function UserProfile() {
         : [];
 
     return (
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 md:px-0">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 md:px-0">
             {viewerIsParent && !hasSeenProfileExplainer && (
                 <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
                     <div className="bg-card rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300 border border-white/20">
@@ -474,30 +601,24 @@ export default function UserProfile() {
                     </div>
                 </div>
             )}
-            {/* Hero */}
-            <SectionCard>
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <button
-                        type="button"
-                        onClick={() => router.back()}
-                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted transition-colors hover:bg-app"
-                    >
-                        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                        Back
-                    </button>
-                    {canViewOperationalDetails && !isParent && (
-                        <div className="flex flex-wrap gap-2">
+            {/* Identity banner */}
+            <section className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
+                {/* The whole header shares one tinted surface, so the only rule in
+                    the card is the real border above the stat strip. */}
+                <div className="bg-accent-soft px-6 py-6 md:px-7">
+                    {isAdmin && !isParent && (
+                        <div className="mb-6 flex flex-wrap justify-end gap-2">
                             <Link
                                 href={`/users/${user.id}/activity`}
-                                className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-fg no-underline transition-colors hover:bg-app"
+                                className="inline-flex items-center gap-2 rounded-lg border border-accent-border bg-card/70 px-3 py-1.5 text-xs font-bold text-fg no-underline transition-colors hover:bg-card"
                             >
                                 <ActivityIcon className="h-3.5 w-3.5" aria-hidden="true" />
                                 View Activity
                             </Link>
-                            {canViewPrivateContact && user.email && (
+                            {user.email && (
                                 <a
                                     href={`mailto:${user.email}`}
-                                    className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-fg no-underline transition-colors hover:bg-app"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-accent-border bg-card/70 px-3 py-1.5 text-xs font-bold text-fg no-underline transition-colors hover:bg-card"
                                 >
                                     <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                                     Email User
@@ -505,49 +626,80 @@ export default function UserProfile() {
                             )}
                         </div>
                     )}
-                </div>
-
-                <div className="flex flex-col items-start gap-5 sm:flex-row">
-                    <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border text-2xl font-extrabold shadow-sm ${semanticToneClass("primary")}`}>
-                        {initials}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-card bg-card text-2xl font-extrabold text-accent-text shadow-sm">
+                            {initials}
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="m-0 text-2xl font-extrabold leading-tight text-fg">
+                                    {displayName}
+                                </h1>
+                                <span className="rounded-full border border-accent-border bg-card px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wide text-accent-text">
+                                    {role}
+                                </span>
+                                {canViewOperationalDetails && (
+                                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${semanticToneClass(user.is_active === false ? "danger" : "success")}`}>
+                                        {user.is_active === false ? "Inactive" : "Active"}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm font-semibold text-muted">
+                                {canViewPrivateContact && user.email && (
+                                    <a
+                                        href={`mailto:${user.email}`}
+                                        className="inline-flex items-center gap-1.5 text-muted no-underline transition-colors hover:text-indigo-600"
+                                    >
+                                        <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                                        {user.email}
+                                    </a>
+                                )}
+                                {canViewPrivateContact && user.phone_number && (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" />
+                                        {user.phone_number}
+                                    </span>
+                                )}
+                                {canViewOperationalDetails && (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                                        {formatLastSeen(user.last_login)}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <h1 className="m-0 text-2xl font-extrabold leading-tight text-fg">
-                                {displayName}
-                            </h1>
-                            <span className={`rounded-full border px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide ${semanticToneClass("primary")}`}>
-                                {role}
+
+                    <p className="mt-4 text-sm leading-relaxed text-muted">
+                        {getRoleSummary(role)}
+                    </p>
+
+                    {!isParent && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent-border bg-card px-3 py-1 text-xs font-semibold text-accent-text">
+                                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                                {(user.specialties && user.specialties.length > 0)
+                                    ? user.specialties.join(", ")
+                                    : (user.specialty || "Specialty not set")}
                             </span>
                         </div>
-                        <p className="mt-2 text-sm leading-relaxed text-muted">
-                            {getRoleSummary(role)}
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {canViewPrivateContact && user.email && (
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-app px-3 py-1 text-xs font-semibold text-muted">
-                                    <Mail className="h-3 w-3" aria-hidden="true" />
-                                    {user.email}
-                                </span>
-                            )}
-                            {canViewPrivateContact && user.phone_number && (
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-app px-3 py-1 text-xs font-semibold text-muted">
-                                    <PhoneCall className="h-3 w-3" aria-hidden="true" />
-                                    {user.phone_number}
-                                </span>
-                            )}
-                            {!isParent && (
-                                <span className={`inline-flex items-center gap-1.5 ${profileBadgeClass("primary")}`}>
-                                    <BadgeCheck className="h-3 w-3" aria-hidden="true" />
-                                    {(user.specialties && user.specialties.length > 0)
-                                        ? user.specialties.join(", ")
-                                        : (user.specialty || "Specialty not set")}
-                                </span>
-                            )}
-                        </div>
-                    </div>
+                    )}
                 </div>
-            </SectionCard>
+
+                {statCards.length > 0 && (
+                    <div className="grid grid-cols-1 divide-y divide-line border-t border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                        {statCards.map(card => (
+                            <div key={card.label} className="px-6 py-4 md:px-7">
+                                <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">{card.label}</p>
+                                <p className={`m-0 mt-1.5 text-3xl font-extrabold leading-none ${STAT_VALUE_TONE_CLASS[card.tone] || "text-fg"}`}>
+                                    {card.value}
+                                </p>
+                                <p className="m-0 mt-1.5 text-xs text-muted">{card.note}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
 
             {/* Pending Invitation Alert (for Admins viewing a parent) */}
             {isAdmin && isParent && pendingInvitation && (
@@ -601,21 +753,6 @@ export default function UserProfile() {
                 </div>
             )}
 
-            {/* Stats */}
-            {statCards.length > 0 && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    {statCards.map(card => (
-                        <div key={card.label} className="rounded-2xl border border-line bg-card p-5 shadow-sm">
-                            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border text-lg font-extrabold ${semanticToneClass(card.tone)}`}>
-                                {card.value}
-                            </div>
-                            <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">{card.label}</p>
-                            <p className="mt-1 text-sm text-muted">{card.note}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
-
             {/* Onboarding callout */}
             {role === "SPECIALIST" && onboardingIncomplete && canViewOperationalDetails && (
                 <div className={`flex flex-col gap-3 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between ${semanticToneClass("warning")}`}>
@@ -634,14 +771,20 @@ export default function UserProfile() {
             )}
 
             {/* Main grid */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
                 <div className="flex flex-col gap-6">
                     <SectionCard>
                         <SectionHeader
-                            title={isParent ? "Your Information" : "Profile Information"}
-                            description={isParent ? "Your contact details and account status." : "Identity, contact details, and account state."}
+                            title={isSelfServiceView || isParent ? "Your Information" : "Profile Information"}
+                            description={
+                                isSelfServiceView
+                                    ? "Your name is yours to change. Contact an admin to update your email or phone."
+                                    : isParent
+                                        ? "Your contact details and account status."
+                                        : "Identity, contact details, and account state."
+                            }
                             action={
-                                isAdmin && (
+                                canEditIdentity && (
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -685,44 +828,48 @@ export default function UserProfile() {
                                         />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Email</label>
-                                    <input
-                                        type="email"
-                                        value={editEmail}
-                                        onChange={e => setEditEmail(e.target.value)}
-                                        className={inputCls}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Phone Number</label>
-                                    <input
-                                        type="text"
-                                        value={editPhoneNumber}
-                                        onChange={e => setEditPhoneNumber(e.target.value)}
-                                        className={inputCls}
-                                    />
-                                </div>
-                                <div className="flex flex-wrap gap-4 items-center justify-between py-3 border-t border-b border-line my-1">
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-fg cursor-pointer select-none">
-                                        <input
-                                            type="checkbox"
-                                            checked={editIsPhoneVerified}
-                                            onChange={e => setEditIsPhoneVerified(e.target.checked)}
-                                            className="rounded border-line text-indigo-600 focus:ring-indigo-500 h-4 w-4"
-                                        />
-                                        Phone Verified
-                                    </label>
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-fg cursor-pointer select-none">
-                                        <input
-                                            type="checkbox"
-                                            checked={editIsActive}
-                                            onChange={e => setEditIsActive(e.target.checked)}
-                                            className="rounded border-line text-indigo-600 focus:ring-indigo-500 h-4 w-4"
-                                        />
-                                        Account Active
-                                    </label>
-                                </div>
+                                {isAdmin && (
+                                    <>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Email</label>
+                                            <input
+                                                type="email"
+                                                value={editEmail}
+                                                onChange={e => setEditEmail(e.target.value)}
+                                                className={inputCls}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Phone Number</label>
+                                            <input
+                                                type="text"
+                                                value={editPhoneNumber}
+                                                onChange={e => setEditPhoneNumber(e.target.value)}
+                                                className={inputCls}
+                                            />
+                                        </div>
+                                        <div className="flex flex-wrap gap-4 items-center justify-between py-3 border-t border-b border-line my-1">
+                                            <label className="flex items-center gap-2 text-sm font-semibold text-fg cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editIsPhoneVerified}
+                                                    onChange={e => setEditIsPhoneVerified(e.target.checked)}
+                                                    className="rounded border-line text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                />
+                                                Phone Verified
+                                            </label>
+                                            <label className="flex items-center gap-2 text-sm font-semibold text-fg cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editIsActive}
+                                                    onChange={e => setEditIsActive(e.target.checked)}
+                                                    className="rounded border-line text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                />
+                                                Account Active
+                                            </label>
+                                        </div>
+                                    </>
+                                )}
                                 {profileError && (
                                     <p className="m-0 text-xs font-medium text-danger">{profileError}</p>
                                 )}
@@ -761,11 +908,11 @@ export default function UserProfile() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col divide-y divide-line">
                                 {profileInfo.map(item => {
                                     const Icon = item.icon;
                                     return (
-                                        <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5">
+                                        <div key={item.label} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                                             <span className="inline-flex items-center gap-2 text-sm font-semibold text-muted">
                                                 {Icon && <Icon className="h-4 w-4 text-faint" aria-hidden="true" />}
                                                 {item.label}
@@ -784,15 +931,17 @@ export default function UserProfile() {
                         )}
                     </SectionCard>
 
-                    {!isParent && (
+                    {/* On your own profile this only repeats the banner, Profile
+                        Information, and the languages card below it. */}
+                    {!isParent && !isSelfServiceView && (
                         <SectionCard>
                             <SectionHeader
                                 title={isParentViewingOther ? "About this specialist" : "Verification & Role Context"}
                                 description={isParentViewingOther ? "Who this specialist is and how they can support your child." : "Important account context at a glance."}
                             />
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col divide-y divide-line">
                                 {canViewPrivateContact && (
-                                    <div className="rounded-2xl border border-line bg-app/70 p-4">
+                                    <div className="py-4 first:pt-0 last:pb-0">
                                         <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
                                             <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" />
                                             Phone Verification
@@ -808,13 +957,21 @@ export default function UserProfile() {
                                     </div>
                                 )}
 
-                                <div className="rounded-2xl border border-line bg-app/70 p-4">
+                                <div className="py-4 first:pt-0 last:pb-0">
                                     <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
                                         <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                                        Area of Practice
+                                        {role === "TEACHER" ? "Grade Level" : "Area of Practice"}
                                     </p>
                                     <div className="mt-2 flex flex-wrap gap-2">
-                                        {user.specialties && user.specialties.length > 0 ? (
+                                        {role === "TEACHER" ? (
+                                            gradeLevel ? (
+                                                <span className={profileBadgeClass("primary")}>
+                                                    {gradeLevel}
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm italic text-faint">Not configured yet</span>
+                                            )
+                                        ) : user.specialties && user.specialties.length > 0 ? (
                                             user.specialties.map(s => (
                                                 <span key={s} className={profileBadgeClass("primary")}>
                                                     {s}
@@ -830,8 +987,8 @@ export default function UserProfile() {
                                     </div>
                                 </div>
 
-                                {role === "SPECIALIST" && (
-                                    <div className="rounded-2xl border border-line bg-app/70 p-4">
+                                {(role === "SPECIALIST" || role === "TEACHER") && (
+                                    <div className="py-4 first:pt-0 last:pb-0">
                                         <p className="m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
                                             <Languages className="h-3.5 w-3.5" aria-hidden="true" />
                                             Session Languages
@@ -856,8 +1013,12 @@ export default function UserProfile() {
                     {canEditLanguages && (
                         <SectionCard>
                             <SectionHeader
-                                title="Edit Session Languages"
-                                description="Languages this specialist can comfortably use with parents and children."
+                                title="Session Languages"
+                                description={
+                                    isSelfServiceView
+                                        ? "Languages you can comfortably use with parents and children."
+                                        : `Languages this ${role === "TEACHER" ? "teacher" : "specialist"} can comfortably use with parents and children.`
+                                }
                                 action={
                                     <button
                                         type="button"
@@ -1029,6 +1190,93 @@ export default function UserProfile() {
                                     </button>
                                 }
                             />
+
+                            {pendingSpecialtyRequest && (
+                                <div className={`mb-5 rounded-2xl border p-4 ${semanticToneClass("warning")}`}>
+                                    <div className="flex items-start gap-3">
+                                        <Clock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="m-0 text-sm font-extrabold">
+                                                {pendingSpecialtyRequest.specialist_name} requested a change
+                                            </p>
+                                            <p className="mt-1 text-sm">
+                                                Nothing is applied until you approve. Approving sets their specialties to
+                                                the requested list below.
+                                            </p>
+
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {pendingSpecialtyRequest.added.map(specialty => (
+                                                    <span
+                                                        key={`add-${specialty}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass("success")}`}
+                                                    >
+                                                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        Add {specialty}
+                                                    </span>
+                                                ))}
+                                                {pendingSpecialtyRequest.removed.map(specialty => (
+                                                    <span
+                                                        key={`remove-${specialty}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass("danger")}`}
+                                                    >
+                                                        <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        Remove {specialty}
+                                                    </span>
+                                                ))}
+                                            </div>
+
+                                            <p className="mt-3 text-xs font-semibold uppercase tracking-wide opacity-80">
+                                                Resulting specialties
+                                            </p>
+                                            <p className="mt-1 text-sm font-bold">
+                                                {pendingSpecialtyRequest.requested_specialties.join(", ")}
+                                            </p>
+
+                                            {pendingSpecialtyRequest.note && (
+                                                <p className="mt-3 text-sm italic">"{pendingSpecialtyRequest.note}"</p>
+                                            )}
+
+                                            <textarea
+                                                value={specialtyRequestNote}
+                                                onChange={event => setSpecialtyRequestNote(event.target.value)}
+                                                rows={2}
+                                                placeholder="Optional reply to the specialist..."
+                                                className="mt-3 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm font-medium text-fg placeholder:text-faint focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/15"
+                                            />
+
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    disabled={reviewingRequest !== null}
+                                                    onClick={() => reviewSpecialtyRequest("approve")}
+                                                    className="inline-flex items-center gap-2 rounded-xl bg-success-solid px-4 py-2 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {reviewingRequest === "approve" ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                    ) : (
+                                                        <Check className="h-4 w-4" aria-hidden="true" />
+                                                    )}
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={reviewingRequest !== null}
+                                                    onClick={() => reviewSpecialtyRequest("reject")}
+                                                    className="inline-flex items-center gap-2 rounded-xl border border-current px-4 py-2 text-sm font-bold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {reviewingRequest === "reject" ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                    ) : (
+                                                        <X className="h-4 w-4" aria-hidden="true" />
+                                                    )}
+                                                    Decline
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {isEditingSpecialty ? (
                                 <div className="flex flex-col gap-4">
                                     <div className="flex flex-wrap gap-2.5">
@@ -1117,11 +1365,311 @@ export default function UserProfile() {
                             )}
                         </SectionCard>
                     )}
+
+                    {isAdmin && role === "TEACHER" && (
+                        <SectionCard>
+                            <SectionHeader
+                                title="Edit Grade Level"
+                                description="The grade this teacher handles. Students in a matching grade are recommended to them during assignment."
+                                action={
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setGradeLevelError("");
+                                            setIsEditingGradeLevel(current => !current);
+                                            setGradeLevel(initialGradeLevel(user));
+                                        }}
+                                        className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-fg transition-colors hover:bg-app"
+                                    >
+                                        {isEditingGradeLevel ? "Close" : "Edit"}
+                                    </button>
+                                }
+                            />
+
+                            {isEditingGradeLevel ? (
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {GRADE_LEVELS.map(option => {
+                                            const checked = gradeLevel === option;
+                                            return (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setGradeLevel(checked ? "" : option);
+                                                    }}
+                                                    aria-pressed={checked}
+                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
+                                                        ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
+                                                        : "border-line bg-card text-muted hover:border-line hover:bg-app hover:shadow-sm"
+                                                        }`}
+                                                >
+                                                    {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
+                                                    <span className={checked ? "font-bold" : "font-medium"}>{option}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {gradeLevelError && (
+                                        <p className="m-0 text-xs font-medium text-danger">{gradeLevelError}</p>
+                                    )}
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            disabled={savingGradeLevel}
+                                            onClick={async () => {
+                                                setSavingGradeLevel(true);
+                                                setGradeLevelError("");
+                                                try {
+                                                    const res = await api.patch(`/api/users/${id}/`, { grade_level: gradeLevel });
+                                                    profileCache.delete(cacheKey);
+                                                    setUser(prev => prev ? {
+                                                        ...prev,
+                                                        grade_level: res.data?.grade_level ?? gradeLevel,
+                                                    } : prev);
+                                                    setGradeLevel((res.data?.grade_level ?? gradeLevel) as GradeLevel | "");
+                                                    setIsEditingGradeLevel(false);
+                                                } catch (err: any) {
+                                                    setGradeLevelError(err.response?.data?.grade_level || err.response?.data?.detail || "Could not save the grade level. Please try again.");
+                                                } finally {
+                                                    setSavingGradeLevel(false);
+                                                }
+                                            }}
+                                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {savingGradeLevel ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                "Save Grade Level"
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsEditingGradeLevel(false);
+                                                setGradeLevel(initialGradeLevel(user));
+                                                setGradeLevelError("");
+                                            }}
+                                            className="flex-1 rounded-xl border border-line px-5 py-3 text-sm font-bold text-fg transition-colors hover:bg-app"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {gradeLevel ? (
+                                        <span className={profileBadgeClass("primary")}>
+                                            {gradeLevel}
+                                        </span>
+                                    ) : (
+                                        <span className="text-sm italic text-faint">No grade level configured yet.</span>
+                                    )}
+                                </div>
+                            )}
+                        </SectionCard>
+                    )}
+
+                    {!isAdmin && role === "TEACHER" && viewingOwnProfile && (
+                        <SectionCard>
+                            <SectionHeader
+                                title="My Grade Level"
+                                description="Admin manages this. If it looks wrong, ask them to update it."
+                            />
+                            <div className="flex flex-wrap gap-2">
+                                {gradeLevel ? (
+                                    <span className={profileBadgeClass("primary")}>
+                                        {gradeLevel}
+                                    </span>
+                                ) : (
+                                    <span className="text-sm italic text-faint">Admin hasn&apos;t assigned your grade level yet.</span>
+                                )}
+                            </div>
+                        </SectionCard>
+                    )}
+
+                    {!isAdmin && role === "SPECIALIST" && viewingOwnProfile && (
+                        <SectionCard>
+                            <SectionHeader
+                                title="My Specialties"
+                                description="Admin manages these. If something is missing or shouldn't be there, ask them to add or remove it."
+                                action={
+                                    !pendingSpecialtyRequest ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsRequestingSpecialty(current => !current);
+                                                setRequestedSpecialties(specialties);
+                                                setOwnRequestNote("");
+                                            }}
+                                            className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-fg transition-colors hover:bg-app"
+                                        >
+                                            {isRequestingSpecialty ? "Cancel" : "Request a change"}
+                                        </button>
+                                    ) : undefined
+                                }
+                            />
+
+                            <div className="mb-4 flex flex-wrap gap-2">
+                                {specialties.length > 0 ? (
+                                    specialties.map(s => (
+                                        <span key={s} className={profileBadgeClass("primary")}>
+                                            {s}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-sm italic text-faint">
+                                        Admin hasn&apos;t assigned your specialties yet.
+                                    </span>
+                                )}
+                            </div>
+
+                            {pendingSpecialtyRequest ? (
+                                <div className={`rounded-2xl border p-4 ${semanticToneClass("warning")}`}>
+                                    <div className="flex items-start gap-3">
+                                        <Clock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="m-0 text-sm font-extrabold">Waiting for admin approval</p>
+                                            <p className="mt-1 text-sm">
+                                                Your specialties stay as they are until an admin approves this.
+                                            </p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {pendingSpecialtyRequest.added.map(s => (
+                                                    <span
+                                                        key={`add-${s}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass("success")}`}
+                                                    >
+                                                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        Add {s}
+                                                    </span>
+                                                ))}
+                                                {pendingSpecialtyRequest.removed.map(s => (
+                                                    <span
+                                                        key={`remove-${s}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass("danger")}`}
+                                                    >
+                                                        <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        Remove {s}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            {pendingSpecialtyRequest.note && (
+                                                <p className="mt-3 text-sm italic">&quot;{pendingSpecialtyRequest.note}&quot;</p>
+                                            )}
+                                            <button
+                                                type="button"
+                                                disabled={withdrawingOwnRequest}
+                                                onClick={withdrawOwnSpecialtyRequest}
+                                                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-current px-3 py-1.5 text-xs font-bold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {withdrawingOwnRequest ? (
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                                ) : (
+                                                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                                                )}
+                                                Withdraw request
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : isRequestingSpecialty ? (
+                                <div className="flex flex-col gap-4 border-t border-line pt-4">
+                                    <p className="m-0 text-sm text-muted">
+                                        Tick every discipline you practise. Untick anything assigned by mistake.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {SPECIALIST_SPECIALTIES.map(option => {
+                                            const checked = requestedSpecialties.includes(option);
+                                            return (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    onClick={() => setRequestedSpecialties(prev =>
+                                                        checked ? prev.filter(s => s !== option) : [...prev, option]
+                                                    )}
+                                                    aria-pressed={checked}
+                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${checked
+                                                        ? "border-indigo-400 bg-indigo-50 text-indigo-800 shadow-[0_2px_10px_rgba(99,102,241,0.12)]"
+                                                        : "border-line bg-card text-muted hover:border-line hover:bg-app hover:shadow-sm"
+                                                        }`}
+                                                >
+                                                    {checked && <Check className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />}
+                                                    <span className={checked ? "font-bold" : "font-medium"}>{option}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {ownRequestHasChange && (
+                                        <div className="rounded-xl border border-line bg-app/60 p-3">
+                                            <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">
+                                                Admin will be asked to
+                                            </p>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {ownRequestAdded.map(s => (
+                                                    <span
+                                                        key={`add-${s}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass("success")}`}
+                                                    >
+                                                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        Add {s}
+                                                    </span>
+                                                ))}
+                                                {ownRequestRemoved.map(s => (
+                                                    <span
+                                                        key={`remove-${s}`}
+                                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${semanticToneClass("danger")}`}
+                                                    >
+                                                        <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                                                        Remove {s}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <textarea
+                                        value={ownRequestNote}
+                                        onChange={event => setOwnRequestNote(event.target.value)}
+                                        rows={3}
+                                        placeholder="Briefly explain what should be changed."
+                                        className={inputCls}
+                                    />
+
+                                    <div>
+                                        <button
+                                            type="button"
+                                            disabled={sendingOwnRequest || !ownRequestHasChange || requestedSpecialties.length === 0}
+                                            onClick={sendOwnSpecialtyRequest}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {sendingOwnRequest ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                    Sending...
+                                                </>
+                                            ) : (
+                                                "Send request"
+                                            )}
+                                        </button>
+                                        {requestedSpecialties.length === 0 && (
+                                            <p className="mt-2 text-xs font-medium text-danger">
+                                                Keep at least one specialty selected.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </SectionCard>
+                    )}
                 </div>
 
-                <div className="flex flex-col gap-6">
-                    {(isParent || canViewOperationalDetails) && (
-                        <SectionCard>
+                <div className="flex flex-col gap-4">
+                    {showStudentsPanel && (
+                        <SectionCard variant="quiet">
                             <SectionHeader
                                 title={isParent ? "Children" : "Assigned Students"}
                                 description={isParent ? "Children connected to this account." : "Students this user is currently responsible for supporting."}
@@ -1219,8 +1767,8 @@ export default function UserProfile() {
                             )}
 
                             {studentCount === 0 ? (
-                                <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-app/40 py-10 text-center">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card text-faint shadow-sm">
+                                <div className="flex flex-col items-center gap-2 rounded-2xl bg-app py-10 text-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-faint shadow-sm">
                                         <Users className="h-5 w-5" aria-hidden="true" />
                                     </div>
                                     <p className="m-0 text-sm font-bold text-fg">
@@ -1239,7 +1787,7 @@ export default function UserProfile() {
                                         return (
                                             <div
                                                 key={student.id}
-                                                className="group flex items-center justify-between gap-3 rounded-xl border border-line bg-card p-3 no-underline transition-colors"
+                                                className="group flex items-center justify-between gap-3 rounded-xl bg-app p-3 no-underline transition-colors hover:bg-indigo-50/60"
                                             >
                                                 <Link
                                                     href={`/students/${student.id}`}
@@ -1280,7 +1828,7 @@ export default function UserProfile() {
                     )}
 
                     {isCrossRoleParentSpecialist ? (
-                        <SectionCard>
+                        <SectionCard variant="quiet">
                             <SectionHeader
                                 title="Communication"
                                 description="All messages go through the system to keep records and protect both parties."
@@ -1300,10 +1848,14 @@ export default function UserProfile() {
                             </div>
                         </SectionCard>
                     ) : (
-                        <SectionCard>
+                        <SectionCard variant="quiet">
                             <SectionHeader
-                                title={isParent ? "Quick Links" : "Next Best Actions"}
-                                description={isParent ? "Helpful shortcuts for you." : "Quick paths for reviewing this account and continuing work."}
+                                title={isAdmin ? "Next Best Actions" : "Quick Links"}
+                                description={
+                                    isAdmin
+                                        ? "Quick paths for reviewing this account and continuing work."
+                                        : "Helpful shortcuts for you."
+                                }
                             />
                             <div className="flex flex-col gap-2">
                                 {isParent ? (
@@ -1318,7 +1870,25 @@ export default function UserProfile() {
                                             />
                                         )}
                                     </>
-                                ) : canViewOperationalDetails ? (
+                                ) : isSelfServiceView ? (
+                                    <>
+                                        <ActionRow href="/workspace" title="Go to Workspace" copy="Pick up your active sessions, drafts, and reports." icon={Sparkles} />
+                                        <ActionRow href="/dashboard" title="My Students" copy="See the students currently on your caseload." icon={Users} />
+                                        {canEditLanguages && (
+                                            <ActionRow
+                                                onClick={() => {
+                                                    setLanguageError("");
+                                                    setLanguages(initialLanguages(user));
+                                                    setLanguageOther("");
+                                                    setIsEditingLanguages(true);
+                                                }}
+                                                title="Update Session Languages"
+                                                copy="Change the languages you can run sessions in."
+                                                icon={Languages}
+                                            />
+                                        )}
+                                    </>
+                                ) : isAdmin ? (
                                     <>
                                         <ActionRow
                                             href={`/users/${user.id}/activity`}
@@ -1334,7 +1904,7 @@ export default function UserProfile() {
                                                 icon={Users}
                                             />
                                         )}
-                                        {canViewPrivateContact && user.email && (
+                                        {user.email && (
                                             <ActionRow
                                                 href={`mailto:${user.email}`}
                                                 title="Contact User"
@@ -1345,7 +1915,7 @@ export default function UserProfile() {
                                         )}
                                     </>
                                 ) : (
-                                    <p className="m-0 rounded-xl border border-line bg-app p-3 text-sm text-muted">
+                                    <p className="m-0 rounded-xl bg-app p-3 text-sm text-muted">
                                         This profile is limited to public information.
                                     </p>
                                 )}
@@ -1381,12 +1951,14 @@ export default function UserProfile() {
 
 function ActionRow({
     href,
+    onClick,
     title,
     copy,
     icon: Icon,
     external,
 }: {
-    href: string;
+    href?: string;
+    onClick?: () => void;
     title: string;
     copy: string;
     icon: LucideIcon;
@@ -1395,7 +1967,7 @@ function ActionRow({
     const content = (
         <>
             <div className="flex items-start gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${semanticToneClass("primary")}`}>
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${semanticToneClass("primary")}`}>
                     <Icon className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <div>
@@ -1407,8 +1979,16 @@ function ActionRow({
         </>
     );
 
-    const cls = "flex items-center justify-between gap-3 rounded-xl border border-line bg-card p-3 no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/30";
+    const cls = "flex items-center justify-between gap-3 rounded-xl bg-app p-3 no-underline transition-colors hover:bg-indigo-50/60";
 
+    if (onClick) {
+        return (
+            <button type="button" onClick={onClick} className={`${cls} w-full text-left`}>
+                {content}
+            </button>
+        );
+    }
+    if (!href) return null;
     if (external) {
         return (
             <a href={href} className={cls}>

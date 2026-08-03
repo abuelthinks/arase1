@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
+import { Languages } from "lucide-react";
 
 // ─── Shared UI ───────────────────────────────────────────────────────────────
 
@@ -220,6 +221,23 @@ function TeacherFormContent() {
 
     const ro = isViewMode;
 
+    // Rendered twice — floating beside the title on desktop, in normal flow
+    // below the header on phones — so the markup lives in one place.
+    const translationToggle = ro && hasTranslation ? (
+        <button
+            type="button"
+            onClick={() => setIsTranslated(!isTranslated)}
+            aria-pressed={isTranslated}
+            title={isTranslated ? "Showing an AI translation — switch back to the original" : "Translate this form to English"}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold shadow-sm transition-colors ${isTranslated
+                ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                : "border-line bg-card text-muted hover:bg-app hover:text-fg"}`}
+        >
+            <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+            {isTranslated ? "Show original" : "Translate to English"}
+        </button>
+    ) : null;
+
     const OPTIONS = {
         b1: ["Attended all sessions", "Partial attendance", "Absent", "Required shadow teacher support", "Independent participation"],
         b2: ["Fully engaged", "Engaged with minimal cues", "Needed moderate prompting", "Required full support", "Distracted easily", "Refused tasks"],
@@ -297,8 +315,15 @@ function TeacherFormContent() {
                     </div>
                 </div>
             )}
+            {/* Desktop: zero-height, riding the title line on the right. */}
+            {translationToggle && (
+                <div className="hidden h-0 items-start justify-end sm:flex">
+                    {translationToggle}
+                </div>
+            )}
+
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+            <div className="sm:pr-44" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                 <div>
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                         SPED Progress Tracking Form (Teacher Version){ro && <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)", marginLeft: "8px" }}>— Read Only</span>}
@@ -307,31 +332,14 @@ function TeacherFormContent() {
                         {ro ? "Past submission — read only." : "Standalone for SPED classroom monitoring & IEP updates."}
                     </p>
                 </div>
-                {ro && hasTranslation && (
-                    <div style={{ display: "flex", gap: "4px", background: "var(--bg-primary)", padding: "4px", borderRadius: "8px", border: "1px solid var(--border-light)" }}>
-                        <button
-                            onClick={() => setIsTranslated(false)}
-                            style={{
-                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: !isTranslated ? 700 : 500,
-                                color: !isTranslated ? "var(--text-primary)" : "var(--text-secondary)", background: !isTranslated ? "var(--bg-secondary)" : "transparent",
-                                boxShadow: !isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
-                            }}
-                        >
-                            Original
-                        </button>
-                        <button
-                            onClick={() => setIsTranslated(true)}
-                            style={{
-                                padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: isTranslated ? 700 : 500,
-                                color: isTranslated ? "var(--accent-primary)" : "var(--text-secondary)", background: isTranslated ? "var(--bg-secondary)" : "transparent",
-                                boxShadow: isTranslated ? "0 1px 2px rgba(0,0,0,0.05)" : "none", border: "none", cursor: "pointer", transition: "all 0.2s"
-                            }}
-                        >
-                            English (AI) ✨
-                        </button>
-                    </div>
-                )}
             </div>
+
+            {/* Phone: below the header, left-aligned with the form. */}
+            {translationToggle && (
+                <div className="mb-4 flex justify-start sm:hidden">
+                    {translationToggle}
+                </div>
+            )}
 
             {successMsg && (
                 <div style={{ padding: "12px 16px", borderRadius: "8px", background: "var(--bg-success-light)", color: "var(--text-success)", border: "1px solid #a7f3d0", marginBottom: "1rem", fontWeight: 600 }}>

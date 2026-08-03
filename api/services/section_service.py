@@ -133,6 +133,86 @@ ASSESSMENT_SECTION_FIELDS: dict[str, list[str]] = {
 }
 
 
+# Required fields per specialty-owned section. Every entry must hold real
+# content before the owning specialist may submit — a section is no longer
+# "done" just because one field in it was filled.
+#
+# Each entry is (display label, [accepted field ids]). The first id is the
+# current JSON-schema field name; the rest are legacy names written by the
+# retired bespoke specialist form, kept so old drafts still validate.
+# Free-text notes fields are deliberately NOT required.
+ASSESSMENT_REQUIRED_FIELDS: dict[str, list[tuple[str, list[str]]]] = {
+    "C": [
+        ("C1. Expressive Language", ["expressive_language", "c1_expressive"]),
+        ("C2. Receptive Language", ["receptive_language", "c2_receptive"]),
+        ("C3. Speech Sound / Articulation", ["speech_sound", "c3_articulation"]),
+        ("C4. Pragmatics / Social Communication", ["pragmatics", "c4_pragmatics"]),
+    ],
+    "D": [
+        ("D1. Fine Motor Skills", ["fine_motor_skills", "d1_fine_motor"]),
+        ("D2. Sensory Processing", ["sensory_processing", "d2_sensory"]),
+        ("D3. Activities of Daily Living (ADLs)", ["adls", "d3_adls"]),
+        ("D4. Emotional / Self-Regulation", ["ot_emotional_regulation", "d4_regulation"]),
+    ],
+    "E": [
+        ("E1. Gross Motor Skills", ["gross_motor_skills", "e1_gross_motor"]),
+        ("E2. Strength & Endurance", ["strength_endurance", "e2_strength"]),
+        ("E3. Posture & Alignment", ["posture_alignment", "e3_posture"]),
+        ("E4. Motor Planning & Coordination", ["motor_planning", "e4_motor_planning"]),
+    ],
+    "F1": [
+        ("F1. Behavioral Observations", ["behavioral_observations", "f1_behavior"]),
+        ("F2. ABA Regulation / Behavior Support", ["psych_emotional_functioning", "f2_emotional"]),
+    ],
+    "F2": [
+        ("F3. Cognitive / Play Skills", ["cognitive_play_skills", "f3_cognitive"]),
+        ("F4. Autism / Social-Developmental Profile", ["autism_characteristics", "f4_autism"]),
+    ],
+}
+
+# The tracker is one therapist's record of their own sessions, so its "shared"
+# sections (A/B/D/E/F — shared only in the sense that any assigned specialist
+# may edit them) are field-validated too, not just the discipline section.
+# Section E holds either the dynamic IEP goal ratings (goal_achievement) or the
+# static four GAS scores; either one satisfies the requirement.
+TRACKER_REQUIRED_FIELDS: dict[str, list[tuple[str, list[str]]]] = {
+    "section_a": [
+        ("Therapist Name", ["therapist_name"]),
+        ("Date", ["date"]),
+        ("Discipline", ["discipline"]),
+        ("Session Type", ["session_type"]),
+        ("Number of sessions completed this period", ["sessions_completed"]),
+    ],
+    "section_b": [
+        ("B1. Attendance", ["attendance"]),
+        ("B2. Participation Level", ["participation_level"]),
+    ],
+    "section_c_slp": [("C1. Communication (SLP)", ["communication"])],
+    "section_c_ot": [("C2. Fine Motor / Sensory / ADLs (OT)", ["fine_motor_sensory_adls"])],
+    "section_c_pt": [("C3. Gross Motor / Gait / Coordination (PT)", ["gross_motor"])],
+    "section_c_aba": [("C4. Applied Behavior Analysis (ABA)", ["behavior_emotional"])],
+    "section_c_developmental_psychology": [
+        ("C5. Developmental Psychology", ["developmental_psychology"]),
+    ],
+    "section_d": [
+        ("D1. Independent Skills", ["independent_skills"]),
+        ("D2. Behavior Interaction with Therapist", ["behavior_interaction"]),
+        ("D3. Sensory / Motor Regulation", ["sensory_motor_regulation"]),
+        ("D4. Communication With Adults", ["communication_with_adults"]),
+    ],
+    "section_e": [
+        ("Goal 1 Rating", ["goal_achievement", "gas_goal_1"]),
+        ("Goal 2 Rating", ["goal_achievement", "gas_goal_2"]),
+        ("Goal 3 Rating", ["goal_achievement", "gas_goal_3"]),
+        ("Goal 4 Rating", ["goal_achievement", "gas_goal_4"]),
+    ],
+    "section_f": [
+        ("F1. Therapy Recommendations", ["therapy_recommendations"]),
+        ("F2. Suggested Home Strategy Types", ["home_strategies"]),
+    ],
+}
+
+
 def _is_value_blank(value) -> bool:
     """A field is "blank" if the user hasn't put real content in it."""
     if value is None:
@@ -146,6 +226,52 @@ def _is_value_blank(value) -> bool:
     if isinstance(value, (int, float)):
         return value == 0
     return False
+
+
+def _section_data(form_type: str, instance, section_key: str) -> dict:
+    """The persisted dict a section's field values live in."""
+    form_data = instance.form_data or {}
+    if form_type == "assessment":
+        return form_data.get("v2") or {}
+    storage_key = "section_c" if section_key.startswith("section_c_") else section_key
+    data = form_data.get(storage_key)
+    return data if isinstance(data, dict) else {}
+
+
+def _goal_ratings_blank(value) -> bool:
+    """Dynamic IEP goal ratings count as filled only once every goal is scored."""
+    if not isinstance(value, (list, tuple)) or len(value) == 0:
+        return True
+    return any(
+        _is_value_blank(goal.get("score")) if isinstance(goal, dict) else True
+        for goal in value
+    )
+
+
+def _field_blank(data: dict, key: str) -> bool:
+    if key == "goal_achievement":
+        return _goal_ratings_blank(data.get(key))
+    return _is_value_blank(data.get(key))
+
+
+def _missing_required_fields(form_type: str, instance, section_key: str) -> list[str]:
+    """Labels of the section's required fields that are still blank.
+
+    Empty list means either the section is complete or it has no required-field
+    list (the assessment's shared sections are co-authored by the team, so they
+    are not field-validated).
+    """
+    required = (
+        ASSESSMENT_REQUIRED_FIELDS if form_type == "assessment"
+        else TRACKER_REQUIRED_FIELDS
+    ).get(section_key)
+    if not required:
+        return []
+    data = _section_data(form_type, instance, section_key)
+    return [
+        label for label, keys in required
+        if all(_field_blank(data, key) for key in keys)
+    ]
 
 
 def _section_has_content(form_type: str, instance, section_key: str) -> bool:
@@ -331,12 +457,18 @@ def submit_section(
         specialty = "" if owner == SHARED_SECTION else owner
         fallback_specialties = access.specialty_list() if access else user.specialty_list()
 
-        # Specialty-owned sections must have at least one filled field before
+        # Specialty-owned sections must have EVERY required field filled before
         # they can be submitted. Shared sections are allowed to submit empty
         # (whoever opts in is signaling "nothing to add here").
         if owner != SHARED_SECTION and user.role != "ADMIN":
+            display_label = SECTION_KEY_LABELS.get(section_key, f"Section {section_key}")
+            missing_fields = _missing_required_fields(form_type, instance, section_key)
+            if missing_fields:
+                raise SectionValidationError(
+                    f"{display_label} is incomplete. Please fill out: "
+                    f"{', '.join(missing_fields)}."
+                )
             if not _section_has_content(form_type, instance, section_key):
-                display_label = SECTION_KEY_LABELS.get(section_key, f"Section {section_key}")
                 raise SectionValidationError(
                     f"{display_label} is empty. Please fill out the section before submitting."
                 )
@@ -465,8 +597,11 @@ def submit_all_sections(
 
     Validation:
       - User's *assigned* specialty sections must each have an existing
-        contribution (drafted or submitted). Missing ones block the submit.
-      - Shared sections with no contribution are not required.
+        contribution (drafted or submitted) with every required field filled.
+      - On the tracker, the shared sections are field-validated too (see
+        TRACKER_REQUIRED_FIELDS) — but on content only, since a peer may have
+        filled them and the user then has no contribution row of their own.
+      - The assessment's shared sections are co-authored and not required.
 
     Returns: {"submitted": [keys], "finalized": bool, "instance": instance}.
     """
@@ -491,8 +626,8 @@ def submit_all_sections(
         # Required sections for *this* user (their owned-specialty sections).
         my_required = required_owner_sections(form_type, user_specialties)
 
-        # A required section is only "ready" if it has a contribution AND that
-        # contribution's persisted form_data actually contains something.
+        # A required section is only "ready" if it has a contribution AND every
+        # required field in it holds real content.
         existing = {
             c.section_key: c
             for c in SectionContribution.objects.filter(
@@ -501,15 +636,35 @@ def submit_all_sections(
             )
         }
 
-        missing = [
-            key for key in my_required
-            if key not in existing or not _section_has_content(form_type, instance, key)
-        ]
-        if missing:
-            labels = [SECTION_KEY_LABELS.get(key, key) for key in missing]
-            label_str = ", ".join(labels)
+        incomplete: list[str] = []
+        for key in my_required:
+            label = SECTION_KEY_LABELS.get(key, key)
+            if key not in existing:
+                incomplete.append(label)
+                continue
+            blank_fields = _missing_required_fields(form_type, instance, key)
+            if blank_fields:
+                incomplete.append(f"{label} — {', '.join(blank_fields)}")
+            elif not _section_has_content(form_type, instance, key):
+                incomplete.append(label)
+
+        # Tracker only: the shared sections carry this therapist's own session
+        # data, so they must be complete as well. Checked on content alone —
+        # a peer may have filled them, leaving this user no contribution row.
+        if form_type == "tracker":
+            owners = get_section_owners(form_type)
+            for key, _fields in TRACKER_REQUIRED_FIELDS.items():
+                if key in my_required or owners.get(key) != SHARED_SECTION:
+                    continue
+                blank_fields = _missing_required_fields(form_type, instance, key)
+                if blank_fields:
+                    label = SECTION_KEY_LABELS.get(key, key)
+                    incomplete.append(f"{label} — {', '.join(blank_fields)}")
+
+        if incomplete:
             raise SectionValidationError(
-                f"You must complete your assigned sections before submitting: {label_str}"
+                "You must complete every required field in your assigned sections "
+                f"before submitting: {'; '.join(incomplete)}"
             )
 
         # Submit every draft contribution where this user is the latest editor.
@@ -620,16 +775,15 @@ def _maybe_finalize(form_type: str, instance, user):
             if student.status in ["PENDING_ASSESSMENT", "ASSESSMENT_SCHEDULED"]:
                 student.status = "ASSESSED"
                 student.save()
-            # We no longer auto-generate the IEP upon assessment finalization 
-            # to give specialists a chance to request an unlock of the form.
+            # Neither the IEP nor the monthly report is auto-generated on
+            # finalization — an admin reviews the inputs and clicks Generate.
+            # That also keeps specialists free to request an unlock first.
         else:
-            from .cycle_service import check_and_trigger_auto_generation
             try:
                 from .notification_service import notify_tracker_progress
                 notify_tracker_progress(finalizing_user, instance.student, instance.report_cycle)
             except Exception:
                 pass
-            check_and_trigger_auto_generation(instance.student, instance.report_cycle)
 
 
 def re_evaluate_finalization(student_id: int):
