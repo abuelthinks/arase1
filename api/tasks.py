@@ -10,6 +10,32 @@ from celery import shared_task
 logger = logging.getLogger(__name__)
 
 
+def _notify_generation_failed(student_id, title, exc, document_type, user_id=None):
+    """
+    Announce a failed generation to staff only.
+
+    The student is kept on the event for context, but visibility stays ADMINS so
+    the fan-out never reaches the family — a broken API key is an internal
+    problem, not something a parent should be toasted about. The staff member who
+    started the run is addressed directly since they may not be an admin.
+    """
+    try:
+        from api.models import Student
+        from api.services.realtime_service import create_activity_event
+        student = Student.objects.filter(id=student_id).first()
+        create_activity_event(
+            event_type='REPORT_FAILED',
+            title=title,
+            message=str(exc),
+            student=student,
+            visibility='ADMINS',
+            metadata={'document_type': document_type, 'toast': 'error'},
+            direct_user_ids=[user_id] if user_id else None,
+        )
+    except Exception:
+        logger.warning("Could not announce failed %s generation", document_type, exc_info=True)
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def generate_iep_task(self, student_id, cycle_id, user_id=None):
     """
@@ -44,19 +70,7 @@ def generate_iep_task(self, student_id, cycle_id, user_id=None):
             logger.warning("Could not notify users about IEP %s", doc.id, exc_info=True)
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
-        try:
-            from api.models import Student
-            from api.services.realtime_service import create_activity_event
-            student = Student.objects.filter(id=student_id).first()
-            create_activity_event(
-                event_type='REPORT_FAILED',
-                title="IEP generation failed",
-                message=str(exc),
-                student=student,
-                metadata={'document_type': 'IEP', 'toast': 'error'},
-            )
-        except Exception:
-            pass
+        _notify_generation_failed(student_id, "IEP generation failed", exc, 'IEP', user_id)
         raise self.retry(exc=exc)
 
 
@@ -94,24 +108,12 @@ def generate_monthly_report_task(self, student_id, cycle_id, user_id=None):
             logger.warning("Could not notify users about monthly report %s", doc.id, exc_info=True)
         return {'doc_id': doc.id, 'status': 'completed'}
     except Exception as exc:
-        try:
-            from api.models import Student
-            from api.services.realtime_service import create_activity_event
-            student = Student.objects.filter(id=student_id).first()
-            create_activity_event(
-                event_type='REPORT_FAILED',
-                title="Monthly report generation failed",
-                message=str(exc),
-                student=student,
-                metadata={'document_type': 'MONTHLY', 'toast': 'error'},
-            )
-        except Exception:
-            pass
+        _notify_generation_failed(student_id, "Monthly report generation failed", exc, 'MONTHLY', user_id)
         raise self.retry(exc=exc)
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
-def generate_report_final_task(self, student_id, cycle_id, doc_type, draft_data):
+def generate_report_final_task(self, student_id, cycle_id, doc_type, draft_data, user_id=None):
     """
     Generate a final PDF report asynchronously.
     Returns the generated document ID.
@@ -132,20 +134,10 @@ def generate_report_final_task(self, student_id, cycle_id, doc_type, draft_data)
         )
         return {'doc_id': doc.id, 'file_url': doc.file.url if doc.file else '', 'status': 'completed'}
     except Exception as exc:
-        try:
-            from api.models import Student
-            from api.services.realtime_service import create_activity_event
-            student = Student.objects.filter(id=student_id).first()
-            create_activity_event(
-                event_type='REPORT_FAILED',
-                title=f"{doc_type} report failed",
-                message=str(exc),
-                student=student,
-                metadata={'document_type': doc_type, 'toast': 'error'},
-            )
-        except Exception:
-            pass
+        _notify_generation_failed(student_id, f"{doc_type} report failed", exc, doc_type, user_id)
         raise self.retry(exc=exc)
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def translate_form_data_task(self, model_name, instance_id):
     """

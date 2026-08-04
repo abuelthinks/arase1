@@ -2035,7 +2035,7 @@ class GenerateReportFinalView(APIView):
                 student=student,
                 metadata={'document_type': doc_type},
             )
-            task = generate_report_final_task.delay(student_id, report_cycle_id, doc_type, draft_data)
+            task = generate_report_final_task.delay(student_id, report_cycle_id, doc_type, draft_data, request.user.id)
             return Response({
                 "message": f"{doc_type} report generation started.",
                 "task_id": task.id,
@@ -3364,6 +3364,15 @@ class SpecialistPreferenceViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @staticmethod
+    def _assert_team_not_finalized(student):
+        """Preferences only inform the admin's matching decision, so once the
+        clinical team is assigned they are read-only for parents."""
+        if StudentAccess.objects.filter(student=student, user__role='SPECIALIST').exists():
+            raise PermissionDenied(
+                "This child's clinical team has already been assigned, so preferences can no longer be changed."
+            )
+
     def perform_create(self, serializer):
         user = self.request.user
         student = serializer.validated_data['student']
@@ -3373,13 +3382,24 @@ class SpecialistPreferenceViewSet(viewsets.ModelViewSet):
         if user.role == 'PARENT':
             if not StudentAccess.objects.filter(user=user, student=student).exists():
                 raise PermissionDenied("You do not have permission to set preferences for this student.")
+            self._assert_team_not_finalized(student)
         elif user.role != 'ADMIN':
             raise PermissionDenied("Only parents or admins can set specialist preferences.")
 
         if slot and slot.specialist_id != specialist.id:
             raise ValidationError("Selected slot does not belong to this specialist.")
-        
+
         serializer.save()
+
+    def perform_update(self, serializer):
+        if self.request.user.role == 'PARENT':
+            self._assert_team_not_finalized(serializer.instance.student)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.role == 'PARENT':
+            self._assert_team_not_finalized(instance.student)
+        instance.delete()
 
 class SpecialistListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
