@@ -63,9 +63,10 @@ const toneStyles = {
 };
 
 function getWorkspaceHref(studentId: number, tab: string) {
-    // Parents use a unified workspace — no workspace/tab params needed
+    // Parents use a unified workspace, where panels are `view` params — without
+    // one they land on the overview instead of the form this CTA is about.
     if (tab === "parent_tracker") {
-        return `/workspace?studentId=${studentId}`;
+        return `/workspace?studentId=${studentId}&view=tracker`;
     }
     const params = new URLSearchParams({
         studentId: studentId.toString(),

@@ -307,6 +307,7 @@ class SelfUserSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     has_parent_assessment = serializers.SerializerMethodField()
     has_specialist_assessment = serializers.SerializerMethodField()
+    has_assigned_specialists = serializers.SerializerMethodField()
     parent_assessment_unlocked = serializers.SerializerMethodField()
     parent_current_tracker_submitted = serializers.SerializerMethodField()
     specialist_current_tracker_submitted = serializers.SerializerMethodField()
@@ -320,7 +321,8 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = [
             'id', 'first_name', 'last_name', 'date_of_birth', 'grade', 'status',
-            'has_parent_assessment', 'has_specialist_assessment', 'parent_assessment_unlocked',
+            'has_parent_assessment', 'has_specialist_assessment', 'has_assigned_specialists',
+            'parent_assessment_unlocked',
             'parent_current_tracker_submitted', 'specialist_current_tracker_submitted',
             'teacher_current_tracker_submitted', 'active_cycle_label',
             'latest_final_monthly_report_id', 'recent_activity_at', 'next_action',
@@ -335,6 +337,9 @@ class StudentSerializer(serializers.ModelSerializer):
 
     def get_has_specialist_assessment(self, obj):
         return MultidisciplinaryAssessment.objects.filter(student=obj, finalized_at__isnull=False).exists()
+
+    def get_has_assigned_specialists(self, obj):
+        return StudentAccess.objects.filter(student=obj, user__role='SPECIALIST').exists()
 
     def _get_active_cycle(self, obj):
         return (

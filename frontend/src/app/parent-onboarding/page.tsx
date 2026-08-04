@@ -584,7 +584,10 @@ export function ParentFormContent({
                 setLoading(false);
                 return;
             }
-            setTimeout(() => router.push(studentIdParam ? `/specialists?studentId=${studentIdParam}` : "/dashboard"), 1500);
+            // Choosing specialists is the next step after the assessment, so send
+            // the parent straight there — including for a newly registered child,
+            // whose id only comes back in the onboard response.
+            setTimeout(() => router.push(resolvedStudentId ? `/specialists?studentId=${resolvedStudentId}` : "/dashboard"), 1500);
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || "Submission failed. Please try again.");
             setLoading(false);

@@ -183,7 +183,9 @@ def get_student_profile_data(student, user=None):
             "sped_tracker": SpedProgressTracker,
         }
         for key, model in form_map.items():
-            if user and user.role == 'PARENT' and key != 'parent_assessment':
+            # Parents see the state of their own submissions only — staff forms
+            # stay blank for them.
+            if user and user.role == 'PARENT' and key not in ('parent_assessment', 'parent_tracker'):
                 form_statuses[key] = {"submitted": False, "id": None}
                 continue
             if key == 'multi_assessment':
@@ -312,18 +314,19 @@ def get_student_profile_data(student, user=None):
         .exclude(user__role='PARENT')
         .exclude(user__role='ADMIN')
     )
-    assigned_staff = []
-    if not (user and user.role == 'PARENT'):
-        assigned_staff = [{
-            "id": sa.user.id,
-            "role": sa.user.role,
-            "first_name": sa.user.first_name,
-            "last_name": sa.user.last_name,
-            "specialty": normalize_specialty(sa.specialty_list()[0] if sa.specialty_list() else sa.user.specialty),
-            "specialties": [
-                normalize_specialty(s) for s in sa.specialty_list() if s
-            ],
-        } for sa in assigned_users]
+    assigned_staff = [{
+        "id": sa.user.id,
+        "role": sa.user.role,
+        "first_name": sa.user.first_name,
+        "last_name": sa.user.last_name,
+        "specialty": normalize_specialty(sa.specialty_list()[0] if sa.specialty_list() else sa.user.specialty),
+        "specialties": [
+            normalize_specialty(s) for s in sa.specialty_list() if s
+        ],
+        # Parents see the team page instead of staff profiles, so the languages
+        # a session can be run in have to travel with the assignment.
+        "languages": sa.user.language_list(),
+    } for sa in assigned_users]
 
     # Cycle status summary and carry-forward recommendations
     cycle_status = get_cycle_status_summary(student, cycle) if cycle and student.status in ('ENROLLED', 'INTEGRATED') else None
@@ -337,6 +340,9 @@ def get_student_profile_data(student, user=None):
             "grade": student.grade,
             "date_of_birth": student.date_of_birth,
             "status": student.get_status_display(),
+            # Raw choice key: "status" is the human label, so clients comparing
+            # against workflow states need the underlying value.
+            "status_code": student.status,
             **parent_info,
         },
         "active_cycle": cycle_data,
