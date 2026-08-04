@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  /* Height of the mobile bottom nav, including its safe-area padding. AppShell
+     overwrites this with the measured value on mount; this is the pre-hydration
+     fallback so fixed elements stacked on the nav don't jump. */
+  --mobile-nav-h: 64px;
+
   /* Core Colors */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;

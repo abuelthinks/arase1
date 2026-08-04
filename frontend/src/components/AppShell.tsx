@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import AdminSidebar from "./AdminSidebar";
@@ -8,6 +8,7 @@ import UserSidebar from "./UserSidebar";
 import React from "react";
 import NotificationBell from "@/components/NotificationBell";
 import AccessibilityToolbar from "@/components/AccessibilityToolbar";
+import { resolveWidgetPlacement, type WidgetPlacement } from "@/lib/widget-placement";
 
 // Pages that should NOT show the sidebar or floating tools (full-width pages).
 // /learn is a distraction-free, admin-only developer guide.
@@ -18,7 +19,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [widgetPlacement, setWidgetPlacement] = useState<"top-right" | "bottom-right">("top-right");
+    const [placementVersion, setPlacementVersion] = useState(0);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -26,23 +27,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             if (saved === "true") {
                 setSidebarCollapsed(true);
             }
-
-            const savedPlacement = window.localStorage.getItem("arase:accessibility:placement") as "top-right" | "bottom-right" | null;
-            if (savedPlacement) {
-                setWidgetPlacement(savedPlacement);
-            }
-
-            const handleAccessibilityUpdate = () => {
-                const newPlacement = window.localStorage.getItem("arase:accessibility:placement") as "top-right" | "bottom-right" | null;
-                if (newPlacement) setWidgetPlacement(newPlacement);
-            };
-
-            window.addEventListener("arase:accessibility:updated", handleAccessibilityUpdate);
-            return () => {
-                window.removeEventListener("arase:accessibility:updated", handleAccessibilityUpdate);
-            };
         }
     }, []);
+
+    useEffect(() => {
+        const handleAccessibilityUpdate = () => setPlacementVersion(version => version + 1);
+        window.addEventListener("arase:accessibility:updated", handleAccessibilityUpdate);
+        return () => {
+            window.removeEventListener("arase:accessibility:updated", handleAccessibilityUpdate);
+        };
+    }, []);
+
+    // Derived during render rather than in an effect: the widget only mounts once
+    // the role is known, so it lands in its final corner instead of jumping.
+    const widgetPlacement: WidgetPlacement = useMemo(
+        () => resolveWidgetPlacement(user?.role),
+        [user?.role, placementVersion],
+    );
 
     const toggleSidebar = () => {
         setSidebarCollapsed(c => {
@@ -68,6 +69,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         pathname === "/" ||
         NO_SIDEBAR_PATHS.some(p => pathname.startsWith(p)) ||
         specialistOnboardingIncomplete;
+
+    // The mobile bottom nav's height is not a fixed number: its labels are rem-based,
+    // so the accessibility text scaler grows it, and it carries its own safe-area
+    // padding. Anything that needs to sit on top of it (see the specialists action
+    // bar) reads --mobile-nav-h rather than hardcoding a guess. Resolves to 0 on
+    // desktop, where the nav is display:none.
+    useEffect(() => {
+        const nav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+        const root = document.documentElement;
+        if (!nav) {
+            root.style.setProperty("--mobile-nav-h", "0px");
+            return;
+        }
+        const publish = () => root.style.setProperty("--mobile-nav-h", `${nav.offsetHeight}px`);
+        publish();
+        const observer = new ResizeObserver(publish);
+        observer.observe(nav);
+        return () => observer.disconnect();
+    }, [hideSidebar]);
 
     if (hideSidebar) {
         return <div className="h-full w-full overflow-y-auto">{children}</div>;

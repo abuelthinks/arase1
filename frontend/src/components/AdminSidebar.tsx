@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { BarChart3, GraduationCap, UsersRound, Mail, LayoutTemplate, LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
@@ -27,7 +27,6 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ collapsed = false, onToggle }: AdminSidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const router = useRouter();
     const [pendingInviteCount, setPendingInviteCount] = useState(0);
     const [awaitingReviewCount, setAwaitingReviewCount] = useState(0);
     const { user, logout } = useAuth();
@@ -68,18 +67,20 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
             {/* Desktop Sidebar */}
             <aside className={`hidden md:flex flex-col bg-card border-r border-[var(--border-light)] shadow-[2px_0_5px_rgba(0,0,0,0.02)] sticky top-0 h-full overflow-y-auto shrink-0 transition-all duration-300 ${collapsed ? 'w-[56px] p-2' : 'w-[204px] p-4'}`}>
                 {/* Logo */}
-                <button
-                    type="button"
-                    className={`cursor-pointer text-left rounded-lg ${collapsed ? 'mb-4 px-0 flex items-center justify-center' : 'mb-8 px-1'}`}
-                    onClick={() => router.push("/dashboard")}
-                    title="Go to Dashboard"
+                {/* Explicit ?tab=analytics: the dashboard only switches tabs when the
+                    param is present, so a bare /dashboard would leave whichever tab
+                    was already open. */}
+                <Link
+                    href="/dashboard?tab=analytics"
+                    className={`cursor-pointer text-left rounded-lg no-underline ${collapsed ? 'mb-4 px-0 flex items-center justify-center' : 'mb-8 px-1'}`}
+                    title="Go to Analytics"
                 >
                     {collapsed ? (
                         <span className="text-lg font-bold text-[var(--accent-primary)]">A</span>
                     ) : (
                         <h1 className="text-xl font-bold text-[var(--accent-primary)] m-0 leading-tight truncate">Admin Portal</h1>
                     )}
-                </button>
+                </Link>
 
                 {/* Nav */}
                 <nav className="flex flex-col gap-1 w-full" aria-label="Admin navigation">
@@ -155,7 +156,7 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-card border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+            <nav data-mobile-nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-card border-t border-[var(--border-light)] z-[1000] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
                 <Link href="/dashboard?tab=analytics" className={`flex flex-col items-center justify-center flex-1 py-3 min-h-[56px] space-y-1 ${activeTab === 'analytics' ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]"}`}>
                     <BarChart3 size={20} className={activeTab === 'analytics' ? "stroke-[2.5px]" : ""} />
                     <span className="text-[0.65rem] font-medium">Analytics</span>
