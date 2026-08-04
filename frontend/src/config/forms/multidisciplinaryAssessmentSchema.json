@@ -16,7 +16,7 @@
                 {
                     "id": "therapist_verification",
                     "label": "A2. Therapist Verification",
-                    "type": "checkbox_group",
+                    "type": "radio",
                     "options": [
                         "Matches parent input",
                         "Corrections needed:"
