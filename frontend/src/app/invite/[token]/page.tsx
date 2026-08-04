@@ -2,7 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import api from "@/lib/api";
+
+const passwordToggleStyle: React.CSSProperties = {
+    position: "absolute",
+    top: "50%",
+    right: "12px",
+    transform: "translateY(-50%)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "none",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    color: "var(--text-secondary)",
+};
 
 export default function AcceptInvitePage() {
     const params = useParams();
@@ -16,6 +32,8 @@ export default function AcceptInvitePage() {
         password: "",
         confirmPassword: ""
     });
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -40,6 +58,8 @@ export default function AcceptInvitePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setShowPassword(false);
+        setShowConfirmPassword(false);
 
         if (formData.password !== formData.confirmPassword) {
             setError("Passwords do not match.");
@@ -198,32 +218,58 @@ export default function AcceptInvitePage() {
                     <input type="text" autoComplete="username" value={email} readOnly style={{ display: 'none' }} />
                     <div style={{ position: "relative" }}>
                         <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Create Password <span style={{ color: "var(--danger)" }}>*</span></label>
-                        <input
-                            required
-                            type="password"
-                            autoComplete="new-password"
-                            placeholder="••••••••"
-                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
-                            onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
-                            onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
-                            value={formData.password}
-                            onChange={e => setFormData({ ...formData, password: e.target.value })}
-                        />
+                        <div style={{ position: "relative" }}>
+                            <input
+                                required
+                                type={showPassword ? "text" : "password"}
+                                autoComplete="new-password"
+                                placeholder="••••••••"
+                                style={{ width: "100%", padding: "10px 44px 10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
+                                onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
+                                onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
+                                value={formData.password}
+                                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            />
+                            {formData.password.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                    aria-pressed={showPassword}
+                                    style={passwordToggleStyle}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div style={{ position: "relative" }}>
                         <label style={{ display: "block", marginBottom: "4px", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Confirm Password <span style={{ color: "var(--danger)" }}>*</span></label>
-                        <input
-                            required
-                            type="password"
-                            autoComplete="new-password"
-                            placeholder="••••••••"
-                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
-                            onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
-                            onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
-                            value={formData.confirmPassword}
-                            onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
-                        />
+                        <div style={{ position: "relative" }}>
+                            <input
+                                required
+                                type={showConfirmPassword ? "text" : "password"}
+                                autoComplete="new-password"
+                                placeholder="••••••••"
+                                style={{ width: "100%", padding: "10px 44px 10px 12px", borderRadius: "8px", border: "1px solid var(--text-muted)", boxSizing: "border-box", fontSize: "0.9rem", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s, background-color 0.2s" }}
+                                onFocus={(e) => { e.target.style.borderColor = "var(--text-info)"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; e.target.style.backgroundColor = "#fff"; }}
+                                onBlur={(e) => { e.target.style.borderColor = "var(--text-muted)"; e.target.style.boxShadow = "none"; e.target.style.backgroundColor = ""; }}
+                                value={formData.confirmPassword}
+                                onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            />
+                            {formData.confirmPassword.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword((v) => !v)}
+                                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                    aria-pressed={showConfirmPassword}
+                                    style={passwordToggleStyle}
+                                >
+                                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <button
