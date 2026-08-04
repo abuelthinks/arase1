@@ -14,6 +14,7 @@ import AdminDashboard from "./AdminDashboard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import SMSVerificationModal from "@/components/SMSVerificationModal";
 import PageHeader from "@/components/ui/PageHeader";
+import CustomSelect, { PAGE_SIZE_OPTIONS } from "@/components/CustomSelect";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
 import { isTeacherProfileIncomplete, teacherProfileMessage } from "@/lib/teacher-profile";
 
@@ -25,6 +26,7 @@ interface Student {
     status: string;
     has_parent_assessment?: boolean;
     has_specialist_assessment?: boolean;
+    has_assigned_specialists?: boolean;
     parent_assessment_unlocked?: boolean;
     parent_current_tracker_submitted?: boolean;
     specialist_current_tracker_submitted?: boolean;
@@ -276,7 +278,12 @@ export default function DashboardPage() {
 
     const getStudentWorkspaceHref = (studentId: number, tab?: string) => {
         if (user?.role === "PARENT") {
-            return `/workspace?studentId=${studentId}`;
+            // Parents use the unified workspace, where panels are `view` params.
+            // Without one they land on the overview.
+            const parentView = tab === "parent_tracker" ? "tracker" : tab === "parent_assessment" ? "assessment" : null;
+            return parentView
+                ? `/workspace?studentId=${studentId}&view=${parentView}`
+                : `/workspace?studentId=${studentId}`;
         }
         const params = new URLSearchParams({
             studentId: studentId.toString(),
@@ -291,6 +298,8 @@ export default function DashboardPage() {
         window.localStorage.setItem("arase:last-parent-student-id", studentId.toString());
     };
 
+    const hasPhoneNumber = Boolean(user?.phone_number?.trim());
+
     if (user?.role === "ADMIN") {
         return <AdminDashboard />;
     }
@@ -298,16 +307,15 @@ export default function DashboardPage() {
     return (
         <ProtectedRoute>
             <div className="px-4 md:px-0">
-                {/* SMS Verification Banner — Parent only */}
-                {user?.role === "PARENT" && isPhoneVerified === false && (
+                {/* SMS Verification Banner — Parent only, and only once a number is
+                    on file. A phone number is optional at sign-up, so there is
+                    nothing to verify (and nothing to nag about) without one. */}
+                {user?.role === "PARENT" && isPhoneVerified === false && hasPhoneNumber && (
                     <div className={`mb-6 flex flex-col items-start justify-between gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:px-5 sm:py-3 ${semanticToneClass("warning")}`}>
                         <div className="flex items-start gap-3">
                             <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
                             <p className="m-0 text-sm md:text-[0.9rem] text-warning font-medium">
-                                {user?.phone_number
-                                    ? <>Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.</>
-                                    : <>Your phone number has not been verified yet. Verify it to enable SMS alerts and notifications.</>
-                                }
+                                Your phone number <strong>({user.phone_number})</strong> is unverified. Verify it to enable SMS alerts and notifications.
                             </p>
                         </div>
                         <button
@@ -446,30 +454,21 @@ export default function DashboardPage() {
                                                 </div>
 
                                                 {/* Grade Filter Dropdown */}
-                                                <select
+                                                <CustomSelect
+                                                    size="sm"
+                                                    className="w-44 shrink-0"
+                                                    triggerClassName="h-[38px] rounded-md px-3 text-[0.85rem] font-medium"
+                                                    ariaLabel="Filter students by grade"
                                                     value={gradeFilter}
-                                                    onChange={e => { setGradeFilter(e.target.value); setCurrentPage(1); }}
-                                                    style={{
-                                                        height: "38px",
-                                                        padding: "0 12px",
-                                                        borderRadius: "6px",
-                                                        border: "1px solid var(--border-light)",
-                                                        fontSize: "0.85rem",
-                                                        background: "var(--bg-secondary)",
-                                                        color: "var(--text-primary)",
-                                                        outline: "none",
-                                                        fontWeight: 500,
-                                                        cursor: "pointer",
-                                                    }}
-                                                    aria-label="Filter students by grade"
-                                                >
-                                                    <option value="ALL">All grades</option>
-                                                    {uniqueGrades.map(grade => (
-                                                        <option key={grade} value={grade}>
-                                                            {grade.startsWith("Grade") ? grade : `Grade ${grade}`}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(v) => { setGradeFilter(v); setCurrentPage(1); }}
+                                                    options={[
+                                                        { value: "ALL", label: "All grades" },
+                                                        ...uniqueGrades.map(grade => ({
+                                                            value: grade,
+                                                            label: grade.startsWith("Grade") ? grade : `Grade ${grade}`,
+                                                        })),
+                                                    ]}
+                                                />
 
                                                 {/* Clear Filters Button */}
                                                 {(searchQuery || gradeFilter !== "ALL" || statusFilters.length > 0) && (
@@ -533,16 +532,15 @@ export default function DashboardPage() {
                                             <span>Showing {Math.min(processedStudents.length, paginatedStudents.length)} of {processedStudents.length} entries</span>
                                             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                                 <span>Show:</span>
-                                                <select
-                                                    value={itemsPerPage}
-                                                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                                                    style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-light)", background: "var(--bg-primary)" }}
-                                                >
-                                                    <option value={10}>10</option>
-                                                    <option value={25}>25</option>
-                                                    <option value={50}>50</option>
-                                                    <option value={100}>100</option>
-                                                </select>
+                                                <CustomSelect
+                                                    size="sm"
+                                                    className="w-20"
+                                                    triggerClassName="h-8 rounded-md px-2 text-sm font-medium"
+                                                    ariaLabel="Students per page"
+                                                    value={String(itemsPerPage)}
+                                                    onChange={(v) => setItemsPerPage(Number(v))}
+                                                    options={PAGE_SIZE_OPTIONS}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -584,6 +582,7 @@ export default function DashboardPage() {
                                             return { label: "View Progress", href: getStudentWorkspaceHref(s.id) };
                                         };
                                         const cta = getPrimaryCTA();
+                                        const teamAssigned = Boolean(s.has_assigned_specialists);
 
                                         return (
                                             <div
@@ -633,7 +632,7 @@ export default function DashboardPage() {
                                                             className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-fg no-underline transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
                                                         >
                                                             <UsersIcon className="h-4 w-4" aria-hidden="true" />
-                                                            Specialist Preferences
+                                                            {teamAssigned ? "Clinical Team" : "Specialist Preferences"}
                                                         </Link>
                                                     )}
                                                 </div>

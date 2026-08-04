@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import CustomSelect from "@/components/CustomSelect";
 import api from "@/lib/api";
 
 function PreviewReportContent() {
@@ -122,15 +123,12 @@ function PreviewReportContent() {
                                                             onChange={(e) => handleFieldChange(sectionIdx, fieldIdx, e.target.value)}
                                                         />
                                                     ) : field.type === 'select' ? (
-                                                        <select
-                                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-app font-medium text-fg"
+                                                        <CustomSelect
+                                                            ariaLabel={field.label}
                                                             value={field.value}
-                                                            onChange={(e) => handleFieldChange(sectionIdx, fieldIdx, e.target.value)}
-                                                        >
-                                                            {field.options.map((opt: string) => (
-                                                                <option key={opt} value={opt}>{opt || "None"}</option>
-                                                            ))}
-                                                        </select>
+                                                            onChange={(v) => handleFieldChange(sectionIdx, fieldIdx, v)}
+                                                            options={field.options.map((opt: string) => ({ value: opt, label: opt || "None" }))}
+                                                        />
                                                     ) : (
                                                         <input
                                                             type="text"

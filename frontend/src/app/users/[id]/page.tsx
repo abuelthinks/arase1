@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import api from "@/lib/api";
+import CustomSelect from "@/components/CustomSelect";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { LANGUAGE_OPTIONS, normalizeLanguages } from "@/lib/languages";
@@ -773,6 +774,11 @@ export default function UserProfile() {
             {/* Main grid */}
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
                 <div className="flex flex-col gap-6">
+                    {/* A parent looking at someone else's profile has every contact and
+                        account field stripped, leaving a card that promises "identity,
+                        contact details and account state" and shows only the role —
+                        which the badge beside the name already says. */}
+                    {!isParentViewingOther && (
                     <SectionCard>
                         <SectionHeader
                             title={isSelfServiceView || isParent ? "Your Information" : "Profile Information"}
@@ -930,6 +936,7 @@ export default function UserProfile() {
                             </div>
                         )}
                     </SectionCard>
+                    )}
 
                     {/* On your own profile this only repeats the banner, Profile
                         Information, and the languages card below it. */}
@@ -947,12 +954,20 @@ export default function UserProfile() {
                                             Phone Verification
                                         </p>
                                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                                            <span className="text-sm font-bold text-fg">
+                                            <span className={`text-sm font-bold ${user.phone_number ? "text-fg" : "text-muted"}`}>
                                                 {user.phone_number || "No phone number on file"}
                                             </span>
-                                            <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${semanticToneClass(user.is_phone_verified ? "success" : "warning")}`}>
-                                                {user.is_phone_verified ? "Verified" : "Not verified"}
-                                            </span>
+                                            {/* A phone number is optional, so "not verified" only
+                                                makes sense once there is one to verify. */}
+                                            {user.phone_number ? (
+                                                <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${semanticToneClass(user.is_phone_verified ? "success" : "warning")}`}>
+                                                    {user.is_phone_verified ? "Verified" : "Not verified"}
+                                                </span>
+                                            ) : (
+                                                <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${semanticToneClass("neutral")}`}>
+                                                    Optional
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1712,23 +1727,21 @@ export default function UserProfile() {
                                         <div className="flex flex-col gap-3">
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-xs font-bold text-muted uppercase tracking-wide">Select Student</label>
-                                                <select
-                                                    value={selectedStudentId}
-                                                    onChange={e => {
-                                                        setSelectedStudentId(e.target.value ? Number(e.target.value) : "");
+                                                <CustomSelect
+                                                    ariaLabel="Select student"
+                                                    placeholder="Choose a student"
+                                                    value={selectedStudentId ? String(selectedStudentId) : ""}
+                                                    onChange={(v) => {
+                                                        setSelectedStudentId(v ? Number(v) : "");
                                                         setLinkingError("");
                                                     }}
-                                                    className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm font-medium text-fg focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/15"
-                                                >
-                                                    <option value="">-- Choose a student --</option>
-                                                    {allStudents
+                                                    options={allStudents
                                                         .filter(student => !assignedStudents.some(s => s.id === student.id))
-                                                        .map(student => (
-                                                            <option key={student.id} value={student.id}>
-                                                                {student.first_name} {student.last_name} (Grade {student.grade || "TBD"})
-                                                            </option>
-                                                        ))}
-                                                </select>
+                                                        .map(student => ({
+                                                            value: String(student.id),
+                                                            label: `${student.first_name} ${student.last_name} (Grade ${student.grade || "TBD"})`,
+                                                        }))}
+                                                />
                                             </div>
                                             {linkingError && (
                                                 <p className="m-0 text-xs font-medium text-danger">{linkingError}</p>

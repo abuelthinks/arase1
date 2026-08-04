@@ -14,7 +14,7 @@ import Badge from "@/components/ui/Badge";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
-import CustomSelect from "@/components/CustomSelect";
+import CustomSelect, { PAGE_SIZE_OPTIONS } from "@/components/CustomSelect";
 
 /* ─── Utility: Title Case ────────────────────────────────────────────────── */
 
@@ -1354,27 +1354,18 @@ export default function AdminDashboard() {
                                             }}
                                         />
                                     </div>
-                                    <select
+                                    <CustomSelect
+                                        size="sm"
+                                        className="w-44 shrink-0"
+                                        triggerClassName="h-[38px] rounded-md px-3 text-[0.85rem] font-medium"
+                                        ariaLabel="Filter students by grade"
                                         value={studentGradeFilter}
-                                        onChange={e => setStudentGradeFilter(e.target.value)}
-                                        style={{
-                                            height: "38px",
-                                            padding: "0 12px",
-                                            borderRadius: "6px",
-                                            border: "1px solid var(--border-light)",
-                                            fontSize: "0.85rem",
-                                            background: "var(--bg-secondary)",
-                                            color: "var(--text-primary)",
-                                            outline: "none",
-                                            fontWeight: 500,
-                                        }}
-                                        aria-label="Filter students by grade"
-                                    >
-                                        <option value="ALL">All grades</option>
-                                        {uniqueGrades.map(grade => (
-                                            <option key={grade} value={grade}>{grade}</option>
-                                        ))}
-                                    </select>
+                                        onChange={setStudentGradeFilter}
+                                        options={[
+                                            { value: "ALL", label: "All grades" },
+                                            ...uniqueGrades.map(grade => ({ value: grade, label: grade })),
+                                        ]}
+                                    />
                                     {studentSearch && (
                                         <button
                                             onClick={() => setStudentSearch('')}
@@ -1420,16 +1411,15 @@ export default function AdminDashboard() {
                                         {students.length > 10 && (
                                             <div className="flex items-center gap-2 text-xs font-medium text-muted shrink-0">
                                                 <span>Show</span>
-                                                <select
-                                                    value={studentItemsPerPage}
-                                                    onChange={(e) => setStudentItemsPerPage(Number(e.target.value))}
-                                                    className="h-8 rounded-md border border-line bg-card px-2 text-sm text-fg outline-none transition-colors hover:border-line focus:border-indigo-400"
-                                                >
-                                                    <option value={10}>10</option>
-                                                    <option value={25}>25</option>
-                                                    <option value={50}>50</option>
-                                                    <option value={100}>100</option>
-                                                </select>
+                                                <CustomSelect
+                                                    size="sm"
+                                                    className="w-20"
+                                                    triggerClassName="h-8 rounded-md px-2 text-sm font-medium"
+                                                    ariaLabel="Students per page"
+                                                    value={String(studentItemsPerPage)}
+                                                    onChange={(v) => setStudentItemsPerPage(Number(v))}
+                                                    options={PAGE_SIZE_OPTIONS}
+                                                />
                                             </div>
                                         )}
                                     </div>
@@ -1632,16 +1622,15 @@ export default function AdminDashboard() {
                                 {users.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                         <span>Show:</span>
-                                        <select
-                                            value={userItemsPerPage}
-                                            onChange={(e) => setUserItemsPerPage(Number(e.target.value))}
-                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-light)", background: "var(--bg-primary)" }}
-                                        >
-                                            <option value={10}>10</option>
-                                            <option value={25}>25</option>
-                                            <option value={50}>50</option>
-                                            <option value={100}>100</option>
-                                        </select>
+                                        <CustomSelect
+                                            size="sm"
+                                            className="w-20"
+                                            triggerClassName="h-8 rounded-md px-2 text-sm font-medium"
+                                            ariaLabel="Users per page"
+                                            value={String(userItemsPerPage)}
+                                            onChange={(v) => setUserItemsPerPage(Number(v))}
+                                            options={PAGE_SIZE_OPTIONS}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -2114,16 +2103,15 @@ export default function AdminDashboard() {
                                 {pendingInvitations.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                         <span>Show:</span>
-                                        <select
-                                            value={invitationItemsPerPage}
-                                            onChange={(e) => setInvitationItemsPerPage(Number(e.target.value))}
-                                            style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--border-light)", background: "var(--bg-primary)" }}
-                                        >
-                                            <option value={10}>10</option>
-                                            <option value={25}>25</option>
-                                            <option value={50}>50</option>
-                                            <option value={100}>100</option>
-                                        </select>
+                                        <CustomSelect
+                                            size="sm"
+                                            className="w-20"
+                                            triggerClassName="h-8 rounded-md px-2 text-sm font-medium"
+                                            ariaLabel="Invitations per page"
+                                            value={String(invitationItemsPerPage)}
+                                            onChange={(v) => setInvitationItemsPerPage(Number(v))}
+                                            options={PAGE_SIZE_OPTIONS}
+                                        />
                                     </div>
                                 )}
                             </div>

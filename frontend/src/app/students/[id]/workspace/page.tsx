@@ -11,6 +11,7 @@ import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { toast } from "sonner";
 import { extractApiError } from "@/lib/toast-utils";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import CustomSelect from "@/components/CustomSelect";
 import { statusColorClass, statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
 
 // Inputs
@@ -1135,7 +1136,7 @@ function UnifiedWorkspaceContent() {
                                 <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3">Actions</p>
                                 <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-card text-fg border-line hover:bg-subtle-soft hover:border-line'}`}>
                                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                    Report Generator
+                                    Generate Reports
                                 </button>
                             </div>
                         )}
@@ -1290,23 +1291,17 @@ function UnifiedWorkspaceContent() {
                                         <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                     </div>
-                                    <select
+                                    <CustomSelect
+                                        size="sm"
+                                        className="w-64 max-w-[60%]"
+                                        ariaLabel="IEP version"
                                         value={selectedDocId}
-                                        onChange={(e) => handleReportMenuChange("iep", e.target.value)}
-                                        className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
-                                        style={{
-                                            backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                                            backgroundPosition: "right 0.4rem center",
-                                            backgroundSize: "1rem",
-                                            backgroundRepeat: "no-repeat",
-                                        }}
-                                    >
-                                        {iepDocs.map((doc, idx) => (
-                                            <option key={doc.id} value={doc.id.toString()}>
-                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(v) => handleReportMenuChange("iep", v)}
+                                        options={iepDocs.map((doc, idx) => ({
+                                            value: doc.id.toString(),
+                                            label: `${idx === 0 ? "Latest Version" : "Previous Version"} — ${formatDocumentDateTime(doc.created_at)}`,
+                                        }))}
+                                    />
                                 </div>
                             )}
                             <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
@@ -1320,23 +1315,17 @@ function UnifiedWorkspaceContent() {
                                         <svg className="w-3.5 h-3.5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                     </div>
-                                    <select
+                                    <CustomSelect
+                                        size="sm"
+                                        className="w-64 max-w-[60%]"
+                                        ariaLabel="Monthly report version"
                                         value={selectedDocId}
-                                        onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
-                                        className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-success focus:border-success-line transition-all cursor-pointer shadow-sm appearance-none relative"
-                                        style={{
-                                            backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                                            backgroundPosition: "right 0.4rem center",
-                                            backgroundSize: "1rem",
-                                            backgroundRepeat: "no-repeat",
-                                        }}
-                                    >
-                                        {monthlyDocs.map((doc, idx) => (
-                                            <option key={doc.id} value={doc.id.toString()}>
-                                                {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(v) => handleReportMenuChange("monthly", v)}
+                                        options={monthlyDocs.map((doc, idx) => ({
+                                            value: doc.id.toString(),
+                                            label: `${idx === 0 ? "Latest Version" : "Previous Version"} — ${formatDocumentDateTime(doc.created_at)}`,
+                                        }))}
+                                    />
                                 </div>
                             )}
                             <MonthlyReportContent propId={selectedDocId} propHideNavigation={true} />
@@ -1842,17 +1831,17 @@ function UnifiedWorkspaceContent() {
                                     className="w-full bg-app border border-line rounded-lg py-1.5 pl-8 pr-3 text-xs text-fg placeholder:text-faint focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                                 />
                             </div>
-                            <select
+                            <CustomSelect
+                                size="sm"
+                                ariaLabel="Filter students by grade"
                                 value={studentGradeFilter}
-                                onChange={(e) => setStudentGradeFilter(e.target.value)}
-                                className="h-7 w-full rounded-lg border border-line bg-card px-2 text-[0.68rem] font-medium text-muted outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors"
-                                aria-label="Filter students by grade"
-                            >
-                                <option value="ALL">All grades</option>
-                                {sidebarGrades.map(grade => (
-                                    <option key={grade} value={grade}>{grade}</option>
-                                ))}
-                            </select>
+                                onChange={setStudentGradeFilter}
+                                triggerClassName={studentGradeFilter !== "ALL" ? "" : "text-muted"}
+                                options={[
+                                    { value: "ALL", label: "All grades" },
+                                    ...sidebarGrades.map(grade => ({ value: grade, label: grade })),
+                                ]}
+                            />
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar">
                             {filteredStudents.length === 0 ? (

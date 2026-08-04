@@ -8,6 +8,7 @@ import { extractApiError } from "@/lib/toast-utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import CustomSelect from "@/components/CustomSelect";
 import { Languages } from "lucide-react";
 import {
     SHARED,
@@ -226,6 +227,17 @@ const schemaMap: Record<string, any> = {
     "sped-tracker": sped_tracker,
 };
 
+// What each form is for and where it ends up — shown under the title so nobody
+// has to guess why they're filling it in.
+const FORM_DESCRIPTIONS: Record<string, string> = {
+    "parent-assessment": "Your child's background, developmental history and the needs you shared when you joined — the team uses this to build their learning plan.",
+    "multidisciplinary-assessment": "The team's baseline evaluation across every discipline. Once finalized it becomes the foundation for the student's IEP goals.",
+    "sped-assessment": "The classroom teacher's view of how the student is doing in school — used alongside the specialist evaluation.",
+    "parent-tracker": "Your check-in on how your child is doing at home — communication, behavior, daily routines and the progress you've noticed. What you share goes straight into this cycle's progress report.",
+    "multidisciplinary-tracker": "This cycle's session notes and goal ratings from each discipline. Feeds the monthly progress report and the IEP's progress section.",
+    "sped-tracker": "This cycle's classroom picture — participation, academic progress, behavior and how the student is tracking against their goals.",
+};
+
 const workspaceTabByFormType: Record<string, string> = {
     "parent-assessment": "parent_assessment",
     "multidisciplinary-assessment": "multi_assessment",
@@ -274,6 +286,32 @@ function buildInitialFormData(schema: any) {
     return initialData;
 }
 
+// Field types change over time — A2 Therapist Verification used to be a
+// checkbox group and is now a single choice — so saved drafts can hold the
+// wrong shape for the field they belong to. Reshape on load rather than
+// leaving a stale array sitting in a radio field.
+function coerceFieldValue(field: any, value: any) {
+    if (field.type === "radio") {
+        return Array.isArray(value) ? (value[0] ?? "") : value;
+    }
+    if (field.type === "checkbox_group" && !Array.isArray(value)) {
+        return value ? [value] : [];
+    }
+    return value;
+}
+
+function applyFieldCoercions(data: any, schema: any) {
+    schema.sections?.forEach((sec: any) => {
+        const sectionData = data[sec.__dataSection || sec.id];
+        if (!sectionData) return;
+        sec.fields?.forEach((field: any) => {
+            if (sectionData[field.id] === undefined) return;
+            sectionData[field.id] = coerceFieldValue(field, sectionData[field.id]);
+        });
+    });
+    return data;
+}
+
 function mergeSavedFormData(baseData: any, schema: any, rawSavedData: any) {
     const savedData = rawSavedData?.v2 || rawSavedData || {};
     const next = { ...baseData };
@@ -291,7 +329,7 @@ function mergeSavedFormData(baseData: any, schema: any, rawSavedData: any) {
                 }
             });
         });
-        return next;
+        return applyFieldCoercions(next, schema);
     }
 
     Object.keys(savedData).forEach(secKey => {
@@ -299,7 +337,7 @@ function mergeSavedFormData(baseData: any, schema: any, rawSavedData: any) {
             next[secKey] = { ...next[secKey], ...savedData[secKey] };
         }
     });
-    return next;
+    return applyFieldCoercions(next, schema);
 }
 
 /* ─── Shared UI Components ─────────────────────────────────────────────────── */
@@ -515,28 +553,16 @@ function CompactSelect({ label, value, options, onChange, readOnly }: { label: s
             <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.3px" }}>
                 {label}
             </span>
-            <select
+            <CustomSelect
+                size="sm"
+                triggerClassName="min-h-[34px] rounded-[7px] px-2 text-[0.78rem]"
+                ariaLabel={label}
+                placeholder="Select"
                 value={value || ""}
                 disabled={readOnly}
-                onChange={e => onChange(e.target.value)}
-                style={{
-                    width: "100%",
-                    borderRadius: "7px",
-                    border: "1px solid var(--text-muted)",
-                    background: readOnly ? "var(--bg-neutral-light)" : "var(--bg-secondary)",
-                    color: value ? "var(--text-primary)" : "var(--text-muted)",
-                    cursor: readOnly ? "not-allowed" : "pointer",
-                    fontSize: "0.78rem",
-                    lineHeight: 1.35,
-                    padding: "7px 8px",
-                    minHeight: "34px",
-                }}
-            >
-                <option value="">Select</option>
-                {options.map(option => (
-                    <option key={option} value={option}>{option}</option>
-                ))}
-            </select>
+                onChange={onChange}
+                options={options.map(option => ({ value: option, label: option }))}
+            />
         </label>
     );
 }
@@ -2039,7 +2065,9 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         <h1 className="text-xl sm:text-2xl font-bold text-fg m-0 flex flex-wrap items-baseline gap-2 leading-tight">
                             {schema.title}
                         </h1>
-                        <p className="text-sm text-muted mt-1 mb-0 leading-relaxed">Fill out each section below.</p>
+                        <p className="text-sm text-muted mt-1 mb-0 leading-relaxed">
+                            {FORM_DESCRIPTIONS[formType] || "Fill out each section below."}
+                        </p>
                         
                         {/* Unlock functionality banners */}
                         {isSectionScopedForm && teamSubmission?.finalized_at && (
