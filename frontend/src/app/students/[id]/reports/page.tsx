@@ -122,7 +122,7 @@ function UnifiedReportsViewer() {
                                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-card text-fg border-line hover:bg-subtle-soft hover:border-line'}`}
                                 >
                                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                    Report Generator
+                                    Generate Reports
                                 </button>
                             </div>
 

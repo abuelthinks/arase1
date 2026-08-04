@@ -2,6 +2,7 @@
 
 import { type ReactNode, useCallback, useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { BarChart3, Eye, FileText, Loader2 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import api from "@/lib/api";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
@@ -265,11 +266,13 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             <div className="border border-line rounded-xl p-5 mb-4 bg-card">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-                            <span style={{ marginRight: "8px" }}>📋</span>Comprehensive AI-Generated IEP
+                        <h3 style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                            <FileText className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            Comprehensive AI-Generated IEP
                         </h3>
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px", marginBottom: "14px" }}>
-                            Compiles all assessment data and uses AI to generate goals, objectives, and recommendations.
+                            The student&apos;s learning plan. Compiles every submitted assessment and drafts the goals,
+                            objectives and recommendations for you to review and edit before finalizing.
                         </p>
 
                         {/* Assessment Status Pills */}
@@ -325,9 +328,14 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                 cursor: !["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "not-allowed" : "pointer",
                                 whiteSpace: "nowrap", flexShrink: 0, marginTop: "4px",
                                 transition: "background 0.2s ease",
+                                display: "inline-flex", alignItems: "center", gap: "6px",
                             }}
                         >
-                            {(existingIepId && existingIepStatus === "FINAL") ? "📄 View IEP" : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase()) ? "🤖 Generate IEP" : "Requires Review"}
+                            {(existingIepId && existingIepStatus === "FINAL") ? (
+                                <><Eye className="h-4 w-4" aria-hidden="true" />View IEP</>
+                            ) : ["assessed", "enrolled", "integrated"].includes(studentStatus.toLowerCase())
+                                ? "Generate IEP"
+                                : "Requires Review"}
                         </button>
                     )}
                 </div>
@@ -337,11 +345,13 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
             <div className={`border rounded-xl p-5 bg-card ${monthlyEnabled ? "border-success-line" : "border-line"}`}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-                            <span style={{ marginRight: "8px" }}>📊</span>Monthly Progress Report
+                        <h3 style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                            <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            Monthly Progress Report
                         </h3>
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px", marginBottom: "14px" }}>
-                            Generates the AI monthly tracking document from all required progress tracker forms. Also updates IEP Section 10.
+                            This cycle&apos;s progress summary for the family. Draws on every required progress tracker
+                            and updates the IEP&apos;s progress section (Section 10).
                         </p>
 
                         {/* Progress Tracker Status Pills */}
@@ -412,13 +422,16 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                             whiteSpace: "nowrap", flexShrink: 0,
                             marginTop: "4px",
                             transition: "background 0.2s ease",
+                            display: "inline-flex", alignItems: "center", gap: "6px",
                         }}
                     >
-                        {monthlyLoading ? "⏳ Generating…"
-                            : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? "📄 View Report"
-                            : !isEnrolled ? "Requires Active"
+                        {monthlyLoading ? (
+                            <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />Generating…</>
+                        ) : (existingMonthlyId && existingMonthlyStatus === "FINAL") ? (
+                            <><Eye className="h-4 w-4" aria-hidden="true" />View Report</>
+                        ) : !isEnrolled ? "Requires Active"
                             : !allTrackersSubmitted ? "Forms Pending"
-                            : "🤖 Generate"}
+                            : "Generate Report"}
                     </button>
                 </div>
             </div>
@@ -442,7 +455,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                                 Back to Student Profile
                             </button>
                             <span style={{ color: "var(--border-light)" }}>›</span>
-                            <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>Report Generator</span>
+                            <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.9rem" }}>Generate Reports</span>
                         </div>
                     )}
 
@@ -450,7 +463,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                     {propHideNavigation ? (
                         <>
                             <div style={{ borderBottom: "1px solid var(--border-light)", paddingBottom: "1.25rem", marginBottom: "1.5rem" }}>
-                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Report Generator</h1>
+                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Generate Reports</h1>
                                 {isInitialLoad ? (
                                     <div className="h-4 bg-subtle-soft animate-pulse rounded w-48 mt-2"></div>
                                 ) : (
@@ -469,7 +482,7 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
                         /* Standalone mode — wrapped in card */
                         <div style={{ background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid var(--border-light)", overflow: "hidden" }}>
                             <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid var(--border-light)" }}>
-                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Report Generator</h1>
+                                <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Generate Reports</h1>
                                 {isInitialLoad ? (
                                     <div className="h-4 bg-subtle-soft animate-pulse rounded w-48 mt-2"></div>
                                 ) : (

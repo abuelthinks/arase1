@@ -72,6 +72,17 @@ module.exports = {
           strong: 'var(--solid-neutral)',
         },
       },
+      // An expanding amber ring for controls that are waiting on the user —
+      // draws the eye without moving the element or shifting layout.
+      keyframes: {
+        'cta-glow': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgb(245 158 11 / 0.45)' },
+          '50%': { boxShadow: '0 0 0 6px rgb(245 158 11 / 0)' },
+        },
+      },
+      animation: {
+        'cta-glow': 'cta-glow 2s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

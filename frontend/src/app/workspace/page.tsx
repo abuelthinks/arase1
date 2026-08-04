@@ -9,17 +9,19 @@ import { useAuth } from "@/context/AuthContext";
 import {
     Search, ChevronLeft, ChevronRight, ChevronDown,
     UserPlus, FileText, Mail, ClipboardList, Calendar, GraduationCap,
-    Users, FolderOpen, FileCheck2, Plus,
+    Users, FolderOpen, FileCheck2, Plus, ArrowRight, Clock,
     Sparkles, AlertCircle, CheckCircle2, Lock, Check, X, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { extractApiError, toastPromise } from "@/lib/toast-utils";
 import { SPECIALIST_SPECIALTIES } from "@/lib/specialties";
 import { normalizeGradeLevel, gradeLevelMatches } from "@/lib/grade-levels";
-import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY } from "@/lib/sectionOwners";
+import { normalizeLanguages } from "@/lib/languages";
+import { specialtyShortLabel, userSpecialtyList, SLP, OT, PT, ABA, DEV_PSY, type SectionOwner } from "@/lib/sectionOwners";
 import { isSpecialistOnboardingIncomplete, specialistOnboardingMessage } from "@/lib/specialist-onboarding";
-import { semanticToneClass, statusColorClass, statusColorHex, statusLabel, studentRowActionPillClass, type SemanticTone } from "@/lib/role-colors";
+import { semanticToneClass, semanticToneStrongClass, statusColorClass, statusColorHex, statusLabel, studentRowActionPillClass, type SemanticTone } from "@/lib/role-colors";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import CustomSelect from "@/components/CustomSelect";
 
 // Inputs
 import { ParentFormContent } from "@/app/parent-onboarding/page";
@@ -73,7 +75,16 @@ const workspaceSecondaryTabClass = ({
 }) => {
     const base = "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors";
     if (disabled) return `${base} cursor-not-allowed border-transparent text-faint opacity-70`;
-    if (attention) return `${base} ${semanticToneClass("warning")} shadow-sm hover:bg-warning-soft hover:border-warning-line`;
+    if (attention) {
+        // Something is queued up waiting on the user, so this tab has to read as
+        // a call to action rather than one more tab. The pulse stops once they
+        // are on it — at that point the nudge has done its job and the tab just
+        // needs to look selected.
+        const nudge = active
+            ? "border-warning-solid shadow-sm"
+            : "animate-cta-glow motion-reduce:animate-none hover:border-warning-solid hover:bg-warning-soft";
+        return `${base} ${semanticToneClass("warning")} cursor-pointer ${nudge}`;
+    }
     if (active) return `${base} ${semanticToneClass(tone)} bg-card shadow-sm`;
     return `${base} border-transparent text-muted hover:border-line hover:bg-card hover:text-fg`;
 };
@@ -371,12 +382,15 @@ function UnifiedWorkspaceContent() {
     );
 
     // -- Master Tab Switcher --
+    const isStaffViewer = user?.role === "SPECIALIST" || user?.role === "TEACHER";
     const rawWorkspace = workspaceParam || (user?.role === "ADMIN" ? "overview" : "forms");
-    const workspace = user?.role === "PARENT" 
-        ? "forms" 
-        : (user?.role === "ADMIN" && rawWorkspace === "forms") 
-            ? "reports" 
-            : (user?.role !== "ADMIN" && ["overview", "team"].includes(rawWorkspace))
+    const workspace = user?.role === "PARENT"
+        ? "forms"
+        : (user?.role === "ADMIN" && rawWorkspace === "forms")
+            ? "reports"
+            // Editing the team stays admin-only. Overview is read-only, so
+            // specialists and teachers get it too.
+            : (user?.role !== "ADMIN" && rawWorkspace === "team")
                 ? "forms"
                 : rawWorkspace;
     const isStudentCurrentlyEnrolled = ["ENROLLED", "INTEGRATED"].includes(studentStatus?.toUpperCase() || "");
@@ -1308,6 +1322,191 @@ function UnifiedWorkspaceContent() {
         );
     };
 
+    // Read-only overview for specialists and teachers: who else is on this
+    // student's team, what this viewer still owes, and the clinical context they
+    // would otherwise have to dig three tabs deep for.
+    const renderStaffOverviewWorkspace = () => {
+        const specialists = assignedStaff.filter(staff => staff.role === "SPECIALIST");
+        const teachers = assignedStaff.filter(staff => staff.role === "TEACHER");
+        const team = [...specialists, ...teachers];
+        const latestIep = docs.find(doc => doc.type === "IEP");
+        const latestMonthly = docs.find(doc => doc.type === "MONTHLY");
+
+        // Only the forms this viewer is actually responsible for.
+        const ownedTabIds = user?.role === "TEACHER"
+            ? ["sped_tracker"]
+            : ["multi_assessment", "multi_tracker"];
+        const myForms = TABS
+            .filter(tab => ownedTabIds.includes(tab.id))
+            .filter(tab => statusFilteredTabs.some(t => t.id === tab.id) || formStatuses?.[tab.id]?.submitted)
+            .map(tab => ({
+                id: tab.id,
+                label: tab.label,
+                submitted: Boolean(formStatuses?.[tab.id]?.submitted),
+                submittedAt: formStatuses?.[tab.id]?.submitted_at,
+            }));
+
+        const knownConditions: string[] = Array.isArray(studentDetails?.known_conditions) ? studentDetails.known_conditions : [];
+        // The assessment stores a "None"/"No" answer as the alert value itself, so
+        // treat those as nothing to flag rather than printing them as an alert.
+        const rawAlert = String(studentDetails?.medical_alerts_detail || studentDetails?.medical_alerts || "").trim();
+        const medicalAlert = ["", "none", "no"].includes(rawAlert.toLowerCase()) ? "" : rawAlert;
+        const languages = normalizeLanguages([
+            ...(Array.isArray(studentDetails?.primary_language) ? studentDetails.primary_language : studentDetails?.primary_language ? [studentDetails.primary_language] : []),
+            ...(studentDetails?.primary_language_other ? [studentDetails.primary_language_other] : []),
+        ].filter(language => language && language !== "Other"));
+
+        const cardClass = "rounded-xl border border-line bg-card p-4 shadow-sm";
+        const sectionTitleClass = "m-0 mb-3 text-xs font-bold uppercase tracking-widest text-faint";
+
+        return (
+            <div className="flex-1 bg-card relative flex flex-col overflow-hidden">
+                {tabBar}
+                <div className="flex-1 overflow-y-auto p-5 md:p-6">
+                    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+                        {/* Your work */}
+                        <section className={cardClass}>
+                            <h2 className={sectionTitleClass}>Your forms for {studentName.split(" ")[0] || "this student"}</h2>
+                            {myForms.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {myForms.map(form => (
+                                        <button
+                                            key={form.id}
+                                            type="button"
+                                            onClick={() => handleFormTabChange(form.id)}
+                                            className="flex items-center gap-3 rounded-xl border border-line bg-app px-3 py-2.5 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/40"
+                                        >
+                                            <ClipboardList className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="m-0 truncate text-sm font-bold text-fg">{form.label}</p>
+                                                <p className="m-0 text-xs text-muted">
+                                                    {form.submitted
+                                                        ? form.submittedAt ? `Submitted ${formatDocumentDateTime(form.submittedAt)}` : "Submitted"
+                                                        : "Not submitted yet"}
+                                                </p>
+                                            </div>
+                                            {form.submitted
+                                                ? <Check className="h-4 w-4 shrink-0 text-success" strokeWidth={3} aria-hidden="true" />
+                                                : <span className={workspaceBadgeClass("warning", "shrink-0 px-1.5 py-0")}>To do</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="m-0 text-sm text-muted">
+                                    Nothing is due from you at this stage of {studentName.split(" ")[0] || "this student"}&apos;s journey.
+                                </p>
+                            )}
+                        </section>
+
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            {/* Who else is on the team */}
+                            <section className={cardClass}>
+                                <h2 className={sectionTitleClass}>Care team</h2>
+                                {team.length > 0 ? (
+                                    <div className="flex flex-col gap-2">
+                                        {team.map(staff => {
+                                            const isMe = staff.id === user?.user_id;
+                                            const staffSpecialties = getStaffSpecialties(staff);
+                                            return (
+                                                <div
+                                                    key={`${staff.role}-${staff.id}`}
+                                                    className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${isMe ? semanticToneClass("primary") : "border-line bg-app"}`}
+                                                >
+                                                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-extrabold ${semanticToneClass("primary")}`}>
+                                                        {(staff.first_name?.[0] || "") + (staff.last_name?.[0] || "")}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="m-0 flex items-center gap-1.5 truncate text-sm font-bold text-fg">
+                                                            {getStaffName(staff)}
+                                                            {isMe && <span className={workspaceBadgeClass("primary", "px-1.5 py-0")}>You</span>}
+                                                        </p>
+                                                        <p className="m-0 truncate text-xs font-semibold text-muted">
+                                                            {staff.role === "TEACHER"
+                                                                ? "Classroom Teacher"
+                                                                : staffSpecialties.map(specialty => specialtyShortLabel(specialty as SectionOwner)).join(" · ") || "Specialist"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="m-0 text-sm text-muted">No other staff are assigned to this student yet.</p>
+                                )}
+                            </section>
+
+                            {/* Clinical context */}
+                            <section className={cardClass}>
+                                <h2 className={sectionTitleClass}>At a glance</h2>
+                                <div className="flex flex-col divide-y divide-line">
+                                    <div className="flex items-start justify-between gap-3 py-2 first:pt-0">
+                                        <span className="text-sm font-semibold text-muted">Cycle</span>
+                                        <span className="text-right text-sm font-bold text-fg">{activeCycle?.label || "No active cycle"}</span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3 py-2">
+                                        <span className="text-sm font-semibold text-muted">Languages at home</span>
+                                        <span className="text-right text-sm font-bold text-fg">{languages.length > 0 ? languages.join(", ") : "Not provided"}</span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3 py-2">
+                                        <span className="text-sm font-semibold text-muted">Medical alerts</span>
+                                        <span className={`text-right text-sm font-bold ${medicalAlert ? "text-warning" : "text-fg"}`}>
+                                            {medicalAlert || "None noted"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3 py-2 last:pb-0">
+                                        <span className="text-sm font-semibold text-muted">Known conditions</span>
+                                        <span className="text-right text-sm font-bold text-fg">
+                                            {knownConditions.length > 0 ? knownConditions.join(", ") : "None noted"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        {/* Team documents */}
+                        <section className={cardClass}>
+                            <h2 className={sectionTitleClass}>Plans &amp; reports</h2>
+                            {latestIep || latestMonthly ? (
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {latestIep && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleReportMenuChange("iep", latestIep.id.toString())}
+                                            className="flex items-center gap-3 rounded-xl border border-line bg-app px-3 py-2.5 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/40"
+                                        >
+                                            <FileText className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="m-0 text-sm font-bold text-fg">Current IEP</p>
+                                                <p className="m-0 text-xs text-muted">{formatDocumentDateTime(latestIep.created_at)}</p>
+                                            </div>
+                                            <ChevronRight className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+                                        </button>
+                                    )}
+                                    {latestMonthly && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleReportMenuChange("monthly", latestMonthly.id.toString())}
+                                            className="flex items-center gap-3 rounded-xl border border-line bg-app px-3 py-2.5 text-left transition-colors hover:border-success-line hover:bg-success-soft/40"
+                                        >
+                                            <FileCheck2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="m-0 text-sm font-bold text-fg">Latest monthly report</p>
+                                                <p className="m-0 text-xs text-muted">{formatDocumentDateTime(latestMonthly.created_at)}</p>
+                                            </div>
+                                            <ChevronRight className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="m-0 text-sm text-muted">No learning plan or progress report has been generated yet.</p>
+                            )}
+                        </section>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderOverviewWorkspace = () => {
         const actions = buildAdminActions();
         const submittedForms = TABS.filter(tab => formStatuses?.[tab.id]?.submitted).length;
@@ -2093,12 +2292,14 @@ function UnifiedWorkspaceContent() {
                             title={isIepReadyToGenerate ? "IEP is ready to generate for this student." : undefined}
                             className={workspaceSecondaryTabClass({ active: isGenerator, attention: isIepReadyToGenerate })}
                         >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            Report Generator
+                            Generate Reports
                             {isIepReadyToGenerate && (
-                                <span className={workspaceBadgeClass("warning", "bg-warning-soft px-1.5 py-0")}>
+                                <span className={`inline-flex items-center rounded-full border px-1.5 py-0 text-[0.6rem] font-bold uppercase tracking-wider ${semanticToneStrongClass("warning")}`}>
                                     IEP ready
                                 </span>
+                            )}
+                            {isIepReadyToGenerate && !isGenerator && (
+                                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                             )}
                         </button>
                     )}
@@ -2193,7 +2394,7 @@ function UnifiedWorkspaceContent() {
                                 <p className="text-[0.65rem] font-bold text-faint uppercase tracking-widest mb-3 px-1">Tools</p>
                                 <button onClick={() => handleReportMenuChange("generator")} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm border ${isGenerator ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-card text-fg border-line hover:bg-subtle-soft hover:border-line'}`}>
                                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                    Report Generator
+                                    Generate Reports
                                 </button>
                             </div>
                         )}
@@ -2350,23 +2551,17 @@ function UnifiedWorkspaceContent() {
                                             <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                         </div>
-                                        <select
+                                        <CustomSelect
+                                            size="sm"
+                                            className="w-64 max-w-[60%]"
+                                            ariaLabel="IEP version"
                                             value={selectedDocId}
-                                            onChange={(e) => handleReportMenuChange("iep", e.target.value)}
-                                            className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-sm appearance-none relative"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                                                backgroundPosition: "right 0.4rem center",
-                                                backgroundSize: "1rem",
-                                                backgroundRepeat: "no-repeat",
-                                            }}
-                                        >
-                                            {iepDocs.map((doc, idx) => (
-                                                <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onChange={(v) => handleReportMenuChange("iep", v)}
+                                            options={iepDocs.map((doc, idx) => ({
+                                                value: doc.id.toString(),
+                                                label: `${idx === 0 ? "Latest Version" : "Previous Version"} — ${formatDocumentDateTime(doc.created_at)}`,
+                                            }))}
+                                        />
                                     </div>
                                 )}
                                 <IEPViewerContent propId={selectedDocId} propHideNavigation={true} />
@@ -2380,23 +2575,17 @@ function UnifiedWorkspaceContent() {
                                             <svg className="w-3.5 h-3.5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             <span className="text-[0.7rem] font-bold uppercase tracking-wider text-muted">Version History</span>
                                         </div>
-                                        <select
+                                        <CustomSelect
+                                            size="sm"
+                                            className="w-64 max-w-[60%]"
+                                            ariaLabel="Monthly report version"
                                             value={selectedDocId}
-                                            onChange={(e) => handleReportMenuChange("monthly", e.target.value)}
-                                            className="text-[0.75rem] font-bold text-fg bg-card border border-line rounded-md px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-success focus:border-success-line transition-all cursor-pointer shadow-sm appearance-none relative"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                                                backgroundPosition: "right 0.4rem center",
-                                                backgroundSize: "1rem",
-                                                backgroundRepeat: "no-repeat",
-                                            }}
-                                        >
-                                            {monthlyDocs.map((doc, idx) => (
-                                                <option key={doc.id} value={doc.id.toString()}>
-                                                    {idx === 0 ? "Latest Version" : "Previous Version"} — {formatDocumentDateTime(doc.created_at)}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onChange={(v) => handleReportMenuChange("monthly", v)}
+                                            options={monthlyDocs.map((doc, idx) => ({
+                                                value: doc.id.toString(),
+                                                label: `${idx === 0 ? "Latest Version" : "Previous Version"} — ${formatDocumentDateTime(doc.created_at)}`,
+                                            }))}
+                                        />
                                     </div>
                                 )}
                                 <MonthlyReportContent propId={selectedDocId} propHideNavigation={true} />
@@ -2428,14 +2617,16 @@ function UnifiedWorkspaceContent() {
         // Determine which panel is active from URL params
         const viewParam = searchParams.get("view");
         const docIdParam = searchParams.get("docId");
-        let parentActivePanel = viewParam === "iep" ? "iep" : viewParam === "monthly" ? "monthly" : viewParam === "tracker" ? "tracker" : viewParam === "assessment" ? "assessment" : null;
+        let parentActivePanel = viewParam === "overview" ? "overview" : viewParam === "iep" ? "iep" : viewParam === "monthly" ? "monthly" : viewParam === "tracker" ? "tracker" : viewParam === "assessment" ? "assessment" : null;
 
         if (!parentActivePanel) {
             parentActivePanel = requestedFormTab === "parent_assessment" ? "assessment" : requestedFormTab === "parent_tracker" ? "tracker" : null;
         }
-        
+
+        // Landing on the overview keeps "where do things stand" the first thing a
+        // parent sees; deep links from the dashboard still open their panel directly.
         if (!parentActivePanel) {
-            parentActivePanel = !isStudentEnrolled ? "assessment" : "tracker";
+            parentActivePanel = "overview";
         }
 
         const handleParentPanelChange = (panel: string, docId?: string) => {
@@ -2523,6 +2714,235 @@ function UnifiedWorkspaceContent() {
             );
         };
 
+        // Overview: the parent's "where do things stand" landing panel. Everything
+        // here is already loaded for the other panels — no extra fetches.
+        const renderOverviewContent = () => {
+            const childFirstName = studentName.split(" ")[0] || "your child";
+            const specialists = assignedStaff.filter(staff => staff.role === "SPECIALIST");
+            const teacher = assignedStaff.find(staff => staff.role === "TEACHER");
+            const latestIep = iepDocs[0];
+            const latestMonthly = monthlyDocs[0];
+            const evaluationDone = ["ASSESSED", "ENROLLED", "INTEGRATED"].includes(normalizedStudentStatus || "");
+
+            const journey = [
+                { label: "Your assessment", done: !!assessmentStatus?.submitted },
+                { label: "Specialist evaluation", done: evaluationDone },
+                { label: "Team assigned", done: specialists.length > 0 },
+                { label: "Monthly progress", done: isStudentEnrolled },
+            ];
+            const currentStepIndex = journey.findIndex(step => !step.done);
+
+            const nextStep = !assessmentStatus?.submitted
+                ? {
+                    title: `Tell us about ${childFirstName}`,
+                    body: "Share their strengths, routines and any concerns so the team knows how to support them.",
+                    cta: "Start the form",
+                    onClick: () => handleParentPanelChange("assessment"),
+                }
+                : isStudentEnrolled && !trackerStatus?.submitted
+                    ? {
+                        title: `How is ${childFirstName} doing at home?`,
+                        body: `Share your observations for ${activeCycle?.label || "this month"} — the team uses these to prepare the progress report.`,
+                        cta: "Share update",
+                        onClick: () => handleParentPanelChange("tracker"),
+                    }
+                    : null;
+
+            const submissions = [
+                {
+                    label: "About Your Child",
+                    submitted: !!assessmentStatus?.submitted,
+                    at: assessmentStatus?.submitted_at,
+                    pending: "Not submitted yet",
+                    onClick: () => handleParentPanelChange("assessment"),
+                },
+                ...(isStudentEnrolled
+                    ? [{
+                        label: `Home Update${activeCycle?.label ? ` · ${activeCycle.label}` : ""}`,
+                        submitted: !!trackerStatus?.submitted,
+                        at: trackerStatus?.submitted_at,
+                        pending: "Due this cycle",
+                        onClick: () => handleParentPanelChange("tracker"),
+                    }]
+                    : []),
+            ];
+
+            const cardClass = "rounded-2xl border border-line bg-card p-5 shadow-sm";
+            const sectionTitleClass = "m-0 mb-3 text-xs font-bold uppercase tracking-widest text-faint";
+
+            return (
+                <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-4 md:p-8">
+                    {/* Where things stand */}
+                    <div className={cardClass}>
+                        <h2 className={sectionTitleClass}>Where things stand</h2>
+                        <ol className="m-0 flex list-none flex-col gap-0 p-0 sm:flex-row sm:items-start sm:gap-2">
+                            {journey.map((step, index) => {
+                                const isCurrent = index === currentStepIndex;
+                                return (
+                                    <li key={step.label} className="flex flex-1 items-center gap-3 py-2 sm:flex-col sm:items-start sm:py-0">
+                                        <div className="flex w-full items-center gap-2">
+                                            <span
+                                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[0.65rem] font-extrabold ${
+                                                    step.done
+                                                        ? "border-success-line bg-success-soft text-success"
+                                                        : isCurrent
+                                                            ? semanticToneClass("primary")
+                                                            : "border-line bg-app text-faint"
+                                                }`}
+                                            >
+                                                {step.done ? <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /> : index + 1}
+                                            </span>
+                                            <span className={`text-sm ${step.done || isCurrent ? "font-bold text-fg" : "font-medium text-muted"}`}>
+                                                {step.label}
+                                            </span>
+                                            <span className={`hidden h-px flex-1 sm:block ${step.done ? "bg-success-line" : "bg-subtle-soft"}`} aria-hidden="true" />
+                                        </div>
+                                        {isCurrent && (
+                                            <span className="ml-8 text-xs font-semibold text-indigo-600 sm:ml-8">In progress</span>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ol>
+                    </div>
+
+                    {/* What's next */}
+                    {nextStep ? (
+                        <div className={`${cardClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+                            <div className="min-w-0">
+                                <h2 className="m-0 text-base font-extrabold text-fg">{nextStep.title}</h2>
+                                <p className="m-0 mt-1 text-sm leading-relaxed text-muted">{nextStep.body}</p>
+                            </div>
+                            <button type="button" onClick={nextStep.onClick} className={`${workspacePrimaryButtonClass} shrink-0`}>
+                                {nextStep.cta}
+                                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className={`${cardClass} flex items-center gap-3`}>
+                            <CheckCircle2 className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
+                            <p className="m-0 text-sm font-semibold text-fg">
+                                You&apos;re all caught up — nothing needed from you right now.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Care team */}
+                    <div className={cardClass}>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <h2 className={`${sectionTitleClass} mb-0`}>{childFirstName}&apos;s team</h2>
+                            <Link
+                                href={`/specialists?studentId=${studentId}`}
+                                className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 no-underline hover:text-indigo-700"
+                            >
+                                {specialists.length > 0 ? "View team" : "Set preferences"}
+                                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Link>
+                        </div>
+                        {specialists.length > 0 || teacher ? (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {[...specialists, ...(teacher ? [teacher] : [])].map(staff => (
+                                    <div key={`${staff.role}-${staff.id}`} className="flex items-center gap-3 rounded-xl border border-line bg-app px-3 py-2.5">
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-extrabold ${semanticToneClass("primary")}`}>
+                                            {(staff.first_name?.[0] || "") + (staff.last_name?.[0] || "")}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="m-0 truncate text-sm font-bold text-fg">{getStaffName(staff)}</p>
+                                            <p className="m-0 truncate text-xs font-semibold text-muted">
+                                                {staff.role === "TEACHER"
+                                                    ? "Teacher"
+                                                    : getStaffSpecialties(staff).map(specialty => specialtyShortLabel(specialty as SectionOwner)).join(" · ") || "Specialist"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex items-start gap-3 rounded-xl border border-line bg-app px-3 py-3">
+                                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+                                <p className="m-0 text-sm text-muted">
+                                    {assessmentStatus?.submitted
+                                        ? `Our clinical directors are matching ${childFirstName} with the right specialists.`
+                                        : `${childFirstName}'s team is assigned after you complete the assessment.`}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* From the team */}
+                    <div className={cardClass}>
+                        <h2 className={sectionTitleClass}>From the team</h2>
+                        {latestIep || latestMonthly ? (
+                            <div className="flex flex-col gap-2">
+                                {latestIep && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleParentPanelChange("iep", latestIep.id.toString())}
+                                        className="flex items-center gap-3 rounded-xl border border-line bg-app px-3 py-2.5 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/40"
+                                    >
+                                        <FileText className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="m-0 text-sm font-bold text-fg">Current learning plan</p>
+                                            <p className="m-0 text-xs text-muted">{formatDocumentDateTime(latestIep.created_at)}</p>
+                                        </div>
+                                        <ChevronRight className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+                                    </button>
+                                )}
+                                {latestMonthly && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleParentPanelChange("monthly", latestMonthly.id.toString())}
+                                        className="flex items-center gap-3 rounded-xl border border-line bg-app px-3 py-2.5 text-left transition-colors hover:border-success-line hover:bg-success-soft/40"
+                                    >
+                                        <FileCheck2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="m-0 text-sm font-bold text-fg">Latest monthly report</p>
+                                            <p className="m-0 text-xs text-muted">{formatDocumentDateTime(latestMonthly.created_at)}</p>
+                                        </div>
+                                        <ChevronRight className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="m-0 text-sm text-muted">
+                                Learning plans and monthly reports will show up here once the team prepares them.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Your submissions */}
+                    <div className={cardClass}>
+                        <h2 className={sectionTitleClass}>Your submissions</h2>
+                        <div className="flex flex-col gap-2">
+                            {submissions.map(item => (
+                                <button
+                                    key={item.label}
+                                    type="button"
+                                    onClick={item.onClick}
+                                    className="flex items-center gap-3 rounded-xl border border-line bg-app px-3 py-2.5 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/40"
+                                >
+                                    <ClipboardList className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="m-0 truncate text-sm font-bold text-fg">{item.label}</p>
+                                        <p className="m-0 text-xs text-muted">
+                                            {item.submitted
+                                                ? item.at
+                                                    ? `Submitted ${formatDocumentDateTime(item.at)}`
+                                                    : "Submitted"
+                                                : item.pending}
+                                        </p>
+                                    </div>
+                                    {item.submitted
+                                        ? <Check className="h-4 w-4 shrink-0 text-success" strokeWidth={3} aria-hidden="true" />
+                                        : <span className={workspaceBadgeClass("warning", "shrink-0 px-1.5 py-0")}>To do</span>}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // Get parent-friendly status label
         const getParentStatusLabel = () => {
             const normalized = studentStatus?.toUpperCase().replace(/ /g, "_");
@@ -2548,12 +2968,13 @@ function UnifiedWorkspaceContent() {
             docId?: string;
             label: string;
             tone: "primary" | "success";
-            group: "yours" | "team";
+            group: "overview" | "yours" | "team";
             submitted?: boolean;
             badge?: string;
             title?: string;
         };
         const parentPanelOptions: ParentPanelOption[] = [
+            { key: "overview", view: "overview", label: "Overview", tone: "primary", group: "overview" },
             ...(!isStudentEnrolled
                 ? [{ key: "assessment", view: "assessment", label: "About Your Child", tone: "primary", group: "yours", submitted: !!assessmentStatus?.submitted } as ParentPanelOption]
                 : []),
@@ -2589,6 +3010,7 @@ function UnifiedWorkspaceContent() {
         const activeParentPanelOption = parentPanelOptions.find(isParentPanelActive);
         const teamPanelOptions = parentPanelOptions.filter(option => option.group === "team");
         const yourPanelOptions = parentPanelOptions.filter(option => option.group === "yours");
+        const overviewPanelOption = parentPanelOptions.find(option => option.group === "overview");
 
         return (
             <div className="flex flex-1 flex-col min-w-0 bg-card overflow-hidden">
@@ -2619,6 +3041,19 @@ function UnifiedWorkspaceContent() {
                         <>
                             <div className="fixed inset-0 z-30" onClick={() => setParentPanelMenuOpen(false)} aria-hidden="true" />
                             <div role="menu" className="absolute inset-x-4 top-full z-40 mt-1 max-h-[60vh] overflow-y-auto rounded-lg border border-line bg-card p-1 shadow-lg">
+                                {overviewPanelOption && (
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                            setParentPanelMenuOpen(false);
+                                            handleParentPanelChange(overviewPanelOption.view);
+                                        }}
+                                        className={`flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-bold ${isParentPanelActive(overviewPanelOption) ? "bg-indigo-50 text-indigo-800" : "text-fg"}`}
+                                    >
+                                        <span className="min-w-0 flex-1 truncate">{overviewPanelOption.label}</span>
+                                    </button>
+                                )}
                                 {yourPanelOptions.length > 0 && (
                                     <p className="px-2 pb-1 pt-1.5 text-[0.6rem] font-bold uppercase tracking-widest text-faint">Your input</p>
                                 )}
@@ -2674,6 +3109,23 @@ function UnifiedWorkspaceContent() {
                         </div>
                         <div className="mx-1 h-6 w-px shrink-0 bg-subtle-soft" aria-hidden="true" />
 
+                        {overviewPanelOption && (
+                            <button
+                                type="button"
+                                onClick={() => handleParentPanelChange(overviewPanelOption.view)}
+                                className={workspaceSecondaryTabClass({ active: isParentPanelActive(overviewPanelOption), tone: overviewPanelOption.tone })}
+                            >
+                                {overviewPanelOption.label}
+                            </button>
+                        )}
+
+                        {yourPanelOptions.length > 0 && (
+                            <>
+                                <div className="mx-1 h-6 w-px shrink-0 bg-subtle-soft" aria-hidden="true" />
+                                <span className={parentGroupLabelClass}>Your input</span>
+                            </>
+                        )}
+
                         {yourPanelOptions.map(option => (
                             <button
                                 key={option.key}
@@ -2709,6 +3161,7 @@ function UnifiedWorkspaceContent() {
 
                 {/* Main Content Area */}
                 <div className="flex-1 bg-card relative overflow-y-auto">
+                    {parentActivePanel === "overview" && renderOverviewContent()}
                     {parentActivePanel === "assessment" && renderAssessmentContent()}
                     {parentActivePanel === "tracker" && renderTrackerContent()}
                     {parentActivePanel === "iep" && docIdParam && (
@@ -3372,7 +3825,7 @@ function UnifiedWorkspaceContent() {
         status === "ASSESSMENT_SCHEDULED" ? "PENDING_ASSESSMENT" : status;
 
     const sidebarStatuses = Array.from(
-        new Set(allStudents.map(s => getSidebarStatusFilterKey(s.status)).filter(Boolean))
+        new Set(allStudents.map(s => getSidebarStatusFilterKey(s.status)).filter((s): s is string => Boolean(s)))
     ).sort((a, b) => formatStatusLabel(a).localeCompare(formatStatusLabel(b)));
 
     const sidebarGrades = Array.from(
@@ -3435,6 +3888,12 @@ function UnifiedWorkspaceContent() {
                     <div className="flex items-center gap-1 overflow-x-auto secondary-header-scrollbar">
                         {user?.role === "ADMIN" && (
                             <button onClick={() => setWorkspace("overview")} className={workspaceMainTabClass(workspace === "overview")}>
+                                Overview
+                            </button>
+                        )}
+                        {isStaffViewer && (
+                            <button onClick={() => setWorkspace("overview")} className={workspaceMainTabClass(workspace === "overview")}>
+                                <Users className="w-4 h-4 inline-block mr-1.5 -mt-0.5" aria-hidden="true" />
                                 Overview
                             </button>
                         )}
@@ -3531,42 +3990,30 @@ function UnifiedWorkspaceContent() {
                                     </button>
                                 </div>
                                 <div className="flex gap-1.5">
-                                    <div className="relative flex-1 min-w-0">
-                                        <select
-                                            value={studentStatusFilter}
-                                            onChange={(e) => setStudentStatusFilter(e.target.value)}
-                                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
-                                                studentStatusFilter !== "ALL"
-                                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
-                                                    : "border-line text-muted hover:border-line hover:text-fg"
-                                            }`}
-                                            aria-label="Filter students by status"
-                                        >
-                                            <option value="ALL">All statuses</option>
-                                            {sidebarStatuses.map(status => (
-                                                <option key={status} value={status}>{formatStatusLabel(status)}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentStatusFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
-                                    </div>
-                                    <div className="relative flex-1 min-w-0">
-                                        <select
-                                            value={studentGradeFilter}
-                                            onChange={(e) => setStudentGradeFilter(e.target.value)}
-                                            className={`h-7 w-full appearance-none rounded-lg border bg-app pl-2 pr-6 text-[0.68rem] font-semibold outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors truncate ${
-                                                studentGradeFilter !== "ALL"
-                                                    ? "border-indigo-300 bg-indigo-50/60 text-indigo-700"
-                                                    : "border-line text-muted hover:border-line hover:text-fg"
-                                            }`}
-                                            aria-label="Filter students by grade"
-                                        >
-                                            <option value="ALL">All grades</option>
-                                            {sidebarGrades.map(grade => (
-                                                <option key={grade} value={grade}>{grade}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${studentGradeFilter !== "ALL" ? "text-indigo-500" : "text-faint"}`} />
-                                    </div>
+                                    <CustomSelect
+                                        size="sm"
+                                        className="flex-1 min-w-0"
+                                        ariaLabel="Filter students by status"
+                                        value={studentStatusFilter}
+                                        onChange={setStudentStatusFilter}
+                                        triggerClassName={studentStatusFilter !== "ALL" ? "border-indigo-300 bg-indigo-50/60 text-indigo-700" : "text-muted"}
+                                        options={[
+                                            { value: "ALL", label: "All statuses" },
+                                            ...sidebarStatuses.map(status => ({ value: status, label: formatStatusLabel(status) })),
+                                        ]}
+                                    />
+                                    <CustomSelect
+                                        size="sm"
+                                        className="flex-1 min-w-0"
+                                        ariaLabel="Filter students by grade"
+                                        value={studentGradeFilter}
+                                        onChange={setStudentGradeFilter}
+                                        triggerClassName={studentGradeFilter !== "ALL" ? "border-indigo-300 bg-indigo-50/60 text-indigo-700" : "text-muted"}
+                                        options={[
+                                            { value: "ALL", label: "All grades" },
+                                            ...sidebarGrades.map(grade => ({ value: grade, label: grade })),
+                                        ]}
+                                    />
                                 </div>
                             </div>
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
@@ -3640,7 +4087,7 @@ function UnifiedWorkspaceContent() {
                             
                             {/* Main Body */}
                             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 relative z-0">
-                                {user?.role === "PARENT" ? renderParentUnifiedWorkspace() : workspace === "overview" && user?.role === "ADMIN" ? renderOverviewWorkspace() : workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}
+                                {user?.role === "PARENT" ? renderParentUnifiedWorkspace() : workspace === "overview" && user?.role === "ADMIN" ? renderOverviewWorkspace() : workspace === "overview" && isStaffViewer ? renderStaffOverviewWorkspace() : workspace === "forms" ? renderFormsWorkspace() : workspace === "reports" ? renderReportsWorkspace() : workspace === "team" ? renderTeamWorkspace() : renderProfileWorkspace()}
                             </div>
                         </div>
                     </div>
