@@ -2,19 +2,57 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Eye, Sun, Moon, ChevronDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { resolveWidgetPlacement, WIDGET_PLACEMENT_KEY, type WidgetPlacement } from "@/lib/widget-placement";
 
 interface AccessibilityToolbarProps {
   direction?: 'up' | 'down';
   alignOffset?: string;
 }
 
+// Writes the preferences straight onto <html>. Nothing here reads component
+// state, so it lives at module scope — the mount effect below needs to call it
+// before the component body would have declared it.
+const applyPreferences = (
+  currentTheme: "light" | "dark",
+  currentContrast: boolean,
+  currentScale: "standard" | "large" | "xlarge"
+) => {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+
+  // 1. Theme
+  if (currentTheme === "dark") {
+    root.classList.add("dark-theme");
+  } else {
+    root.classList.remove("dark-theme");
+  }
+
+  // 2. High Contrast
+  if (currentContrast) {
+    root.classList.add("high-contrast-theme");
+  } else {
+    root.classList.remove("high-contrast-theme");
+  }
+
+  // 3. Font Scale
+  root.classList.remove("font-scale-large", "font-scale-xlarge");
+  if (currentScale === "large") {
+    root.classList.add("font-scale-large");
+  } else if (currentScale === "xlarge") {
+    root.classList.add("font-scale-xlarge");
+  }
+};
+
 export default function AccessibilityToolbar({ direction = 'down', alignOffset = 'right-0' }: AccessibilityToolbarProps) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [highContrast, setHighContrast] = useState(false);
   const [fontScale, setFontScale] = useState<"standard" | "large" | "xlarge">("standard");
-  const [placement, setPlacement] = useState<"top-right" | "bottom-right">("top-right");
+  const [placement, setPlacement] = useState<WidgetPlacement>("top-right");
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Close panel when clicking outside
   useEffect(() => {
@@ -27,51 +65,37 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
+  // Close panel on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   // Load preferences from localStorage on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem("arase:accessibility:theme") as "light" | "dark" | null;
     const savedContrast = localStorage.getItem("arase:accessibility:contrast") === "true";
     const savedScale = localStorage.getItem("arase:accessibility:scale") as "standard" | "large" | "xlarge" | null;
-    const savedPlacement = localStorage.getItem("arase:accessibility:placement") as "top-right" | "bottom-right" | null;
 
     if (savedTheme) setTheme(savedTheme);
     if (savedContrast !== undefined) setHighContrast(savedContrast);
     if (savedScale) setFontScale(savedScale);
-    if (savedPlacement) setPlacement(savedPlacement);
 
     applyPreferences(savedTheme || "light", savedContrast, savedScale || "standard");
   }, []);
 
-  const applyPreferences = (
-    currentTheme: "light" | "dark",
-    currentContrast: boolean,
-    currentScale: "standard" | "large" | "xlarge"
-  ) => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-
-    // 1. Theme
-    if (currentTheme === "dark") {
-      root.classList.add("dark-theme");
-    } else {
-      root.classList.remove("dark-theme");
-    }
-
-    // 2. High Contrast
-    if (currentContrast) {
-      root.classList.add("high-contrast-theme");
-    } else {
-      root.classList.remove("high-contrast-theme");
-    }
-
-    // 3. Font Scale
-    root.classList.remove("font-scale-large", "font-scale-xlarge");
-    if (currentScale === "large") {
-      root.classList.add("font-scale-large");
-    } else if (currentScale === "xlarge") {
-      root.classList.add("font-scale-xlarge");
-    }
-  };
+  // Placement follows the role default until the user picks one, so the panel
+  // highlights the corner the widget is actually in.
+  useEffect(() => {
+    setPlacement(resolveWidgetPlacement(user?.role));
+  }, [user?.role]);
 
   const handleThemeChange = (newTheme: "light" | "dark") => {
     setTheme(newTheme);
@@ -92,9 +116,9 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
     applyPreferences(theme, highContrast, newScale);
   };
 
-  const handlePlacementChange = (newPlacement: "top-right" | "bottom-right") => {
+  const handlePlacementChange = (newPlacement: WidgetPlacement) => {
     setPlacement(newPlacement);
-    localStorage.setItem("arase:accessibility:placement", newPlacement);
+    localStorage.setItem(WIDGET_PLACEMENT_KEY, newPlacement);
     window.dispatchEvent(new Event("arase:accessibility:updated"));
   };
 
@@ -109,6 +133,7 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
     >
       {/* Header Toggle Button */}
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         style={{
           display: "flex",
@@ -127,6 +152,8 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
         }}
         className="hover:bg-subtle-soft"
         aria-label="Accessibility options"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
         title="Accessibility options"
       >
         <Eye size={16} />
@@ -136,6 +163,8 @@ export default function AccessibilityToolbar({ direction = 'down', alignOffset =
       {/* Dropdown Panel */}
       {isOpen && (
         <div
+          role="group"
+          aria-label="Accessibility options"
           className={`absolute ${alignOffset} z-[9999] origin-bottom-right ${
             direction === 'up' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'
           }`}

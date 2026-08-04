@@ -88,6 +88,7 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
     const [isOpen, setIsOpen] = useState(false);
     const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
 
     // Close on outside click
     useEffect(() => {
@@ -100,6 +101,19 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Close on Escape
+    useEffect(() => {
+        if (!isOpen) return;
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setIsOpen(false);
+                triggerRef.current?.focus();
+            }
+        }
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen]);
+
     const handleNotificationClick = (notif: Notification) => {
         if (!notif.is_read) {
             markAsRead(notif.id);
@@ -110,9 +124,12 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
     return (
         <div className="relative" ref={dropdownRef}>
             <button
+                ref={triggerRef}
                 onClick={() => setIsOpen(!isOpen)}
                 className="relative p-1.5 text-muted hover:bg-subtle-soft rounded-full transition-colors flex items-center justify-center cursor-pointer border-none bg-transparent"
                 aria-label="Notifications"
+                aria-haspopup="true"
+                aria-expanded={isOpen}
             >
                 <Bell size={18} strokeWidth={1.6} />
                 {unreadCount > 0 && (
@@ -123,9 +140,13 @@ export default function NotificationBell({ direction = 'down', alignOffset = 'ri
             </button>
 
             {isOpen && (
-                <div className={`absolute ${alignOffset} w-80 max-w-[calc(100vw-2rem)] bg-card rounded-xl shadow-lg border border-line overflow-hidden z-[999] flex flex-col max-h-[85vh] origin-bottom-right ${
+                <div
+                    role="region"
+                    aria-label="Notifications"
+                    className={`absolute ${alignOffset} w-80 max-w-[calc(100vw-2rem)] bg-card rounded-xl shadow-lg border border-line overflow-hidden z-[999] flex flex-col max-h-[85vh] origin-bottom-right ${
                     direction === 'up' ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]'
-                }`}>
+                }`}
+                >
                     <div className="px-4 py-3 border-b border-line flex justify-between items-center bg-app/50 shrink-0">
                         <h3 className="font-bold text-fg m-0">Notifications</h3>
                         {unreadCount > 0 && (
