@@ -21,7 +21,8 @@ const nextConfig: NextConfig = {
 
     return [{
       source: "/api/:path*",
-      destination: `${baseUrl}/api/:path*`,
+      // :path* drops the trailing slash; Django needs it or it 301s back here in a loop.
+      destination: `${baseUrl}/api/:path*/`,
     }];
   }
 };
