@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { API_BASE_URL } from "@/lib/api";
+import { buildWsUrl } from "@/lib/api";
 
 export interface PresenceLock {
     user_id: number;
@@ -47,13 +47,6 @@ interface UseFormCollaborationReturn {
 
 const REFRESH_INTERVAL_MS = 20_000;
 const RECONNECT_DELAY_MS = 4_000;
-
-function getWsBase(): string {
-    if (typeof window === "undefined") return "";
-    const httpBase = API_BASE_URL || window.location.origin;
-    const wsProtocol = httpBase.startsWith("https") ? "wss" : "ws";
-    return `${wsProtocol}://${httpBase.replace(/^https?:\/\//, "")}`;
-}
 
 export function useFormCollaboration({
     formType,
@@ -120,15 +113,16 @@ export function useFormCollaboration({
         const id = String(instanceId);
         let cancelled = false;
 
-        const connect = () => {
+        const connect = async () => {
             if (cancelled) return;
             if (typeof window === "undefined") return;
-            const url = `${getWsBase()}/ws/collab/${formType}/${id}/`;
             let ws: WebSocket;
             try {
+                const url = await buildWsUrl(`/ws/collab/${formType}/${id}/`);
+                if (cancelled) return;
                 ws = new WebSocket(url);
             } catch {
-                reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
+                if (!cancelled) reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
                 return;
             }
             wsRef.current = ws;

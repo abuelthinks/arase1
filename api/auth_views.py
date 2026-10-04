@@ -11,7 +11,8 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import timedelta
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .authentication import enforce_csrf
 from .serializers import CustomTokenObtainPairSerializer
@@ -176,3 +177,17 @@ class MeView(APIView):
             'teacher_profile_missing': user.teacher_profile_missing() if hasattr(user, 'teacher_profile_missing') else [],
             'pending_specialty_request': _pending_specialty_request(user),
         })
+
+
+class WsTicketView(APIView):
+    """
+    GET: Return a short-lived access token for opening a WebSocket.
+    The frontend proxies REST calls through its own domain, so the auth cookie
+    never reaches the backend's WebSocket host; the socket passes this as ?token=.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        token = AccessToken.for_user(request.user)
+        token.set_exp(lifetime=timedelta(seconds=60))
+        return Response({'token': str(token)})

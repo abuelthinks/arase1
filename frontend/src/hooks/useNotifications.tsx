@@ -9,7 +9,7 @@ import {
     useRef,
     type ReactNode,
 } from 'react';
-import api, { API_BASE_URL } from '@/lib/api';
+import api, { buildWsUrl } from '@/lib/api';
 import { toast } from 'sonner';
 import { extractApiError } from '@/lib/toast-utils';
 import { shouldSuppressToasts } from '@/lib/realtime';
@@ -52,13 +52,6 @@ function ActorAvatar({ name }: { name: string }) {
             {getInitials(name)}
         </span>
     );
-}
-
-function getWsUrl(): string {
-    const httpBase = API_BASE_URL || window.location.origin;
-    const wsProtocol = httpBase.startsWith('https') ? 'wss' : 'ws';
-    const host = httpBase.replace(/^https?:\/\//, '');
-    return `${wsProtocol}://${host}/ws/notifications/`;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -132,11 +125,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     // ─── Single WebSocket for real-time push ─────────────────────────────────
-    const connectWs = useCallback(() => {
+    const connectWs = useCallback(async () => {
         if (!user) return;
         if (typeof window === 'undefined') return;
         try {
-            const ws = new WebSocket(getWsUrl());
+            const ws = new WebSocket(await buildWsUrl('/ws/notifications/'));
 
             ws.onmessage = (event) => {
                 try {
@@ -185,7 +178,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             };
 
             wsRef.current = ws;
-        } catch { /* retry handled by onclose */ }
+        } catch {
+            reconnectTimeout.current = setTimeout(connectWs, 5000);
+        }
     }, [user]);
 
     useEffect(() => {

@@ -16,6 +16,7 @@ from api.auth_views import (
     CookieTokenRefreshView,
     LogoutView,
     MeView,
+    WsTicketView,
 )
 
 
@@ -44,6 +45,7 @@ urlpatterns = [
     path('api/auth/csrf/', CsrfCookieView.as_view(), name='auth_csrf'),
     path('api/auth/me', MeView.as_view(), name='auth_me_no_slash'),
     path('api/auth/me/', MeView.as_view(), name='auth_me'),
+    path('api/auth/ws-ticket/', WsTicketView.as_view(), name='auth_ws_ticket'),
 ]
 
 if settings.DEBUG:

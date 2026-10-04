@@ -3,17 +3,10 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL } from '@/lib/api';
+import { buildWsUrl } from '@/lib/api';
 import { dispatchRealtimeMessage, shouldSuppressToasts, type RealtimeMessage } from '@/lib/realtime';
 
 const RECONNECT_DELAY_MS = 5000;
-
-function getWsUrl(): string {
-  const httpBase = API_BASE_URL || window.location.origin;
-  const wsProtocol = httpBase.startsWith('https') ? 'wss' : 'ws';
-  const host = httpBase.replace(/^https?:\/\//, '');
-  return `${wsProtocol}://${host}/ws/realtime/`;
-}
 
 function showRealtimeToast(message: RealtimeMessage) {
   const toastPayload = message.toast;
@@ -46,11 +39,13 @@ export default function RealtimeProvider({ children }: { children: React.ReactNo
     }
 
     let cancelled = false;
-    const connect = () => {
+    const connect = async () => {
       if (cancelled || typeof window === 'undefined') return;
 
       try {
-        const ws = new WebSocket(getWsUrl());
+        const url = await buildWsUrl('/ws/realtime/');
+        if (cancelled) return;
+        const ws = new WebSocket(url);
         wsRef.current = ws;
 
         ws.onmessage = (event) => {

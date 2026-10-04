@@ -4,13 +4,14 @@ import Cookies from 'js-cookie';
 const rawApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 const envApiUrl = rawApiUrl ? rawApiUrl.replace(/\/$/, '') : '';
 
-const getBrowserApiBaseUrl = () => {
-    if (envApiUrl) {
-        return envApiUrl;
-    }
+const devApiUrl = envApiUrl || 'http://localhost:8000';
 
+// In production the browser calls the frontend's own origin and next.config.ts
+// rewrites /api/* to the backend. That keeps the auth cookies first-party, so
+// browsers that block third-party cookies (incognito, Safari) can still log in.
+const getBrowserApiBaseUrl = () => {
     if (process.env.NODE_ENV !== 'production') {
-        return 'http://localhost:8000';
+        return devApiUrl;
     }
 
     return '';
@@ -19,7 +20,7 @@ const getBrowserApiBaseUrl = () => {
 export const API_BASE_URL =
     typeof window !== 'undefined'
         ? getBrowserApiBaseUrl()
-        : (envApiUrl || 'http://localhost:8000');
+        : devApiUrl;
 
 /**
  * Axios instance configured for cookie-based HttpOnly JWT auth.
@@ -127,5 +128,14 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// WebSockets can't go through the Vercel rewrite, so they connect to the backend
+// directly and authenticate with a short-lived ticket instead of the cookie.
+export const buildWsUrl = async (path: string) => {
+    const httpBase = envApiUrl || API_BASE_URL || window.location.origin;
+    const wsBase = httpBase.replace(/^http/, 'ws');
+    const { data } = await api.get<{ token: string }>('/api/auth/ws-ticket/');
+    return `${wsBase}${path}?token=${encodeURIComponent(data.token)}`;
+};
 
 export default api;
