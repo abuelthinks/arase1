@@ -82,6 +82,18 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_REDIRECT_EXEMPT = [r'^api/', r'^$']
 # CSRF and allowed hosts are handled by deployment environment variables.
 
+# ─── Email — Brevo over HTTPS ───────────────────────────────────────────────
+# Railway blocks outbound SMTP (ports 25/465/587) on Hobby plans, so email goes
+# through Brevo's HTTPS API instead. Without a key, Django's default SMTP backend
+# stays in place and sends fail with a logged warning.
+#   BREVO_API_KEY      = xkeysib-...
+#   DEFAULT_FROM_EMAIL = ARASE <the-sender-you-verified-in-brevo@example.com>
+if os.environ.get('BREVO_API_KEY'):
+    EMAIL_BACKEND = 'anymail.backends.brevo.EmailBackend'
+    ANYMAIL = {'BREVO_API_KEY': os.environ['BREVO_API_KEY']}
+if os.environ.get('DEFAULT_FROM_EMAIL'):
+    DEFAULT_FROM_EMAIL = os.environ['DEFAULT_FROM_EMAIL']
+
 # ─── SMS — Production Configuration ──────────────────────────────────────────
 #
 # To enable real SMS in production:
