@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "learn:offline": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-learn-offline.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

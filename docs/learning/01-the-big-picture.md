@@ -1,186 +1,235 @@
-# Lesson 01 — The Big Picture
+# Lesson 01: The Big Picture
 
-**Goal:** By the end, you can explain in plain words what ARASE is, why it's split into two
-halves, and where every kind of file lives. This is the map you'll use for the rest of the course.
+**You'll be able to:** say in plain words what ARASE is, name the programs that make it up,
+and know which folder to open for any kind of problem. This is the map for the rest of the
+course.
 
----
-
-## 1. What ARASE actually is
-
-ARASE is a web app for managing **SPED (Special Education) students** — from the first
-assessment, through enrollment, through monthly progress tracking, with AI helping generate
-the IEP and report documents.
-
-The people who use it ("roles") are:
-
-- **ADMIN** — runs the show: registers students, assigns staff, manages everything.
-- **TEACHER** — fills in classroom assessments and trackers.
-- **SPECIALIST** — does professional assessments (speech, OT, etc.).
-- **PARENT** — fills in parent forms about their child.
-
-You'll see these four words *everywhere* in the code (`role === "ADMIN"`,
-`if user.role == 'ADMIN'`). Whenever you see a "role," it's one of those four. A lot of the
-app's behavior is just "show/allow this depending on who's logged in."
-
-Hold onto the **roles** and the **round trip** from the intro. Almost every screen in ARASE is:
-*"this role wants to see/do something about a student, so the browser asks the server, the
-server checks the role, reads or writes the database, and answers."*
+**Time:** ~30 min · **Open:** the project root in your editor
 
 ---
 
-## 2. Why there are two halves (and why that's normal)
+## 1. What ARASE is
 
-Your app is split into two programs that run separately and talk over the internet:
+ARASE manages **SPED (Special Education) students**: from the first assessment, through
+enrollment, through monthly progress tracking. AI (Google Gemini) helps write the **IEP**
+(Individualized Education Program) and the monthly reports.
 
-### The Frontend — what the user sees
-- Lives in **`frontend/`**
-- Built with **Next.js + React + TypeScript** (this is the "Web (Production)" stack from your preferences).
-- Runs **in the user's browser** (mostly).
-- Its job: draw the screen, react to clicks, and **ask the backend for data**. It does *not*
-  touch the database directly. It can't — the database isn't even on the user's machine.
+Four kinds of people use it. In the code these are called **roles**:
 
-### The Backend — the brain and the data
-- Lives in **`api/`** and **`backend/`** (Python).
-- Built with **Django + Django REST Framework (DRF)**.
-- Runs **on a server** (your laptop in dev, Railway in production).
-- Its job: receive requests, check permissions, run the business logic, read/write the
-  **database**, and send back **JSON** (plain structured data, not a webpage).
+| Role | What they do | Where they land after login |
+|---|---|---|
+| `ADMIN` | Registers students, builds each student's team, generates IEPs and reports | `/dashboard` |
+| `TEACHER` | Fills in classroom assessments and progress trackers | `/workspace` |
+| `SPECIALIST` | Does professional assessments (speech, OT, …) | `/workspace` (or `/specialist-onboarding` if their profile isn't finished) |
+| `PARENT` | Fills in parent forms about their child, picks specialists, books appointments | `/dashboard` |
+
+You'll see these four words **everywhere**: `user.role === "ADMIN"` in TypeScript,
+`request.user.role == 'ADMIN'` in Python. A huge part of the app is just "allow or show this
+depending on who's logged in."
+
+### A student's life in the app
+
+Every student has a `status`, and most screens behave differently depending on it. It's
+defined on the `Student` model in [`api/models.py`](../../api/models.py):
 
 ```
-         frontend/  (Next.js, TypeScript)              api/ + backend/  (Django, Python)
-        ┌───────────────────────────────┐             ┌───────────────────────────────┐
-        │  Pages, buttons, forms          │  HTTP/JSON  │  URLs → Views → Services        │
-        │  Runs in the BROWSER            │ ◄─────────► │  Runs on the SERVER             │
-        │  Knows nothing about the DB     │             │  Owns the DB + all the rules    │
-        └───────────────────────────────┘             └──────────────┬────────────────┘
-                                                                       │
-                                                                       ▼
-                                                                 db.sqlite3 (dev)
-                                                                 PostgreSQL (prod)
+PENDING_ASSESSMENT → ASSESSMENT_SCHEDULED → ASSESSED → ENROLLED ↔ INTEGRATED → ARCHIVED
 ```
 
-**Why split it?** Two reasons that matter for debugging:
-1. **Security.** You can never trust the browser — a user can edit anything in it. So the
-   *rules* (who can see which student, who can delete) live on the server, where users can't
-   touch them. That's why you'll see permission checks repeated in the backend even when the
-   frontend already hides a button.
-2. **It tells you where bugs live.** When something's wrong, your *first* question is always:
-   **"is this a frontend problem or a backend problem?"** Lesson 06 shows you how to tell in
-   30 seconds. Almost every debugging session starts by picking a side.
+Roughly: the admin registers a student and invites a parent → parent fills in forms and
+picks specialists → specialists assess → admin enrolls the student → monthly **report
+cycles** start, where everyone fills in **trackers** → AI turns those into an IEP and monthly
+reports.
+
+> **Predict:** A teacher says "I can't see the student I was told to work with." Before
+> reading further, guess: is that more likely a problem with the *screen*, or with *who's
+> allowed to see what*? (Answer in §3.)
+
+---
+
+## 2. The five programs that make up ARASE
+
+ARASE isn't one program. In development, **four or five separate programs** run at the same
+time and talk to each other. Knowing this explains a lot of "it works on my machine" weirdness.
+
+```
+  ┌────────────────────┐   HTTP (JSON)    ┌──────────────────────────┐
+  │  1. FRONTEND        │ ───────────────► │  2. BACKEND               │
+  │  Next.js            │ ◄─────────────── │  Django, served by daphne │
+  │  localhost:3000     │                  │  localhost:8000           │
+  │  frontend/          │ ◄── WebSocket ── │  api/ + backend/          │
+  └────────────────────┘   (live pushes)  └─────────────┬────────────┘
+                                                        │ reads/writes      queues slow jobs
+                                                        ▼                         │
+                                           ┌──────────────────────┐              ▼
+                                           │  5. DATABASE          │   ┌──────────────────┐
+                                           │  db.sqlite3 (dev)     │   │  4. REDIS         │
+                                           │  PostgreSQL (live)    │   │  the job queue    │
+                                           └──────────▲───────────┘   └────────┬─────────┘
+                                                      │                         │ picks up jobs
+                                                      │ writes results          ▼
+                                                      │              ┌──────────────────────┐
+                                                      └───────────── │  3. CELERY WORKER     │
+                                                                     │  api/tasks.py         │
+                                                                     │  calls Gemini / Ollama│
+                                                                     └──────────────────────┘
+```
+
+| # | Program | Lives in | Its job |
+|---|---|---|---|
+| 1 | **Frontend** (Next.js + React + TypeScript) | `frontend/` | Draws the screen, reacts to clicks, **asks the backend for data**. It never touches the database. |
+| 2 | **Backend** (Django + Django REST Framework) | `api/`, `backend/` | Checks who you are and what you're allowed to do, reads/writes the database, sends back JSON. |
+| 3 | **Celery worker** | `api/tasks.py` | Runs slow jobs in the background, mainly AI generation and translation, so the backend can answer the browser right away. |
+| 4 | **Redis** | (installed separately) | A fast message queue. The backend drops a job in, Celery picks it up. |
+| 5 | **Database** | `db.sqlite3` in dev | Where all the data actually lives. One file locally, PostgreSQL in production. |
+
+Plus one outside service: **the AI model.** `AI_PROVIDER` in `.env` chooses it. `auto` tries
+Gemini first and falls back to a local Ollama model.
+
+**Why split it up?** Two reasons that matter for debugging:
+
+1. **Security.** You can't trust the browser, since a user can change anything in it. So the
+   *rules* (who can see which student, who can delete) live on the backend. That's why you'll
+   see permission checks in Python even when the frontend already hides the button.
+2. **It tells you where bugs live.** Your first question when something breaks is always
+   **"which program?"** Lesson 07 shows how to answer that in 30 seconds.
 
 ---
 
 ## 3. The folder map (bookmark this)
 
-Here's the whole project, with only the folders you'll actually care about. Open the project
-in your editor and expand these as you read.
+Only the folders you'll actually care about:
 
 ### Top level
 ```
 030625/
-├── frontend/        ← THE FRONTEND. Everything the user sees.
-├── api/             ← THE BACKEND app. Your business logic, models, endpoints.
-├── backend/         ← Django project config (settings, top-level URLs, startup).
-├── db.sqlite3       ← The actual development database (a single file!).
-├── manage.py        ← The Django command runner (runserver, migrate, etc.).
-├── media/           ← Uploaded / generated files in dev (e.g. generated docs).
-└── README.md        ← How to set up and run the app.
+├── frontend/        ← PROGRAM 1. Everything the user sees.
+├── api/             ← PROGRAM 2's real work: models, endpoints, business logic, tasks.
+├── backend/         ← Django's config: settings, the top-level URL map, startup files.
+├── docs/learning/   ← This course.
+├── db.sqlite3       ← The development database (a single file).
+├── manage.py        ← Django's command runner (migrate, makemigrations, shell…).
+├── media/           ← Uploaded and generated files in dev (PDFs, diagnostic reports).
+├── railway.json     ← How production starts (Lesson 10).
+└── README.md        ← Setup instructions.
 ```
 
-### Inside `backend/` — the project's control room
+### `backend/`: the control room
 ```
 backend/
 ├── settings/
-│   ├── base.py      ← Settings shared everywhere (apps, middleware, auth config).
-│   ├── dev.py       ← Local-dev overrides (SQLite, console email, DEBUG=True).
-│   └── prod.py      ← Production overrides (Postgres, S3, real email/SMS).
-├── urls.py          ← The TOP-LEVEL URL map. First thing the server consults.
-├── celery.py        ← Background-job setup (Celery).
-├── asgi.py / wsgi.py← The server entry points (asgi = WebSockets/async, wsgi = plain HTTP).
+│   ├── base.py      ← Settings shared everywhere (installed apps, auth, Celery, Redis).
+│   ├── dev.py       ← Local overrides: DEBUG on, SQLite, in-memory WebSockets if no Redis.
+│   └── prod.py      ← Production: Postgres, S3 file storage, strict security.
+├── urls.py          ← The TOP-LEVEL URL map. Auth endpoints live here.
+├── asgi.py          ← Entry point daphne runs. Sends HTTP to Django and WebSockets to consumers.
+└── celery.py        ← Sets up the background worker.
 ```
-You'll rarely edit this folder, but `backend/urls.py` and `backend/settings/base.py` are
-worth knowing — they're the "where does everything start" files.
+You'll rarely edit this folder. But `backend/urls.py` and `backend/settings/base.py` are the
+"where does everything start" files.
 
-### Inside `api/` — where the real work happens
+### `api/`: where the real work happens
 ```
 api/
-├── models.py        ← THE DATA SHAPE. Every "table" in the database (User, Student, ...).
-├── urls.py          ← The API URL map (/api/students/, /api/iep/generate/, ...).
-├── views.py         ← The endpoints. Receives a request, returns a response. (Big! 3,000+ lines.)
-├── auth_views.py    ← Login / logout / "who am I" endpoints (kept separate from the rest).
-├── serializers.py   ← Translators between database objects and JSON.
-├── services/        ← THE BUSINESS LOGIC. Views call these. (One file per topic.)
-├── authentication.py← How the server figures out who you are from your cookie.
-├── consumers.py     ← WebSocket handlers (live/real-time updates).
-├── tasks.py         ← Background jobs (slow work like AI generation, run by Celery).
-└── migrations/      ← The database's change history (auto-generated; don't hand-edit).
+├── models.py         ← THE DATA SHAPE. Every database table (User, Student, ReportCycle…).
+├── urls.py           ← The API URL map (/api/students/, /api/iep/generate/, …).
+├── views.py          ← The endpoints. Gets a request, returns a response. (3,400 lines!)
+├── auth_views.py     ← Login, logout, refresh, "who am I" (/api/auth/me/).
+├── serializers.py    ← Translators between database rows and JSON.
+├── authentication.py ← How the server reads your login cookie and knows who you are.
+├── services/         ← THE BUSINESS LOGIC, one file per topic. Views call these.
+├── tasks.py          ← Background jobs Celery runs (IEP, monthly report, translation).
+├── consumers.py      ← WebSocket handlers (live updates, form collaboration).
+├── routing.py        ← The WebSocket URL map (/ws/realtime/, /ws/notifications/, …).
+├── iep_generator.py, monthly_report_generator.py, document_generator.py
+│                     ← AI prompt building and PDF rendering.
+├── tests.py          ← Backend tests.
+└── migrations/       ← The database's change history. Generated by Django. Don't hand-edit.
 ```
 
-The pattern to remember: **`views.py` is thin, `services/` is thick.** A view's job is to
-receive the request, check who's allowed, then hand off to a service that does the actual work.
-The very top of [`api/views.py`](../../api/views.py) literally says so:
+The pattern to remember: **`views.py` is thin, `services/` is thick.** A view checks *who's
+allowed*, then hands off to a service that does the work. The top of
+[`api/views.py`](../../api/views.py) says so itself:
 
-> ```python
-> """
-> API Views — thin orchestrators.
-> Most business logic lives in api/services/*.
-> """
-> ```
+```python
+"""
+API Views — thin orchestrators.
+Most business logic lives in api/services/*.
+"""
+```
 
-So when you're hunting for *how* something works (not just *which URL* triggers it), you'll
+When you want to know *how* something works (not just *which URL* triggers it), you'll
 usually end up in `api/services/`.
 
-### Inside `frontend/src/` — the user-facing code
+### `frontend/src/`: what the user sees
 ```
 frontend/src/
-├── app/             ← THE PAGES. Folder structure here = the URLs in the browser.
-│   ├── login/page.tsx          → the /login screen
-│   ├── dashboard/page.tsx      → the /dashboard screen
-│   ├── students/[id]/page.tsx  → the /students/123 screen ([id] = any student)
-│   └── layout.tsx              → the wrapper around EVERY page (runs once, on top).
-├── components/      ← Reusable UI pieces (Navbar, Sidebar, buttons in components/ui/).
-├── context/         ← App-wide shared state. AuthContext.tsx = "who is logged in."
-├── hooks/           ← Reusable bits of behavior (notifications, real-time refresh).
-├── lib/             ← Helpers. api.ts = THE single door to the backend. (Memorize this one.)
-├── config/          ← Static configuration (e.g. form definitions).
-└── types/           ← TypeScript type definitions (shapes of data, no logic).
+├── app/              ← THE PAGES. The folder path here IS the URL in the browser.
+│   ├── login/page.tsx            → /login
+│   ├── dashboard/page.tsx        → /dashboard  (admin + parent)
+│   ├── workspace/page.tsx        → /workspace  (teacher + specialist, 4,400 lines)
+│   ├── students/[id]/page.tsx    → /students/5  ([id] = any student)
+│   ├── forms/[type]/page.tsx     → one page that draws every assessment/tracker form
+│   ├── admin/reports/page.tsx    → where IEP generation is triggered
+│   ├── learn/                    → the interactive version of this course
+│   └── layout.tsx                → the wrapper around EVERY page
+├── components/       ← Reusable UI: sidebars, NotificationBell, CustomSelect, ui/Button…
+├── context/          ← App-wide shared state. AuthContext.tsx = "who is logged in."
+├── hooks/            ← Reusable behavior: useRealtimeRefresh, useNotifications, useFormCollaboration.
+├── lib/              ← Helpers. api.ts = THE single door to the backend. Memorize this one.
+├── config/           ← Static config, like the form definitions (JSON schemas).
+└── types/            ← TypeScript shapes of data (no logic). index.ts has UserPayload.
 ```
 
-Two files in here you'll touch constantly:
-- **`frontend/src/lib/api.ts`** — *every* call to the backend goes through here. If the app
+Two frontend files you'll touch constantly:
+- **`frontend/src/lib/api.ts`**: *every* call to the backend goes through here. If the app
   can't reach the server, or keeps logging you out, this file is involved.
-- **`frontend/src/context/AuthContext.tsx`** — holds "who is logged in" for the whole app.
-  Any "why am I seeing the wrong thing for my role" bug touches this.
+- **`frontend/src/context/AuthContext.tsx`**: holds "who is logged in" for the whole app.
+  Any "I'm seeing the wrong thing for my role" bug touches this.
+
+> **Answer to the Predict box:** almost always *who's allowed*. Non-admins only see students
+> they're assigned to through a `StudentAccess` row. That's a backend rule (Lesson 03 §5),
+> not a screen problem.
 
 ---
 
-## 4. The mental model, restated
+## 4. The two-axis mental model
 
-When you want to understand or fix a feature, you locate it on **two axes**:
+To understand or fix any feature, place it on **two axes**:
 
-1. **Which half?** Frontend (`frontend/`) or backend (`api/`)?
-2. **Which layer within that half?**
-   - Frontend layers: *page* (`app/.../page.tsx`) → *components* → *`lib/api.ts`* → (network)
-   - Backend layers: *url* (`urls.py`) → *view* (`views.py`) → *service* (`services/`) → *model* (`models.py`) → database
+1. **Which program?** Frontend, backend, Celery worker, or database?
+2. **Which layer inside it?**
+   - Frontend: *page* (`app/.../page.tsx`) → *components* → *`lib/api.ts`* → network
+   - Backend: *URL* (`urls.py`) → *view* (`views.py`) → *service* (`services/`) → *model* (`models.py`) → database
+   - Background: *task* (`tasks.py`) → *service* → *AI* → database → *live event* back to the browser
 
-Every feature lives somewhere on that grid. The rest of this course teaches you to walk it.
+Every feature sits somewhere on that grid. The rest of the course teaches you to walk it.
 
 ---
 
 ## Exercises
 
-Do these with the project open. They should take ~10 minutes total.
+1. **Roles in the wild.** Open `api/views.py` and search (Ctrl+F) for `role != 'ADMIN'`.
+   Skim the matches. How common are "admins only" checks? (No exact count needed.)
+2. **URL → file.** A user visits `http://localhost:3000/workspace`. Which file draws it? What
+   about `http://localhost:3000/students/12/reports`?
+3. **Find the tables.** Open `api/models.py` and list five `class` names. Which one stores
+   the people who log in? Which one connects a teacher to a student?
+4. **Which program?** For each, say which of the five programs does the work:
+   (a) checking that a parent can't see another family's child, (b) writing the IEP text,
+   (c) showing a red error banner, (d) remembering a student's date of birth.
 
-1. **Roles in the wild.** Open [`api/views.py`](../../api/views.py) and search (Ctrl/Cmd-F)
-   for `role != 'ADMIN'`. How many places refuse to do something unless you're an admin? You
-   don't need an exact count — just see how common role checks are.
-2. **URL → file.** Without running anything: a user visits `http://localhost:3000/login`.
-   Which file draws that screen? Now `http://localhost:3000/dashboard`? (Hint: §3, `app/`.)
-3. **Find the data shapes.** Open [`api/models.py`](../../api/models.py). List five `class`
-   names you see. Those are five of your database tables. Which one do you think stores the
-   people who log in?
+---
 
-> **Answers:** (2) `frontend/src/app/login/page.tsx` and `frontend/src/app/dashboard/page.tsx`.
-> (3) The login one is `User` — that's almost always the table for accounts.
+## Answers
+
+1. Very common. Dozens of views refuse to act unless you're an admin. Permission checks are
+   one of the main things the backend does.
+2. `frontend/src/app/workspace/page.tsx`, and `frontend/src/app/students/[id]/reports/page.tsx`.
+3. `User` stores accounts. `StudentAccess` links a user to a student (it has a `user` and a
+   `student` foreign key). Others include `Student`, `ReportCycle`, `GeneratedDocument`,
+   `Notification`, `ActivityEvent`.
+4. (a) Backend (the view's role check). (b) Celery worker, which calls Gemini. (c) Frontend.
+   (d) Database (the `Student.date_of_birth` column).
 
 Next → [02-frontend-tour.md](02-frontend-tour.md)
