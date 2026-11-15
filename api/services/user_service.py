@@ -68,6 +68,55 @@ def send_invitation_email(invitation):
     msg.send()
 
 
+def send_password_reset_email(user, reset_link):
+    """
+    Emails a single-use password reset link (expires per PASSWORD_RESET_TIMEOUT).
+    """
+    from django.core.mail import EmailMultiAlternatives
+    from django.conf import settings
+
+    subject = "Reset your ARASE password"
+
+    text_body = (
+        f"Hello,\n\n"
+        f"We received a request to reset the password for your ARASE account.\n\n"
+        f"Click the link below to choose a new password (expires in 1 hour):\n"
+        f"{reset_link}\n\n"
+        f"If you did not request this, you can safely ignore this email. Your password will not change.\n\n"
+        f"- The ARASE Team"
+    )
+
+    html_body = f"""
+    <div style="font-family: Inter, Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f8fafc; padding: 32px; border-radius: 12px;">
+      <div style="background: white; border-radius: 10px; padding: 32px; border: 1px solid #e2e8f0;">
+        <h1 style="margin: 0 0 8px 0; font-size: 1.5rem; color: #1e293b;">Reset your password</h1>
+        <p style="color: #64748b; margin: 0 0 24px 0;">We received a request to reset the password for your ARASE account.</p>
+
+        <a href="{reset_link}"
+           style="display: inline-block; background: #2563eb; color: white; padding: 12px 28px;
+                  border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 1rem;">
+          Choose a New Password
+        </a>
+
+        <p style="margin: 24px 0 0 0; font-size: 0.8rem; color: #94a3b8;">
+          This link expires in <strong>1 hour</strong> and can only be used once.<br/>
+          If you did not request this, you can safely ignore this email.
+        </p>
+      </div>
+      <p style="text-align: center; color: #cbd5e1; font-size: 0.75rem; margin-top: 16px;">ARASE - Automated Reporting App for SPED</p>
+    </div>
+    """
+
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    msg.attach_alternative(html_body, "text/html")
+    msg.send()
+
+
 def send_invitation_revoked_email(invitation):
     """
     Tells an invitee their invitation is no longer active.

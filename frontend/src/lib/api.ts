@@ -36,7 +36,7 @@ const api = axios.create({
 });
 
 // Public paths that should never trigger a redirect to /login
-const PUBLIC_PATHS = ['/api/auth/token/', '/api/auth/token/refresh/', '/api/auth/me/', '/api/auth/csrf/', '/api/invitations/accept/'];
+const PUBLIC_PATHS = ['/api/auth/token/', '/api/auth/token/refresh/', '/api/auth/me/', '/api/auth/csrf/', '/api/invitations/accept/', '/api/auth/password-reset/'];
 const SAFE_METHODS = new Set(['get', 'head', 'options', 'trace']);
 
 let csrfBootstrapPromise: Promise<void> | null = null;

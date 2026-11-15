@@ -7,6 +7,7 @@ from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.views import APIView
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
@@ -191,3 +192,79 @@ class WsTicketView(APIView):
         token = AccessToken.for_user(request.user)
         token.set_exp(lifetime=timedelta(seconds=60))
         return Response({'token': str(token)})
+
+
+class PasswordResetRequestView(APIView):
+    """
+    POST {email}: email a reset link if an active account matches.
+    Always responds the same way so the form can't be used to discover accounts.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        import logging
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+        from .services.user_service import send_password_reset_email
+
+        email = (request.data.get('email') or '').strip()
+        user = get_user_model().objects.filter(email__iexact=email, is_active=True).first() if email else None
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_link = f"{settings.FRONTEND_URL}/reset-password/?uid={uid}&token={token}"
+            try:
+                send_password_reset_email(user, reset_link)
+            except Exception as e:
+                logging.getLogger(__name__).warning(f"Password reset email failed for user {user.pk}: {e}")
+
+        return Response(
+            {'message': 'If an account exists for that email, a reset link has been sent.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    POST {uid, token, password}: set a new password. The token stops working
+    once the password changes, so each link can only be used once.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.password_validation import validate_password
+        from django.contrib.auth.tokens import default_token_generator
+        from django.core.exceptions import ValidationError
+        from django.utils.encoding import force_str
+        from django.utils.http import urlsafe_base64_decode
+
+        uid = request.data.get('uid') or ''
+        token = request.data.get('token') or ''
+        password = request.data.get('password') or ''
+
+        try:
+            user = get_user_model().objects.get(pk=force_str(urlsafe_base64_decode(uid)), is_active=True)
+        except (ValueError, TypeError, OverflowError, get_user_model().DoesNotExist):
+            user = None
+
+        if user is None or not default_token_generator.check_token(user, token):
+            return Response(
+                {'error': 'This reset link is invalid or has expired. Please request a new one.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_password(password, user)
+        except ValidationError as e:
+            return Response({'password': list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(password)
+        user.save(update_fields=['password'])
+        return Response({'message': 'Password updated. You can now sign in.'}, status=status.HTTP_200_OK)

@@ -50,6 +50,9 @@ if not os.environ.get('REDIS_URL'):
             'LOCATION': 'arase-dev-collab',
         }
     }
+    # No broker without Redis, so run Celery tasks inline in the request.
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
 
 # ─── Email — routed to Mailpit for local testing ─────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -64,7 +67,8 @@ FRONTEND_URL = 'http://localhost:3000'
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,  # noqa: F405
     'DEFAULT_THROTTLE_CLASSES': [],
-    'DEFAULT_THROTTLE_RATES': {},
+    # Scoped views still look up their rate; None means unlimited.
+    'DEFAULT_THROTTLE_RATES': {'sms': None, 'sms_verify': None, 'password_reset': None},
 }
 
 # ─── SMS — routed to sms-trap on port 1290 for local testing ──────────────────

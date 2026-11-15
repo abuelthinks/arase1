@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -79,7 +80,16 @@ export default function LoginPage() {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: "2rem" }}>
-                        <label className="form-label" htmlFor="password">Password</label>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                            <label className="form-label" htmlFor="password">Password</label>
+                            <Link
+                                href="/forgot-password"
+                                className="text-[var(--accent-primary)] transition-colors hover:text-[var(--text-primary)]"
+                                style={{ fontSize: "0.85rem", textDecoration: "none" }}
+                            >
+                                Forgot password?
+                            </Link>
+                        </div>
                         <div style={{ position: "relative" }}>
                             <input
                                 id="password"

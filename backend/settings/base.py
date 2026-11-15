@@ -117,6 +117,7 @@ except ImportError:
     }
 
 # ─── Password validation ────────────────────────────────────────────────────
+PASSWORD_RESET_TIMEOUT = 60 * 60
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -207,6 +208,7 @@ REST_FRAMEWORK = {
         'user': os.environ.get('USER_THROTTLE_RATE', '600/minute'),
         'sms': '5/hour',
         'sms_verify': '10/hour',
+        'password_reset': '10/hour',
     },
 }
 

@@ -17,6 +17,8 @@ from api.auth_views import (
     LogoutView,
     MeView,
     WsTicketView,
+    PasswordResetRequestView,
+    PasswordResetConfirmView,
 )
 
 
@@ -46,6 +48,8 @@ urlpatterns = [
     path('api/auth/me', MeView.as_view(), name='auth_me_no_slash'),
     path('api/auth/me/', MeView.as_view(), name='auth_me'),
     path('api/auth/ws-ticket/', WsTicketView.as_view(), name='auth_ws_ticket'),
+    path('api/auth/password-reset/', PasswordResetRequestView.as_view(), name='auth_password_reset'),
+    path('api/auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='auth_password_reset_confirm'),
 ]
 
 if settings.DEBUG:
