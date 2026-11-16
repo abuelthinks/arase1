@@ -393,6 +393,14 @@ class SpedProgressTracker(models.Model):
     translated_data = models.JSONField(default=dict, blank=True)
     original_language = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Same unlock flow as ParentAssessment: the teacher asks, an admin opens
+    # it, and the next submit overwrites this row and re-locks it.
+    unlock_requested = models.BooleanField(default=False)
+    unlocked_at = models.DateTimeField(null=True, blank=True)
+    unlocked_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='unlocked_sped_trackers',
+    )
 
 class GeneratedDocument(models.Model):
     DOC_TYPES = (

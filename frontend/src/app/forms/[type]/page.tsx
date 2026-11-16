@@ -746,7 +746,7 @@ function isFieldEmpty(field: any, val: any): boolean {
     return !val || String(val).trim() === "";
 }
 
-export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void> } = {}) {
+export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted, propOnUnlocked }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void>, propOnUnlocked?: () => void } = {}) {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -1242,6 +1242,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                         } catch (err) {
                             console.error("Failed to load collaborative form draft:", err);
                         }
+                    }
+                } else if (formType === "sped-tracker" && formIdStr) {
+                    // Editing an unlocked teacher tracker — start from what was submitted.
+                    try {
+                        const res = await api.get(`/api/inputs/${formType}/${formIdStr}/`);
+                        mergedData = mergeSavedFormData(mergedData, renderSchema, res.data.form_data);
+                    } catch (err) {
+                        console.error("Failed to load submitted tracker:", err);
                     }
                 } else if (!isSectionScopedForm) {
                     // Try to load auto-saved draft
@@ -1951,6 +1959,51 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
         });
     };
 
+    // Teacher progress tracker: single-author form, unlocked per submission.
+    const spedTrackerUnlockIds = () => ({
+        student_id: parseInt(studentId || "0"),
+        report_cycle_id: fullSubmission?.report_cycle,
+    });
+
+    const requestSpedTrackerUnlock = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Request Unlock?",
+            message: "An admin will be asked to unlock your progress tracker so you can edit and resubmit it.",
+            actionText: "Request Unlock",
+            actionVariant: "primary",
+            onConfirm: async () => {
+                try {
+                    await api.post("/api/inputs/sped-tracker/request-unlock/", spedTrackerUnlockIds());
+                    toast.success("Unlock requested.");
+                    setFullSubmission((prev: any) => prev ? { ...prev, unlock_requested: true } : prev);
+                } catch (err: any) {
+                    toast.error(extractApiError(err));
+                }
+            }
+        });
+    };
+
+    const adminUnlockSpedTracker = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Unlock Form?",
+            message: "The teacher will be able to edit and resubmit this progress tracker.",
+            actionText: "Unlock Form",
+            actionVariant: "warning",
+            onConfirm: async () => {
+                try {
+                    await api.post("/api/inputs/sped-tracker/unlock/", spedTrackerUnlockIds());
+                    toast.success("Tracker unlocked.");
+                    setFullSubmission((prev: any) => prev ? { ...prev, unlock_requested: false, unlocked_at: new Date().toISOString() } : prev);
+                    propOnUnlocked?.();
+                } catch (err: any) {
+                    toast.error(extractApiError(err));
+                }
+            }
+        });
+    };
+
     const adminUnlockForm = () => {
         setConfirmModal({
             isOpen: true,
@@ -2114,6 +2167,43 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                             )}
                                         </div>
                                     )
+                                )}
+                            </div>
+                        )}
+                        {formType === "sped-tracker" && isViewMode && fullSubmission && !fullSubmission.unlocked_at && (
+                            <div className="mt-3">
+                                {isAdmin ? (
+                                    fullSubmission.unlock_requested && (
+                                        <div className={formBannerClass("warning")}>
+                                            <div className="text-sm">
+                                                <strong>Unlock requested by teacher.</strong>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={adminUnlockSpedTracker}
+                                                className="shrink-0 rounded-md border border-warning-line bg-card px-3 py-1.5 text-sm font-semibold text-warning transition-colors hover:border-warning-line hover:bg-warning-soft"
+                                            >
+                                                Unlock Form
+                                            </button>
+                                        </div>
+                                    )
+                                ) : user?.role === "TEACHER" && (
+                                    <div className="flex items-center gap-1.5 text-xs text-muted">
+                                        {fullSubmission.unlock_requested ? (
+                                            <span>Unlock requested — waiting on an admin.</span>
+                                        ) : (
+                                            <>
+                                                <span>Need to make changes?</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={requestSpedTrackerUnlock}
+                                                    className="font-semibold text-indigo-600 underline underline-offset-2 transition-colors hover:text-indigo-800"
+                                                >
+                                                    Request unlock
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         )}

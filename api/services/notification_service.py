@@ -271,6 +271,35 @@ def notify_specialist_tracker_unlock_requested(specialist_user, student):
     )
 
 
+def notify_teacher_tracker_unlock_requested(teacher_user, student):
+    """Notify admins that a teacher asked to unlock the SPED progress tracker."""
+    student_name = f"{student.first_name} {student.last_name}".strip()
+    actor = _user_display_name(teacher_user)
+    notify_admins_in_app(
+        notification_type='UNLOCK_REQUESTED',
+        title='Unlock Request',
+        message=f"{actor} has requested to unlock the teacher progress tracker for {student_name}.",
+        link=f"/workspace?studentId={student.id}&workspace=forms&tab=sped_tracker",
+        actor_name=actor,
+    )
+
+
+def notify_teacher_tracker_unlocked(teacher_user, student, unlocked_by=None):
+    """Notify the teacher that an admin unlocked their SPED progress tracker."""
+    if not teacher_user or teacher_user.role != 'TEACHER':
+        return None
+    student_name = f"{student.first_name} {student.last_name}".strip()
+    actor = _user_display_name(unlocked_by) if unlocked_by else 'Admin'
+    return notify_user_in_app(
+        user=teacher_user,
+        notification_type='SYSTEM',
+        title='Teacher progress unlocked',
+        message=f"Your progress tracker for {student_name} has been unlocked. You can edit and resubmit it now.",
+        link=f"/workspace?studentId={student.id}&workspace=forms&tab=sped_tracker",
+        actor_name=actor,
+    )
+
+
 def _describe_specialty_delta(added, removed):
     """Human-readable summary of an add/remove specialty delta."""
     parts = []

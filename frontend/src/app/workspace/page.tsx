@@ -2007,9 +2007,15 @@ function UnifiedWorkspaceContent() {
             && !!currentStatus?.submitted
             && !!currentStatus?.unlocked
             && currentStatus?.unlock_available !== false;
+        const canEditUnlockedTeacherTracker = user?.role === "TEACHER"
+            && activeFormTab === "sped_tracker"
+            && !!currentStatus?.submitted
+            && !!currentStatus?.unlocked
+            && currentStatus?.unlock_available !== false;
         const canCreateCurrentForm =
             !isAdminAssessmentLocked && !isAdminProgressLocked && !isSpecialistProgressLocked && !isTeacherProgressLocked && !isParentProgressLocked && !isSpecialistOnboardingLocked && (
                 canEditUnlockedParentAssessment ||
+                canEditUnlockedTeacherTracker ||
                 (!currentStatus?.submitted && (
                 (user?.role === "SPECIALIST" && ["multi_assessment", "multi_tracker"].includes(activeFormTab)) ||
                 (user?.role === "TEACHER" && activeFormTab === "sped_tracker") ||
@@ -2221,7 +2227,7 @@ function UnifiedWorkspaceContent() {
                                     propOnSubmitted={handleEmbeddedFormSubmitted}
                                 />
                             ) : (
-                                <FormEntryContent key={`${studentId}-${activeFormTab}-edit`} propType={currentTabConf?.formType as string} propHideNavigation={true} propStudentId={studentId as string} propOnSubmitted={handleEmbeddedFormSubmitted} />
+                                <FormEntryContent key={`${studentId}-${activeFormTab}-edit`} propType={currentTabConf?.formType as string} propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={canEditUnlockedTeacherTracker ? currentStatus.id?.toString() : undefined} propOnSubmitted={handleEmbeddedFormSubmitted} />
                             )}
                         </div>
                     ) : !currentStatus?.submitted ? (
@@ -2247,7 +2253,7 @@ function UnifiedWorkspaceContent() {
                                     propOnUnlocked={() => setProfileRefreshKey(key => key + 1)}
                                 />
                             ) : (
-                                <FormEntryContent key={`${studentId}-${activeFormTab}-view`} propType={currentTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} />
+                                <FormEntryContent key={`${studentId}-${activeFormTab}-view`} propType={currentTabConf?.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus.id?.toString()} propOnUnlocked={() => setProfileRefreshKey(key => key + 1)} />
                             )}
                         </div>
                     )}
@@ -2538,7 +2544,7 @@ function UnifiedWorkspaceContent() {
                                     {tab.id === "parent_assessment" ? (
                                         <ParentFormContent propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus?.id?.toString()} />
                                     ) : (
-                                        <FormEntryContent propType={tab.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus?.id?.toString()} />
+                                        <FormEntryContent propType={tab.formType as string} propMode="view" propHideNavigation={true} propStudentId={studentId as string} propSubmissionId={currentStatus?.id?.toString()} propOnUnlocked={() => setProfileRefreshKey(key => key + 1)} />
                                     )}
                                 </div>
                             );

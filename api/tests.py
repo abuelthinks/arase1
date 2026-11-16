@@ -1445,3 +1445,86 @@ class TranslationFeatureTests(APITestCase):
         self.assertEqual(collected['parent']['notes'], 'Translated English text')
 
 
+
+
+@override_settings(ROOT_URLCONF='backend.urls')
+class SpedTrackerUnlockTests(APITestCase):
+    """Teacher progress tracker: locked after submit, unlocked by admin on request."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(email='a@example.com', password='x', role='ADMIN')
+        self.teacher = User.objects.create_user(email='t@example.com', password='x', role='TEACHER')
+        self.student = Student.objects.create(
+            first_name='Pat', last_name='Lee', date_of_birth=date(2018, 1, 1),
+            grade='Kinder', status='INTEGRATED',
+        )
+        StudentAccess.objects.create(user=self.teacher, student=self.student)
+        self.cycle = ReportCycle.objects.create(
+            student=self.student, label='Nov 2026', start_date=date(2026, 11, 1),
+            end_date=date(2026, 11, 30), is_active=True, status='OPEN',
+        )
+        self.tracker = SpedProgressTracker.objects.create(
+            student=self.student, report_cycle=self.cycle,
+            submitted_by=self.teacher, form_data={'section_b': {'attendance': 'Regular'}},
+        )
+        self.ids = {'student_id': self.student.id, 'report_cycle_id': self.cycle.id}
+
+    def _submit(self, data):
+        return self.client.post('/api/inputs/sped-tracker/', {
+            'student': self.student.id, 'report_cycle': self.cycle.id, 'form_data': data,
+        }, format='json')
+
+    def test_resubmit_blocked_while_locked(self):
+        self.client.force_authenticate(user=self.teacher)
+        response = self._submit({'section_b': {'attendance': 'Irregular'}})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(SpedProgressTracker.objects.count(), 1)
+
+    def test_full_unlock_flow(self):
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.post('/api/inputs/sped-tracker/request-unlock/', self.ids, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.tracker.refresh_from_db()
+        self.assertTrue(self.tracker.unlock_requested)
+        self.assertTrue(Notification.objects.filter(recipient=self.admin, notification_type='UNLOCK_REQUESTED').exists())
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post('/api/inputs/sped-tracker/unlock/', self.ids, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.tracker.refresh_from_db()
+        self.assertIsNotNone(self.tracker.unlocked_at)
+        self.assertFalse(self.tracker.unlock_requested)
+
+        self.client.force_authenticate(user=self.teacher)
+        response = self._submit({'section_b': {'attendance': 'Irregular'}})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(SpedProgressTracker.objects.count(), 1)
+        self.tracker.refresh_from_db()
+        self.assertEqual(self.tracker.form_data['section_b']['attendance'], 'Irregular')
+        self.assertIsNone(self.tracker.unlocked_at)
+
+    def test_only_teacher_requests_and_only_admin_unlocks(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post('/api/inputs/sped-tracker/request-unlock/', self.ids, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.post('/api/inputs/sped-tracker/unlock/', self.ids, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unlock_blocked_after_monthly_report(self):
+        GeneratedDocument.objects.create(
+            student=self.student, report_cycle=self.cycle, document_type='MONTHLY',
+        )
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.post('/api/inputs/sped-tracker/request-unlock/', self.ids, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_profile_reports_unlock_state(self):
+        self.tracker.unlocked_at = timezone.now()
+        self.tracker.save()
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.get(f'/api/students/{self.student.id}/profile/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        sped = response.data['form_statuses']['sped_tracker']
+        self.assertTrue(sped['unlocked'])
+        self.assertTrue(sped['unlock_available'])
