@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, Search, Sparkles, UserPlus, Users as UsersIcon, Zap, CheckCircle2, FileUp, Loader2, Play, Trash2, XCircle } from "lucide-react";
+import { ArrowRight, BarChart3, ClipboardList, Clock, FileCheck2, Mail, RefreshCw, Search, Sparkles, UserPlus, Users as UsersIcon, Zap, CheckCircle2, FileUp, Loader2, Play, Trash2, XCircle } from "lucide-react";
 import { SPECIALIST_SPECIALTIES, type SpecialistSpecialty } from "@/lib/specialties";
 import { GRADE_LEVELS, type GradeLevel } from "@/lib/grade-levels";
 import { roleColorHex, semanticToneClass, statusColorHex, statusLabel, studentRowActionPillClass } from "@/lib/role-colors";
@@ -219,7 +219,7 @@ export default function AdminDashboard() {
 
     // Student Pagination
     const [studentPage, setStudentPage] = useState(1);
-    const [studentItemsPerPage, setStudentItemsPerPage] = useState(25);
+    const [studentItemsPerPage, setStudentItemsPerPage] = useState(10);
 
     // User search & filter
     const [userSearch, setUserSearch] = useState("");
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
 
     // User Pagination
     const [userPage, setUserPage] = useState(1);
-    const [userItemsPerPage, setUserItemsPerPage] = useState(25);
+    const [userItemsPerPage, setUserItemsPerPage] = useState(10);
 
     // Invitation search & filter
     const [invitationSearch, setInvitationSearch] = useState("");
@@ -241,7 +241,7 @@ export default function AdminDashboard() {
 
     // Invitation Pagination
     const [invitationPage, setInvitationPage] = useState(1);
-    const [invitationItemsPerPage, setInvitationItemsPerPage] = useState(25);
+    const [invitationItemsPerPage, setInvitationItemsPerPage] = useState(10);
 
 
 
@@ -398,6 +398,8 @@ export default function AdminDashboard() {
     const [inviteToRevoke, setInviteToRevoke] = useState<InvitationData | null>(null);
     const [inviteToResend, setInviteToResend] = useState<InvitationData | null>(null);
     const [inviteActionLoading, setInviteActionLoading] = useState(false);
+    const [selectedInviteIds, setSelectedInviteIds] = useState<number[]>([]);
+    const [bulkInviteAction, setBulkInviteAction] = useState<'revoke' | 'resend' | null>(null);
 
     // Modal state for showing newly issued invite token
     const [createdInvite, setCreatedInvite] = useState<{ email: string; token: string } | null>(null);
@@ -791,6 +793,18 @@ export default function AdminDashboard() {
     const totalInvitationPages = Math.ceil(processedInvitations.length / invitationItemsPerPage) || 1;
     const safeInvitationPage = Math.min(Math.max(1, invitationPage), totalInvitationPages);
     const paginatedInvitations = processedInvitations.slice((safeInvitationPage - 1) * invitationItemsPerPage, safeInvitationPage * invitationItemsPerPage);
+    const pageInviteIds = paginatedInvitations.map(inv => inv.id);
+    const allPageInvitesSelected = pageInviteIds.length > 0 && pageInviteIds.every(id => selectedInviteIds.includes(id));
+    const somePageInvitesSelected = !allPageInvitesSelected && pageInviteIds.some(id => selectedInviteIds.includes(id));
+    const toggleInviteSelection = (id: number) => {
+        setSelectedInviteIds(prev => prev.includes(id) ? prev.filter(selectedId => selectedId !== id) : [...prev, id]);
+    };
+    const togglePageInviteSelection = () => {
+        setSelectedInviteIds(prev => allPageInvitesSelected
+            ? prev.filter(id => !pageInviteIds.includes(id))
+            : Array.from(new Set([...prev, ...pageInviteIds]))
+        );
+    };
 
     /* ─── Handlers ───────────────────────────────────────────────────────── */
 
@@ -845,7 +859,8 @@ export default function AdminDashboard() {
     
     useEffect(() => {
         setInvitationPage(1);
-    }, [invitationSearch, invitationItemsPerPage]);
+        setSelectedInviteIds([]);
+    }, [invitationSearch, invitationItemsPerPage, invitationRoleFilters]);
 
 
 
@@ -915,6 +930,38 @@ export default function AdminDashboard() {
         } finally {
             setInviteActionLoading(false);
         }
+    };
+
+    const handleConfirmBulkInviteAction = async () => {
+        if (!bulkInviteAction || selectedInviteIds.length === 0) return;
+        const ids = selectedInviteIds;
+        const isRevoke = bulkInviteAction === 'revoke';
+        setInviteActionLoading(true);
+        const results = await Promise.allSettled(ids.map(id => isRevoke
+            ? api.delete(`/api/invitations/${id}/`)
+            : api.post(`/api/invitations/${id}/resend/`)
+        ));
+        const failedIds = ids.filter((_, index) => results[index].status === 'rejected');
+        const succeededCount = ids.length - failedIds.length;
+
+        if (succeededCount > 0) {
+            const label = `${succeededCount} invite${succeededCount === 1 ? '' : 's'}`;
+            toast.success(isRevoke ? `${label} revoked.` : `${label} resent.`);
+        }
+        if (failedIds.length > 0) {
+            const firstError = results.find(r => r.status === 'rejected') as PromiseRejectedResult;
+            toast.error(`${failedIds.length} failed: ${extractApiError(firstError.reason, isRevoke ? "Couldn't revoke invite." : "Couldn't resend invite.")}`);
+        }
+
+        if (isRevoke) {
+            setInvitations(prev => prev.filter(inv => !ids.includes(inv.id) || failedIds.includes(inv.id)));
+            setSelectedInviteIds(failedIds);
+        } else {
+            setSelectedInviteIds([]);
+            fetchData();
+        }
+        setBulkInviteAction(null);
+        setInviteActionLoading(false);
     };
 
     const handleConfirmResendInvite = async () => {
@@ -2098,8 +2145,35 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                             
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
-                                <span>Showing {Math.min(processedInvitations.length, paginatedInvitations.length)} of {processedInvitations.length} invitations</span>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "space-between", alignItems: "center", minHeight: "34px", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+                                {selectedInviteIds.length > 0 ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="font-semibold text-fg">{selectedInviteIds.length} selected</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setBulkInviteAction('resend')}
+                                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-card px-3 text-sm font-semibold text-success transition-colors duration-200 hover:border-success hover:bg-success-soft"
+                                        >
+                                            <RefreshCw size={14} /> Resend
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setBulkInviteAction('revoke')}
+                                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-card px-3 text-sm font-semibold text-danger transition-colors duration-200 hover:border-danger hover:bg-danger-soft"
+                                        >
+                                            <Trash2 size={14} /> Revoke
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedInviteIds([])}
+                                            className="h-8 rounded-lg border border-transparent px-3 text-sm font-medium text-muted transition-colors duration-200 hover:border-line hover:bg-card hover:text-fg"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <span>Showing {Math.min(processedInvitations.length, paginatedInvitations.length)} of {processedInvitations.length} invitations</span>
+                                )}
                                 {pendingInvitations.length > 10 && (
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                         <span>Show:</span>
@@ -2134,6 +2208,16 @@ export default function AdminDashboard() {
                                         <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", textAlign: "left" }}>
                                             <thead>
                                                 <tr>
+                                                    <th style={{ width: "44px", padding: "12px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)" }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            aria-label="Select all invitations on this page"
+                                                            checked={allPageInvitesSelected}
+                                                            ref={el => { if (el) el.indeterminate = somePageInvitesSelected; }}
+                                                            onChange={togglePageInviteSelection}
+                                                            className="h-4 w-4 cursor-pointer accent-indigo-600"
+                                                        />
+                                                    </th>
                                                     <th onClick={() => handleInvitationSort('email')} style={{ cursor: "pointer", padding: "12px", color: "var(--text-primary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px", position: "sticky", top: 0, zIndex: 10, backgroundColor: "var(--bg-primary)", borderBottom: "2px solid var(--border-light)", userSelect: "none" }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                                             EMAIL
@@ -2166,7 +2250,16 @@ export default function AdminDashboard() {
                                                 {paginatedInvitations.map(inv => {
                                                     const expiry = inv.expires_at ? getExpiryDisplay(inv.expires_at) : null;
                                                     return (
-                                                    <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className="hover:bg-subtle-soft transition-colors duration-150">
+                                                    <tr key={inv.id} style={{ borderBottom: "1px solid var(--border-light)", verticalAlign: "middle", opacity: expiry?.isExpired ? 0.65 : 1 }} className={selectedInviteIds.includes(inv.id) ? "bg-indigo-50/50" : ""}>
+                                                        <td style={{ padding: "12px" }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                aria-label={`Select ${inv.email}`}
+                                                                checked={selectedInviteIds.includes(inv.id)}
+                                                                onChange={() => toggleInviteSelection(inv.id)}
+                                                                className="h-4 w-4 cursor-pointer accent-indigo-600"
+                                                            />
+                                                        </td>
                                                         <td style={{ padding: "12px", fontWeight: "bold", color: "var(--text-primary)", textDecoration: expiry?.isExpired ? 'line-through' : 'none' }}>{inv.email}</td>
                                                         <td style={{ padding: "12px" }}>
                                                             <Badge role={inv.role} icon />
@@ -2219,6 +2312,13 @@ export default function AdminDashboard() {
                                             return (
                                                 <div key={inv.id} className={`bg-card rounded-xl border border-line p-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col gap-3 ${expiry?.isExpired ? 'opacity-65' : ''}`}>
                                                     <div className="flex justify-between items-start gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            aria-label={`Select ${inv.email}`}
+                                                            checked={selectedInviteIds.includes(inv.id)}
+                                                            onChange={() => toggleInviteSelection(inv.id)}
+                                                            className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-indigo-600"
+                                                        />
                                                         <div className="flex flex-col flex-1 min-w-0">
                                                             <span className={`font-bold text-[var(--text-primary)] text-[1rem] truncate ${expiry?.isExpired ? 'line-through' : ''}`} title={inv.email}>
                                                                 {inv.email}
@@ -2468,6 +2568,42 @@ export default function AdminDashboard() {
                             <button
                                 type="button"
                                 onClick={() => setInviteToRevoke(null)}
+                                disabled={inviteActionLoading}
+                                className="flex-1 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-fg transition-colors hover:bg-app disabled:opacity-60"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Bulk Invite Action Confirmation ─────────────────────────── */}
+            {bulkInviteAction && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl">
+                        <h2 className={`m-0 text-lg font-extrabold ${bulkInviteAction === 'revoke' ? 'text-danger' : 'text-success'}`}>
+                            {bulkInviteAction === 'revoke' ? 'Revoke' : 'Resend'} {selectedInviteIds.length} invitation{selectedInviteIds.length === 1 ? '' : 's'}
+                        </h2>
+                        <p className="mt-2 text-sm text-muted">
+                            {bulkInviteAction === 'revoke'
+                                ? "The selected invite links will stop working. These people won't be able to register with their current links."
+                                : "Each selected invite gets a fresh 72-hour link and a new email. Their old links will stop working."}
+                        </p>
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleConfirmBulkInviteAction}
+                                disabled={inviteActionLoading}
+                                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors disabled:opacity-60 ${bulkInviteAction === 'revoke' ? 'bg-danger-solid hover:bg-danger-solid' : 'bg-success-solid hover:bg-success-solid'}`}
+                            >
+                                {inviteActionLoading
+                                    ? (bulkInviteAction === 'revoke' ? 'Revoking...' : 'Sending...')
+                                    : (bulkInviteAction === 'revoke' ? 'Revoke' : 'Resend')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setBulkInviteAction(null)}
                                 disabled={inviteActionLoading}
                                 className="flex-1 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-fg transition-colors hover:bg-app disabled:opacity-60"
                             >

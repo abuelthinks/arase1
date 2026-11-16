@@ -58,7 +58,7 @@ export default function DashboardPage() {
     const [gradeFilter, setGradeFilter] = useState("ALL");
     const [statusFilters, setStatusFilters] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(25);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [studentSortConfig, setStudentSortConfig] = useState<{ key: 'id' | 'name' | 'grade' | 'status' | null; direction: 'asc' | 'desc' | null }>({ key: null, direction: null });
     const specialistOnboardingIncomplete = isSpecialistOnboardingIncomplete(user);
