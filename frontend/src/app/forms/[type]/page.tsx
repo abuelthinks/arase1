@@ -712,6 +712,10 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
 // Free-text notes and the read-only parent summary are never required.
 const REQUIRED_EXEMPT_TYPES = new Set(["textarea", "readonly_parent_summary"]);
 
+// Tracking-period fields are filled from the active report cycle and can't be
+// typed over, so every tracker for a cycle names the period the same way.
+const SYSTEM_FILLED_FIELDS = new Set(["week_month_of_tracking", "week_of_tracking"]);
+
 // Single-author forms validated as a whole on submit (parent + SPED teacher).
 const WHOLE_FORM_VALIDATED_TYPES = new Set(["parent-assessment", "sped-assessment", "sped-tracker"]);
 
@@ -1320,6 +1324,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 }
                 if ('date' in newSectionA) {
                     newSectionA.date = new Date().toISOString().split('T')[0];
+                }
+                const cycleLabel = profileData.active_cycle?.label;
+                if (cycleLabel) {
+                    SYSTEM_FILLED_FIELDS.forEach((fieldId) => {
+                        if (fieldId in newSectionA) newSectionA[fieldId] = cycleLabel;
+                    });
                 }
                 mergedData.section_a = newSectionA;
             }
@@ -2350,6 +2360,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     const currentValue = formData[dataKey]?.[field.id];
                                     const currentSectionData = formData[dataKey] || {};
                                     const fieldReadOnly = field.type === "readonly_parent_summary"
+                                        || SYSTEM_FILLED_FIELDS.has(field.id)
                                         || !!sectionState?.isLocked
                                         || Boolean(peerLock)
                                         || (!isViewMode && !isFieldEditable(section.id, field.id));
