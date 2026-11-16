@@ -712,9 +712,27 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
 // Free-text notes and the read-only parent summary are never required.
 const REQUIRED_EXEMPT_TYPES = new Set(["textarea", "readonly_parent_summary"]);
 
+// Header fields the system fills (student name, today's date, and the
+// tracking period from the active report cycle). They're read-only so every
+// form names the student, date and period the same way.
+const TRACKING_PERIOD_FIELDS = ["week_month_of_tracking", "week_of_tracking"];
+const SYSTEM_FILLED_FIELDS = new Set([
+    "student_name", "child_name", "date", "date_of_assessment",
+    ...TRACKING_PERIOD_FIELDS,
+]);
+
+// Single-author forms validated as a whole on submit (parent + SPED teacher).
+const WHOLE_FORM_VALIDATED_TYPES = new Set(["parent-assessment", "sped-assessment", "sped-tracker"]);
+
 function isFieldRequired(formType: string, field: any): boolean {
     if (REQUIRED_EXEMPT_TYPES.has(field.type)) return false;
     if (formType === "parent-assessment") return field.type !== "text";
+    // SPED teacher forms: every choice field is required. Text fields are
+    // student-info headers, and the static GAS number fields only stand in
+    // when no IEP goals exist yet, so neither blocks submission.
+    if (formType === "sped-assessment" || formType === "sped-tracker") {
+        return field.type !== "text" && field.type !== "number";
+    }
     // Multi-disciplinary forms validate per field, but only inside the
     // specialist's own discipline sections (see isSectionValidated).
     return formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker";
@@ -737,7 +755,7 @@ function isFieldEmpty(field: any, val: any): boolean {
     return !val || String(val).trim() === "";
 }
 
-export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void> } = {}) {
+export function FormEntryContent({ propType, propStudentId, propSubmissionId, propMode, propHideNavigation, propOnSubmitted, propOnUnlocked }: { propType?: string, propStudentId?: string, propSubmissionId?: string, propMode?: string, propHideNavigation?: boolean, propOnSubmitted?: (message: string) => void | Promise<void>, propOnUnlocked?: () => void } = {}) {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -846,6 +864,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     //                 asked to complete them.
     const isSectionValidated = useCallback((sectionId: string): boolean => {
         if (formType === "parent-assessment") return true;
+        if (formType === "sped-assessment" || formType === "sped-tracker") return !isViewMode;
         if (!isSectionScopedForm || isViewMode || isAdmin) return false;
         const owner = getSectionOwner(formType, sectionId);
         if (!owner || owner === "MIXED") return false;
@@ -1233,6 +1252,14 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                             console.error("Failed to load collaborative form draft:", err);
                         }
                     }
+                } else if (formType === "sped-tracker" && formIdStr) {
+                    // Editing an unlocked teacher tracker — start from what was submitted.
+                    try {
+                        const res = await api.get(`/api/inputs/${formType}/${formIdStr}/`);
+                        mergedData = mergeSavedFormData(mergedData, renderSchema, res.data.form_data);
+                    } catch (err) {
+                        console.error("Failed to load submitted tracker:", err);
+                    }
                 } else if (!isSectionScopedForm) {
                     // Try to load auto-saved draft
                     try {
@@ -1302,6 +1329,12 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 }
                 if ('date' in newSectionA) {
                     newSectionA.date = new Date().toISOString().split('T')[0];
+                }
+                const cycleLabel = profileData.active_cycle?.label;
+                if (cycleLabel) {
+                    TRACKING_PERIOD_FIELDS.forEach((fieldId) => {
+                        if (fieldId in newSectionA) newSectionA[fieldId] = cycleLabel;
+                    });
                 }
                 mergedData.section_a = newSectionA;
             }
@@ -1863,7 +1896,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             return;
         }
 
-        if (formType === "parent-assessment") {
+        if (WHOLE_FORM_VALIDATED_TYPES.has(formType)) {
             setAttemptedSubmit(true);
             if (invalidFields.size > 0) {
                 setErrorMsg("Missing required fields.");
@@ -1934,6 +1967,51 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                     });
                     toast.success("Unlock requested.");
                     await refetchTeamSubmission();
+                } catch (err: any) {
+                    toast.error(extractApiError(err));
+                }
+            }
+        });
+    };
+
+    // Teacher progress tracker: single-author form, unlocked per submission.
+    const spedTrackerUnlockIds = () => ({
+        student_id: parseInt(studentId || "0"),
+        report_cycle_id: fullSubmission?.report_cycle,
+    });
+
+    const requestSpedTrackerUnlock = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Request Unlock?",
+            message: "An admin will be asked to unlock your progress tracker so you can edit and resubmit it.",
+            actionText: "Request Unlock",
+            actionVariant: "primary",
+            onConfirm: async () => {
+                try {
+                    await api.post("/api/inputs/sped-tracker/request-unlock/", spedTrackerUnlockIds());
+                    toast.success("Unlock requested.");
+                    setFullSubmission((prev: any) => prev ? { ...prev, unlock_requested: true } : prev);
+                } catch (err: any) {
+                    toast.error(extractApiError(err));
+                }
+            }
+        });
+    };
+
+    const adminUnlockSpedTracker = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Unlock Form?",
+            message: "The teacher will be able to edit and resubmit this progress tracker.",
+            actionText: "Unlock Form",
+            actionVariant: "warning",
+            onConfirm: async () => {
+                try {
+                    await api.post("/api/inputs/sped-tracker/unlock/", spedTrackerUnlockIds());
+                    toast.success("Tracker unlocked.");
+                    setFullSubmission((prev: any) => prev ? { ...prev, unlock_requested: false, unlocked_at: new Date().toISOString() } : prev);
+                    propOnUnlocked?.();
                 } catch (err: any) {
                     toast.error(extractApiError(err));
                 }
@@ -2107,6 +2185,43 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                 )}
                             </div>
                         )}
+                        {formType === "sped-tracker" && isViewMode && fullSubmission && !fullSubmission.unlocked_at && (
+                            <div className="mt-3">
+                                {isAdmin ? (
+                                    fullSubmission.unlock_requested && (
+                                        <div className={formBannerClass("warning")}>
+                                            <div className="text-sm">
+                                                <strong>Unlock requested by teacher.</strong>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={adminUnlockSpedTracker}
+                                                className="shrink-0 rounded-md border border-warning-line bg-card px-3 py-1.5 text-sm font-semibold text-warning transition-colors hover:border-warning-line hover:bg-warning-soft"
+                                            >
+                                                Unlock Form
+                                            </button>
+                                        </div>
+                                    )
+                                ) : user?.role === "TEACHER" && (
+                                    <div className="flex items-center gap-1.5 text-xs text-muted">
+                                        {fullSubmission.unlock_requested ? (
+                                            <span>Unlock requested — waiting on an admin.</span>
+                                        ) : (
+                                            <>
+                                                <span>Need to make changes?</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={requestSpedTrackerUnlock}
+                                                    className="font-semibold text-indigo-600 underline underline-offset-2 transition-colors hover:text-indigo-800"
+                                                >
+                                                    Request unlock
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {!isViewMode && collabFormType && collabInstanceId && (
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "3px 8px", background: collab.connected ? "var(--bg-success-light)" : "var(--bg-neutral-light)", color: collab.connected ? "var(--text-success)" : "var(--text-secondary)", borderRadius: "999px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
@@ -2250,6 +2365,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                                     const currentValue = formData[dataKey]?.[field.id];
                                     const currentSectionData = formData[dataKey] || {};
                                     const fieldReadOnly = field.type === "readonly_parent_summary"
+                                        || SYSTEM_FILLED_FIELDS.has(field.id)
                                         || !!sectionState?.isLocked
                                         || Boolean(peerLock)
                                         || (!isViewMode && !isFieldEditable(section.id, field.id));

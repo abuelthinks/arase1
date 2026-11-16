@@ -232,6 +232,16 @@ def get_student_profile_data(student, user=None):
                     "unlocked_at": obj.unlocked_at if obj else None,
                     "unlock_available": bool(obj) and not specialist_submitted,
                 })
+            elif key == "sped_tracker":
+                monthly_generated = GeneratedDocument.objects.filter(
+                    student=student, report_cycle=cycle, document_type='MONTHLY',
+                ).exists()
+                form_statuses[key].update({
+                    "unlock_requested": bool(obj.unlock_requested) if obj else False,
+                    "unlocked": bool(obj.unlocked_at) if obj else False,
+                    "unlocked_at": obj.unlocked_at if obj else None,
+                    "unlock_available": bool(obj) and not monthly_generated,
+                })
             elif key == "multi_assessment":
                 form_statuses[key].update({
                     "unlock_requested": bool(obj.unlock_requested) if obj else False,

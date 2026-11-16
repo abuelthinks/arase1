@@ -28,6 +28,7 @@ from .services.notification_service import (
     notify_assessment_scheduled, notify_assessment_cancelled,
     notify_parent_assessment_unlock_requested, notify_parent_assessment_unlocked,
     notify_specialist_assessment_unlock_requested, notify_specialist_tracker_unlock_requested,
+    notify_teacher_tracker_unlock_requested, notify_teacher_tracker_unlocked,
     notify_specialty_change_requested, notify_specialty_change_reviewed,
 )
 from .services.workflow_state_service import has_finalized_iep, has_finalized_multidisciplinary_assessment
@@ -817,14 +818,43 @@ class SpedProgressTrackerViewSet(BaseInputViewSet):
     require_active_cycle = True
 
     def perform_create(self, serializer):
-        instance = serializer.save(submitted_by=self.request.user)
+        user = self.request.user
+        student = serializer.validated_data.get('student')
+        report_cycle = serializer.validated_data.get('report_cycle')
+
+        # One tracker per (student, cycle). A submitted tracker stays locked
+        # until an admin unlocks it; the resubmit then updates the same row.
+        existing = (SpedProgressTracker.objects
+                    .filter(student=student, report_cycle=report_cycle)
+                    .order_by('created_at')
+                    .first())
+        if existing is not None and not existing.unlocked_at and user.role != 'ADMIN':
+            raise PermissionDenied("Teacher progress is already submitted for this cycle. Request an unlock to edit it.")
+        is_resubmission = existing is not None
+
+        if existing is not None:
+            serializer.instance = existing
+            instance = serializer.save(
+                submitted_by=user,
+                unlock_requested=False,
+                unlocked_at=None,
+                unlocked_by=None,
+            )
+        else:
+            instance = serializer.save(submitted_by=user)
+
+        dedupe_key = f"form-submitted:teacher-tracker:{instance.id}"
+        if is_resubmission:
+            dedupe_key += f":resubmit-{timezone.now().timestamp()}"
         notify_form_submitted(
-            self.request.user,
+            user,
             instance.student,
             'Teacher Progress Tracker',
-            dedupe_key=f"form-submitted:teacher-tracker:{instance.id}",
+            dedupe_key=dedupe_key,
+            is_resubmission=is_resubmission,
         )
-        notify_tracker_progress(self.request.user, instance.student, instance.report_cycle)
+        if not is_resubmission:
+            notify_tracker_progress(user, instance.student, instance.report_cycle)
 
 # ─── Section-scoped writes (multi-specialist forms) ──────────────────────────
 
@@ -1269,6 +1299,73 @@ class ParentAssessmentUnlockView(APIView):
 
         return Response({"status": "Parent assessment unlocked successfully."})
 
+
+
+def _monthly_report_generated(student_id, report_cycle_id):
+    from .models import GeneratedDocument
+    return GeneratedDocument.objects.filter(
+        student_id=student_id, report_cycle_id=report_cycle_id, document_type='MONTHLY'
+    ).exists()
+
+
+class SpedTrackerRequestUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'TEACHER':
+            return Response({"error": "Only teachers can request to unlock the teacher progress tracker."}, status=status.HTTP_403_FORBIDDEN)
+
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .models import StudentAccess
+        if not StudentAccess.objects.filter(user=request.user, student_id=student_id).exists():
+            return Response({"error": "You do not have access to this student."}, status=status.HTTP_403_FORBIDDEN)
+
+        tracker = SpedProgressTracker.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id,
+        ).select_related('student').order_by('created_at').first()
+        if not tracker:
+            return Response({"error": "Tracker not found."}, status=status.HTTP_404_NOT_FOUND)
+        if tracker.unlocked_at:
+            return Response({"error": "Tracker is already unlocked."}, status=status.HTTP_400_BAD_REQUEST)
+        if _monthly_report_generated(student_id, report_cycle_id):
+            return Response({"error": "Monthly progress report is already generated. Unlock is no longer possible."}, status=status.HTTP_400_BAD_REQUEST)
+
+        tracker.unlock_requested = True
+        tracker.save(update_fields=['unlock_requested'])
+        notify_teacher_tracker_unlock_requested(request.user, tracker.student)
+        return Response({"status": "Unlock requested successfully."})
+
+
+class SpedTrackerUnlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Only admins can unlock the teacher progress tracker."}, status=status.HTTP_403_FORBIDDEN)
+
+        student_id = request.data.get('student_id')
+        report_cycle_id = request.data.get('report_cycle_id')
+        if not student_id or not report_cycle_id:
+            return Response({"error": "student_id and report_cycle_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        tracker = SpedProgressTracker.objects.filter(
+            student_id=student_id, report_cycle_id=report_cycle_id,
+        ).select_related('student', 'submitted_by').order_by('created_at').first()
+        if not tracker:
+            return Response({"error": "Tracker not found."}, status=status.HTTP_404_NOT_FOUND)
+        if _monthly_report_generated(student_id, report_cycle_id):
+            return Response({"error": "Monthly progress report is already generated. Unlock is no longer possible."}, status=status.HTTP_400_BAD_REQUEST)
+
+        tracker.unlock_requested = False
+        tracker.unlocked_at = timezone.now()
+        tracker.unlocked_by = request.user
+        tracker.save(update_fields=['unlock_requested', 'unlocked_at', 'unlocked_by'])
+        notify_teacher_tracker_unlocked(tracker.submitted_by, tracker.student, unlocked_by=request.user)
+        return Response({"status": "Teacher progress tracker unlocked successfully."})
 
 
 class TrackerSubmitAllView(SectionSubmitAllView):
