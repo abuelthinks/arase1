@@ -712,9 +712,14 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
 // Free-text notes and the read-only parent summary are never required.
 const REQUIRED_EXEMPT_TYPES = new Set(["textarea", "readonly_parent_summary"]);
 
-// Tracking-period fields are filled from the active report cycle and can't be
-// typed over, so every tracker for a cycle names the period the same way.
-const SYSTEM_FILLED_FIELDS = new Set(["week_month_of_tracking", "week_of_tracking"]);
+// Header fields the system fills (student name, today's date, and the
+// tracking period from the active report cycle). They're read-only so every
+// form names the student, date and period the same way.
+const TRACKING_PERIOD_FIELDS = ["week_month_of_tracking", "week_of_tracking"];
+const SYSTEM_FILLED_FIELDS = new Set([
+    "student_name", "child_name", "date", "date_of_assessment",
+    ...TRACKING_PERIOD_FIELDS,
+]);
 
 // Single-author forms validated as a whole on submit (parent + SPED teacher).
 const WHOLE_FORM_VALIDATED_TYPES = new Set(["parent-assessment", "sped-assessment", "sped-tracker"]);
@@ -1327,7 +1332,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
                 }
                 const cycleLabel = profileData.active_cycle?.label;
                 if (cycleLabel) {
-                    SYSTEM_FILLED_FIELDS.forEach((fieldId) => {
+                    TRACKING_PERIOD_FIELDS.forEach((fieldId) => {
                         if (fieldId in newSectionA) newSectionA[fieldId] = cycleLabel;
                     });
                 }
