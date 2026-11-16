@@ -97,8 +97,10 @@ Required for AI-assisted document generation and real-time collaborative form ed
 redis-server
 
 # Start Celery worker (separate terminal)
-celery -A backend worker --loglevel=info
+celery -A backend worker -B --loglevel=info
 ```
+
+`-B` also runs the scheduler: tracker reminders daily at 9:00 AM Manila (7, 3 and 1 day before the month ends, then daily in the grace period) and assessment reminders hourly.
 
 Without these, the app is fully usable — AI generation tasks queue silently and fail, real-time collaboration falls back gracefully.
 

@@ -33,6 +33,13 @@ interface Student {
     teacher_current_tracker_submitted?: boolean;
     active_cycle_label?: string | null;
     latest_final_monthly_report_id?: number | null;
+    // What the viewing specialist/teacher owes for this student right now.
+    my_task?: {
+        label: string;
+        state: "due" | "done";
+        tab: string;
+        days_left?: number | null;
+    } | null;
     next_action?: {
         id: string;
         label: string;
@@ -219,6 +226,10 @@ export default function DashboardPage() {
                 if (aVal > bVal) return studentSortConfig.direction === 'asc' ? 1 : -1;
                 return 0;
             });
+        } else {
+            // Default order for staff: whatever they still owe comes first.
+            const dueRank = (st: Student) => (st.my_task?.state === "due" ? 0 : 1);
+            result.sort((a, b) => dueRank(a) - dueRank(b));
         }
 
         return result;
@@ -231,7 +242,9 @@ export default function DashboardPage() {
     const getSubtitle = () => {
         switch (user?.role) {
             case "TEACHER": {
-                const enrolled = students.filter(s => s.status === "ENROLLED").length;
+                const due = students.filter(s => s.my_task?.state === "due").length;
+                if (due > 0) return `You have ${due} tracker${due !== 1 ? "s" : ""} to submit this cycle.`;
+                const enrolled = students.filter(s => s.status === "ENROLLED" || s.status === "INTEGRATED").length;
                 if (enrolled === 0) {
                     // The empty-state card below explains what happens next — keep this short
                     // so the same message isn't stacked twice on the page.
@@ -240,6 +253,14 @@ export default function DashboardPage() {
                 return `You have ${enrolled} enrolled student${enrolled !== 1 ? "s" : ""} to track this cycle.`;
             }
             case "SPECIALIST": {
+                const dueAssessments = students.filter(s => s.my_task?.state === "due" && s.my_task.tab === "multi_assessment").length;
+                const dueTrackers = students.filter(s => s.my_task?.state === "due" && s.my_task.tab === "multi_tracker").length;
+                if (dueAssessments + dueTrackers > 0) {
+                    const todo: string[] = [];
+                    if (dueAssessments > 0) todo.push(`${dueAssessments} assessment${dueAssessments !== 1 ? "s" : ""}`);
+                    if (dueTrackers > 0) todo.push(`${dueTrackers} tracker${dueTrackers !== 1 ? "s" : ""}`);
+                    return `You have ${todo.join(" and ")} to submit.`;
+                }
                 const pending = students.filter(s => s.status === "PENDING_ASSESSMENT").length;
                 const enrolled = students.filter(s => s.status === "ENROLLED").length;
                 const parts: string[] = [];
@@ -255,7 +276,7 @@ export default function DashboardPage() {
                     return "Register your child to begin the parent assessment.";
                 }
                 const needsAssessment = students.filter(s => s.status === "PENDING_ASSESSMENT" && !s.has_parent_assessment).length;
-                const needsTracker = students.filter(s => s.status === "ENROLLED" && !s.parent_current_tracker_submitted).length;
+                const needsTracker = students.filter(s => (s.status === "ENROLLED" || s.status === "INTEGRATED") && !s.parent_current_tracker_submitted).length;
                 const totalActions = needsAssessment + needsTracker;
                 if (totalActions > 0) {
                     const parts: string[] = [];
@@ -565,6 +586,10 @@ export default function DashboardPage() {
                                                 text: s.parent_current_tracker_submitted ? "Enrolled & up to date" : "Monthly progress update needed",
                                                 Icon: s.parent_current_tracker_submitted ? Sparkles : FileText,
                                             },
+                                            INTEGRATED: {
+                                                text: s.parent_current_tracker_submitted ? "In mainstream class & up to date" : "Monthly progress update needed",
+                                                Icon: s.parent_current_tracker_submitted ? Sparkles : FileText,
+                                            },
                                             ARCHIVED: { text: "Record archived", Icon: Archive },
                                         };
                                         const statusKey = s.status?.toUpperCase().replace(/ /g, "_");
@@ -576,7 +601,7 @@ export default function DashboardPage() {
                                                 const isDraft = typeof window !== "undefined" && window.localStorage.getItem(`parent_form_draft_v2_${s.id}`);
                                                 return { label: isDraft ? "Continue Assessment" : "Start Assessment", href: `/parent-onboarding?studentId=${s.id}` };
                                             }
-                                            if (s.status === "ENROLLED" && !s.parent_current_tracker_submitted) {
+                                            if ((s.status === "ENROLLED" || s.status === "INTEGRATED") && !s.parent_current_tracker_submitted) {
                                                 return { label: "Submit Monthly Update", href: getStudentWorkspaceHref(s.id, "parent_tracker") };
                                             }
                                             return { label: "View Progress", href: getStudentWorkspaceHref(s.id) };
@@ -883,25 +908,30 @@ export default function DashboardPage() {
                                                     <span className="text-xs font-bold">{statusLabel(s.status)}</span>
                                                 </div>
                                                 <div className="flex flex-col gap-2 p-4">
-                                                    {user?.role === "SPECIALIST" && s.status === "PENDING_ASSESSMENT" ? (
-                                                        <>
-                                                            <Link
-                                                                href={getStudentWorkspaceHref(s.id)}
-                                                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white no-underline shadow-sm transition-colors hover:bg-indigo-700"
-                                                            >
-                                                                Open Workspace
-                                                                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                                                            </Link>
-                                                        </>
-                                                    ) : (
-                                                        <Link
-                                                            href={getStudentWorkspaceHref(s.id)}
-                                                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white no-underline shadow-sm transition-colors hover:bg-indigo-700"
-                                                        >
-                                                            Open Workspace
-                                                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                                                        </Link>
+                                                    {s.my_task && (
+                                                        <div className="flex items-center justify-between gap-2 text-xs font-bold">
+                                                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${semanticToneClass(s.my_task.state === "due" ? "warning" : "success")}`}>
+                                                                {s.my_task.state === "due"
+                                                                    ? <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                                                                    : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                                                                {s.my_task.label}
+                                                            </span>
+                                                            {s.my_task.state === "due" && typeof s.my_task.days_left === "number" && (
+                                                                <span className="text-muted">
+                                                                    {s.my_task.days_left === 0 ? "Due today" : `${s.my_task.days_left} day${s.my_task.days_left !== 1 ? "s" : ""} left`}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
+                                                    <Link
+                                                        href={getStudentWorkspaceHref(s.id, s.my_task?.tab)}
+                                                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white no-underline shadow-sm transition-colors hover:bg-indigo-700"
+                                                    >
+                                                        {s.my_task?.state === "due"
+                                                            ? (s.my_task.tab === "multi_assessment" ? "Continue Assessment" : "Submit Tracker")
+                                                            : "Open Workspace"}
+                                                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                                    </Link>
                                                 </div>
                                             </div>
                                         );

@@ -316,6 +316,7 @@ class StudentSerializer(serializers.ModelSerializer):
     latest_final_monthly_report_id = serializers.SerializerMethodField()
     recent_activity_at = serializers.SerializerMethodField()
     next_action = serializers.SerializerMethodField()
+    my_task = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
@@ -326,6 +327,7 @@ class StudentSerializer(serializers.ModelSerializer):
             'parent_current_tracker_submitted', 'specialist_current_tracker_submitted',
             'teacher_current_tracker_submitted', 'active_cycle_label',
             'latest_final_monthly_report_id', 'recent_activity_at', 'next_action',
+            'my_task',
         ]
 
     def get_has_parent_assessment(self, obj):
@@ -406,6 +408,70 @@ class StudentSerializer(serializers.ModelSerializer):
                 timestamps.append(latest)
 
         return max(timestamps) if timestamps else None
+
+    def get_my_task(self, obj):
+        """
+        What the viewing specialist or teacher owes for this student right now.
+        Returns {'label', 'state': 'due'|'done', 'tab', 'days_left'} or None.
+        """
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        role = getattr(user, 'role', None)
+        if role not in ('SPECIALIST', 'TEACHER'):
+            return None
+
+        from datetime import date
+        from api.specialties import required_owner_sections
+        from api.services.cycle_service import month_report_exists
+
+        status = (obj.status or '').upper()
+        cycle = self._get_active_cycle(obj)
+        if not cycle:
+            return None
+        if status in ('ENROLLED', 'INTEGRATED') and month_report_exists(obj, cycle):
+            return None  # This month's report is already out.
+        days_left = max(0, (cycle.end_date - date.today()).days)
+
+        def task(label, state, tab, with_deadline=False):
+            return {
+                'label': label,
+                'state': state,
+                'tab': tab,
+                'days_left': days_left if with_deadline else None,
+            }
+
+        if role == 'TEACHER':
+            if status != 'INTEGRATED':
+                return None
+            if SpedProgressTracker.objects.filter(student=obj, report_cycle=cycle).exists():
+                return task('Tracker submitted', 'done', 'sped_tracker')
+            return task('Tracker due', 'due', 'sped_tracker', with_deadline=True)
+
+        # Specialist: their own sections of the team assessment or tracker.
+        if status in ('PENDING_ASSESSMENT', 'ASSESSMENT_SCHEDULED'):
+            form_type, model, fk, tab, noun = 'assessment', MultidisciplinaryAssessment, 'assessment', 'multi_assessment', 'Assessment'
+        elif status in ('ENROLLED', 'INTEGRATED'):
+            form_type, model, fk, tab, noun = 'tracker', MultidisciplinaryProgressTracker, 'tracker', 'multi_tracker', 'Tracker'
+        else:
+            return None
+
+        access = StudentAccess.objects.filter(student=obj, user=user).select_related('user').first()
+        if not access:
+            return None
+        instance = model.objects.filter(student=obj, report_cycle=cycle).first()
+        if instance and instance.finalized_at:
+            return task(f'{noun} submitted', 'done', tab)
+        required = set(required_owner_sections(form_type, access.specialty_list()))
+        submitted = set()
+        if instance:
+            submitted = set(
+                SectionContribution.objects
+                .filter(**{fk: instance}, status='submitted')
+                .values_list('section_key', flat=True)
+            )
+        if required and required <= submitted:
+            return task('Your part submitted', 'done', tab)
+        return task(f'{noun} due', 'due', tab, with_deadline=(form_type == 'tracker'))
 
     def get_next_action(self, obj):
         cycle = self._get_active_cycle(obj)

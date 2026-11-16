@@ -102,6 +102,22 @@ def ensure_current_cycle(student):
     return cycle
 
 
+def month_report_exists(student, cycle):
+    """
+    True when a monthly report already exists for the calendar month this cycle
+    covers. Generating a report closes its cycle early, and the next access opens
+    a fresh cycle for the same month, so check by month rather than cycle id.
+    """
+    if not cycle:
+        return False
+    return GeneratedDocument.objects.filter(
+        student=student,
+        document_type='MONTHLY',
+        report_cycle__start_date__year=cycle.start_date.year,
+        report_cycle__start_date__month=cycle.start_date.month,
+    ).exists()
+
+
 # ─── Carry-Forward Recommendations ───────────────────────────────────────────
 
 def get_previous_recommendations(student):

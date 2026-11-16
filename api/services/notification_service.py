@@ -479,7 +479,7 @@ def notify_tracker_progress(user, student, cycle, submitted_count=None, total_re
 
     if submitted_count >= total_required:
         title = f"All trackers submitted for {student_name}"
-        message = f"All {total_required} progress trackers are in for {label}. Report auto-generation will begin."
+        message = f"All {total_required} progress trackers are in for {label}. The monthly report is ready to generate."
     else:
         title = f"Tracker progress: {student_name} ({submitted_count}/{total_required})"
         message = f"{actor} submitted a tracker for {label}."
@@ -819,22 +819,54 @@ def notify_assessment_cancelled(appointment, cancelled_by):
 
 # ─── Reminder Notifications ──────────────────────────────────────────────────
 
-def notify_tracker_reminder(user, student, days_remaining):
+TRACKER_REMINDER_TABS = {
+    'PARENT': 'parent_tracker',
+    'SPECIALIST': 'multi_tracker',
+    'TEACHER': 'sped_tracker',
+}
+
+
+def notify_tracker_reminder(user, student, days_remaining, dedupe_key=''):
     """
     Remind a user (parent/specialist/teacher) to submit their monthly tracker.
+    Sends an in-app notification that links straight to the form, plus email/SMS.
+    Returns False when a reminder with the same dedupe_key was already sent.
     """
+    from api.models import Notification
+
+    if dedupe_key and Notification.objects.filter(recipient=user, dedupe_key=dedupe_key).exists():
+        return False
+
     student_name = f"{student.first_name} {student.last_name}"
-    subject = f"Reminder: Monthly tracker for {student_name} is due"
+    if days_remaining > 0:
+        due_text = f"due in {days_remaining} day(s)"
+    else:
+        due_text = "overdue"
+    tab = TRACKER_REMINDER_TABS.get(user.role, '')
+    link = f"/workspace?studentId={student.id}&workspace=forms" + (f"&tab={tab}" if tab else "")
+
+    notify_user_in_app(
+        user=user,
+        notification_type='REMINDER',
+        title=f"Monthly tracker {due_text}: {student_name}",
+        message="Please submit your monthly progress tracker.",
+        link=link,
+        actor_name="ARASE",
+        dedupe_key=dedupe_key,
+    )
+
+    subject = f"Reminder: Monthly tracker for {student_name} is {due_text}"
     message = (
         f"Hi {user.first_name or user.email},\n\n"
         f"This is a friendly reminder that your monthly progress tracker "
-        f"for {student_name} is due in {days_remaining} day(s).\n\n"
+        f"for {student_name} is {due_text}.\n\n"
         f"Please log in to ARASE to submit your tracker.\n\n"
         f"— The ARASE Team"
     )
     _send_email(user.email, subject, message)
     if user.phone_number and user.is_phone_verified:
-        _send_sms(user.phone_number, f"ARASE: Monthly tracker for {student_name} due in {days_remaining} day(s). Please log in to submit.")
+        _send_sms(user.phone_number, f"ARASE: Monthly tracker for {student_name} is {due_text}. Please log in to submit.")
+    return True
 
 
 def notify_parent_assessment_reminder(user, student):
@@ -952,47 +984,85 @@ def notify_parent_report_finalized(parent_user, student, report_id):
         )
 
 
-def send_tracker_reminders_for_all_students():
+# Days before the cycle ends when the scheduled job sends tracker reminders.
+# During the grace period (after the cycle ends) it reminds every day.
+SCHEDULED_REMINDER_DAYS = (7, 3, 1)
+
+
+def _specialists_missing_tracker_sections(student, tracker, specialist_accesses):
+    """Return the specialists who still have their own tracker sections to submit."""
+    from api.models import SectionContribution
+    from api.specialties import required_owner_sections
+
+    if tracker is None:
+        return [sa.user for sa in specialist_accesses]
+    if tracker.finalized_at:
+        return []
+
+    submitted = set(
+        SectionContribution.objects
+        .filter(tracker=tracker, status='submitted')
+        .values_list('section_key', flat=True)
+    )
+    missing = []
+    for sa in specialist_accesses:
+        required = required_owner_sections('tracker', sa.specialty_list())
+        if not set(required) <= submitted:
+            missing.append(sa.user)
+    return missing
+
+
+def send_tracker_reminders_for_all_students(scheduled=False):
     """
-    Bulk operation: Find all enrolled students with incomplete trackers
-    in active cycles and send reminders to relevant users.
-    Designed to be called from an admin button or external cron.
+    Find enrolled/integrated students with missing trackers in their active
+    cycle and remind each person who still owes one.
+
+    scheduled=False (admin button): remind everyone who is missing a tracker.
+    scheduled=True (daily job): only remind 7, 3 and 1 day(s) before the cycle
+    ends and daily during the grace period, at most once per person per day.
     """
     from api.models import (
-        Student, ReportCycle, StudentAccess,
+        Student, StudentAccess,
         ParentProgressTracker, MultidisciplinaryProgressTracker, SpedProgressTracker,
     )
+    from api.services.cycle_service import ensure_current_cycle, month_report_exists
     from datetime import date
 
     today = date.today()
-    active_cycles = ReportCycle.objects.filter(
-        is_active=True,
-        status__in=['OPEN', 'GRACE'],
-        student__status='ENROLLED',
-    ).select_related('student')
-
     sent_count = 0
-    for cycle in active_cycles:
-        student = cycle.student
-        days_remaining = max(0, (cycle.end_date - today).days)
 
-        # Check which trackers are missing
+    for student in Student.objects.filter(status__in=['ENROLLED', 'INTEGRATED']):
+        # Rolls cycles over (OPEN -> GRACE -> new month) even if nobody logged in.
+        cycle = ensure_current_cycle(student)
+        if not cycle or cycle.status not in ('OPEN', 'GRACE'):
+            continue
+        if month_report_exists(student, cycle):
+            continue  # This month's report is already out; nothing left to collect.
+
+        days_remaining = (cycle.end_date - today).days
+        if scheduled and days_remaining >= 0 and days_remaining not in SCHEDULED_REMINDER_DAYS:
+            continue
+        days_remaining = max(0, days_remaining)
+
         has_parent = ParentProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
-        has_multi = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
         has_sped = SpedProgressTracker.objects.filter(student=student, report_cycle=cycle).exists()
+        teacher_required = student.status == 'INTEGRATED'
+        tracker = MultidisciplinaryProgressTracker.objects.filter(student=student, report_cycle=cycle).first()
 
-        access_entries = StudentAccess.objects.filter(student=student).select_related('user')
+        access_entries = list(StudentAccess.objects.filter(student=student).select_related('user'))
+        specialist_accesses = [sa for sa in access_entries if sa.user.role == 'SPECIALIST']
 
+        recipients = []
         for sa in access_entries:
-            user = sa.user
-            if user.role == 'PARENT' and not has_parent:
-                notify_tracker_reminder(user, student, days_remaining)
-                sent_count += 1
-            elif user.role == 'SPECIALIST' and not has_multi:
-                notify_tracker_reminder(user, student, days_remaining)
-                sent_count += 1
-            elif user.role == 'TEACHER' and not has_sped:
-                notify_tracker_reminder(user, student, days_remaining)
+            if sa.user.role == 'PARENT' and not has_parent:
+                recipients.append(sa.user)
+            elif sa.user.role == 'TEACHER' and teacher_required and not has_sped:
+                recipients.append(sa.user)
+        recipients.extend(_specialists_missing_tracker_sections(student, tracker, specialist_accesses))
+
+        for user in recipients:
+            dedupe_key = f"tracker_reminder:{cycle.id}:{today.isoformat()}" if scheduled else ''
+            if notify_tracker_reminder(user, student, days_remaining, dedupe_key=dedupe_key):
                 sent_count += 1
 
     logger.info("Sent %d tracker reminder(s)", sent_count)

@@ -160,3 +160,19 @@ def translate_form_data_task(self, model_name, instance_id):
         return {'instance_id': instance.id, 'status': 'skipped', 'reason': 'no form_data'}
     except Exception as exc:
         raise self.retry(exc=exc)
+
+
+# ─── Scheduled jobs (run by Celery beat, see backend/celery.py) ──────────────
+
+@shared_task
+def send_scheduled_tracker_reminders_task():
+    """Daily: remind people whose monthly tracker is due soon or overdue."""
+    from api.services.notification_service import send_tracker_reminders_for_all_students
+    return send_tracker_reminders_for_all_students(scheduled=True)
+
+
+@shared_task
+def send_assessment_appointment_reminders_task():
+    """Hourly: remind parent and specialist 24h before an assessment."""
+    from api.services.notification_service import send_assessment_appointment_reminders
+    return send_assessment_appointment_reminders()

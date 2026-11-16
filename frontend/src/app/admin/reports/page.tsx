@@ -45,6 +45,11 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     const router = useRouter();
 
     const studentId = propStudentId || searchParams.get("studentId");
+    // Set by the Action Center's "Missed Monthly Report" item: a past month that
+    // closed without a report.
+    const lateCycleId = searchParams.get("cycleId");
+    const lateCycleLabel = searchParams.get("cycleLabel") || "a past month";
+    const [lateLoading, setLateLoading] = useState(false);
     const [reportCycleId, setReportCycleId] = useState("1");
     const [studentStatus, setStudentStatus] = useState("Pending Assessment");
     const [studentName, setStudentName] = useState("");
@@ -206,6 +211,29 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
         }
     };
 
+    const handleGenerateLateMonthly = async () => {
+        if (!studentId || !lateCycleId) return;
+        setLateLoading(true);
+        setErrorMsg("");
+        try {
+            const res = await api.post("/api/monthly-report/generate/", {
+                student_id: parseInt(studentId),
+                report_cycle_id: parseInt(lateCycleId),
+            });
+            if (res.data.task_id) {
+                pollTaskStatus(res.data.task_id,
+                    (result) => openGeneratedDocument("monthly", result.doc_id),
+                    (err) => { setErrorMsg(err); setLateLoading(false); }
+                );
+            } else {
+                openGeneratedDocument("monthly", res.data.report_id);
+            }
+        } catch (err: any) {
+            setErrorMsg(err.response?.data?.error || "Failed to generate monthly report.");
+            setLateLoading(false);
+        }
+    };
+
     const isEnrolled = ["enrolled", "integrated", "active"].includes(studentStatus.toLowerCase());
     const isIntegrated = studentStatus.toLowerCase() === "integrated";
 
@@ -224,6 +252,22 @@ export function AdminReportsContent({ propStudentId, propHideNavigation, propWor
     // Shared content that renders identically in both modes
     const renderContent = () => (
         <>
+            {lateCycleId && (
+                <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="m-0 text-sm font-bold text-amber-900">Missed report: {lateCycleLabel}</p>
+                        <p className="m-0 mt-1 text-xs text-amber-800">This month closed without a report. Generate it from the trackers that were submitted.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleGenerateLateMonthly}
+                        disabled={lateLoading}
+                        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-amber-600 bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:border-amber-700 hover:bg-amber-700 disabled:opacity-60"
+                    >
+                        {lateLoading ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />Generating…</> : `Generate ${lateCycleLabel} Report`}
+                    </button>
+                </div>
+            )}
             {/* Status bar */}
             <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "1.5rem", padding: "12px 16px", borderRadius: "10px", background: "var(--bg-primary)" }}>
                 <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Student Status:</span>
