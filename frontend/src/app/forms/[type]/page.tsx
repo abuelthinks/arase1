@@ -712,9 +712,18 @@ function GoalAchievementInput({ goals, value, sectionData, onChange, readOnly }:
 // Free-text notes and the read-only parent summary are never required.
 const REQUIRED_EXEMPT_TYPES = new Set(["textarea", "readonly_parent_summary"]);
 
+// Single-author forms validated as a whole on submit (parent + SPED teacher).
+const WHOLE_FORM_VALIDATED_TYPES = new Set(["parent-assessment", "sped-assessment", "sped-tracker"]);
+
 function isFieldRequired(formType: string, field: any): boolean {
     if (REQUIRED_EXEMPT_TYPES.has(field.type)) return false;
     if (formType === "parent-assessment") return field.type !== "text";
+    // SPED teacher forms: every choice field is required. Text fields are
+    // student-info headers, and the static GAS number fields only stand in
+    // when no IEP goals exist yet, so neither blocks submission.
+    if (formType === "sped-assessment" || formType === "sped-tracker") {
+        return field.type !== "text" && field.type !== "number";
+    }
     // Multi-disciplinary forms validate per field, but only inside the
     // specialist's own discipline sections (see isSectionValidated).
     return formType === "multidisciplinary-assessment" || formType === "multidisciplinary-tracker";
@@ -846,6 +855,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
     //                 asked to complete them.
     const isSectionValidated = useCallback((sectionId: string): boolean => {
         if (formType === "parent-assessment") return true;
+        if (formType === "sped-assessment" || formType === "sped-tracker") return !isViewMode;
         if (!isSectionScopedForm || isViewMode || isAdmin) return false;
         const owner = getSectionOwner(formType, sectionId);
         if (!owner || owner === "MIXED") return false;
@@ -1863,7 +1873,7 @@ export function FormEntryContent({ propType, propStudentId, propSubmissionId, pr
             return;
         }
 
-        if (formType === "parent-assessment") {
+        if (WHOLE_FORM_VALIDATED_TYPES.has(formType)) {
             setAttemptedSubmit(true);
             if (invalidFields.size > 0) {
                 setErrorMsg("Missing required fields.");
