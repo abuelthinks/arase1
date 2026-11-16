@@ -1462,7 +1462,42 @@ class AdminDashboardActionsView(APIView):
         if request.user.role != 'ADMIN':
             return Response({"error": "Admin only"}, status=status.HTTP_403_FORBIDDEN)
 
+        from datetime import date, timedelta
+        from urllib.parse import quote
+        from .services.cycle_service import month_report_exists
+
         actions = []
+        today = date.today()
+
+        # 0. Requests waiting on the admin: unlocks and specialty changes.
+        unlock_sources = (
+            (ParentAssessment.objects.filter(unlock_requested=True), "Parent Assessment", "parent_assessment"),
+            (MultidisciplinaryAssessment.objects.filter(unlock_requested=True), "Specialist Assessment", "multi_assessment"),
+            (MultidisciplinaryProgressTracker.objects.filter(unlock_requested=True), "Specialist Progress Tracker", "multi_tracker"),
+        )
+        for qs, label, tab in unlock_sources:
+            for form in qs.select_related('student'):
+                st = form.student
+                actions.append({
+                    "id": f"unlock_{tab}_{form.id}",
+                    "title": f"Unlock Requested: {st.first_name} {st.last_name}",
+                    "description": f"{label} needs to be reopened for edits.",
+                    "action_text": "Review →",
+                    "link": f"/workspace?studentId={st.id}&workspace=forms&tab={tab}",
+                    "type": "warning",
+                })
+
+        for req in SpecialtyChangeRequest.objects.filter(status='PENDING').select_related('specialist'):
+            sp = req.specialist
+            name = f"{sp.first_name} {sp.last_name}".strip() or sp.email
+            actions.append({
+                "id": f"specialty_change_{req.id}",
+                "title": f"Specialty Change Request: {name}",
+                "description": "A specialist asked to update their disciplines.",
+                "action_text": "Review →",
+                "link": f"/users/{sp.id}",
+                "type": "info",
+            })
 
         # 1. Monthly report cycle status for enrolled/integrated students.
         #    Bulk-fetch everything to avoid N+1 queries.
@@ -1520,17 +1555,28 @@ class AdminDashboardActionsView(APIView):
                     total_required = 2
 
                 report = latest_monthly.get((s.id, cycle.id))
+                if not report and month_report_exists(s, cycle):
+                    continue  # Report for this month already generated (cycle reopened).
+
+                days_left = (cycle.end_date - today).days
+                closes_on = cycle.end_date + timedelta(days=ReportCycle.GRACE_PERIOD_DAYS)
+                deadline_note = (
+                    f" Month ended. Closes {closes_on.strftime('%b %d')}." if days_left < 0
+                    else f" {days_left} day(s) left in the month." if days_left <= 7
+                    else ""
+                )
 
                 if all_trackers_submitted and not report:
                     actions.append({
                         "id": f"monthly_{s.id}",
                         "title": f"Generate Monthly Progress Report: {s.first_name} {s.last_name}",
-                        "description": f"All {total_required} progress trackers are submitted for {cycle.label or 'the active cycle'}.",
+                        "description": f"All {total_required} progress trackers are submitted for {cycle.label or 'the active cycle'}.{deadline_note}",
                         "action_text": "Generate →",
                         "link": f"/workspace?studentId={s.id}&workspace=reports&view=generator",
                         "type": "positive"
                     })
-                elif submitted > 0 and submitted < total_required:
+                elif submitted < total_required and (submitted > 0 or days_left <= 7):
+                    # Nobody starting is only worth flagging near the end of the month.
                     missing = []
                     if not p_done: missing.append("Parent")
                     if not m_done: missing.append("Specialist")
@@ -1538,11 +1584,48 @@ class AdminDashboardActionsView(APIView):
                     actions.append({
                         "id": f"pending_{s.id}",
                         "title": f"Trackers Pending: {s.first_name} {s.last_name}",
-                        "description": f"{submitted}/{total_required} submitted for {cycle.label}. Waiting: {', '.join(missing)}.",
+                        "description": f"{submitted}/{total_required} submitted for {cycle.label}. Waiting: {', '.join(missing)}.{deadline_note}",
                         "action_text": "View →",
                         "link": f"/workspace?studentId={s.id}",
                         "type": "warning"
                     })
+
+            # Months that closed without a report (last ~3 months), so they
+            # aren't skipped silently.
+            recent_closed = (
+                ReportCycle.objects
+                .filter(
+                    student_id__in=student_ids,
+                    is_active=False,
+                    status='COMPLETED',
+                    end_date__gte=today - timedelta(days=95),
+                    end_date__lt=today,
+                )
+                .select_related('student')
+                .order_by('-end_date')
+            )
+            for cycle in recent_closed:
+                if (cycle.end_date - cycle.start_date).days > 31:
+                    continue  # Assessment cycle, not a monthly one.
+                if month_report_exists(cycle.student, cycle):
+                    continue
+                has_inputs = (
+                    ParentProgressTracker.objects.filter(report_cycle=cycle).exists()
+                    or MultidisciplinaryProgressTracker.objects.filter(report_cycle=cycle).exists()
+                    or SpedProgressTracker.objects.filter(report_cycle=cycle).exists()
+                )
+                if not has_inputs:
+                    continue
+                st = cycle.student
+                label = cycle.label or cycle.start_date.strftime('%B %Y')
+                actions.append({
+                    "id": f"missed_monthly_{cycle.id}",
+                    "title": f"Missed Monthly Report: {st.first_name} {st.last_name}",
+                    "description": f"{label} closed without a report. Trackers were submitted, so it can still be generated.",
+                    "action_text": "Generate →",
+                    "link": f"/workspace?studentId={st.id}&workspace=reports&view=generator&cycleId={cycle.id}&cycleLabel={quote(label)}",
+                    "type": "warning",
+                })
 
         # 2. Ready for Enrollment Review
         #    Generated IEPs are complete on arrival — admins edit them in place

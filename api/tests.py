@@ -1445,3 +1445,136 @@ class TranslationFeatureTests(APITestCase):
         self.assertEqual(collected['parent']['notes'], 'Translated English text')
 
 
+
+
+@override_settings(ROOT_URLCONF='backend.urls')
+class WorkflowAutomationTests(APITestCase):
+    """Reminders, Action Center requests, and the staff to-do field."""
+
+    def setUp(self):
+        from datetime import timedelta
+        self.today = date.today()
+        self.admin = User.objects.create_user(email='wa-admin@example.com', password='x', role='ADMIN')
+        self.parent = User.objects.create_user(email='wa-parent@example.com', password='x', role='PARENT')
+        self.slp = User.objects.create_user(
+            email='wa-slp@example.com', password='x', role='SPECIALIST',
+            specialty='Speech-Language Pathology', specialties=['Speech-Language Pathology'],
+        )
+        self.ot = User.objects.create_user(
+            email='wa-ot@example.com', password='x', role='SPECIALIST',
+            specialty='Occupational Therapy', specialties=['Occupational Therapy'],
+        )
+        self.teacher = User.objects.create_user(email='wa-teacher@example.com', password='x', role='TEACHER')
+
+        self.student = Student.objects.create(
+            first_name='Robin', last_name='Lee', date_of_birth=date(2018, 1, 1),
+            grade='Kinder', status='INTEGRATED',
+        )
+        self.cycle = ReportCycle.objects.create(
+            student=self.student, label='This month',
+            start_date=self.today - timedelta(days=27), end_date=self.today + timedelta(days=3),
+            is_active=True, status='OPEN',
+        )
+        for u in (self.parent, self.slp, self.ot, self.teacher):
+            StudentAccess.objects.create(user=u, student=self.student)
+
+    def _reminded(self):
+        return set(
+            Notification.objects.filter(notification_type='REMINDER')
+            .values_list('recipient__email', flat=True)
+        )
+
+    def test_reminders_cover_integrated_students_and_teachers(self):
+        from api.services.notification_service import send_tracker_reminders_for_all_students
+        send_tracker_reminders_for_all_students()
+        self.assertEqual(self._reminded(), {
+            'wa-parent@example.com', 'wa-slp@example.com', 'wa-ot@example.com', 'wa-teacher@example.com',
+        })
+
+    def test_reminders_skip_teacher_of_enrolled_student(self):
+        from api.services.notification_service import send_tracker_reminders_for_all_students
+        self.student.status = 'ENROLLED'
+        self.student.save(update_fields=['status'])
+        send_tracker_reminders_for_all_students()
+        self.assertNotIn('wa-teacher@example.com', self._reminded())
+
+    def test_specialist_reminded_until_own_sections_submitted(self):
+        from api.models import SectionContribution
+        from api.specialties import required_owner_sections
+        from api.services.notification_service import send_tracker_reminders_for_all_students
+        tracker = MultidisciplinaryProgressTracker.objects.create(
+            student=self.student, report_cycle=self.cycle, form_data={},
+        )
+        for key in required_owner_sections('tracker', ['Speech-Language Pathology']):
+            SectionContribution.objects.create(
+                form_type='tracker', tracker=tracker, section_key=key,
+                specialist=self.slp, status='submitted',
+            )
+        send_tracker_reminders_for_all_students()
+        reminded = self._reminded()
+        self.assertNotIn('wa-slp@example.com', reminded)
+        self.assertIn('wa-ot@example.com', reminded)
+
+    def test_scheduled_reminders_only_on_set_days_and_once_per_day(self):
+        from datetime import timedelta
+        from api.services.notification_service import send_tracker_reminders_for_all_students
+        # 3 days left -> a reminder day.
+        self.assertEqual(send_tracker_reminders_for_all_students(scheduled=True), 4)
+        self.assertEqual(send_tracker_reminders_for_all_students(scheduled=True), 0)
+        # 5 days left -> not a reminder day.
+        Notification.objects.all().delete()
+        self.cycle.end_date = self.today + timedelta(days=5)
+        self.cycle.save(update_fields=['end_date'])
+        self.assertEqual(send_tracker_reminders_for_all_students(scheduled=True), 0)
+
+    def test_no_reminders_once_month_report_exists(self):
+        from api.services.notification_service import send_tracker_reminders_for_all_students
+        GeneratedDocument.objects.create(
+            student=self.student, report_cycle=self.cycle, document_type='MONTHLY', status='FINAL',
+        )
+        self.assertEqual(send_tracker_reminders_for_all_students(), 0)
+
+    def test_action_center_lists_unlock_and_not_started_trackers(self):
+        MultidisciplinaryProgressTracker.objects.create(
+            student=self.student, report_cycle=self.cycle, form_data={},
+            finalized_at=timezone.now(), unlock_requested=True,
+        )
+        self.client.force_authenticate(user=self.admin)
+        actions = self.client.get('/api/dashboard/actions/').data['actions']
+        ids = {a['id'] for a in actions}
+        self.assertTrue(any(i.startswith('unlock_multi_tracker_') for i in ids))
+        self.assertIn(f'pending_{self.student.id}', ids)
+
+    def test_action_center_flags_missed_month(self):
+        from datetime import timedelta
+        past_end = self.cycle.start_date - timedelta(days=1)
+        past = ReportCycle.objects.create(
+            student=self.student, label='Last month',
+            start_date=past_end - timedelta(days=29), end_date=past_end,
+            is_active=False, status='COMPLETED',
+        )
+        ParentProgressTracker.objects.create(student=self.student, report_cycle=past, form_data={'x': 1})
+        self.client.force_authenticate(user=self.admin)
+        actions = self.client.get('/api/dashboard/actions/').data['actions']
+        missed = next(a for a in actions if a['id'] == f'missed_monthly_{past.id}')
+        self.assertIn(f'cycleId={past.id}', missed['link'])
+
+    def test_my_task_for_specialist_and_teacher(self):
+        self.client.force_authenticate(user=self.teacher)
+        row = self.client.get('/api/students/').data[0]
+        self.assertEqual(row['my_task']['state'], 'due')
+        self.assertEqual(row['my_task']['tab'], 'sped_tracker')
+
+        SpedProgressTracker.objects.create(student=self.student, report_cycle=self.cycle, form_data={'x': 1})
+        row = self.client.get('/api/students/').data[0]
+        self.assertEqual(row['my_task']['state'], 'done')
+
+        self.client.force_authenticate(user=self.slp)
+        row = self.client.get('/api/students/').data[0]
+        self.assertEqual(row['my_task']['tab'], 'multi_tracker')
+        self.assertEqual(row['my_task']['state'], 'due')
+        self.assertEqual(row['my_task']['days_left'], 3)
+
+        self.client.force_authenticate(user=self.admin)
+        row = self.client.get('/api/students/').data[0]
+        self.assertIsNone(row['my_task'])

@@ -21,7 +21,7 @@
         "buildCommand": "bash build.sh"
       },
       "deploy": {
-        "startCommand": "celery -A backend worker -l INFO --pool=solo",
+        "startCommand": "celery -A backend worker -B -l INFO --pool=solo",
         "numReplicas": 1,
         "sleepService": false
       }
