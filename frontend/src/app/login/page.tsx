@@ -79,18 +79,10 @@ export default function LoginPage() {
                         />
                     </div>
 
-                    <div className="form-group" style={{ marginBottom: "2rem" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                            <label className="form-label" htmlFor="password">Password</label>
-                            <Link
-                                href="/forgot-password"
-                                className="text-[var(--accent-primary)] transition-colors hover:text-[var(--text-primary)]"
-                                style={{ fontSize: "0.85rem", textDecoration: "none" }}
-                            >
-                                Forgot password?
-                            </Link>
-                        </div>
-                        <div style={{ position: "relative" }}>
+                    {/* Link sits after the input in the DOM so Tab goes email -> password; `order` keeps it beside the label. */}
+                    <div className="form-group" style={{ marginBottom: "2rem", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <label className="form-label" htmlFor="password" style={{ order: 1 }}>Password</label>
+                        <div style={{ position: "relative", order: 3, flexBasis: "100%" }}>
                             <input
                                 id="password"
                                 type={showPassword ? "text" : "password"}
@@ -127,6 +119,13 @@ export default function LoginPage() {
                             </button>
                             )}
                         </div>
+                        <Link
+                            href="/forgot-password"
+                            className="text-[var(--accent-primary)] transition-colors hover:text-[var(--text-primary)]"
+                            style={{ order: 2, fontSize: "0.85rem", textDecoration: "none" }}
+                        >
+                            Forgot password?
+                        </Link>
                     </div>
 
                     <Button type="submit" style={{ width: "100%", padding: "12px" }} disabled={loading}>
